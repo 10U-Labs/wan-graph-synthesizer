@@ -44,8 +44,6 @@ def choose_core_candidates(
         reachable_distances = [
             distance for node_id, distance in graph_distances.items() if node_id != pop_id
         ]
-        if not reachable_distances:
-            continue
         graph_score = sum(reachable_distances) / len(reachable_distances)
         access_score = sum(
             haversine_miles(access, pop) for access in access_nodes
@@ -96,8 +94,6 @@ def core_mesh_paths(
         if not math.isfinite(distance):
             return []
         path = reconstruct_path(left, right, all_predecessors[left])
-        if len(path) < 2:
-            return []
         uses.append(PathUse("core_mesh", left, right, path, distance))
     return uses
 
@@ -206,8 +202,6 @@ def build_design_for_cores(
             selected.add(aggregation_id)
 
     path_uses = core_mesh_paths(core_ids, inputs.all_distances, inputs.all_predecessors)
-    if not path_uses:
-        return None
     for aggregation_id in sorted(selected):
         path_uses.extend(aggregation_core[aggregation_id][1])
 
