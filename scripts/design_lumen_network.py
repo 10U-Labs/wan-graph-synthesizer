@@ -587,14 +587,21 @@ def node_disjoint_paths_to_cores(
     return _paths_distance(paths, adjacency), paths
 
 
-def connected_components(node_ids: set[str], edges: set[tuple[str, str]]) -> list[list[str]]:
-    """Return the connected components of the design graph as sorted id lists."""
+def undirected_adjacency(
+    node_ids: set[str], edges: set[tuple[str, str]]
+) -> dict[str, set[str]]:
+    """Build an undirected neighbor map restricted to the given node ids."""
     adjacency: dict[str, set[str]] = {node_id: set() for node_id in node_ids}
     for left, right in edges:
         if left in adjacency and right in adjacency:
             adjacency[left].add(right)
             adjacency[right].add(left)
+    return adjacency
 
+
+def connected_components(node_ids: set[str], edges: set[tuple[str, str]]) -> list[list[str]]:
+    """Return the connected components of the design graph as sorted id lists."""
+    adjacency = undirected_adjacency(node_ids, edges)
     remaining = set(adjacency)
     components: list[list[str]] = []
     while remaining:
@@ -615,12 +622,7 @@ def connected_components(node_ids: set[str], edges: set[tuple[str, str]]) -> lis
 
 def articulation_points(node_ids: set[str], edges: set[tuple[str, str]]) -> set[str]:
     """Return cut vertices whose removal would disconnect the design graph."""
-    adjacency: dict[str, set[str]] = {node_id: set() for node_id in node_ids}
-    for left, right in edges:
-        if left in adjacency and right in adjacency:
-            adjacency[left].add(right)
-            adjacency[right].add(left)
-
+    adjacency = undirected_adjacency(node_ids, edges)
     visited: set[str] = set()
     discovery: dict[str, int] = {}
     low: dict[str, int] = {}
@@ -1303,59 +1305,54 @@ def write_json(
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+CSV_FIELDNAMES = [
+    "source_id",
+    "source_name",
+    "source_role",
+    "target_id",
+    "target_name",
+    "target_role",
+    "edge_kind",
+    "distance_miles",
+    "source_page",
+]
+
+
+def csv_edge_row(
+    design: Design, source: Node, target: Node, meta: tuple[str, float, str]
+) -> dict[str, object]:
+    """Build one CSV row for an edge between two nodes."""
+    edge_kind, distance, source_page = meta
+    return {
+        "source_id": source.id,
+        "source_name": source.name,
+        "source_role": node_role(source.id, design, source),
+        "target_id": target.id,
+        "target_name": target.name,
+        "target_role": node_role(target.id, design, target),
+        "edge_kind": edge_kind,
+        "distance_miles": round(distance, 3),
+        "source_page": source_page,
+    }
+
+
 def write_csv(output_path: Path, artifacts: DesignArtifacts) -> None:
     """Write all selected edges with node roles and distances as CSV."""
-    nodes = artifacts.nodes
     physical_edges = artifacts.physical_edges
     design = artifacts.design
-    nodes_by_id = {node.id: node for node in nodes}
-    fieldnames = [
-        "source_id",
-        "source_name",
-        "source_role",
-        "target_id",
-        "target_name",
-        "target_role",
-        "edge_kind",
-        "distance_miles",
-        "source_page",
-    ]
+    nodes_by_id = {node.id: node for node in artifacts.nodes}
     with output_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=CSV_FIELDNAMES)
         writer.writeheader()
         for edge in sorted(design.access_edges, key=lambda item: (item.source, item.target)):
-            source = nodes_by_id[edge.source]
-            target = nodes_by_id[edge.target]
-            writer.writerow(
-                {
-                    "source_id": source.id,
-                    "source_name": source.name,
-                    "source_role": node_role(source.id, design, source),
-                    "target_id": target.id,
-                    "target_name": target.name,
-                    "target_role": node_role(target.id, design, target),
-                    "edge_kind": "access_to_aggregation",
-                    "distance_miles": round(edge.distance_miles, 3),
-                    "source_page": "",
-                }
-            )
+            meta = ("access_to_aggregation", edge.distance_miles, "")
+            row = csv_edge_row(design, nodes_by_id[edge.source], nodes_by_id[edge.target], meta)
+            writer.writerow(row)
         for left, right in sorted_physical_edges(design):
-            source = nodes_by_id[left]
-            target = nodes_by_id[right]
             physical_edge = physical_edges[edge_key(left, right)]
-            writer.writerow(
-                {
-                    "source_id": source.id,
-                    "source_name": source.name,
-                    "source_role": node_role(source.id, design, source),
-                    "target_id": target.id,
-                    "target_name": target.name,
-                    "target_role": node_role(target.id, design, target),
-                    "edge_kind": "lumen_physical",
-                    "distance_miles": round(physical_edge.distance_miles, 3),
-                    "source_page": physical_edge.source_page,
-                }
-            )
+            meta = ("lumen_physical", physical_edge.distance_miles, physical_edge.source_page)
+            row = csv_edge_row(design, nodes_by_id[left], nodes_by_id[right], meta)
+            writer.writerow(row)
 
 
 def kml_color_for_role(role: str) -> str:
@@ -1411,32 +1408,28 @@ def write_kml_nodes(folder: ET.Element, design: Design, nodes: list[Node]) -> No
         ET.SubElement(point, "coordinates").text = f"{node.lon},{node.lat},0"
 
 
+def kml_edge_specs(artifacts: DesignArtifacts) -> list[tuple[str, str, str, str]]:
+    """List (source_id, target_id, style, description) for every selected edge."""
+    design = artifacts.design
+    specs: list[tuple[str, str, str, str]] = []
+    for edge in sorted(design.access_edges, key=lambda item: (item.source, item.target)):
+        desc = f"access_to_aggregation\n{edge.distance_miles:.1f} miles"
+        specs.append((edge.source, edge.target, "#edge_access", desc))
+    for left, right in sorted_physical_edges(design):
+        physical_edge = artifacts.physical_edges[edge_key(left, right)]
+        miles = f"{physical_edge.distance_miles:.1f} miles"
+        desc = f"lumen_physical\n{miles}\n{physical_edge.source_page}"
+        specs.append((left, right, "#edge_physical", desc))
+    return specs
+
+
 def write_kml_edges(folder: ET.Element, artifacts: DesignArtifacts) -> None:
     """Append a placemark for every selected access and physical edge."""
     nodes_by_id = {node.id: node for node in artifacts.nodes}
-    design = artifacts.design
-    for edge in sorted(design.access_edges, key=lambda item: (item.source, item.target)):
-        source, target = nodes_by_id[edge.source], nodes_by_id[edge.target]
+    for source_id, target_id, style, desc in kml_edge_specs(artifacts):
+        source, target = nodes_by_id[source_id], nodes_by_id[target_id]
         ends = f"{source.lon},{source.lat},0 {target.lon},{target.lat},0"
-        add_kml_line(
-            folder,
-            f"{source.name} to {target.name}",
-            "#edge_access",
-            f"access_to_aggregation\n{edge.distance_miles:.1f} miles",
-            ends,
-        )
-    for left, right in sorted_physical_edges(design):
-        source, target = nodes_by_id[left], nodes_by_id[right]
-        physical_edge = artifacts.physical_edges[edge_key(left, right)]
-        ends = f"{source.lon},{source.lat},0 {target.lon},{target.lat},0"
-        miles = f"{physical_edge.distance_miles:.1f} miles"
-        add_kml_line(
-            folder,
-            f"{source.name} to {target.name}",
-            "#edge_physical",
-            f"lumen_physical\n{miles}\n{physical_edge.source_page}",
-            ends,
-        )
+        add_kml_line(folder, f"{source.name} to {target.name}", style, desc, ends)
 
 
 def write_kml(output_path: Path, artifacts: DesignArtifacts) -> None:
