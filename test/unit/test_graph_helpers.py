@@ -1,0 +1,116 @@
+"""Unit tests for the pure graph and parsing helpers."""
+
+from __future__ import annotations
+
+import math
+
+import pytest
+
+from design_lumen_network import (
+    classify_category,
+    connected_components,
+    articulation_points,
+    dijkstra,
+    edge_key,
+    haversine_miles,
+    reconstruct_path,
+    slugify,
+    Node,
+)
+
+
+def make_node(node_id: str, lat: float, lon: float) -> Node:
+    """Test helper: build make node."""
+    return Node(id=node_id, name=node_id, category="c", kind="lumen_pop", lat=lat, lon=lon)
+
+
+def test_slugify_replaces_punctuation() -> None:
+    """Slugify replaces punctuation."""
+    assert slugify("St. Louis, MO") == "st_louis_mo"
+
+
+def test_slugify_empty_falls_back() -> None:
+    """Slugify empty falls back."""
+    assert slugify("!!!") == "node"
+
+
+def test_classify_category_lumen_pop() -> None:
+    """Classify category lumen pop."""
+    assert classify_category("Lumen 400G PoPs") == "lumen_pop"
+
+
+def test_classify_category_sentinel() -> None:
+    """Classify category sentinel."""
+    assert classify_category("Sentinel Program Locations") == "sentinel"
+
+
+def test_classify_category_provider() -> None:
+    """Classify category provider provider."""
+    assert classify_category("provider regions - providers") == "provider"
+
+
+def test_edge_key_orders_pair() -> None:
+    """Edge key orders pair."""
+    assert edge_key("b", "a") == ("a", "b")
+
+
+def test_edge_key_rejects_self_loop() -> None:
+    """Edge key rejects self loop."""
+    with pytest.raises(ValueError):
+        edge_key("a", "a")
+
+
+def test_haversine_zero_distance() -> None:
+    """Haversine zero distance."""
+    node = make_node("x", 40.0, -100.0)
+    assert haversine_miles(node, node) == pytest.approx(0.0)
+
+
+def test_haversine_known_distance() -> None:
+    # New York to Los Angeles is roughly 2450 miles.
+    """Haversine known distance."""
+    new_york = make_node("ny", 40.7128, -74.006)
+    los_angeles = make_node("la", 34.0522, -118.2437)
+    assert haversine_miles(new_york, los_angeles) == pytest.approx(2450.0, abs=30.0)
+
+
+def test_dijkstra_distance_along_chain() -> None:
+    """Dijkstra distance along chain."""
+    adjacency = {"a": [("b", 2.0)], "b": [("a", 2.0), ("c", 3.0)], "c": [("b", 3.0)]}
+    distances, _predecessors = dijkstra(adjacency, "a")
+    assert distances["c"] == 5.0
+
+
+def test_reconstruct_path_along_chain() -> None:
+    """Reconstruct path along chain."""
+    adjacency = {"a": [("b", 2.0)], "b": [("a", 2.0), ("c", 3.0)], "c": [("b", 3.0)]}
+    _distances, predecessors = dijkstra(adjacency, "a")
+    assert reconstruct_path("a", "c", predecessors) == ("a", "b", "c")
+
+
+def test_connected_components_counts_islands() -> None:
+    """Connected components counts islands."""
+    ids = {"a", "b", "c", "d"}
+    edges = {("a", "b"), ("c", "d")}
+    assert len(connected_components(ids, edges)) == 2
+
+
+def test_articulation_point_detected() -> None:
+    """Articulation point detected."""
+    ids = {"a", "b", "c"}
+    edges = {("a", "b"), ("b", "c")}
+    assert articulation_points(ids, edges) == {"b"}
+
+
+def test_cycle_has_no_articulation_points() -> None:
+    """Cycle has no articulation points."""
+    ids = {"a", "b", "c"}
+    edges = {("a", "b"), ("b", "c"), ("a", "c")}
+    assert articulation_points(ids, edges) == set()
+
+
+def test_unreachable_target_has_infinite_distance() -> None:
+    """Unreachable target has infinite distance."""
+    adjacency = {"a": [("b", 1.0)], "b": [("a", 1.0)], "c": []}
+    distances, _predecessors = dijkstra(adjacency, "a")
+    assert distances.get("c", math.inf) == math.inf

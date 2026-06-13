@@ -1,0 +1,155 @@
+---
+concurrency:
+  cancel-in-progress: true
+  group: design-${{ github.head_ref || github.ref_name }}
+jobs:
+  e2e-test:
+    needs: integration-test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Restore pip cache
+        uses: actions/cache@v5
+        with:
+          key: >-
+            pip-design-test-${{ hashFiles('.github/workflows/design.yml') }}
+          path: ~/.cache/pip
+          restore-keys: |
+            pip-design-test-
+      - name: Install tools
+        run: pip install pytest
+      - name: Run e2e tests
+        run: >-
+          PYTHONPATH=.:scripts python3 -m pytest
+          test/e2e/ --verbose --pythonwarnings=error
+  integration-test:
+    needs: unit-test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Restore pip cache
+        uses: actions/cache@v5
+        with:
+          key: >-
+            pip-design-test-${{ hashFiles('.github/workflows/design.yml') }}
+          path: ~/.cache/pip
+          restore-keys: |
+            pip-design-test-
+      - name: Install tools
+        run: pip install pytest
+      - name: Run integration tests
+        run: >-
+          PYTHONPATH=.:scripts python3 -m pytest
+          test/integration/ --verbose --pythonwarnings=error
+  static-analysis:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Restore pip cache
+        uses: actions/cache@v5
+        with:
+          key: >-
+            pip-design-static-${{ hashFiles('.github/workflows/design.yml') }}
+          path: ~/.cache/pip
+          restore-keys: |
+            pip-design-static-
+      - name: Install tools
+        run: |
+          pip install \
+            assert-no-inline-directives \
+            assert-no-linter-config-files \
+            assert-one-assert-per-pytest \
+            mypy pylint pytest yamllint
+          npm install -g jscpd
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/design.yml
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/scripts ${{ github.workspace }}/test
+      - name: Assert no linter config files
+        run: >-
+          assert-no-linter-config-files
+          --linters pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}
+      - name: Assert one assert per pytest
+        run: >-
+          assert-one-assert-per-pytest
+          --verbose
+          ${{ github.workspace }}/test
+      - name: Run pylint on source
+        run: >-
+          PYTHONPATH=.:scripts python3 -m pylint
+          scripts/
+          --fail-on=C,R,W --fail-under=10.0 --max-module-lines=2000
+      - name: Run pylint on tests
+        run: >-
+          PYTHONPATH=.:scripts python3 -m pylint --recursive=y
+          test/
+          --fail-on=C,R,W --fail-under=10.0
+      - name: Run mypy on source
+        run: >-
+          MYPYPATH=scripts python3 -m mypy --strict
+          --explicit-package-bases scripts/
+      - name: Run mypy on tests
+        run: >-
+          MYPYPATH=scripts python3 -m mypy --strict
+          --explicit-package-bases test/
+      - name: Detect copy-paste in source
+        run: >-
+          jscpd --pattern "scripts/**/*.py" --threshold 0
+          --reporters console scripts/
+      - name: Detect copy-paste in tests
+        run: >-
+          jscpd --pattern "test/**/*.py" --threshold 0
+          --reporters console test/
+  unit-test:
+    needs: static-analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Restore pip cache
+        uses: actions/cache@v5
+        with:
+          key: >-
+            pip-design-test-${{ hashFiles('.github/workflows/design.yml') }}
+          path: ~/.cache/pip
+          restore-keys: |
+            pip-design-test-
+      - name: Install tools
+        run: pip install pytest
+      - name: Run unit tests
+        run: >-
+          PYTHONPATH=.:scripts python3 -m pytest
+          test/unit/ --verbose --pythonwarnings=error
+name: design
+on:
+  pull_request:
+    paths:
+      - .github/workflows/design.yml
+      - data/**
+      - f35_sentinel_provider regions_lumen_400g.kmz
+      - scripts/**
+      - test/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/design.yml
+      - data/**
+      - f35_sentinel_provider regions_lumen_400g.kmz
+      - scripts/**
+      - test/**
+  workflow_dispatch:
