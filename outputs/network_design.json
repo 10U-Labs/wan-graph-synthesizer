@@ -5,48 +5,47 @@
   "objective": "Three-tier WAN design: access nodes dual-home to Carrier aggregation PoPs, aggregation PoPs dual-home to core PoPs over the physical Carrier graph, and the core tier uses at most three nodes.",
   "summary": {
     "core_count": 3,
-    "aggregation_count": 41,
-    "transit_count": 24,
+    "aggregation_count": 42,
+    "transit_count": 26,
     "access_node_count": 40,
     "access_edge_count": 80,
-    "physical_edge_count": 89,
-    "access_miles": 21068.381,
-    "physical_carrier_miles": 16795.736,
-    "total_design_miles": 37864.117,
-    "score": 37864.117,
+    "physical_edge_count": 92,
+    "access_miles": 21106.475,
+    "physical_carrier_miles": 18155.428,
+    "total_design_miles": 39261.903,
+    "score": 39261.903,
     "cores": [
-      "Des Moines, IA",
-      "Albuquerque, NM",
-      "Houston, TX"
+      "Atlanta, GA",
+      "Denver, CO",
+      "Chicago, IL"
     ],
     "aggregations": [
       "Albany, NY",
       "Ashburn, VA",
-      "Atlanta, GA",
       "Austin, TX",
       "Baltimore, MD",
       "Billingsley, AL",
+      "Boise, ID",
       "Charlotte, NC",
       "Cheyenne, WY",
+      "Cincinnati, OH",
       "Columbus, OH",
       "Dallas, TX",
-      "Denver, CO",
       "Fort Worth, TX",
       "Hayward, CA",
       "Herndon, VA",
-      "Indianapolis, IN",
       "Jacksonville, FL",
       "Las Vegas, NV",
       "Los Angeles, CA",
       "Madison, WI",
       "McLean, VA",
       "Milwaukee, WI",
+      "Minneapolis, MN",
       "Ogden, UT",
-      "Omaha, NE",
       "Phoenix, AZ",
       "Raleigh, NC",
       "Reno, NV",
-      "Riverside, CA",
+      "Richmond, VA",
       "Sacramento, CA",
       "Salt Lake City, UT",
       "San Antonio, TX",
@@ -57,9 +56,11 @@
       "San Luis Obispo, CA",
       "Seattle, WA",
       "Stamford, CT",
+      "Stratford, TX",
       "Tallahassee, FL",
       "Tucson, AZ",
       "Tulsa, OK",
+      "Tustin, CA",
       "Yakima, WA"
     ]
   },
@@ -547,7 +548,7 @@
       "lat": 43.615,
       "lon": -116.2023,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "transit",
+      "tier_role": "aggregation",
       "included": true
     },
     {
@@ -822,7 +823,7 @@
       "lat": 35.0844,
       "lon": -106.6504,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "core",
+      "tier_role": "transit",
       "included": true
     },
     {
@@ -866,7 +867,7 @@
       "lat": 33.7459,
       "lon": -117.8265,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "transit",
+      "tier_role": "aggregation",
       "included": true
     },
     {
@@ -877,7 +878,7 @@
       "lat": 33.9533,
       "lon": -117.3962,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "aggregation",
+      "tier_role": "transit",
       "included": true
     },
     {
@@ -921,7 +922,7 @@
       "lat": 39.7392,
       "lon": -104.9903,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "aggregation",
+      "tier_role": "core",
       "included": true
     },
     {
@@ -1020,7 +1021,7 @@
       "lat": 44.9778,
       "lon": -93.265,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "transit",
+      "tier_role": "aggregation",
       "included": true
     },
     {
@@ -1031,7 +1032,7 @@
       "lat": 41.5868,
       "lon": -93.6091,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "core",
+      "tier_role": "transit",
       "included": true
     },
     {
@@ -1053,7 +1054,7 @@
       "lat": 41.2565,
       "lon": -95.9345,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "aggregation",
+      "tier_role": "transit",
       "included": true
     },
     {
@@ -1097,8 +1098,8 @@
       "lat": 35.4676,
       "lon": -97.5164,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "unused",
-      "included": false
+      "tier_role": "transit",
+      "included": true
     },
     {
       "id": "carrier_pop_stratford_tx",
@@ -1108,8 +1109,8 @@
       "lat": 36.3361,
       "lon": -102.0721,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "unused",
-      "included": false
+      "tier_role": "aggregation",
+      "included": true
     },
     {
       "id": "carrier_pop_houston_tx",
@@ -1119,7 +1120,7 @@
       "lat": 29.7604,
       "lon": -95.3698,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "core",
+      "tier_role": "transit",
       "included": true
     },
     {
@@ -1152,8 +1153,8 @@
       "lat": 35.1495,
       "lon": -90.049,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "unused",
-      "included": false
+      "tier_role": "transit",
+      "included": true
     },
     {
       "id": "carrier_pop_chicago_il",
@@ -1163,7 +1164,7 @@
       "lat": 41.8781,
       "lon": -87.6298,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "transit",
+      "tier_role": "core",
       "included": true
     },
     {
@@ -1174,7 +1175,7 @@
       "lat": 39.7684,
       "lon": -86.1581,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "aggregation",
+      "tier_role": "transit",
       "included": true
     },
     {
@@ -1284,7 +1285,7 @@
       "lat": 33.749,
       "lon": -84.388,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "aggregation",
+      "tier_role": "core",
       "included": true
     },
     {
@@ -1317,7 +1318,7 @@
       "lat": 37.5407,
       "lon": -77.436,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "transit",
+      "tier_role": "aggregation",
       "included": true
     },
     {
@@ -1394,7 +1395,7 @@
       "lat": 39.1031,
       "lon": -84.512,
       "description": "Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.",
-      "tier_role": "transit",
+      "tier_role": "aggregation",
       "included": true
     },
     {
@@ -1534,18 +1535,18 @@
     {
       "source_id": "csp_secret_aws_secret_east_region",
       "source_name": "AWS Secret East Region",
-      "target_id": "carrier_pop_columbus_oh",
-      "target_name": "Columbus, OH",
+      "target_id": "carrier_pop_cincinnati_oh",
+      "target_name": "Cincinnati, OH",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 0.0
+      "distance_miles": 100.085
     },
     {
       "source_id": "csp_secret_aws_secret_east_region",
       "source_name": "AWS Secret East Region",
-      "target_id": "carrier_pop_indianapolis_in",
-      "target_name": "Indianapolis, IN",
+      "target_id": "carrier_pop_columbus_oh",
+      "target_name": "Columbus, OH",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 168.068
+      "distance_miles": 0.0
     },
     {
       "source_id": "csp_secret_aws_secret_west_region",
@@ -1566,18 +1567,18 @@
     {
       "source_id": "csp_secret_azure_secret_east_region",
       "source_name": "Azure Secret East Region",
-      "target_id": "carrier_pop_herndon_va",
-      "target_name": "Herndon, VA",
+      "target_id": "carrier_pop_ashburn_va",
+      "target_name": "Ashburn, VA",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 15.855
+      "distance_miles": 20.248
     },
     {
       "source_id": "csp_secret_azure_secret_east_region",
       "source_name": "Azure Secret East Region",
-      "target_id": "carrier_pop_mclean_va",
-      "target_name": "McLean, VA",
+      "target_id": "carrier_pop_herndon_va",
+      "target_name": "Herndon, VA",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 20.422
+      "distance_miles": 15.855
     },
     {
       "source_id": "csp_secret_azure_secret_west_region",
@@ -1662,18 +1663,18 @@
     {
       "source_id": "f35_dannelly_field",
       "source_name": "Dannelly Field",
-      "target_id": "carrier_pop_atlanta_ga",
-      "target_name": "Atlanta, GA",
-      "edge_kind": "access_to_aggregation",
-      "distance_miles": 153.349
-    },
-    {
-      "source_id": "f35_dannelly_field",
-      "source_name": "Dannelly Field",
       "target_id": "carrier_pop_billingsley_al",
       "target_name": "Billingsley, AL",
       "edge_kind": "access_to_aggregation",
       "distance_miles": 30.975
+    },
+    {
+      "source_id": "f35_dannelly_field",
+      "source_name": "Dannelly Field",
+      "target_id": "carrier_pop_tallahassee_fl",
+      "target_name": "Tallahassee, FL",
+      "edge_kind": "access_to_aggregation",
+      "distance_miles": 179.15
     },
     {
       "source_id": "f35_ebbing_angb",
@@ -1694,10 +1695,10 @@
     {
       "source_id": "f35_edwards_afb",
       "source_name": "Edwards AFB",
-      "target_id": "carrier_pop_riverside_ca",
-      "target_name": "Riverside, CA",
+      "target_id": "carrier_pop_los_angeles_ca",
+      "target_name": "Los Angeles, CA",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 71.41
+      "distance_miles": 62.414
     },
     {
       "source_id": "f35_edwards_afb",
@@ -1790,10 +1791,10 @@
     {
       "source_id": "f35_mcas_beaufort",
       "source_name": "MCAS Beaufort",
-      "target_id": "carrier_pop_atlanta_ga",
-      "target_name": "Atlanta, GA",
+      "target_id": "carrier_pop_charlotte_nc",
+      "target_name": "Charlotte, NC",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 229.549
+      "distance_miles": 190.111
     },
     {
       "source_id": "f35_mcas_beaufort",
@@ -1806,26 +1807,18 @@
     {
       "source_id": "f35_mcas_cherry_point",
       "source_name": "MCAS Cherry Point",
-      "target_id": "carrier_pop_charlotte_nc",
-      "target_name": "Charlotte, NC",
-      "edge_kind": "access_to_aggregation",
-      "distance_miles": 225.204
-    },
-    {
-      "source_id": "f35_mcas_cherry_point",
-      "source_name": "MCAS Cherry Point",
       "target_id": "carrier_pop_raleigh_nc",
       "target_name": "Raleigh, NC",
       "edge_kind": "access_to_aggregation",
       "distance_miles": 116.178
     },
     {
-      "source_id": "f35_mcas_miramar",
-      "source_name": "MCAS Miramar",
-      "target_id": "carrier_pop_san_bernadino_ca",
-      "target_name": "San Bernadino, CA",
+      "source_id": "f35_mcas_cherry_point",
+      "source_name": "MCAS Cherry Point",
+      "target_id": "carrier_pop_richmond_va",
+      "target_name": "Richmond, VA",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 86.182
+      "distance_miles": 184.999
     },
     {
       "source_id": "f35_mcas_miramar",
@@ -1834,6 +1827,14 @@
       "target_name": "San Diego, CA",
       "edge_kind": "access_to_aggregation",
       "distance_miles": 10.521
+    },
+    {
+      "source_id": "f35_mcas_miramar",
+      "source_name": "MCAS Miramar",
+      "target_id": "carrier_pop_tustin_ca",
+      "target_name": "Tustin, CA",
+      "edge_kind": "access_to_aggregation",
+      "distance_miles": 72.457
     },
     {
       "source_id": "f35_mcas_yuma",
@@ -1974,10 +1975,10 @@
     {
       "source_id": "sentinel_camp_guernsey",
       "source_name": "Camp Guernsey",
-      "target_id": "carrier_pop_denver_co",
-      "target_name": "Denver, CO",
+      "target_id": "carrier_pop_ogden_ut",
+      "target_name": "Ogden, UT",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 175.26
+      "distance_miles": 379.47
     },
     {
       "source_id": "sentinel_camp_navajo",
@@ -2022,10 +2023,10 @@
     {
       "source_id": "sentinel_f_e_warren_afb",
       "source_name": "F.E. Warren AFB",
-      "target_id": "carrier_pop_denver_co",
-      "target_name": "Denver, CO",
+      "target_id": "carrier_pop_stratford_tx",
+      "target_name": "Stratford, TX",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 97.783
+      "distance_miles": 364.996
     },
     {
       "source_id": "sentinel_hanscom_afb",
@@ -2078,10 +2079,10 @@
     {
       "source_id": "sentinel_malmstrom_afb",
       "source_name": "Malmstrom AFB",
-      "target_id": "carrier_pop_cheyenne_wy",
-      "target_name": "Cheyenne, WY",
+      "target_id": "carrier_pop_boise_id",
+      "target_name": "Boise, ID",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 540.28
+      "distance_miles": 362.074
     },
     {
       "source_id": "sentinel_malmstrom_afb",
@@ -2102,10 +2103,10 @@
     {
       "source_id": "sentinel_minot_afb",
       "source_name": "Minot AFB",
-      "target_id": "carrier_pop_omaha_ne",
-      "target_name": "Omaha, NE",
+      "target_id": "carrier_pop_minneapolis_mn",
+      "target_name": "Minneapolis, MN",
       "edge_kind": "access_to_aggregation",
-      "distance_miles": 561.15
+      "distance_miles": 450.744
     },
     {
       "source_id": "sentinel_reagan_test_site",
@@ -2256,16 +2257,6 @@
     {
       "source_id": "carrier_pop_atlanta_ga",
       "source_name": "Atlanta, GA",
-      "target_id": "carrier_pop_augusta_ga",
-      "target_name": "Augusta, GA",
-      "edge_kind": "carrier_physical",
-      "distance_miles": 140.155,
-      "source_page": "southeast/overview",
-      "note": "visible route"
-    },
-    {
-      "source_id": "carrier_pop_atlanta_ga",
-      "source_name": "Atlanta, GA",
       "target_id": "carrier_pop_billingsley_al",
       "target_name": "Billingsley, AL",
       "edge_kind": "carrier_physical",
@@ -2280,6 +2271,16 @@
       "target_name": "Charlotte, NC",
       "edge_kind": "carrier_physical",
       "distance_miles": 226.222,
+      "source_page": "southeast/overview",
+      "note": "visible route"
+    },
+    {
+      "source_id": "carrier_pop_atlanta_ga",
+      "source_name": "Atlanta, GA",
+      "target_id": "carrier_pop_memphis_tn",
+      "target_name": "Memphis, TN",
+      "edge_kind": "carrier_physical",
+      "distance_miles": 336.687,
       "source_page": "southeast/overview",
       "note": "visible route"
     },
@@ -2306,6 +2307,16 @@
     {
       "source_id": "carrier_pop_augusta_ga",
       "source_name": "Augusta, GA",
+      "target_id": "carrier_pop_charlotte_nc",
+      "target_name": "Charlotte, NC",
+      "edge_kind": "carrier_physical",
+      "distance_miles": 137.284,
+      "source_page": "southeast/overview",
+      "note": "visible route"
+    },
+    {
+      "source_id": "carrier_pop_augusta_ga",
+      "source_name": "Augusta, GA",
       "target_id": "carrier_pop_jacksonville_fl",
       "target_name": "Jacksonville, FL",
       "edge_kind": "carrier_physical",
@@ -2316,20 +2327,20 @@
     {
       "source_id": "carrier_pop_austin_tx",
       "source_name": "Austin, TX",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
+      "target_id": "carrier_pop_fort_worth_tx",
+      "target_name": "Fort Worth, TX",
       "edge_kind": "carrier_physical",
-      "distance_miles": 146.241,
+      "distance_miles": 173.631,
       "source_page": "southwest",
       "note": "visible route"
     },
     {
       "source_id": "carrier_pop_austin_tx",
       "source_name": "Austin, TX",
-      "target_id": "carrier_pop_san_antonio_tx",
-      "target_name": "San Antonio, TX",
+      "target_id": "carrier_pop_houston_tx",
+      "target_name": "Houston, TX",
       "edge_kind": "carrier_physical",
-      "distance_miles": 73.595,
+      "distance_miles": 146.241,
       "source_page": "southwest",
       "note": "visible route"
     },
@@ -2466,16 +2477,6 @@
     {
       "source_id": "carrier_pop_chicago_il",
       "source_name": "Chicago, IL",
-      "target_id": "carrier_pop_indianapolis_in",
-      "target_name": "Indianapolis, IN",
-      "edge_kind": "carrier_physical",
-      "distance_miles": 164.823,
-      "source_page": "overview",
-      "note": "visible route"
-    },
-    {
-      "source_id": "carrier_pop_chicago_il",
-      "source_name": "Chicago, IL",
       "target_id": "carrier_pop_madison_wi",
       "target_name": "Madison, WI",
       "edge_kind": "carrier_physical",
@@ -2566,11 +2567,11 @@
     {
       "source_id": "carrier_pop_dallas_tx",
       "source_name": "Dallas, TX",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
+      "target_id": "carrier_pop_memphis_tn",
+      "target_name": "Memphis, TN",
       "edge_kind": "carrier_physical",
-      "distance_miles": 224.797,
-      "source_page": "southwest",
+      "distance_miles": 419.894,
+      "source_page": "southwest/southeast",
       "note": "visible route"
     },
     {
@@ -2586,11 +2587,11 @@
     {
       "source_id": "carrier_pop_denver_co",
       "source_name": "Denver, CO",
-      "target_id": "carrier_pop_omaha_ne",
-      "target_name": "Omaha, NE",
+      "target_id": "carrier_pop_kansas_city_mo",
+      "target_name": "Kansas City, MO",
       "edge_kind": "carrier_physical",
-      "distance_miles": 486.963,
-      "source_page": "overview/west",
+      "distance_miles": 557.171,
+      "source_page": "overview",
       "note": "visible route"
     },
     {
@@ -2600,6 +2601,16 @@
       "target_name": "Salt Lake City, UT",
       "edge_kind": "carrier_physical",
       "distance_miles": 370.581,
+      "source_page": "overview/west",
+      "note": "visible route"
+    },
+    {
+      "source_id": "carrier_pop_denver_co",
+      "source_name": "Denver, CO",
+      "target_id": "carrier_pop_stratford_tx",
+      "target_name": "Stratford, TX",
+      "edge_kind": "carrier_physical",
+      "distance_miles": 283.694,
       "source_page": "overview/west",
       "note": "visible route"
     },
@@ -2656,10 +2667,10 @@
     {
       "source_id": "carrier_pop_fort_worth_tx",
       "source_name": "Fort Worth, TX",
-      "target_id": "carrier_pop_tulsa_ok",
-      "target_name": "Tulsa, OK",
+      "target_id": "carrier_pop_oklahoma_city_ok",
+      "target_name": "Oklahoma City, OK",
       "edge_kind": "carrier_physical",
-      "distance_miles": 246.869,
+      "distance_miles": 187.689,
       "source_page": "southwest",
       "note": "visible route"
     },
@@ -2894,6 +2905,16 @@
       "note": "visible route"
     },
     {
+      "source_id": "carrier_pop_oklahoma_city_ok",
+      "source_name": "Oklahoma City, OK",
+      "target_id": "carrier_pop_stratford_tx",
+      "target_name": "Stratford, TX",
+      "edge_kind": "carrier_physical",
+      "distance_miles": 261.908,
+      "source_page": "southwest/west",
+      "note": "visible route"
+    },
+    {
       "source_id": "carrier_pop_philadelphia_pa",
       "source_name": "Philadelphia, PA",
       "target_id": "carrier_pop_pittsburgh_pa",
@@ -3062,78 +3083,69 @@
       "distance_miles": 139.099,
       "source_page": "northeast",
       "note": "visible route"
+    },
+    {
+      "source_id": "carrier_pop_stratford_tx",
+      "source_name": "Stratford, TX",
+      "target_id": "carrier_pop_tulsa_ok",
+      "target_name": "Tulsa, OK",
+      "edge_kind": "carrier_physical",
+      "distance_miles": 338.938,
+      "source_page": "southwest/west",
+      "note": "visible route"
     }
   ],
   "path_uses": [
     {
       "purpose": "core_mesh",
-      "source_id": "carrier_pop_des_moines_ia",
-      "source_name": "Des Moines, IA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 943.834,
+      "source_id": "carrier_pop_atlanta_ga",
+      "source_name": "Atlanta, GA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1263.206,
       "path": [
-        "Des Moines, IA",
-        "Omaha, NE",
-        "Denver, CO",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "core_mesh",
-      "source_id": "carrier_pop_des_moines_ia",
-      "source_name": "Des Moines, IA",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 899.713,
-      "path": [
-        "Des Moines, IA",
+        "Atlanta, GA",
+        "Nashville, TN",
+        "St. Louis, MO",
         "Kansas City, MO",
-        "Tulsa, OK",
-        "Fort Worth, TX",
-        "Dallas, TX",
-        "Houston, TX"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "core_mesh",
-      "source_id": "carrier_pop_albuquerque_nm",
-      "source_name": "Albuquerque, NM",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 920.703,
+      "source_id": "carrier_pop_atlanta_ga",
+      "source_name": "Atlanta, GA",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 730.51,
       "path": [
-        "Albuquerque, NM",
-        "El Paso, TX",
-        "San Antonio, TX",
-        "Houston, TX"
+        "Atlanta, GA",
+        "Nashville, TN",
+        "St. Louis, MO",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "core_mesh",
+      "source_id": "carrier_pop_denver_co",
+      "source_name": "Denver, CO",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 1057.299,
+      "path": [
+        "Denver, CO",
+        "Kansas City, MO",
+        "St. Louis, MO",
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_albany_ny",
       "source_name": "Albany, NY",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1052.473,
-      "path": [
-        "Albany, NY",
-        "Buffalo, NY",
-        "Cleveland, OH",
-        "Toledo, OH",
-        "South Bend, IN",
-        "Chicago, IL",
-        "Davenport, IA",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_albany_ny",
-      "source_name": "Albany, NY",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1652.872,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 949.668,
       "path": [
         "Albany, NY",
         "Stamford, CT",
@@ -3145,38 +3157,32 @@
         "Richmond, VA",
         "Raleigh, NC",
         "Charlotte, NC",
-        "Atlanta, GA",
-        "Billingsley, AL",
-        "Houston, TX"
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_ashburn_va",
-      "source_name": "Ashburn, VA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1130.612,
+      "source_id": "carrier_pop_albany_ny",
+      "source_name": "Albany, NY",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 741.66,
       "path": [
-        "Ashburn, VA",
-        "Baltimore, MD",
-        "Philadelphia, PA",
-        "Pittsburgh, PA",
+        "Albany, NY",
+        "Buffalo, NY",
         "Cleveland, OH",
         "Toledo, OH",
         "South Bend, IN",
-        "Chicago, IL",
-        "Davenport, IA",
-        "Des Moines, IA"
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_ashburn_va",
       "source_name": "Ashburn, VA",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1314.157,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 610.953,
       "path": [
         "Ashburn, VA",
         "Herndon, VA",
@@ -3184,72 +3190,79 @@
         "Richmond, VA",
         "Raleigh, NC",
         "Charlotte, NC",
-        "Atlanta, GA",
-        "Billingsley, AL",
-        "Houston, TX"
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_atlanta_ga",
-      "source_name": "Atlanta, GA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 885.297,
+      "source_id": "carrier_pop_ashburn_va",
+      "source_name": "Ashburn, VA",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 819.799,
       "path": [
-        "Atlanta, GA",
-        "Nashville, TN",
-        "St. Louis, MO",
-        "Kansas City, MO",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_atlanta_ga",
-      "source_name": "Atlanta, GA",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 703.204,
-      "path": [
-        "Atlanta, GA",
-        "Billingsley, AL",
-        "Houston, TX"
+        "Ashburn, VA",
+        "Baltimore, MD",
+        "Philadelphia, PA",
+        "Pittsburgh, PA",
+        "Cleveland, OH",
+        "Toledo, OH",
+        "South Bend, IN",
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_austin_tx",
       "source_name": "Austin, TX",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 805.19,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 849.445,
       "path": [
         "Austin, TX",
-        "San Antonio, TX",
-        "El Paso, TX",
-        "Albuquerque, NM"
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_austin_tx",
       "source_name": "Austin, TX",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 146.241,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 906.922,
       "path": [
         "Austin, TX",
-        "Houston, TX"
+        "Fort Worth, TX",
+        "Oklahoma City, OK",
+        "Stratford, TX",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_baltimore_md",
       "source_name": "Baltimore, MD",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1080.724,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 631.032,
+      "path": [
+        "Baltimore, MD",
+        "McLean, VA",
+        "Richmond, VA",
+        "Raleigh, NC",
+        "Charlotte, NC",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_baltimore_md",
+      "source_name": "Baltimore, MD",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 769.911,
       "path": [
         "Baltimore, MD",
         "Philadelphia, PA",
@@ -3257,234 +3270,247 @@
         "Cleveland, OH",
         "Toledo, OH",
         "South Bend, IN",
-        "Chicago, IL",
-        "Davenport, IA",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_baltimore_md",
-      "source_name": "Baltimore, MD",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1334.236,
-      "path": [
-        "Baltimore, MD",
-        "McLean, VA",
-        "Richmond, VA",
-        "Raleigh, NC",
-        "Charlotte, NC",
-        "Atlanta, GA",
-        "Billingsley, AL",
-        "Houston, TX"
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_billingsley_al",
       "source_name": "Billingsley, AL",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1039.246,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 153.949,
       "path": [
         "Billingsley, AL",
-        "Atlanta, GA",
-        "Nashville, TN",
-        "St. Louis, MO",
-        "Kansas City, MO",
-        "Des Moines, IA"
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_billingsley_al",
       "source_name": "Billingsley, AL",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 549.255,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1804.21,
       "path": [
         "Billingsley, AL",
-        "Houston, TX"
+        "Houston, TX",
+        "San Antonio, TX",
+        "El Paso, TX",
+        "Albuquerque, NM",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_charlotte_nc",
-      "source_name": "Charlotte, NC",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1009.789,
+      "source_id": "carrier_pop_boise_id",
+      "source_name": "Boise, ID",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 2101.502,
       "path": [
-        "Charlotte, NC",
-        "Nashville, TN",
-        "St. Louis, MO",
-        "Kansas City, MO",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_charlotte_nc",
-      "source_name": "Charlotte, NC",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 929.426,
-      "path": [
-        "Charlotte, NC",
-        "Atlanta, GA",
-        "Billingsley, AL",
-        "Houston, TX"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_cheyenne_wy",
-      "source_name": "Cheyenne, WY",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 431.451,
-      "path": [
+        "Boise, ID",
+        "Yakima, WA",
+        "Missoula, MT",
         "Cheyenne, WY",
-        "Denver, CO",
-        "Albuquerque, NM"
+        "Omaha, NE",
+        "Des Moines, IA",
+        "Davenport, IA",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_boise_id",
+      "source_name": "Boise, ID",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 674.469,
+      "path": [
+        "Boise, ID",
+        "Ogden, UT",
+        "Salt Lake City, UT",
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_charlotte_nc",
+      "source_name": "Charlotte, NC",
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 226.222,
+      "path": [
+        "Charlotte, NC",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_charlotte_nc",
+      "source_name": "Charlotte, NC",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 855.002,
+      "path": [
+        "Charlotte, NC",
+        "Nashville, TN",
+        "St. Louis, MO",
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_cheyenne_wy",
       "source_name": "Cheyenne, WY",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 584.44,
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 895.253,
       "path": [
         "Cheyenne, WY",
         "Omaha, NE",
-        "Des Moines, IA"
+        "Des Moines, IA",
+        "Davenport, IA",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_cheyenne_wy",
+      "source_name": "Cheyenne, WY",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 97.198,
+      "path": [
+        "Cheyenne, WY",
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_cincinnati_oh",
+      "source_name": "Cincinnati, OH",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 534.037,
+      "path": [
+        "Cincinnati, OH",
+        "Columbus, OH",
+        "Akron, OH",
+        "Toledo, OH",
+        "South Bend, IN",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_cincinnati_oh",
+      "source_name": "Cincinnati, OH",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1124.426,
+      "path": [
+        "Cincinnati, OH",
+        "Indianapolis, IN",
+        "St. Louis, MO",
+        "Kansas City, MO",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_columbus_oh",
       "source_name": "Columbus, OH",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 744.765,
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 433.952,
       "path": [
         "Columbus, OH",
         "Akron, OH",
         "Toledo, OH",
         "South Bend, IN",
-        "Chicago, IL",
-        "Davenport, IA",
-        "Des Moines, IA"
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_columbus_oh",
       "source_name": "Columbus, OH",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1387.791,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1224.511,
       "path": [
         "Columbus, OH",
         "Cincinnati, OH",
         "Indianapolis, IN",
         "St. Louis, MO",
         "Kansas City, MO",
-        "Tulsa, OK",
-        "Fort Worth, TX",
-        "Dallas, TX",
-        "Houston, TX"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_dallas_tx",
       "source_name": "Dallas, TX",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 674.916,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 756.58,
       "path": [
         "Dallas, TX",
-        "Fort Worth, TX",
-        "Tulsa, OK",
-        "Kansas City, MO",
-        "Des Moines, IA"
+        "Memphis, TN",
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_dallas_tx",
       "source_name": "Dallas, TX",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 224.797,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 764.339,
       "path": [
         "Dallas, TX",
-        "Houston, TX"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_denver_co",
-      "source_name": "Denver, CO",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 334.252,
-      "path": [
-        "Denver, CO",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_denver_co",
-      "source_name": "Denver, CO",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 609.582,
-      "path": [
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
+        "Fort Worth, TX",
+        "Oklahoma City, OK",
+        "Stratford, TX",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_fort_worth_tx",
       "source_name": "Fort Worth, TX",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 643.868,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 787.628,
       "path": [
         "Fort Worth, TX",
-        "Tulsa, OK",
-        "Kansas City, MO",
-        "Des Moines, IA"
+        "Dallas, TX",
+        "Memphis, TN",
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_fort_worth_tx",
       "source_name": "Fort Worth, TX",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 255.846,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 733.291,
       "path": [
         "Fort Worth, TX",
-        "Dallas, TX",
-        "Houston, TX"
+        "Oklahoma City, OK",
+        "Stratford, TX",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_hayward_ca",
       "source_name": "Hayward, CA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1306.917,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 2471.303,
       "path": [
         "Hayward, CA",
         "Sunnyvale, CA",
@@ -3495,34 +3521,51 @@
         "Phoenix, AZ",
         "Tucson, AZ",
         "El Paso, TX",
-        "Albuquerque, NM"
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_hayward_ca",
       "source_name": "Hayward, CA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1613.399,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1003.817,
       "path": [
         "Hayward, CA",
         "San Francisco, CA",
         "Sacramento, CA",
         "Reno, NV",
         "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_herndon_va",
       "source_name": "Herndon, VA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1138.09,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 603.474,
+      "path": [
+        "Herndon, VA",
+        "McLean, VA",
+        "Richmond, VA",
+        "Raleigh, NC",
+        "Charlotte, NC",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_herndon_va",
+      "source_name": "Herndon, VA",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 827.277,
       "path": [
         "Herndon, VA",
         "Ashburn, VA",
@@ -3532,128 +3575,77 @@
         "Cleveland, OH",
         "Toledo, OH",
         "South Bend, IN",
-        "Chicago, IL",
-        "Davenport, IA",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_herndon_va",
-      "source_name": "Herndon, VA",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1306.679,
-      "path": [
-        "Herndon, VA",
-        "McLean, VA",
-        "Richmond, VA",
-        "Raleigh, NC",
-        "Charlotte, NC",
-        "Atlanta, GA",
-        "Billingsley, AL",
-        "Houston, TX"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_indianapolis_in",
-      "source_name": "Indianapolis, IN",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 475.636,
-      "path": [
-        "Indianapolis, IN",
-        "Chicago, IL",
-        "Davenport, IA",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_indianapolis_in",
-      "source_name": "Indianapolis, IN",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1188.566,
-      "path": [
-        "Indianapolis, IN",
-        "St. Louis, MO",
-        "Kansas City, MO",
-        "Tulsa, OK",
-        "Fort Worth, TX",
-        "Dallas, TX",
-        "Houston, TX"
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_jacksonville_fl",
       "source_name": "Jacksonville, FL",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1243.301,
-      "path": [
-        "Jacksonville, FL",
-        "Augusta, GA",
-        "Atlanta, GA",
-        "Nashville, TN",
-        "St. Louis, MO",
-        "Kansas City, MO",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_jacksonville_fl",
-      "source_name": "Jacksonville, FL",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 820.88,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 385.46,
       "path": [
         "Jacksonville, FL",
         "Tallahassee, FL",
-        "Houston, TX"
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_jacksonville_fl",
+      "source_name": "Jacksonville, FL",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 1210.134,
+      "path": [
+        "Jacksonville, FL",
+        "Augusta, GA",
+        "Charlotte, NC",
+        "Nashville, TN",
+        "St. Louis, MO",
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_las_vegas_nv",
       "source_name": "Las Vegas, NV",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1090.954,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 2255.339,
       "path": [
         "Las Vegas, NV",
         "San Bernadino, CA",
         "Phoenix, AZ",
         "Tucson, AZ",
         "El Paso, TX",
-        "Albuquerque, NM"
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_las_vegas_nv",
       "source_name": "Las Vegas, NV",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1342.732,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 733.15,
       "path": [
         "Las Vegas, NV",
         "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_los_angeles_ca",
       "source_name": "Los Angeles, CA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1012.438,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 2176.823,
       "path": [
         "Los Angeles, CA",
         "Tustin, CA",
@@ -3661,65 +3653,77 @@
         "Phoenix, AZ",
         "Tucson, AZ",
         "El Paso, TX",
-        "Albuquerque, NM"
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_los_angeles_ca",
       "source_name": "Los Angeles, CA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1584.654,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 975.072,
       "path": [
         "Los Angeles, CA",
         "San Bernadino, CA",
         "Las Vegas, NV",
         "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_madison_wi",
       "source_name": "Madison, WI",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 608.433,
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 122.331,
+      "path": [
+        "Madison, WI",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_madison_wi",
+      "source_name": "Madison, WI",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1344.867,
       "path": [
         "Madison, WI",
         "Milwaukee, WI",
         "Minneapolis, MN",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_madison_wi",
-      "source_name": "Madison, WI",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1342.91,
-      "path": [
-        "Madison, WI",
-        "Chicago, IL",
-        "St. Louis, MO",
+        "Des Moines, IA",
         "Kansas City, MO",
-        "Tulsa, OK",
-        "Fort Worth, TX",
-        "Dallas, TX",
-        "Houston, TX"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_mclean_va",
       "source_name": "McLean, VA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1119.769,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 591.987,
+      "path": [
+        "McLean, VA",
+        "Richmond, VA",
+        "Raleigh, NC",
+        "Charlotte, NC",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_mclean_va",
+      "source_name": "McLean, VA",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 808.956,
       "path": [
         "McLean, VA",
         "Baltimore, MD",
@@ -3728,150 +3732,144 @@
         "Cleveland, OH",
         "Toledo, OH",
         "South Bend, IN",
-        "Chicago, IL",
-        "Davenport, IA",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_mclean_va",
-      "source_name": "McLean, VA",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1295.191,
-      "path": [
-        "McLean, VA",
-        "Richmond, VA",
-        "Raleigh, NC",
-        "Charlotte, NC",
-        "Atlanta, GA",
-        "Billingsley, AL",
-        "Houston, TX"
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_milwaukee_wi",
       "source_name": "Milwaukee, WI",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 532.936,
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 81.434,
+      "path": [
+        "Milwaukee, WI",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_milwaukee_wi",
+      "source_name": "Milwaukee, WI",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1269.37,
       "path": [
         "Milwaukee, WI",
         "Minneapolis, MN",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_milwaukee_wi",
-      "source_name": "Milwaukee, WI",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1302.013,
-      "path": [
-        "Milwaukee, WI",
-        "Chicago, IL",
-        "St. Louis, MO",
+        "Des Moines, IA",
         "Kansas City, MO",
-        "Tulsa, OK",
-        "Fort Worth, TX",
-        "Dallas, TX",
-        "Houston, TX"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_ogden_ut",
-      "source_name": "Ogden, UT",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 737.059,
+      "source_id": "carrier_pop_minneapolis_mn",
+      "source_name": "Minneapolis, MN",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 379.437,
       "path": [
-        "Ogden, UT",
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Albuquerque, NM"
+        "Minneapolis, MN",
+        "Milwaukee, WI",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_minneapolis_mn",
+      "source_name": "Minneapolis, MN",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 971.367,
+      "path": [
+        "Minneapolis, MN",
+        "Des Moines, IA",
+        "Kansas City, MO",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_ogden_ut",
       "source_name": "Ogden, UT",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 956.378,
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 1267.191,
       "path": [
         "Ogden, UT",
         "Cheyenne, WY",
         "Omaha, NE",
-        "Des Moines, IA"
+        "Des Moines, IA",
+        "Davenport, IA",
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_omaha_ne",
-      "source_name": "Omaha, NE",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 821.216,
+      "source_id": "carrier_pop_ogden_ut",
+      "source_name": "Ogden, UT",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 402.807,
       "path": [
-        "Omaha, NE",
-        "Denver, CO",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_omaha_ne",
-      "source_name": "Omaha, NE",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 122.618,
-      "path": [
-        "Omaha, NE",
-        "Des Moines, IA"
+        "Ogden, UT",
+        "Salt Lake City, UT",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_phoenix_az",
       "source_name": "Phoenix, AZ",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 600.799,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 1765.184,
       "path": [
         "Phoenix, AZ",
         "Tucson, AZ",
         "El Paso, TX",
-        "Albuquerque, NM"
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_phoenix_az",
       "source_name": "Phoenix, AZ",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1832.887,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1223.305,
       "path": [
         "Phoenix, AZ",
         "San Bernadino, CA",
         "Las Vegas, NV",
         "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_raleigh_nc",
       "source_name": "Raleigh, NC",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1355.775,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 355.981,
+      "path": [
+        "Raleigh, NC",
+        "Charlotte, NC",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_raleigh_nc",
+      "source_name": "Raleigh, NC",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 1044.962,
       "path": [
         "Raleigh, NC",
         "Richmond, VA",
@@ -3882,425 +3880,391 @@
         "Cleveland, OH",
         "Toledo, OH",
         "South Bend, IN",
-        "Chicago, IL",
-        "Davenport, IA",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_raleigh_nc",
-      "source_name": "Raleigh, NC",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1059.185,
-      "path": [
-        "Raleigh, NC",
-        "Charlotte, NC",
-        "Atlanta, GA",
-        "Billingsley, AL",
-        "Houston, TX"
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_reno_nv",
       "source_name": "Reno, NV",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1513.305,
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 2657.363,
       "path": [
         "Reno, NV",
         "Sacramento, CA",
-        "San Francisco, CA",
-        "Hayward, CA",
-        "Sunnyvale, CA",
-        "San Jose, CA",
-        "San Luis Obispo, CA",
-        "Los Angeles, CA",
-        "San Bernadino, CA",
-        "Phoenix, AZ",
-        "Tucson, AZ",
-        "El Paso, TX",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_reno_nv",
-      "source_name": "Reno, NV",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1407.012,
-      "path": [
-        "Reno, NV",
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_riverside_ca",
-      "source_name": "Riverside, CA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 986.172,
-      "path": [
-        "Riverside, CA",
-        "San Diego, CA",
-        "Phoenix, AZ",
-        "Tucson, AZ",
-        "El Paso, TX",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_riverside_ca",
-      "source_name": "Riverside, CA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1542.249,
-      "path": [
-        "Riverside, CA",
-        "San Bernadino, CA",
-        "Las Vegas, NV",
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_sacramento_ca",
-      "source_name": "Sacramento, CA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1401.859,
-      "path": [
-        "Sacramento, CA",
-        "San Francisco, CA",
-        "Hayward, CA",
-        "Sunnyvale, CA",
-        "San Jose, CA",
-        "San Luis Obispo, CA",
-        "Los Angeles, CA",
-        "San Bernadino, CA",
-        "Phoenix, AZ",
-        "Tucson, AZ",
-        "El Paso, TX",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_sacramento_ca",
-      "source_name": "Sacramento, CA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1518.457,
-      "path": [
-        "Sacramento, CA",
-        "Reno, NV",
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_salt_lake_city_ut",
-      "source_name": "Salt Lake City, UT",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 704.833,
-      "path": [
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_salt_lake_city_ut",
-      "source_name": "Salt Lake City, UT",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 988.603,
-      "path": [
-        "Salt Lake City, UT",
-        "Ogden, UT",
-        "Cheyenne, WY",
-        "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_antonio_tx",
-      "source_name": "San Antonio, TX",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 731.595,
-      "path": [
-        "San Antonio, TX",
-        "El Paso, TX",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_antonio_tx",
-      "source_name": "San Antonio, TX",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 189.108,
-      "path": [
-        "San Antonio, TX",
-        "Houston, TX"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_bernadino_ca",
-      "source_name": "San Bernadino, CA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 903.758,
-      "path": [
-        "San Bernadino, CA",
-        "Phoenix, AZ",
-        "Tucson, AZ",
-        "El Paso, TX",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_bernadino_ca",
-      "source_name": "San Bernadino, CA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1529.928,
-      "path": [
-        "San Bernadino, CA",
-        "Las Vegas, NV",
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_diego_ca",
-      "source_name": "San Diego, CA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 899.591,
-      "path": [
-        "San Diego, CA",
-        "Phoenix, AZ",
-        "Tucson, AZ",
-        "El Paso, TX",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_diego_ca",
-      "source_name": "San Diego, CA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1628.829,
-      "path": [
-        "San Diego, CA",
-        "Riverside, CA",
-        "San Bernadino, CA",
-        "Las Vegas, NV",
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_francisco_ca",
-      "source_name": "San Francisco, CA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1326.822,
-      "path": [
-        "San Francisco, CA",
-        "Hayward, CA",
-        "Sunnyvale, CA",
-        "San Jose, CA",
-        "San Luis Obispo, CA",
-        "Los Angeles, CA",
-        "San Bernadino, CA",
-        "Phoenix, AZ",
-        "Tucson, AZ",
-        "El Paso, TX",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_francisco_ca",
-      "source_name": "San Francisco, CA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1593.495,
-      "path": [
-        "San Francisco, CA",
-        "Sacramento, CA",
-        "Reno, NV",
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_jose_ca",
-      "source_name": "San Jose, CA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1277.541,
-      "path": [
-        "San Jose, CA",
-        "San Luis Obispo, CA",
-        "Los Angeles, CA",
-        "San Bernadino, CA",
-        "Phoenix, AZ",
-        "Tucson, AZ",
-        "El Paso, TX",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_jose_ca",
-      "source_name": "San Jose, CA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1642.776,
-      "path": [
-        "San Jose, CA",
-        "Sunnyvale, CA",
-        "Hayward, CA",
-        "San Francisco, CA",
-        "Sacramento, CA",
-        "Reno, NV",
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_luis_obispo_ca",
-      "source_name": "San Luis Obispo, CA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1119.961,
-      "path": [
-        "San Luis Obispo, CA",
-        "Los Angeles, CA",
-        "San Bernadino, CA",
-        "Phoenix, AZ",
-        "Tucson, AZ",
-        "El Paso, TX",
-        "Albuquerque, NM"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_san_luis_obispo_ca",
-      "source_name": "San Luis Obispo, CA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1800.356,
-      "path": [
-        "San Luis Obispo, CA",
-        "San Jose, CA",
-        "Sunnyvale, CA",
-        "Hayward, CA",
-        "San Francisco, CA",
-        "Sacramento, CA",
-        "Reno, NV",
-        "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_seattle_wa",
-      "source_name": "Seattle, WA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1871.399,
-      "path": [
-        "Seattle, WA",
         "Portland, OR",
+        "Seattle, WA",
+        "Yakima, WA",
+        "Missoula, MT",
+        "Cheyenne, WY",
+        "Omaha, NE",
+        "Des Moines, IA",
+        "Davenport, IA",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_reno_nv",
+      "source_name": "Reno, NV",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 797.43,
+      "path": [
+        "Reno, NV",
+        "Salt Lake City, UT",
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_richmond_va",
+      "source_name": "Richmond, VA",
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 494.708,
+      "path": [
+        "Richmond, VA",
+        "Raleigh, NC",
+        "Charlotte, NC",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_richmond_va",
+      "source_name": "Richmond, VA",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 906.235,
+      "path": [
+        "Richmond, VA",
+        "McLean, VA",
+        "Baltimore, MD",
+        "Philadelphia, PA",
+        "Pittsburgh, PA",
+        "Cleveland, OH",
+        "Toledo, OH",
+        "South Bend, IN",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_sacramento_ca",
+      "source_name": "Sacramento, CA",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 2545.917,
+      "path": [
+        "Sacramento, CA",
+        "Portland, OR",
+        "Seattle, WA",
+        "Yakima, WA",
+        "Missoula, MT",
+        "Cheyenne, WY",
+        "Omaha, NE",
+        "Des Moines, IA",
+        "Davenport, IA",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_sacramento_ca",
+      "source_name": "Sacramento, CA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 908.876,
+      "path": [
         "Sacramento, CA",
         "Reno, NV",
         "Salt Lake City, UT",
-        "Denver, CO",
-        "Albuquerque, NM"
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_salt_lake_city_ut",
+      "source_name": "Salt Lake City, UT",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 1299.416,
+      "path": [
+        "Salt Lake City, UT",
+        "Ogden, UT",
+        "Cheyenne, WY",
+        "Omaha, NE",
+        "Des Moines, IA",
+        "Davenport, IA",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_salt_lake_city_ut",
+      "source_name": "Salt Lake City, UT",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 370.581,
+      "path": [
+        "Salt Lake City, UT",
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_antonio_tx",
+      "source_name": "San Antonio, TX",
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 892.312,
+      "path": [
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_antonio_tx",
+      "source_name": "San Antonio, TX",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1065.847,
+      "path": [
+        "San Antonio, TX",
+        "El Paso, TX",
+        "Albuquerque, NM",
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_bernadino_ca",
+      "source_name": "San Bernadino, CA",
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 2068.143,
+      "path": [
+        "San Bernadino, CA",
+        "Phoenix, AZ",
+        "Tucson, AZ",
+        "El Paso, TX",
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_bernadino_ca",
+      "source_name": "San Bernadino, CA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 920.346,
+      "path": [
+        "San Bernadino, CA",
+        "Las Vegas, NV",
+        "Salt Lake City, UT",
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_diego_ca",
+      "source_name": "San Diego, CA",
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 2063.977,
+      "path": [
+        "San Diego, CA",
+        "Phoenix, AZ",
+        "Tucson, AZ",
+        "El Paso, TX",
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_diego_ca",
+      "source_name": "San Diego, CA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1019.248,
+      "path": [
+        "San Diego, CA",
+        "Riverside, CA",
+        "San Bernadino, CA",
+        "Las Vegas, NV",
+        "Salt Lake City, UT",
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_francisco_ca",
+      "source_name": "San Francisco, CA",
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 2491.207,
+      "path": [
+        "San Francisco, CA",
+        "Hayward, CA",
+        "Sunnyvale, CA",
+        "San Jose, CA",
+        "San Luis Obispo, CA",
+        "Los Angeles, CA",
+        "San Bernadino, CA",
+        "Phoenix, AZ",
+        "Tucson, AZ",
+        "El Paso, TX",
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_francisco_ca",
+      "source_name": "San Francisco, CA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 983.913,
+      "path": [
+        "San Francisco, CA",
+        "Sacramento, CA",
+        "Reno, NV",
+        "Salt Lake City, UT",
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_jose_ca",
+      "source_name": "San Jose, CA",
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 2441.926,
+      "path": [
+        "San Jose, CA",
+        "San Luis Obispo, CA",
+        "Los Angeles, CA",
+        "San Bernadino, CA",
+        "Phoenix, AZ",
+        "Tucson, AZ",
+        "El Paso, TX",
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_jose_ca",
+      "source_name": "San Jose, CA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1033.194,
+      "path": [
+        "San Jose, CA",
+        "Sunnyvale, CA",
+        "Hayward, CA",
+        "San Francisco, CA",
+        "Sacramento, CA",
+        "Reno, NV",
+        "Salt Lake City, UT",
+        "Denver, CO"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_luis_obispo_ca",
+      "source_name": "San Luis Obispo, CA",
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 2284.346,
+      "path": [
+        "San Luis Obispo, CA",
+        "Los Angeles, CA",
+        "San Bernadino, CA",
+        "Phoenix, AZ",
+        "Tucson, AZ",
+        "El Paso, TX",
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_san_luis_obispo_ca",
+      "source_name": "San Luis Obispo, CA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1190.774,
+      "path": [
+        "San Luis Obispo, CA",
+        "San Jose, CA",
+        "Sunnyvale, CA",
+        "Hayward, CA",
+        "San Francisco, CA",
+        "Sacramento, CA",
+        "Reno, NV",
+        "Salt Lake City, UT",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_seattle_wa",
       "source_name": "Seattle, WA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1606.833,
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 1917.646,
       "path": [
         "Seattle, WA",
         "Yakima, WA",
         "Missoula, MT",
         "Cheyenne, WY",
         "Omaha, NE",
-        "Des Moines, IA"
-      ]
-    },
-    {
-      "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_stamford_ct",
-      "source_name": "Stamford, CT",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1163.532,
-      "path": [
-        "Stamford, CT",
-        "Albany, NY",
-        "Buffalo, NY",
-        "Cleveland, OH",
-        "Toledo, OH",
-        "South Bend, IN",
-        "Chicago, IL",
+        "Des Moines, IA",
         "Davenport, IA",
-        "Des Moines, IA"
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_seattle_wa",
+      "source_name": "Seattle, WA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1537.147,
+      "path": [
+        "Seattle, WA",
+        "Portland, OR",
+        "Sacramento, CA",
+        "Reno, NV",
+        "Salt Lake City, UT",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_stamford_ct",
       "source_name": "Stamford, CT",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 1541.813,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 838.608,
       "path": [
         "Stamford, CT",
         "New York, NY",
@@ -4311,126 +4275,205 @@
         "Richmond, VA",
         "Raleigh, NC",
         "Charlotte, NC",
-        "Atlanta, GA",
-        "Billingsley, AL",
-        "Houston, TX"
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_tallahassee_fl",
-      "source_name": "Tallahassee, FL",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1114.131,
+      "source_id": "carrier_pop_stamford_ct",
+      "source_name": "Stamford, CT",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 852.719,
       "path": [
-        "Tallahassee, FL",
-        "Atlanta, GA",
-        "Nashville, TN",
-        "St. Louis, MO",
+        "Stamford, CT",
+        "Albany, NY",
+        "Buffalo, NY",
+        "Cleveland, OH",
+        "Toledo, OH",
+        "South Bend, IN",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_stratford_tx",
+      "source_name": "Stratford, TX",
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 1056.802,
+      "path": [
+        "Stratford, TX",
+        "Tulsa, OK",
         "Kansas City, MO",
-        "Des Moines, IA"
+        "St. Louis, MO",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_stratford_tx",
+      "source_name": "Stratford, TX",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 283.694,
+      "path": [
+        "Stratford, TX",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_tallahassee_fl",
       "source_name": "Tallahassee, FL",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 664.254,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 228.834,
       "path": [
         "Tallahassee, FL",
-        "Houston, TX"
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_tallahassee_fl",
+      "source_name": "Tallahassee, FL",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1919.209,
+      "path": [
+        "Tallahassee, FL",
+        "Houston, TX",
+        "San Antonio, TX",
+        "El Paso, TX",
+        "Albuquerque, NM",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_tucson_az",
       "source_name": "Tucson, AZ",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 494.753,
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 1659.139,
       "path": [
         "Tucson, AZ",
         "El Paso, TX",
-        "Albuquerque, NM"
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_tucson_az",
       "source_name": "Tucson, AZ",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1938.932,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1329.351,
       "path": [
         "Tucson, AZ",
         "Phoenix, AZ",
         "San Bernadino, CA",
         "Las Vegas, NV",
         "Salt Lake City, UT",
-        "Denver, CO",
-        "Omaha, NE",
-        "Des Moines, IA"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_tulsa_ok",
       "source_name": "Tulsa, OK",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 396.999,
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 717.864,
       "path": [
         "Tulsa, OK",
         "Kansas City, MO",
-        "Des Moines, IA"
+        "St. Louis, MO",
+        "Chicago, IL"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_tulsa_ok",
       "source_name": "Tulsa, OK",
-      "target_id": "carrier_pop_houston_tx",
-      "target_name": "Houston, TX",
-      "distance_miles": 502.715,
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 622.632,
       "path": [
         "Tulsa, OK",
-        "Fort Worth, TX",
-        "Dallas, TX",
-        "Houston, TX"
+        "Stratford, TX",
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
-      "source_id": "carrier_pop_yakima_wa",
-      "source_name": "Yakima, WA",
-      "target_id": "carrier_pop_albuquerque_nm",
-      "target_name": "Albuquerque, NM",
-      "distance_miles": 1302.978,
+      "source_id": "carrier_pop_tustin_ca",
+      "source_name": "Tustin, CA",
+      "target_id": "carrier_pop_atlanta_ga",
+      "target_name": "Atlanta, GA",
+      "distance_miles": 2144.88,
       "path": [
-        "Yakima, WA",
-        "Boise, ID",
-        "Ogden, UT",
+        "Tustin, CA",
+        "San Diego, CA",
+        "Phoenix, AZ",
+        "Tucson, AZ",
+        "El Paso, TX",
+        "San Antonio, TX",
+        "Houston, TX",
+        "Billingsley, AL",
+        "Atlanta, GA"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_tustin_ca",
+      "source_name": "Tustin, CA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 1007.015,
+      "path": [
+        "Tustin, CA",
+        "Los Angeles, CA",
+        "San Bernadino, CA",
+        "Las Vegas, NV",
         "Salt Lake City, UT",
-        "Denver, CO",
-        "Albuquerque, NM"
+        "Denver, CO"
       ]
     },
     {
       "purpose": "aggregation_to_core",
       "source_id": "carrier_pop_yakima_wa",
       "source_name": "Yakima, WA",
-      "target_id": "carrier_pop_des_moines_ia",
-      "target_name": "Des Moines, IA",
-      "distance_miles": 1496.432,
+      "target_id": "carrier_pop_chicago_il",
+      "target_name": "Chicago, IL",
+      "distance_miles": 1807.245,
       "path": [
         "Yakima, WA",
         "Missoula, MT",
         "Cheyenne, WY",
         "Omaha, NE",
-        "Des Moines, IA"
+        "Des Moines, IA",
+        "Davenport, IA",
+        "Chicago, IL"
+      ]
+    },
+    {
+      "purpose": "aggregation_to_core",
+      "source_id": "carrier_pop_yakima_wa",
+      "source_name": "Yakima, WA",
+      "target_id": "carrier_pop_denver_co",
+      "target_name": "Denver, CO",
+      "distance_miles": 968.726,
+      "path": [
+        "Yakima, WA",
+        "Boise, ID",
+        "Ogden, UT",
+        "Salt Lake City, UT",
+        "Denver, CO"
       ]
     }
   ]

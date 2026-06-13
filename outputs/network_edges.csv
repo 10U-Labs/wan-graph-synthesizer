@@ -1,10 +1,10 @@
 source_id,source_name,source_role,target_id,target_name,target_role,edge_kind,distance_miles,source_page
+csp_secret_aws_secret_east_region,AWS Secret East Region,access,carrier_pop_cincinnati_oh,"Cincinnati, OH",aggregation,access_to_aggregation,100.085,
 csp_secret_aws_secret_east_region,AWS Secret East Region,access,carrier_pop_columbus_oh,"Columbus, OH",aggregation,access_to_aggregation,0.0,
-csp_secret_aws_secret_east_region,AWS Secret East Region,access,carrier_pop_indianapolis_in,"Indianapolis, IN",aggregation,access_to_aggregation,168.068,
 csp_secret_aws_secret_west_region,AWS Secret West Region,access,carrier_pop_phoenix_az,"Phoenix, AZ",aggregation,access_to_aggregation,0.0,
 csp_secret_aws_secret_west_region,AWS Secret West Region,access,carrier_pop_tucson_az,"Tucson, AZ",aggregation,access_to_aggregation,106.046,
+csp_secret_azure_secret_east_region,Azure Secret East Region,access,carrier_pop_ashburn_va,"Ashburn, VA",aggregation,access_to_aggregation,20.248,
 csp_secret_azure_secret_east_region,Azure Secret East Region,access,carrier_pop_herndon_va,"Herndon, VA",aggregation,access_to_aggregation,15.855,
-csp_secret_azure_secret_east_region,Azure Secret East Region,access,carrier_pop_mclean_va,"McLean, VA",aggregation,access_to_aggregation,20.422,
 csp_secret_azure_secret_west_region,Azure Secret West Region,access,carrier_pop_austin_tx,"Austin, TX",aggregation,access_to_aggregation,73.595,
 csp_secret_azure_secret_west_region,Azure Secret West Region,access,carrier_pop_san_antonio_tx,"San Antonio, TX",aggregation,access_to_aggregation,0.0,
 csp_secret_oci_secret_east_region,OCI Secret East Region,access,carrier_pop_ashburn_va,"Ashburn, VA",aggregation,access_to_aggregation,0.005,
@@ -15,11 +15,11 @@ f35_burlington_angb,Burlington ANGB,access,carrier_pop_albany_ny,"Albany, NY",ag
 f35_burlington_angb,Burlington ANGB,access,carrier_pop_stamford_ct,"Stamford, CT",aggregation,access_to_aggregation,237.003,
 f35_crystal_city_va,"Crystal City, VA",access,carrier_pop_herndon_va,"Herndon, VA",aggregation,access_to_aggregation,19.68,
 f35_crystal_city_va,"Crystal City, VA",access,carrier_pop_mclean_va,"McLean, VA",aggregation,access_to_aggregation,8.683,
-f35_dannelly_field,Dannelly Field,access,carrier_pop_atlanta_ga,"Atlanta, GA",aggregation,access_to_aggregation,153.349,
 f35_dannelly_field,Dannelly Field,access,carrier_pop_billingsley_al,"Billingsley, AL",aggregation,access_to_aggregation,30.975,
+f35_dannelly_field,Dannelly Field,access,carrier_pop_tallahassee_fl,"Tallahassee, FL",aggregation,access_to_aggregation,179.15,
 f35_ebbing_angb,Ebbing ANGB,access,carrier_pop_dallas_tx,"Dallas, TX",aggregation,access_to_aggregation,224.984,
 f35_ebbing_angb,Ebbing ANGB,access,carrier_pop_tulsa_ok,"Tulsa, OK",aggregation,access_to_aggregation,107.225,
-f35_edwards_afb,Edwards AFB,access,carrier_pop_riverside_ca,"Riverside, CA",aggregation,access_to_aggregation,71.41,
+f35_edwards_afb,Edwards AFB,access,carrier_pop_los_angeles_ca,"Los Angeles, CA",aggregation,access_to_aggregation,62.414,
 f35_edwards_afb,Edwards AFB,access,carrier_pop_san_bernadino_ca,"San Bernadino, CA",aggregation,access_to_aggregation,64.627,
 f35_eglin_afb,Eglin AFB,access,carrier_pop_billingsley_al,"Billingsley, AL",aggregation,access_to_aggregation,150.807,
 f35_eglin_afb,Eglin AFB,access,carrier_pop_tallahassee_fl,"Tallahassee, FL",aggregation,access_to_aggregation,133.721,
@@ -31,12 +31,12 @@ f35_jacksonville_angb,Jacksonville ANGB,access,carrier_pop_jacksonville_fl,"Jack
 f35_jacksonville_angb,Jacksonville ANGB,access,carrier_pop_tallahassee_fl,"Tallahassee, FL",aggregation,access_to_aggregation,154.455,
 f35_luke_afb,Luke AFB,access,carrier_pop_phoenix_az,"Phoenix, AZ",aggregation,access_to_aggregation,18.784,
 f35_luke_afb,Luke AFB,access,carrier_pop_tucson_az,"Tucson, AZ",aggregation,access_to_aggregation,122.064,
-f35_mcas_beaufort,MCAS Beaufort,access,carrier_pop_atlanta_ga,"Atlanta, GA",aggregation,access_to_aggregation,229.549,
+f35_mcas_beaufort,MCAS Beaufort,access,carrier_pop_charlotte_nc,"Charlotte, NC",aggregation,access_to_aggregation,190.111,
 f35_mcas_beaufort,MCAS Beaufort,access,carrier_pop_jacksonville_fl,"Jacksonville, FL",aggregation,access_to_aggregation,158.089,
-f35_mcas_cherry_point,MCAS Cherry Point,access,carrier_pop_charlotte_nc,"Charlotte, NC",aggregation,access_to_aggregation,225.204,
 f35_mcas_cherry_point,MCAS Cherry Point,access,carrier_pop_raleigh_nc,"Raleigh, NC",aggregation,access_to_aggregation,116.178,
-f35_mcas_miramar,MCAS Miramar,access,carrier_pop_san_bernadino_ca,"San Bernadino, CA",aggregation,access_to_aggregation,86.182,
+f35_mcas_cherry_point,MCAS Cherry Point,access,carrier_pop_richmond_va,"Richmond, VA",aggregation,access_to_aggregation,184.999,
 f35_mcas_miramar,MCAS Miramar,access,carrier_pop_san_diego_ca,"San Diego, CA",aggregation,access_to_aggregation,10.521,
+f35_mcas_miramar,MCAS Miramar,access,carrier_pop_tustin_ca,"Tustin, CA",aggregation,access_to_aggregation,72.457,
 f35_mcas_yuma,MCAS Yuma,access,carrier_pop_phoenix_az,"Phoenix, AZ",aggregation,access_to_aggregation,156.501,
 f35_mcas_yuma,MCAS Yuma,access,carrier_pop_san_diego_ca,"San Diego, CA",aggregation,access_to_aggregation,148.636,
 f35_nas_fallon,NAS Fallon,access,carrier_pop_reno_nv,"Reno, NV",aggregation,access_to_aggregation,59.899,
@@ -54,23 +54,23 @@ f35_tyndall_afb,Tyndall AFB,access,carrier_pop_tallahassee_fl,"Tallahassee, FL",
 sentinel_barksdale_afb,Barksdale AFB,access,carrier_pop_dallas_tx,"Dallas, TX",aggregation,access_to_aggregation,183.341,
 sentinel_barksdale_afb,Barksdale AFB,access,carrier_pop_fort_worth_tx,"Fort Worth, TX",aggregation,access_to_aggregation,214.152,
 sentinel_camp_guernsey,Camp Guernsey,access,carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,access_to_aggregation,78.103,
-sentinel_camp_guernsey,Camp Guernsey,access,carrier_pop_denver_co,"Denver, CO",aggregation,access_to_aggregation,175.26,
+sentinel_camp_guernsey,Camp Guernsey,access,carrier_pop_ogden_ut,"Ogden, UT",aggregation,access_to_aggregation,379.47,
 sentinel_camp_navajo,Camp Navajo,access,carrier_pop_las_vegas_nv,"Las Vegas, NV",aggregation,access_to_aggregation,196.283,
 sentinel_camp_navajo,Camp Navajo,access,carrier_pop_phoenix_az,"Phoenix, AZ",aggregation,access_to_aggregation,123.257,
 sentinel_cape_canaveral_sfs,Cape Canaveral SFS,access,carrier_pop_jacksonville_fl,"Jacksonville, FL",aggregation,access_to_aggregation,142.946,
 sentinel_cape_canaveral_sfs,Cape Canaveral SFS,access,carrier_pop_tallahassee_fl,"Tallahassee, FL",aggregation,access_to_aggregation,260.317,
 sentinel_f_e_warren_afb,F.E. Warren AFB,access,carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,access_to_aggregation,2.255,
-sentinel_f_e_warren_afb,F.E. Warren AFB,access,carrier_pop_denver_co,"Denver, CO",aggregation,access_to_aggregation,97.783,
+sentinel_f_e_warren_afb,F.E. Warren AFB,access,carrier_pop_stratford_tx,"Stratford, TX",aggregation,access_to_aggregation,364.996,
 sentinel_hanscom_afb,Hanscom AFB,access,carrier_pop_albany_ny,"Albany, NY",aggregation,access_to_aggregation,126.187,
 sentinel_hanscom_afb,Hanscom AFB,access,carrier_pop_stamford_ct,"Stamford, CT",aggregation,access_to_aggregation,151.72,
 sentinel_hill_afb,Hill AFB,access,carrier_pop_ogden_ut,"Ogden, UT",aggregation,access_to_aggregation,6.84,
 sentinel_hill_afb,Hill AFB,access,carrier_pop_salt_lake_city_ut,"Salt Lake City, UT",aggregation,access_to_aggregation,25.458,
 sentinel_jhu_apl,JHU APL,access,carrier_pop_baltimore_md,"Baltimore, MD",aggregation,access_to_aggregation,17.517,
 sentinel_jhu_apl,JHU APL,access,carrier_pop_mclean_va,"McLean, VA",aggregation,access_to_aggregation,22.03,
-sentinel_malmstrom_afb,Malmstrom AFB,access,carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,access_to_aggregation,540.28,
+sentinel_malmstrom_afb,Malmstrom AFB,access,carrier_pop_boise_id,"Boise, ID",aggregation,access_to_aggregation,362.074,
 sentinel_malmstrom_afb,Malmstrom AFB,access,carrier_pop_ogden_ut,"Ogden, UT",aggregation,access_to_aggregation,435.813,
 sentinel_minot_afb,Minot AFB,access,carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,access_to_aggregation,530.457,
-sentinel_minot_afb,Minot AFB,access,carrier_pop_omaha_ne,"Omaha, NE",aggregation,access_to_aggregation,561.15,
+sentinel_minot_afb,Minot AFB,access,carrier_pop_minneapolis_mn,"Minneapolis, MN",aggregation,access_to_aggregation,450.744,
 sentinel_reagan_test_site,Reagan Test Site,access,carrier_pop_hayward_ca,"Hayward, CA",aggregation,access_to_aggregation,4769.734,
 sentinel_reagan_test_site,Reagan Test Site,access,carrier_pop_san_francisco_ca,"San Francisco, CA",aggregation,access_to_aggregation,4751.991,
 sentinel_utah_test_and_training_range_uttr,Utah Test and Training Range (UTTR),access,carrier_pop_ogden_ut,"Ogden, UT",aggregation,access_to_aggregation,55.598,
@@ -83,57 +83,58 @@ carrier_pop_akron_oh,"Akron, OH",transit,carrier_pop_columbus_oh,"Columbus, OH",
 carrier_pop_akron_oh,"Akron, OH",transit,carrier_pop_toledo_oh,"Toledo, OH",transit,carrier_physical,112.721,northeast
 carrier_pop_albany_ny,"Albany, NY",aggregation,carrier_pop_buffalo_ny,"Buffalo, NY",transit,carrier_physical,260.264,northeast/overview
 carrier_pop_albany_ny,"Albany, NY",aggregation,carrier_pop_stamford_ct,"Stamford, CT",aggregation,carrier_physical,111.06,northeast/overview
-carrier_pop_albuquerque_nm,"Albuquerque, NM",core,carrier_pop_denver_co,"Denver, CO",aggregation,carrier_physical,334.252,overview/west
-carrier_pop_albuquerque_nm,"Albuquerque, NM",core,carrier_pop_el_paso_tx,"El Paso, TX",transit,carrier_physical,229.761,southwest/west
+carrier_pop_albuquerque_nm,"Albuquerque, NM",transit,carrier_pop_denver_co,"Denver, CO",core,carrier_physical,334.252,overview/west
+carrier_pop_albuquerque_nm,"Albuquerque, NM",transit,carrier_pop_el_paso_tx,"El Paso, TX",transit,carrier_physical,229.761,southwest/west
 carrier_pop_ashburn_va,"Ashburn, VA",aggregation,carrier_pop_baltimore_md,"Baltimore, MD",aggregation,carrier_physical,49.888,northeast/overview
 carrier_pop_ashburn_va,"Ashburn, VA",aggregation,carrier_pop_herndon_va,"Herndon, VA",aggregation,carrier_physical,7.478,northeast/overview
-carrier_pop_atlanta_ga,"Atlanta, GA",aggregation,carrier_pop_augusta_ga,"Augusta, GA",transit,carrier_physical,140.155,southeast/overview
-carrier_pop_atlanta_ga,"Atlanta, GA",aggregation,carrier_pop_billingsley_al,"Billingsley, AL",aggregation,carrier_physical,153.949,southeast/overview
-carrier_pop_atlanta_ga,"Atlanta, GA",aggregation,carrier_pop_charlotte_nc,"Charlotte, NC",aggregation,carrier_physical,226.222,southeast/overview
-carrier_pop_atlanta_ga,"Atlanta, GA",aggregation,carrier_pop_nashville_tn,"Nashville, TN",transit,carrier_physical,214.89,southeast/overview
-carrier_pop_atlanta_ga,"Atlanta, GA",aggregation,carrier_pop_tallahassee_fl,"Tallahassee, FL",aggregation,carrier_physical,228.834,southeast/overview
+carrier_pop_atlanta_ga,"Atlanta, GA",core,carrier_pop_billingsley_al,"Billingsley, AL",aggregation,carrier_physical,153.949,southeast/overview
+carrier_pop_atlanta_ga,"Atlanta, GA",core,carrier_pop_charlotte_nc,"Charlotte, NC",aggregation,carrier_physical,226.222,southeast/overview
+carrier_pop_atlanta_ga,"Atlanta, GA",core,carrier_pop_memphis_tn,"Memphis, TN",transit,carrier_physical,336.687,southeast/overview
+carrier_pop_atlanta_ga,"Atlanta, GA",core,carrier_pop_nashville_tn,"Nashville, TN",transit,carrier_physical,214.89,southeast/overview
+carrier_pop_atlanta_ga,"Atlanta, GA",core,carrier_pop_tallahassee_fl,"Tallahassee, FL",aggregation,carrier_physical,228.834,southeast/overview
+carrier_pop_augusta_ga,"Augusta, GA",transit,carrier_pop_charlotte_nc,"Charlotte, NC",aggregation,carrier_physical,137.284,southeast/overview
 carrier_pop_augusta_ga,"Augusta, GA",transit,carrier_pop_jacksonville_fl,"Jacksonville, FL",aggregation,carrier_physical,217.848,southeast
-carrier_pop_austin_tx,"Austin, TX",aggregation,carrier_pop_houston_tx,"Houston, TX",core,carrier_physical,146.241,southwest
-carrier_pop_austin_tx,"Austin, TX",aggregation,carrier_pop_san_antonio_tx,"San Antonio, TX",aggregation,carrier_physical,73.595,southwest
+carrier_pop_austin_tx,"Austin, TX",aggregation,carrier_pop_fort_worth_tx,"Fort Worth, TX",aggregation,carrier_physical,173.631,southwest
+carrier_pop_austin_tx,"Austin, TX",aggregation,carrier_pop_houston_tx,"Houston, TX",transit,carrier_physical,146.241,southwest
 carrier_pop_baltimore_md,"Baltimore, MD",aggregation,carrier_pop_mclean_va,"McLean, VA",aggregation,carrier_physical,39.045,northeast/overview
 carrier_pop_baltimore_md,"Baltimore, MD",aggregation,carrier_pop_philadelphia_pa,"Philadelphia, PA",transit,carrier_physical,89.575,northeast/overview
-carrier_pop_billingsley_al,"Billingsley, AL",aggregation,carrier_pop_houston_tx,"Houston, TX",core,carrier_physical,549.255,southeast/overview
-carrier_pop_boise_id,"Boise, ID",transit,carrier_pop_ogden_ut,"Ogden, UT",aggregation,carrier_physical,271.662,overview/west
-carrier_pop_boise_id,"Boise, ID",transit,carrier_pop_yakima_wa,"Yakima, WA",aggregation,carrier_physical,294.257,overview/west
+carrier_pop_billingsley_al,"Billingsley, AL",aggregation,carrier_pop_houston_tx,"Houston, TX",transit,carrier_physical,549.255,southeast/overview
+carrier_pop_boise_id,"Boise, ID",aggregation,carrier_pop_ogden_ut,"Ogden, UT",aggregation,carrier_physical,271.662,overview/west
+carrier_pop_boise_id,"Boise, ID",aggregation,carrier_pop_yakima_wa,"Yakima, WA",aggregation,carrier_physical,294.257,overview/west
 carrier_pop_buffalo_ny,"Buffalo, NY",transit,carrier_pop_cleveland_oh,"Cleveland, OH",transit,carrier_physical,173.089,northeast/overview
 carrier_pop_charlotte_nc,"Charlotte, NC",aggregation,carrier_pop_nashville_tn,"Nashville, TN",transit,carrier_physical,339.381,southeast/overview
 carrier_pop_charlotte_nc,"Charlotte, NC",aggregation,carrier_pop_raleigh_nc,"Raleigh, NC",aggregation,carrier_physical,129.759,southeast/overview
-carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,carrier_pop_denver_co,"Denver, CO",aggregation,carrier_physical,97.198,overview/west
+carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,carrier_pop_denver_co,"Denver, CO",core,carrier_physical,97.198,overview/west
 carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,carrier_pop_missoula_mt,"Missoula, MT",transit,carrier_physical,603.283,overview/west
 carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,carrier_pop_ogden_ut,"Ogden, UT",aggregation,carrier_physical,371.938,overview/west
-carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,carrier_pop_omaha_ne,"Omaha, NE",aggregation,carrier_physical,461.821,overview/west
-carrier_pop_chicago_il,"Chicago, IL",transit,carrier_pop_davenport_ia,"Davenport, IA",transit,carrier_physical,154.02,overview
-carrier_pop_chicago_il,"Chicago, IL",transit,carrier_pop_indianapolis_in,"Indianapolis, IN",aggregation,carrier_physical,164.823,overview
-carrier_pop_chicago_il,"Chicago, IL",transit,carrier_pop_madison_wi,"Madison, WI",aggregation,carrier_physical,122.331,overview
-carrier_pop_chicago_il,"Chicago, IL",transit,carrier_pop_milwaukee_wi,"Milwaukee, WI",aggregation,carrier_physical,81.434,overview
-carrier_pop_chicago_il,"Chicago, IL",transit,carrier_pop_south_bend_in,"South Bend, IN",transit,carrier_physical,72.447,overview/northeast
-carrier_pop_chicago_il,"Chicago, IL",transit,carrier_pop_st_louis_mo,"St. Louis, MO",transit,carrier_physical,262.302,overview
-carrier_pop_cincinnati_oh,"Cincinnati, OH",transit,carrier_pop_columbus_oh,"Columbus, OH",aggregation,carrier_physical,100.085,northeast/overview
-carrier_pop_cincinnati_oh,"Cincinnati, OH",transit,carrier_pop_indianapolis_in,"Indianapolis, IN",aggregation,carrier_physical,99.14,northeast/overview
+carrier_pop_cheyenne_wy,"Cheyenne, WY",aggregation,carrier_pop_omaha_ne,"Omaha, NE",transit,carrier_physical,461.821,overview/west
+carrier_pop_chicago_il,"Chicago, IL",core,carrier_pop_davenport_ia,"Davenport, IA",transit,carrier_physical,154.02,overview
+carrier_pop_chicago_il,"Chicago, IL",core,carrier_pop_madison_wi,"Madison, WI",aggregation,carrier_physical,122.331,overview
+carrier_pop_chicago_il,"Chicago, IL",core,carrier_pop_milwaukee_wi,"Milwaukee, WI",aggregation,carrier_physical,81.434,overview
+carrier_pop_chicago_il,"Chicago, IL",core,carrier_pop_south_bend_in,"South Bend, IN",transit,carrier_physical,72.447,overview/northeast
+carrier_pop_chicago_il,"Chicago, IL",core,carrier_pop_st_louis_mo,"St. Louis, MO",transit,carrier_physical,262.302,overview
+carrier_pop_cincinnati_oh,"Cincinnati, OH",aggregation,carrier_pop_columbus_oh,"Columbus, OH",aggregation,carrier_physical,100.085,northeast/overview
+carrier_pop_cincinnati_oh,"Cincinnati, OH",aggregation,carrier_pop_indianapolis_in,"Indianapolis, IN",transit,carrier_physical,99.14,northeast/overview
 carrier_pop_cleveland_oh,"Cleveland, OH",transit,carrier_pop_pittsburgh_pa,"Pittsburgh, PA",transit,carrier_physical,114.898,northeast/overview
 carrier_pop_cleveland_oh,"Cleveland, OH",transit,carrier_pop_toledo_oh,"Toledo, OH",transit,carrier_physical,96.76,northeast/overview
 carrier_pop_dallas_tx,"Dallas, TX",aggregation,carrier_pop_fort_worth_tx,"Fort Worth, TX",aggregation,carrier_physical,31.048,southwest
-carrier_pop_dallas_tx,"Dallas, TX",aggregation,carrier_pop_houston_tx,"Houston, TX",core,carrier_physical,224.797,southwest
-carrier_pop_davenport_ia,"Davenport, IA",transit,carrier_pop_des_moines_ia,"Des Moines, IA",core,carrier_physical,156.793,overview
-carrier_pop_denver_co,"Denver, CO",aggregation,carrier_pop_omaha_ne,"Omaha, NE",aggregation,carrier_physical,486.963,overview/west
-carrier_pop_denver_co,"Denver, CO",aggregation,carrier_pop_salt_lake_city_ut,"Salt Lake City, UT",aggregation,carrier_physical,370.581,overview/west
-carrier_pop_des_moines_ia,"Des Moines, IA",core,carrier_pop_kansas_city_mo,"Kansas City, MO",transit,carrier_physical,179.263,overview
-carrier_pop_des_moines_ia,"Des Moines, IA",core,carrier_pop_minneapolis_mn,"Minneapolis, MN",transit,carrier_physical,234.934,overview
-carrier_pop_des_moines_ia,"Des Moines, IA",core,carrier_pop_omaha_ne,"Omaha, NE",aggregation,carrier_physical,122.618,overview
+carrier_pop_dallas_tx,"Dallas, TX",aggregation,carrier_pop_memphis_tn,"Memphis, TN",transit,carrier_physical,419.894,southwest/southeast
+carrier_pop_davenport_ia,"Davenport, IA",transit,carrier_pop_des_moines_ia,"Des Moines, IA",transit,carrier_physical,156.793,overview
+carrier_pop_denver_co,"Denver, CO",core,carrier_pop_kansas_city_mo,"Kansas City, MO",transit,carrier_physical,557.171,overview
+carrier_pop_denver_co,"Denver, CO",core,carrier_pop_salt_lake_city_ut,"Salt Lake City, UT",aggregation,carrier_physical,370.581,overview/west
+carrier_pop_denver_co,"Denver, CO",core,carrier_pop_stratford_tx,"Stratford, TX",aggregation,carrier_physical,283.694,overview/west
+carrier_pop_des_moines_ia,"Des Moines, IA",transit,carrier_pop_kansas_city_mo,"Kansas City, MO",transit,carrier_physical,179.263,overview
+carrier_pop_des_moines_ia,"Des Moines, IA",transit,carrier_pop_minneapolis_mn,"Minneapolis, MN",aggregation,carrier_physical,234.934,overview
+carrier_pop_des_moines_ia,"Des Moines, IA",transit,carrier_pop_omaha_ne,"Omaha, NE",transit,carrier_physical,122.618,overview
 carrier_pop_el_paso_tx,"El Paso, TX",transit,carrier_pop_san_antonio_tx,"San Antonio, TX",aggregation,carrier_physical,501.834,southwest
 carrier_pop_el_paso_tx,"El Paso, TX",transit,carrier_pop_tucson_az,"Tucson, AZ",aggregation,carrier_physical,264.992,overview/southwest
-carrier_pop_fort_worth_tx,"Fort Worth, TX",aggregation,carrier_pop_tulsa_ok,"Tulsa, OK",aggregation,carrier_physical,246.869,southwest
+carrier_pop_fort_worth_tx,"Fort Worth, TX",aggregation,carrier_pop_oklahoma_city_ok,"Oklahoma City, OK",transit,carrier_physical,187.689,southwest
 carrier_pop_hayward_ca,"Hayward, CA",aggregation,carrier_pop_san_francisco_ca,"San Francisco, CA",aggregation,carrier_physical,19.904,overview/west
 carrier_pop_hayward_ca,"Hayward, CA",aggregation,carrier_pop_sunnyvale_ca,"Sunnyvale, CA",transit,carrier_physical,20.871,overview/west
 carrier_pop_herndon_va,"Herndon, VA",aggregation,carrier_pop_mclean_va,"McLean, VA",aggregation,carrier_physical,11.487,northeast/overview
-carrier_pop_houston_tx,"Houston, TX",core,carrier_pop_san_antonio_tx,"San Antonio, TX",aggregation,carrier_physical,189.108,southwest
-carrier_pop_houston_tx,"Houston, TX",core,carrier_pop_tallahassee_fl,"Tallahassee, FL",aggregation,carrier_physical,664.254,southeast/overview
-carrier_pop_indianapolis_in,"Indianapolis, IN",aggregation,carrier_pop_st_louis_mo,"St. Louis, MO",transit,carrier_physical,230.289,overview
+carrier_pop_houston_tx,"Houston, TX",transit,carrier_pop_san_antonio_tx,"San Antonio, TX",aggregation,carrier_physical,189.108,southwest
+carrier_pop_houston_tx,"Houston, TX",transit,carrier_pop_tallahassee_fl,"Tallahassee, FL",aggregation,carrier_physical,664.254,southeast/overview
+carrier_pop_indianapolis_in,"Indianapolis, IN",transit,carrier_pop_st_louis_mo,"St. Louis, MO",transit,carrier_physical,230.289,overview
 carrier_pop_jacksonville_fl,"Jacksonville, FL",aggregation,carrier_pop_tallahassee_fl,"Tallahassee, FL",aggregation,carrier_physical,156.626,southeast/overview
 carrier_pop_kansas_city_mo,"Kansas City, MO",transit,carrier_pop_st_louis_mo,"St. Louis, MO",transit,carrier_physical,237.826,overview
 carrier_pop_kansas_city_mo,"Kansas City, MO",transit,carrier_pop_tulsa_ok,"Tulsa, OK",aggregation,carrier_physical,217.736,overview
@@ -141,30 +142,32 @@ carrier_pop_las_vegas_nv,"Las Vegas, NV",aggregation,carrier_pop_salt_lake_city_
 carrier_pop_las_vegas_nv,"Las Vegas, NV",aggregation,carrier_pop_san_bernadino_ca,"San Bernadino, CA",aggregation,carrier_physical,187.196,overview/west
 carrier_pop_los_angeles_ca,"Los Angeles, CA",aggregation,carrier_pop_san_bernadino_ca,"San Bernadino, CA",aggregation,carrier_physical,54.726,overview/west
 carrier_pop_los_angeles_ca,"Los Angeles, CA",aggregation,carrier_pop_san_luis_obispo_ca,"San Luis Obispo, CA",aggregation,carrier_physical,161.477,overview/west
-carrier_pop_los_angeles_ca,"Los Angeles, CA",aggregation,carrier_pop_tustin_ca,"Tustin, CA",transit,carrier_physical,31.943,overview/west
+carrier_pop_los_angeles_ca,"Los Angeles, CA",aggregation,carrier_pop_tustin_ca,"Tustin, CA",aggregation,carrier_physical,31.943,overview/west
 carrier_pop_madison_wi,"Madison, WI",aggregation,carrier_pop_milwaukee_wi,"Milwaukee, WI",aggregation,carrier_physical,75.497,overview
-carrier_pop_mclean_va,"McLean, VA",aggregation,carrier_pop_richmond_va,"Richmond, VA",transit,carrier_physical,97.279,northeast/overview
-carrier_pop_milwaukee_wi,"Milwaukee, WI",aggregation,carrier_pop_minneapolis_mn,"Minneapolis, MN",transit,carrier_physical,298.003,overview
+carrier_pop_mclean_va,"McLean, VA",aggregation,carrier_pop_richmond_va,"Richmond, VA",aggregation,carrier_physical,97.279,northeast/overview
+carrier_pop_milwaukee_wi,"Milwaukee, WI",aggregation,carrier_pop_minneapolis_mn,"Minneapolis, MN",aggregation,carrier_physical,298.003,overview
 carrier_pop_missoula_mt,"Missoula, MT",transit,carrier_pop_yakima_wa,"Yakima, WA",aggregation,carrier_physical,308.71,overview/west
 carrier_pop_nashville_tn,"Nashville, TN",transit,carrier_pop_st_louis_mo,"St. Louis, MO",transit,carrier_physical,253.318,overview
 carrier_pop_new_york_ny,"New York, NY",transit,carrier_pop_newark_nj,"Newark, NJ",transit,carrier_physical,8.856,northeast/overview
 carrier_pop_new_york_ny,"New York, NY",transit,carrier_pop_stamford_ct,"Stamford, CT",aggregation,carrier_physical,33.907,northeast/overview
 carrier_pop_newark_nj,"Newark, NJ",transit,carrier_pop_philadelphia_pa,"Philadelphia, PA",transit,carrier_physical,75.238,northeast/overview
 carrier_pop_ogden_ut,"Ogden, UT",aggregation,carrier_pop_salt_lake_city_ut,"Salt Lake City, UT",aggregation,carrier_physical,32.226,overview/west
+carrier_pop_oklahoma_city_ok,"Oklahoma City, OK",transit,carrier_pop_stratford_tx,"Stratford, TX",aggregation,carrier_physical,261.908,southwest/west
 carrier_pop_philadelphia_pa,"Philadelphia, PA",transit,carrier_pop_pittsburgh_pa,"Pittsburgh, PA",transit,carrier_physical,257.131,northeast/overview
 carrier_pop_phoenix_az,"Phoenix, AZ",aggregation,carrier_pop_san_bernadino_ca,"San Bernadino, CA",aggregation,carrier_physical,302.959,overview/west
 carrier_pop_phoenix_az,"Phoenix, AZ",aggregation,carrier_pop_san_diego_ca,"San Diego, CA",aggregation,carrier_physical,298.792,overview/west
 carrier_pop_phoenix_az,"Phoenix, AZ",aggregation,carrier_pop_tucson_az,"Tucson, AZ",aggregation,carrier_physical,106.046,overview/southwest
 carrier_pop_portland_or,"Portland, OR",transit,carrier_pop_sacramento_ca,"Sacramento, CA",aggregation,carrier_physical,482.874,overview/west
 carrier_pop_portland_or,"Portland, OR",transit,carrier_pop_seattle_wa,"Seattle, WA",aggregation,carrier_physical,145.397,overview/west
-carrier_pop_raleigh_nc,"Raleigh, NC",aggregation,carrier_pop_richmond_va,"Richmond, VA",transit,carrier_physical,138.727,northeast/overview
+carrier_pop_raleigh_nc,"Raleigh, NC",aggregation,carrier_pop_richmond_va,"Richmond, VA",aggregation,carrier_physical,138.727,northeast/overview
 carrier_pop_reno_nv,"Reno, NV",aggregation,carrier_pop_sacramento_ca,"Sacramento, CA",aggregation,carrier_physical,111.446,overview/west
 carrier_pop_reno_nv,"Reno, NV",aggregation,carrier_pop_salt_lake_city_ut,"Salt Lake City, UT",aggregation,carrier_physical,426.849,overview/west
-carrier_pop_riverside_ca,"Riverside, CA",aggregation,carrier_pop_san_bernadino_ca,"San Bernadino, CA",aggregation,carrier_physical,12.321,overview/west
-carrier_pop_riverside_ca,"Riverside, CA",aggregation,carrier_pop_san_diego_ca,"San Diego, CA",aggregation,carrier_physical,86.58,overview/west
+carrier_pop_riverside_ca,"Riverside, CA",transit,carrier_pop_san_bernadino_ca,"San Bernadino, CA",aggregation,carrier_physical,12.321,overview/west
+carrier_pop_riverside_ca,"Riverside, CA",transit,carrier_pop_san_diego_ca,"San Diego, CA",aggregation,carrier_physical,86.58,overview/west
 carrier_pop_sacramento_ca,"Sacramento, CA",aggregation,carrier_pop_san_francisco_ca,"San Francisco, CA",aggregation,carrier_physical,75.038,overview/west
-carrier_pop_san_diego_ca,"San Diego, CA",aggregation,carrier_pop_tustin_ca,"Tustin, CA",transit,carrier_physical,80.904,overview/west
+carrier_pop_san_diego_ca,"San Diego, CA",aggregation,carrier_pop_tustin_ca,"Tustin, CA",aggregation,carrier_physical,80.904,overview/west
 carrier_pop_san_jose_ca,"San Jose, CA",aggregation,carrier_pop_san_luis_obispo_ca,"San Luis Obispo, CA",aggregation,carrier_physical,157.58,overview/west
 carrier_pop_san_jose_ca,"San Jose, CA",aggregation,carrier_pop_sunnyvale_ca,"Sunnyvale, CA",transit,carrier_physical,8.505,overview/west
 carrier_pop_seattle_wa,"Seattle, WA",aggregation,carrier_pop_yakima_wa,"Yakima, WA",aggregation,carrier_physical,110.401,overview/west
 carrier_pop_south_bend_in,"South Bend, IN",transit,carrier_pop_toledo_oh,"Toledo, OH",transit,carrier_physical,139.099,northeast
+carrier_pop_stratford_tx,"Stratford, TX",aggregation,carrier_pop_tulsa_ok,"Tulsa, OK",aggregation,carrier_physical,338.938,southwest/west

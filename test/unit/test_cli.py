@@ -101,7 +101,7 @@ def test_main_succeeds_on_solvable_inputs(tmp_path: Path) -> None:
         kml,
         edges,
         tmp_path / "out",
-        extra=["--core-count", "2", "--min-core-separation-miles", "0"],
+        extra=["--core-count", "2"],
     )
     assert main(args) == 0
 

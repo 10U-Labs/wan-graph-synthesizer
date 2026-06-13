@@ -63,19 +63,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--core-count",
         type=int,
         default=3,
-        help="Number of core nodes to select. Must be 2 or 3; default is 3.",
+        help="Minimum number of core nodes; more are added if needed. Default is 3.",
     )
     parser.add_argument(
         "--core-candidate-limit",
         type=int,
         default=32,
-        help="Number of best-scored Carrier PoPs to consider as cores.",
-    )
-    parser.add_argument(
-        "--min-core-separation-miles",
-        type=float,
-        default=750.0,
-        help="Minimum great-circle separation between selected core PoPs.",
+        help="Number of strongest Carrier PoPs to consider as cores.",
     )
     parser.add_argument(
         "--aggregation-candidates-per-access",
@@ -88,12 +82,6 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=40.0,
         help="Facility penalty used to avoid selecting unnecessary aggregation PoPs.",
-    )
-    parser.add_argument(
-        "--upper-tier-weight",
-        type=float,
-        default=0.15,
-        help="How strongly access-to-aggregation choices consider aggregation-to-core distance.",
     )
     parser.add_argument(
         "--allow-roadm-aggregation",
@@ -122,10 +110,8 @@ def params_from_args(args: argparse.Namespace) -> DesignParams:
     return DesignParams(
         core_count=args.core_count,
         core_candidate_limit=args.core_candidate_limit,
-        min_core_separation_miles=args.min_core_separation_miles,
         aggregation_candidates_per_access=args.aggregation_candidates_per_access,
         aggregation_penalty_miles=args.aggregation_penalty_miles,
-        upper_tier_weight=args.upper_tier_weight,
         allow_roadm_aggregation=args.allow_roadm_aggregation,
     )
 
