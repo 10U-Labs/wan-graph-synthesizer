@@ -186,7 +186,8 @@ def write_kml_styles(document: ET.Element) -> None:
         ET.SubElement(icon_style, "color").text = color
         ET.SubElement(icon_style, "scale").text = scale
         ET.SubElement(ET.SubElement(icon_style, "Icon"), "href").text = circle
-    for edge_kind, color, width in (("access", "ffff0000", "1.4"), ("backbone", "ff0000ff", "2.2")):
+    # Edges stay neutral gray so the tier palette reads on the node icons alone.
+    for edge_kind, color, width in (("access", "ff9e9e9e", "1.2"), ("backbone", "ff5a5a5a", "2.0")):
         style = ET.SubElement(document, "Style", id=f"edge_{edge_kind}")
         line_style = ET.SubElement(style, "LineStyle")
         ET.SubElement(line_style, "color").text = color

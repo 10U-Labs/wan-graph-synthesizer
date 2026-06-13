@@ -76,9 +76,13 @@ def test_write_kml_emits_the_five_tier_layers(tmp_path: Path) -> None:
         assert f"<name>{name}</name>" in text
 
 
-def test_kml_layer_for_node_routes_provider regions_by_compass() -> None:
-    """provider regions split into east and west layers by name."""
+def test_kml_layer_for_node_routes_provider region() -> None:
+    """An provider region maps to the provider region."""
     assert kml_layer_for_node(_provider regions("Provider Region"), "access") == "provider region"
+
+
+def test_kml_layer_for_node_routes_provider region() -> None:
+    """A provider region maps to the provider region."""
     assert kml_layer_for_node(_provider regions("Provider Region"), "access") == "provider region"
 
 
@@ -88,10 +92,13 @@ def test_kml_layer_for_node_omits_directionless_secret() -> None:
 
 
 def test_kml_layer_for_node_uses_tier_role_for_carrier_pops() -> None:
-    """Non-provider nodes map by tier role; transit PoPs are omitted."""
-    pop = fixtures.carrier_pop("P0")
-    assert kml_layer_for_node(pop, "core") == "core"
-    assert kml_layer_for_node(pop, "transit") is None
+    """Non-provider nodes map by their tier role."""
+    assert kml_layer_for_node(fixtures.carrier_pop("P0"), "core") == "core"
+
+
+def test_kml_layer_for_node_omits_transit_pops() -> None:
+    """Transit PoPs are not assigned to any output layer."""
+    assert kml_layer_for_node(fixtures.carrier_pop("P0"), "transit") is None
 
 
 def test_write_dot_declares_graph(tmp_path: Path) -> None:
