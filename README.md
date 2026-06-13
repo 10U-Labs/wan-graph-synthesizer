@@ -70,7 +70,7 @@ cannot reach two cores disjointly or the cores are not a full mesh.
 
 The edge list in `data/carrier_edges.csv` is transcribed from the carrier's
 publicly published network map. Results are written to
-`outputs/carrier_network_design/` as JSON, CSV, KML, and Graphviz DOT files.
+`outputs/` as JSON, CSV, KML, and Graphviz DOT files.
 
 Tune the core tier:
 
