@@ -64,15 +64,20 @@ The objective is not straight-line mileage and not hop count. Mileage
 is rejected because the source has none. Hop count is rejected because
 it does not capture reach or directness.
 
-## Open questions
+## Sentinel aggregation: resolved decisions
 
-The Sentinel aggregation constraint (hard constraint 6) needs
-clarification before it can be implemented:
+The Sentinel aggregation constraint (hard constraint 6) is modeled as
+follows:
 
-- What are the 165 sites per base? They are presumably Sentinel launch
-  facilities, which are not individual placemarks in the current KMZ.
-- Do the bases form a sub-tier (165 sites to the base, then the base to
-  the carrier aggregation tier), or do the 165 sites home directly into
-  the carrier aggregation tier?
-- Does the two-aggregation rule (hard constraint 1) apply to the 165
-  sites, or do they single-home to their base?
+- The 165 sites per base are a modeled count, not individual locations.
+  They are not sourced as placemarks; only the count and the
+  aggregation relationship are modeled.
+- Each base (Malmstrom AFB, Minot AFB, F.E. Warren AFB) is an
+  aggregation point. It collects its 165 sites and dual-homes upward to
+  two distinct core nodes over node-disjoint paths, like any
+  aggregation point.
+- The 165 sites single-home to their base. The two-aggregation rule
+  (hard constraint 1) does not apply to them.
+
+This constraint is layered on after the strength-based, three-core
+optimizer rewrite lands.

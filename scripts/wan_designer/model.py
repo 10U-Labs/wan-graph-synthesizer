@@ -77,12 +77,10 @@ class Design:
 class DesignParams:
     """Tuning knobs for the three-tier optimization."""
 
-    core_count: int = 3
+    core_count: int = 3  # minimum number of cores; more are added if needed
     core_candidate_limit: int = 32
-    min_core_separation_miles: float = 750.0
     aggregation_candidates_per_access: int = 8
     aggregation_penalty_miles: float = 40.0
-    upper_tier_weight: float = 0.15
     allow_roadm_aggregation: bool = False
 
 @dataclass(frozen=True)

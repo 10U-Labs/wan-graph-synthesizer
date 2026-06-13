@@ -194,9 +194,7 @@ def design_args(
 
 def ring_params() -> DesignParams:
     """Design parameters that solve the ring with a two-core tier."""
-    return DesignParams(
-        core_count=2, min_core_separation_miles=0.0, core_candidate_limit=10
-    )
+    return DesignParams(core_count=2, core_candidate_limit=10)
 
 
 def ring_artifacts() -> DesignArtifacts:
