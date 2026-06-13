@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from design_lumen_network import main
+from wan_designer import main
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -20,13 +20,11 @@ def fixture_design(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     output_dir = tmp_path_factory.mktemp("design")
     exit_code = main(
         [
-            str(REPO_ROOT / "f35_sentinel_provider regions_lumen_400g.kmz"),
-            "--lumen-edges",
-            str(REPO_ROOT / "data" / "lumen_edges.csv"),
+            str(REPO_ROOT / "f35_sentinel_provider regions_carrier_400g.kmz"),
+            "--carrier-edges",
+            str(REPO_ROOT / "data" / "carrier_edges.csv"),
             "--pop-roles",
-            str(REPO_ROOT / "data" / "lumen_pop_roles.csv"),
-            "--mapbook-pdf",
-            str(REPO_ROOT / "data" / "lumen_network_mapbook_2026.pdf"),
+            str(REPO_ROOT / "data" / "carrier_pop_roles.csv"),
             "--output-dir",
             str(output_dir),
         ]

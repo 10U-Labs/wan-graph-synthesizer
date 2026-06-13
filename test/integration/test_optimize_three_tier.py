@@ -7,7 +7,7 @@ are never chosen as aggregation points.
 
 from __future__ import annotations
 
-from design_lumen_network import (
+from wan_designer import (
     Design,
     DesignParams,
     Node,
@@ -48,8 +48,8 @@ def pop(node_id: str, lat: float, lon: float) -> Node:
     return Node(
         id=node_id,
         name=node_id,
-        category="Lumen 400G PoPs",
-        kind="lumen_pop",
+        category="Carrier 400G PoPs",
+        kind="carrier_pop",
         lat=lat,
         lon=lon,
     )
@@ -85,7 +85,7 @@ def run() -> tuple[list[Node], Design]:
     """Test helper: build run."""
     nodes = build_nodes()
     edges = build_edges(nodes)
-    roles = {node.id: "aggregator" for node in nodes if node.kind == "lumen_pop"}
+    roles = {node.id: "aggregator" for node in nodes if node.kind == "carrier_pop"}
     params = DesignParams(
         core_count=2, min_core_separation_miles=0.0, core_candidate_limit=10
     )

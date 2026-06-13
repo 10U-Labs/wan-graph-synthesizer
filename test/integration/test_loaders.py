@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from design_lumen_network import Node, load_lumen_edges, load_nodes
+from wan_designer import Node, load_carrier_edges, load_nodes
 
 KML = """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>Top</name>
     <Folder>
-      <name>Lumen 400G PoPs</name>
+      <name>Carrier 400G PoPs</name>
       <Placemark>
         <name>Denver, CO</name>
         <Point><coordinates>-104.9903,39.7392,0</coordinates></Point>
@@ -52,9 +52,9 @@ def test_loads_all_placemarks(nodes: list[Node]) -> None:
     assert len(nodes) == 3
 
 
-def test_classifies_lumen_pops(nodes: list[Node]) -> None:
-    """Classifies lumen pops."""
-    assert sum(1 for node in nodes if node.kind == "lumen_pop") == 2
+def test_classifies_carrier_pops(nodes: list[Node]) -> None:
+    """Classifies carrier pops."""
+    assert sum(1 for node in nodes if node.kind == "carrier_pop") == 2
 
 
 def test_classifies_access_node(nodes: list[Node]) -> None:
@@ -66,9 +66,9 @@ def test_loads_edge_with_computed_distance(
     nodes: list[Node], tmp_path: Path
 ) -> None:
     """Loads edge with computed distance."""
-    lumen_pops = [node for node in nodes if node.kind == "lumen_pop"]
+    carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
     csv_path = tmp_path / "edges.csv"
     csv_path.write_text(EDGES_CSV, encoding="utf-8")
-    edges = load_lumen_edges(csv_path, lumen_pops)
+    edges = load_carrier_edges(csv_path, carrier_pops)
     distance = next(iter(edges.values())).distance_miles
     assert distance == pytest.approx(558.0, abs=20.0)

@@ -6,7 +6,7 @@ over node-disjoint paths, and the core tier must form a connected full mesh.
 
 from __future__ import annotations
 
-from design_lumen_network import (
+from wan_designer import (
     Design,
     DesignMetrics,
     Node,
@@ -20,8 +20,8 @@ from design_lumen_network import (
 def make_pop(node_id: str) -> Node:
     """Test helper: build make pop."""
     return Node(
-        id=node_id, name=node_id, category="Lumen 400G PoPs",
-        kind="lumen_pop", lat=0.0, lon=0.0,
+        id=node_id, name=node_id, category="Carrier 400G PoPs",
+        kind="carrier_pop", lat=0.0, lon=0.0,
     )
 
 

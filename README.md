@@ -51,31 +51,31 @@ The output is a webpage that displays the WAN graph. The rendered graph
 contains only nodes and edges, using Graphviz as the layout and
 rendering engine.
 
-## Lumen three-tier WAN design script
+## Carrier three-tier WAN design script
 
-Use `scripts/design_lumen_network.py` to compute a three-tier WAN design
-from the included KMZ and the Lumen mapbook-derived edge list:
+Use `scripts/design_network.py` to compute a three-tier WAN design
+from the included KMZ and the Carrier mapbook-derived edge list:
 
 ```bash
-python3 scripts/design_lumen_network.py
+python3 scripts/design_network.py
 ```
 
-The script parses F-35, Sentinel, provider provider regions, and Lumen 400G PoP
+The script parses F-35, Sentinel, provider provider regions, and Carrier 400G PoP
 placemarks. F-35, Sentinel, and provider provider locations are access nodes.
-The script selects up to three Lumen core PoPs, selects aggregation PoPs
+The script selects up to three Carrier core PoPs, selects aggregation PoPs
 as needed, dual-homes every access node to two aggregation PoPs, routes
 every aggregation to two cores over node-disjoint paths on the physical
-Lumen graph, and meshes the cores. The run fails if any aggregation
+Carrier graph, and meshes the cores. The run fails if any aggregation
 cannot reach two cores disjointly or the cores are not a full mesh.
 
-The edge list is derived from `data/lumen_network_mapbook_2026.pdf`.
-Results are written to `outputs/lumen_network_design/` as JSON, CSV, KML,
-and Graphviz DOT files.
+The edge list in `data/carrier_edges.csv` is transcribed from the carrier's
+publicly published network map. Results are written to
+`outputs/carrier_network_design/` as JSON, CSV, KML, and Graphviz DOT files.
 
 Tune the core tier:
 
 ```bash
-python3 scripts/design_lumen_network.py \
+python3 scripts/design_network.py \
   --core-count 3 \
   --min-core-separation-miles 750
 ```
@@ -83,7 +83,7 @@ python3 scripts/design_lumen_network.py \
 Inspect the raw tier assignment without extra resilience augmentation:
 
 ```bash
-python3 scripts/design_lumen_network.py --no-resilience-augmentation
+python3 scripts/design_network.py --no-resilience-augmentation
 ```
 
 ## Testing

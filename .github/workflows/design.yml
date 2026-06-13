@@ -93,8 +93,8 @@ jobs:
       - name: Run pylint on source
         run: >-
           PYTHONPATH=.:scripts python3 -m pylint
-          scripts/
-          --fail-on=C,R,W --fail-under=10.0 --max-module-lines=2000
+          scripts/wan_designer/ scripts/design_network.py
+          --fail-on=C,R,W --fail-under=10.0
       - name: Run pylint on tests
         run: >-
           PYTHONPATH=.:scripts python3 -m pylint --recursive=y
@@ -141,7 +141,7 @@ on:
     paths:
       - .github/workflows/design.yml
       - data/**
-      - f35_sentinel_provider regions_lumen_400g.kmz
+      - f35_sentinel_provider regions_carrier_400g.kmz
       - scripts/**
       - test/**
   push:
@@ -149,7 +149,7 @@ on:
     paths:
       - .github/workflows/design.yml
       - data/**
-      - f35_sentinel_provider regions_lumen_400g.kmz
+      - f35_sentinel_provider regions_carrier_400g.kmz
       - scripts/**
       - test/**
   workflow_dispatch:

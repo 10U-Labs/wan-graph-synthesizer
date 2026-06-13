@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from design_lumen_network import (
+from wan_designer import (
     classify_category,
     connected_components,
     articulation_points,
@@ -21,7 +21,7 @@ from design_lumen_network import (
 
 def make_node(node_id: str, lat: float, lon: float) -> Node:
     """Test helper: build make node."""
-    return Node(id=node_id, name=node_id, category="c", kind="lumen_pop", lat=lat, lon=lon)
+    return Node(id=node_id, name=node_id, category="c", kind="carrier_pop", lat=lat, lon=lon)
 
 
 def test_slugify_replaces_punctuation() -> None:
@@ -34,9 +34,9 @@ def test_slugify_empty_falls_back() -> None:
     assert slugify("!!!") == "node"
 
 
-def test_classify_category_lumen_pop() -> None:
-    """Classify category lumen pop."""
-    assert classify_category("Lumen 400G PoPs") == "lumen_pop"
+def test_classify_category_carrier_pop() -> None:
+    """Classify category carrier pop."""
+    assert classify_category("Carrier 400G PoPs") == "carrier_pop"
 
 
 def test_classify_category_sentinel() -> None:

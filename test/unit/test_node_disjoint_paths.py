@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 
-from design_lumen_network import node_disjoint_paths_to_cores
+from wan_designer import node_disjoint_paths_to_cores
 
 
 def adjacency_from_edges(
