@@ -4,7 +4,7 @@
     <name>Three-Tier Carrier WAN Design</name>
     <Style id="node_access">
       <IconStyle>
-        <color>ff25a8f9</color>
+        <color>ffff0000</color>
         <scale>0.85</scale>
         <Icon>
           <href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>
@@ -13,8 +13,8 @@
     </Style>
     <Style id="node_aggregation">
       <IconStyle>
-        <color>ff00a5ff</color>
-        <scale>0.85</scale>
+        <color>ff800080</color>
+        <scale>0.9</scale>
         <Icon>
           <href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>
         </Icon>
@@ -22,17 +22,26 @@
     </Style>
     <Style id="node_core">
       <IconStyle>
-        <color>ff0000d9</color>
+        <color>ff0000ff</color>
         <scale>1.1</scale>
         <Icon>
           <href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>
         </Icon>
       </IconStyle>
     </Style>
-    <Style id="node_transit">
+    <Style id="node_secret_east">
       <IconStyle>
-        <color>ff999999</color>
-        <scale>0.85</scale>
+        <color>ff00a5ff</color>
+        <scale>0.95</scale>
+        <Icon>
+          <href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="node_secret_west">
+      <IconStyle>
+        <color>ff00a5ff</color>
+        <scale>0.95</scale>
         <Icon>
           <href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>
         </Icon>
@@ -40,63 +49,22 @@
     </Style>
     <Style id="edge_access">
       <LineStyle>
-        <color>ff25a8f9</color>
+        <color>ffff0000</color>
         <width>1.4</width>
       </LineStyle>
     </Style>
-    <Style id="edge_physical">
+    <Style id="edge_backbone">
       <LineStyle>
-        <color>ff333333</color>
+        <color>ff0000ff</color>
         <width>2.2</width>
       </LineStyle>
     </Style>
     <Folder>
-      <name>Included Nodes</name>
-      <Placemark>
-        <name>AWS Secret East Region</name>
-        <styleUrl>#node_access</styleUrl>
-        <description>access
-Secret Regions - Cloud Service Providers
-csp_secret_aws_secret_east_region</description>
-        <Point>
-          <coordinates>-82.9988,39.9612,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>AWS Secret West Region</name>
-        <styleUrl>#node_access</styleUrl>
-        <description>access
-Secret Regions - Cloud Service Providers
-csp_secret_aws_secret_west_region</description>
-        <Point>
-          <coordinates>-112.074,33.4484,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Azure Secret East Region</name>
-        <styleUrl>#node_access</styleUrl>
-        <description>access
-Secret Regions - Cloud Service Providers
-csp_secret_azure_secret_east_region</description>
-        <Point>
-          <coordinates>-77.4753,38.7509,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Azure Secret West Region</name>
-        <styleUrl>#node_access</styleUrl>
-        <description>access
-Secret Regions - Cloud Service Providers
-csp_secret_azure_secret_west_region</description>
-        <Point>
-          <coordinates>-98.4936,29.4241,0</coordinates>
-        </Point>
-      </Placemark>
+      <name>Access Nodes</name>
       <Placemark>
         <name>Barksdale AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_barksdale_afb</description>
         <Point>
           <coordinates>-93.6627,32.5018,0</coordinates>
@@ -105,8 +73,7 @@ sentinel_barksdale_afb</description>
       <Placemark>
         <name>Burlington ANGB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_burlington_angb</description>
         <Point>
           <coordinates>-73.1533,44.4719,0</coordinates>
@@ -115,8 +82,7 @@ f35_burlington_angb</description>
       <Placemark>
         <name>Camp Guernsey</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_camp_guernsey</description>
         <Point>
           <coordinates>-104.745,42.269,0</coordinates>
@@ -125,8 +91,7 @@ sentinel_camp_guernsey</description>
       <Placemark>
         <name>Camp Navajo</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_camp_navajo</description>
         <Point>
           <coordinates>-111.842,35.222,0</coordinates>
@@ -135,8 +100,7 @@ sentinel_camp_navajo</description>
       <Placemark>
         <name>Cape Canaveral SFS</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_cape_canaveral_sfs</description>
         <Point>
           <coordinates>-80.5772,28.4889,0</coordinates>
@@ -145,8 +109,7 @@ sentinel_cape_canaveral_sfs</description>
       <Placemark>
         <name>Crystal City, VA</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_crystal_city_va</description>
         <Point>
           <coordinates>-77.0502,38.8564,0</coordinates>
@@ -155,8 +118,7 @@ f35_crystal_city_va</description>
       <Placemark>
         <name>Dannelly Field</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_dannelly_field</description>
         <Point>
           <coordinates>-86.3939,32.3006,0</coordinates>
@@ -165,8 +127,7 @@ f35_dannelly_field</description>
       <Placemark>
         <name>Ebbing ANGB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_ebbing_angb</description>
         <Point>
           <coordinates>-94.3674,35.3366,0</coordinates>
@@ -175,8 +136,7 @@ f35_ebbing_angb</description>
       <Placemark>
         <name>Edwards AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_edwards_afb</description>
         <Point>
           <coordinates>-117.8837,34.9054,0</coordinates>
@@ -185,8 +145,7 @@ f35_edwards_afb</description>
       <Placemark>
         <name>Eglin AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_eglin_afb</description>
         <Point>
           <coordinates>-86.5254,30.4832,0</coordinates>
@@ -195,8 +154,7 @@ f35_eglin_afb</description>
       <Placemark>
         <name>Eielson AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_eielson_afb</description>
         <Point>
           <coordinates>-147.1015,64.6657,0</coordinates>
@@ -205,8 +163,7 @@ f35_eielson_afb</description>
       <Placemark>
         <name>F.E. Warren AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_f_e_warren_afb</description>
         <Point>
           <coordinates>-104.861,41.151,0</coordinates>
@@ -215,8 +172,7 @@ sentinel_f_e_warren_afb</description>
       <Placemark>
         <name>Hanscom AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_hanscom_afb</description>
         <Point>
           <coordinates>-71.289,42.4699,0</coordinates>
@@ -225,8 +181,7 @@ sentinel_hanscom_afb</description>
       <Placemark>
         <name>Hill AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_hill_afb</description>
         <Point>
           <coordinates>-111.9731,41.124,0</coordinates>
@@ -235,8 +190,7 @@ f35_hill_afb</description>
       <Placemark>
         <name>Hill AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_hill_afb</description>
         <Point>
           <coordinates>-111.9731,41.124,0</coordinates>
@@ -245,8 +199,7 @@ sentinel_hill_afb</description>
       <Placemark>
         <name>JHU APL</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_jhu_apl</description>
         <Point>
           <coordinates>-76.8991,39.1684,0</coordinates>
@@ -255,8 +208,7 @@ sentinel_jhu_apl</description>
       <Placemark>
         <name>Jacksonville ANGB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_jacksonville_angb</description>
         <Point>
           <coordinates>-81.6879,30.4941,0</coordinates>
@@ -265,8 +217,7 @@ f35_jacksonville_angb</description>
       <Placemark>
         <name>Luke AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_luke_afb</description>
         <Point>
           <coordinates>-112.383,33.535,0</coordinates>
@@ -275,8 +226,7 @@ f35_luke_afb</description>
       <Placemark>
         <name>MCAS Beaufort</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_mcas_beaufort</description>
         <Point>
           <coordinates>-80.7232,32.4774,0</coordinates>
@@ -285,8 +235,7 @@ f35_mcas_beaufort</description>
       <Placemark>
         <name>MCAS Cherry Point</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_mcas_cherry_point</description>
         <Point>
           <coordinates>-76.8807,34.9009,0</coordinates>
@@ -295,8 +244,7 @@ f35_mcas_cherry_point</description>
       <Placemark>
         <name>MCAS Miramar</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_mcas_miramar</description>
         <Point>
           <coordinates>-117.1418,32.8671,0</coordinates>
@@ -305,8 +253,7 @@ f35_mcas_miramar</description>
       <Placemark>
         <name>MCAS Yuma</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_mcas_yuma</description>
         <Point>
           <coordinates>-114.606,32.6566,0</coordinates>
@@ -315,8 +262,7 @@ f35_mcas_yuma</description>
       <Placemark>
         <name>Malmstrom AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_malmstrom_afb</description>
         <Point>
           <coordinates>-111.183,47.5053,0</coordinates>
@@ -325,8 +271,7 @@ sentinel_malmstrom_afb</description>
       <Placemark>
         <name>Minot AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_minot_afb</description>
         <Point>
           <coordinates>-101.3577,48.4156,0</coordinates>
@@ -335,8 +280,7 @@ sentinel_minot_afb</description>
       <Placemark>
         <name>NAS Fallon</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_nas_fallon</description>
         <Point>
           <coordinates>-118.7003,39.4166,0</coordinates>
@@ -345,8 +289,7 @@ f35_nas_fallon</description>
       <Placemark>
         <name>NAS Lemoore</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_nas_lemoore</description>
         <Point>
           <coordinates>-119.952,36.333,0</coordinates>
@@ -355,38 +298,16 @@ f35_nas_lemoore</description>
       <Placemark>
         <name>Nellis AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_nellis_afb</description>
         <Point>
           <coordinates>-115.0343,36.2362,0</coordinates>
         </Point>
       </Placemark>
       <Placemark>
-        <name>OCI Secret East Region</name>
-        <styleUrl>#node_access</styleUrl>
-        <description>access
-Secret Regions - Cloud Service Providers
-csp_secret_oci_secret_east_region</description>
-        <Point>
-          <coordinates>-77.4874,39.0438,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>OCI Secret West Region</name>
-        <styleUrl>#node_access</styleUrl>
-        <description>access
-Secret Regions - Cloud Service Providers
-csp_secret_oci_secret_west_region</description>
-        <Point>
-          <coordinates>-97.3308,32.7555,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
         <name>Ogden Air Logistics Complex</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_ogden_air_logistics_complex</description>
         <Point>
           <coordinates>-111.9731,41.124,0</coordinates>
@@ -395,8 +316,7 @@ f35_ogden_air_logistics_complex</description>
       <Placemark>
         <name>Reagan Test Site</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_reagan_test_site</description>
         <Point>
           <coordinates>167.731,8.72,0</coordinates>
@@ -405,8 +325,7 @@ sentinel_reagan_test_site</description>
       <Placemark>
         <name>Truax Field</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_truax_field</description>
         <Point>
           <coordinates>-89.3375,43.1399,0</coordinates>
@@ -415,8 +334,7 @@ f35_truax_field</description>
       <Placemark>
         <name>Tyndall AFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-F-35 CONUS Installations
+        <description>F-35 CONUS Installations
 f35_tyndall_afb</description>
         <Point>
           <coordinates>-85.5754,30.0696,0</coordinates>
@@ -425,8 +343,7 @@ f35_tyndall_afb</description>
       <Placemark>
         <name>Utah Test and Training Range (UTTR)</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_utah_test_and_training_range_uttr</description>
         <Point>
           <coordinates>-113.0,41.0,0</coordinates>
@@ -435,8 +352,7 @@ sentinel_utah_test_and_training_range_uttr</description>
       <Placemark>
         <name>Vandenberg SFB</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_vandenberg_sfb</description>
         <Point>
           <coordinates>-120.5724,34.742,0</coordinates>
@@ -445,18 +361,19 @@ sentinel_vandenberg_sfb</description>
       <Placemark>
         <name>Washington, DC</name>
         <styleUrl>#node_access</styleUrl>
-        <description>access
-Sentinel Program Locations
+        <description>Sentinel Program Locations
 sentinel_washington_dc</description>
         <Point>
           <coordinates>-77.0369,38.9072,0</coordinates>
         </Point>
       </Placemark>
+    </Folder>
+    <Folder>
+      <name>Aggregation Points</name>
       <Placemark>
         <name>Albany, NY</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_albany_ny</description>
         <Point>
           <coordinates>-73.7562,42.6526,0</coordinates>
@@ -465,8 +382,7 @@ carrier_pop_albany_ny</description>
       <Placemark>
         <name>Ashburn, VA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_ashburn_va</description>
         <Point>
           <coordinates>-77.4875,39.0438,0</coordinates>
@@ -475,8 +391,7 @@ carrier_pop_ashburn_va</description>
       <Placemark>
         <name>Atlanta, GA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_atlanta_ga</description>
         <Point>
           <coordinates>-84.388,33.749,0</coordinates>
@@ -485,8 +400,7 @@ carrier_pop_atlanta_ga</description>
       <Placemark>
         <name>Austin, TX</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_austin_tx</description>
         <Point>
           <coordinates>-97.7431,30.2672,0</coordinates>
@@ -495,8 +409,7 @@ carrier_pop_austin_tx</description>
       <Placemark>
         <name>Baltimore, MD</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_baltimore_md</description>
         <Point>
           <coordinates>-76.6122,39.2904,0</coordinates>
@@ -505,8 +418,7 @@ carrier_pop_baltimore_md</description>
       <Placemark>
         <name>Billingsley, AL</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_billingsley_al</description>
         <Point>
           <coordinates>-86.7114,32.6601,0</coordinates>
@@ -515,8 +427,7 @@ carrier_pop_billingsley_al</description>
       <Placemark>
         <name>Charlotte, NC</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_charlotte_nc</description>
         <Point>
           <coordinates>-80.8431,35.2271,0</coordinates>
@@ -525,8 +436,7 @@ carrier_pop_charlotte_nc</description>
       <Placemark>
         <name>Cheyenne, WY</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_cheyenne_wy</description>
         <Point>
           <coordinates>-104.8202,41.14,0</coordinates>
@@ -535,8 +445,7 @@ carrier_pop_cheyenne_wy</description>
       <Placemark>
         <name>Columbus, OH</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_columbus_oh</description>
         <Point>
           <coordinates>-82.9988,39.9612,0</coordinates>
@@ -545,8 +454,7 @@ carrier_pop_columbus_oh</description>
       <Placemark>
         <name>Dallas, TX</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_dallas_tx</description>
         <Point>
           <coordinates>-96.797,32.7767,0</coordinates>
@@ -555,8 +463,7 @@ carrier_pop_dallas_tx</description>
       <Placemark>
         <name>Denver, CO</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_denver_co</description>
         <Point>
           <coordinates>-104.9903,39.7392,0</coordinates>
@@ -565,8 +472,7 @@ carrier_pop_denver_co</description>
       <Placemark>
         <name>Fort Worth, TX</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_fort_worth_tx</description>
         <Point>
           <coordinates>-97.3308,32.7555,0</coordinates>
@@ -575,8 +481,7 @@ carrier_pop_fort_worth_tx</description>
       <Placemark>
         <name>Hayward, CA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_hayward_ca</description>
         <Point>
           <coordinates>-122.0808,37.6688,0</coordinates>
@@ -585,8 +490,7 @@ carrier_pop_hayward_ca</description>
       <Placemark>
         <name>Herndon, VA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_herndon_va</description>
         <Point>
           <coordinates>-77.3861,38.9696,0</coordinates>
@@ -595,8 +499,7 @@ carrier_pop_herndon_va</description>
       <Placemark>
         <name>Indianapolis, IN</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_indianapolis_in</description>
         <Point>
           <coordinates>-86.1581,39.7684,0</coordinates>
@@ -605,8 +508,7 @@ carrier_pop_indianapolis_in</description>
       <Placemark>
         <name>Jacksonville, FL</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_jacksonville_fl</description>
         <Point>
           <coordinates>-81.6557,30.3322,0</coordinates>
@@ -615,8 +517,7 @@ carrier_pop_jacksonville_fl</description>
       <Placemark>
         <name>Las Vegas, NV</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_las_vegas_nv</description>
         <Point>
           <coordinates>-115.1398,36.1699,0</coordinates>
@@ -625,8 +526,7 @@ carrier_pop_las_vegas_nv</description>
       <Placemark>
         <name>Los Angeles, CA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_los_angeles_ca</description>
         <Point>
           <coordinates>-118.2437,34.0522,0</coordinates>
@@ -635,8 +535,7 @@ carrier_pop_los_angeles_ca</description>
       <Placemark>
         <name>Madison, WI</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_madison_wi</description>
         <Point>
           <coordinates>-89.4012,43.0731,0</coordinates>
@@ -645,8 +544,7 @@ carrier_pop_madison_wi</description>
       <Placemark>
         <name>McLean, VA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_mclean_va</description>
         <Point>
           <coordinates>-77.1773,38.9339,0</coordinates>
@@ -655,8 +553,7 @@ carrier_pop_mclean_va</description>
       <Placemark>
         <name>Milwaukee, WI</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_milwaukee_wi</description>
         <Point>
           <coordinates>-87.9065,43.0389,0</coordinates>
@@ -665,8 +562,7 @@ carrier_pop_milwaukee_wi</description>
       <Placemark>
         <name>Ogden, UT</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_ogden_ut</description>
         <Point>
           <coordinates>-111.9738,41.223,0</coordinates>
@@ -675,8 +571,7 @@ carrier_pop_ogden_ut</description>
       <Placemark>
         <name>Omaha, NE</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_omaha_ne</description>
         <Point>
           <coordinates>-95.9345,41.2565,0</coordinates>
@@ -685,8 +580,7 @@ carrier_pop_omaha_ne</description>
       <Placemark>
         <name>Phoenix, AZ</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_phoenix_az</description>
         <Point>
           <coordinates>-112.074,33.4484,0</coordinates>
@@ -695,8 +589,7 @@ carrier_pop_phoenix_az</description>
       <Placemark>
         <name>Raleigh, NC</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_raleigh_nc</description>
         <Point>
           <coordinates>-78.6382,35.7796,0</coordinates>
@@ -705,8 +598,7 @@ carrier_pop_raleigh_nc</description>
       <Placemark>
         <name>Reno, NV</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_reno_nv</description>
         <Point>
           <coordinates>-119.8138,39.5296,0</coordinates>
@@ -715,8 +607,7 @@ carrier_pop_reno_nv</description>
       <Placemark>
         <name>Riverside, CA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_riverside_ca</description>
         <Point>
           <coordinates>-117.3962,33.9533,0</coordinates>
@@ -725,8 +616,7 @@ carrier_pop_riverside_ca</description>
       <Placemark>
         <name>Sacramento, CA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_sacramento_ca</description>
         <Point>
           <coordinates>-121.4944,38.5816,0</coordinates>
@@ -735,8 +625,7 @@ carrier_pop_sacramento_ca</description>
       <Placemark>
         <name>Salt Lake City, UT</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_salt_lake_city_ut</description>
         <Point>
           <coordinates>-111.891,40.7608,0</coordinates>
@@ -745,8 +634,7 @@ carrier_pop_salt_lake_city_ut</description>
       <Placemark>
         <name>San Antonio, TX</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_san_antonio_tx</description>
         <Point>
           <coordinates>-98.4936,29.4241,0</coordinates>
@@ -755,8 +643,7 @@ carrier_pop_san_antonio_tx</description>
       <Placemark>
         <name>San Bernadino, CA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_san_bernadino_ca</description>
         <Point>
           <coordinates>-117.2898,34.1083,0</coordinates>
@@ -765,8 +652,7 @@ carrier_pop_san_bernadino_ca</description>
       <Placemark>
         <name>San Diego, CA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_san_diego_ca</description>
         <Point>
           <coordinates>-117.1611,32.7157,0</coordinates>
@@ -775,8 +661,7 @@ carrier_pop_san_diego_ca</description>
       <Placemark>
         <name>San Francisco, CA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_san_francisco_ca</description>
         <Point>
           <coordinates>-122.4194,37.7749,0</coordinates>
@@ -785,8 +670,7 @@ carrier_pop_san_francisco_ca</description>
       <Placemark>
         <name>San Jose, CA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_san_jose_ca</description>
         <Point>
           <coordinates>-121.8863,37.3382,0</coordinates>
@@ -795,8 +679,7 @@ carrier_pop_san_jose_ca</description>
       <Placemark>
         <name>San Luis Obispo, CA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_san_luis_obispo_ca</description>
         <Point>
           <coordinates>-120.6596,35.2828,0</coordinates>
@@ -805,8 +688,7 @@ carrier_pop_san_luis_obispo_ca</description>
       <Placemark>
         <name>Seattle, WA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_seattle_wa</description>
         <Point>
           <coordinates>-122.3321,47.6062,0</coordinates>
@@ -815,8 +697,7 @@ carrier_pop_seattle_wa</description>
       <Placemark>
         <name>Stamford, CT</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_stamford_ct</description>
         <Point>
           <coordinates>-73.5387,41.0534,0</coordinates>
@@ -825,8 +706,7 @@ carrier_pop_stamford_ct</description>
       <Placemark>
         <name>Tallahassee, FL</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_tallahassee_fl</description>
         <Point>
           <coordinates>-84.2807,30.4383,0</coordinates>
@@ -835,8 +715,7 @@ carrier_pop_tallahassee_fl</description>
       <Placemark>
         <name>Tucson, AZ</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_tucson_az</description>
         <Point>
           <coordinates>-110.9747,32.2226,0</coordinates>
@@ -845,8 +724,7 @@ carrier_pop_tucson_az</description>
       <Placemark>
         <name>Tulsa, OK</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_tulsa_ok</description>
         <Point>
           <coordinates>-95.9928,36.154,0</coordinates>
@@ -855,18 +733,19 @@ carrier_pop_tulsa_ok</description>
       <Placemark>
         <name>Yakima, WA</name>
         <styleUrl>#node_aggregation</styleUrl>
-        <description>aggregation
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_yakima_wa</description>
         <Point>
           <coordinates>-120.5059,46.6021,0</coordinates>
         </Point>
       </Placemark>
+    </Folder>
+    <Folder>
+      <name>Core Nodes</name>
       <Placemark>
         <name>Albuquerque, NM</name>
         <styleUrl>#node_core</styleUrl>
-        <description>core
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_albuquerque_nm</description>
         <Point>
           <coordinates>-106.6504,35.0844,0</coordinates>
@@ -875,8 +754,7 @@ carrier_pop_albuquerque_nm</description>
       <Placemark>
         <name>Des Moines, IA</name>
         <styleUrl>#node_core</styleUrl>
-        <description>core
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_des_moines_ia</description>
         <Point>
           <coordinates>-93.6091,41.5868,0</coordinates>
@@ -885,256 +763,75 @@ carrier_pop_des_moines_ia</description>
       <Placemark>
         <name>Houston, TX</name>
         <styleUrl>#node_core</styleUrl>
-        <description>core
-Carrier 400G PoPs
+        <description>Carrier 400G PoPs
 carrier_pop_houston_tx</description>
         <Point>
           <coordinates>-95.3698,29.7604,0</coordinates>
         </Point>
       </Placemark>
+    </Folder>
+    <Folder>
+      <name>Secret East Regions</name>
       <Placemark>
-        <name>Akron, OH</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_akron_oh</description>
+        <name>AWS Secret East Region</name>
+        <styleUrl>#node_secret_east</styleUrl>
+        <description>Secret Regions - Cloud Service Providers
+csp_secret_aws_secret_east_region</description>
         <Point>
-          <coordinates>-81.519,41.0814,0</coordinates>
+          <coordinates>-82.9988,39.9612,0</coordinates>
         </Point>
       </Placemark>
       <Placemark>
-        <name>Augusta, GA</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_augusta_ga</description>
+        <name>Azure Secret East Region</name>
+        <styleUrl>#node_secret_east</styleUrl>
+        <description>Secret Regions - Cloud Service Providers
+csp_secret_azure_secret_east_region</description>
         <Point>
-          <coordinates>-81.9748,33.4735,0</coordinates>
+          <coordinates>-77.4753,38.7509,0</coordinates>
         </Point>
       </Placemark>
       <Placemark>
-        <name>Boise, ID</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_boise_id</description>
+        <name>OCI Secret East Region</name>
+        <styleUrl>#node_secret_east</styleUrl>
+        <description>Secret Regions - Cloud Service Providers
+csp_secret_oci_secret_east_region</description>
         <Point>
-          <coordinates>-116.2023,43.615,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Buffalo, NY</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_buffalo_ny</description>
-        <Point>
-          <coordinates>-78.8784,42.8864,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Chicago, IL</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_chicago_il</description>
-        <Point>
-          <coordinates>-87.6298,41.8781,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Cincinnati, OH</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_cincinnati_oh</description>
-        <Point>
-          <coordinates>-84.512,39.1031,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Cleveland, OH</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_cleveland_oh</description>
-        <Point>
-          <coordinates>-81.6944,41.4993,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Davenport, IA</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_davenport_ia</description>
-        <Point>
-          <coordinates>-90.5776,41.5236,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>El Paso, TX</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_el_paso_tx</description>
-        <Point>
-          <coordinates>-106.485,31.7619,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Kansas City, MO</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_kansas_city_mo</description>
-        <Point>
-          <coordinates>-94.5786,39.0997,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Minneapolis, MN</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_minneapolis_mn</description>
-        <Point>
-          <coordinates>-93.265,44.9778,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Missoula, MT</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_missoula_mt</description>
-        <Point>
-          <coordinates>-113.9966,46.8721,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Nashville, TN</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_nashville_tn</description>
-        <Point>
-          <coordinates>-86.7816,36.1627,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>New York, NY</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_new_york_ny</description>
-        <Point>
-          <coordinates>-74.006,40.7128,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Newark, NJ</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_newark_nj</description>
-        <Point>
-          <coordinates>-74.1724,40.7357,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Philadelphia, PA</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_philadelphia_pa</description>
-        <Point>
-          <coordinates>-75.1652,39.9526,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Pittsburgh, PA</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_pittsburgh_pa</description>
-        <Point>
-          <coordinates>-79.9959,40.4406,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Portland, OR</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_portland_or</description>
-        <Point>
-          <coordinates>-122.6765,45.5152,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Richmond, VA</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_richmond_va</description>
-        <Point>
-          <coordinates>-77.436,37.5407,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>South Bend, IN</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_south_bend_in</description>
-        <Point>
-          <coordinates>-86.25,41.6764,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>St. Louis, MO</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_st_louis_mo</description>
-        <Point>
-          <coordinates>-90.1994,38.627,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Sunnyvale, CA</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_sunnyvale_ca</description>
-        <Point>
-          <coordinates>-122.0363,37.3688,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Toledo, OH</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_toledo_oh</description>
-        <Point>
-          <coordinates>-83.5552,41.6528,0</coordinates>
-        </Point>
-      </Placemark>
-      <Placemark>
-        <name>Tustin, CA</name>
-        <styleUrl>#node_transit</styleUrl>
-        <description>transit
-Carrier 400G PoPs
-carrier_pop_tustin_ca</description>
-        <Point>
-          <coordinates>-117.8265,33.7459,0</coordinates>
+          <coordinates>-77.4874,39.0438,0</coordinates>
         </Point>
       </Placemark>
     </Folder>
     <Folder>
-      <name>Selected Edges</name>
+      <name>Secret West Regions</name>
+      <Placemark>
+        <name>AWS Secret West Region</name>
+        <styleUrl>#node_secret_west</styleUrl>
+        <description>Secret Regions - Cloud Service Providers
+csp_secret_aws_secret_west_region</description>
+        <Point>
+          <coordinates>-112.074,33.4484,0</coordinates>
+        </Point>
+      </Placemark>
+      <Placemark>
+        <name>Azure Secret West Region</name>
+        <styleUrl>#node_secret_west</styleUrl>
+        <description>Secret Regions - Cloud Service Providers
+csp_secret_azure_secret_west_region</description>
+        <Point>
+          <coordinates>-98.4936,29.4241,0</coordinates>
+        </Point>
+      </Placemark>
+      <Placemark>
+        <name>OCI Secret West Region</name>
+        <styleUrl>#node_secret_west</styleUrl>
+        <description>Secret Regions - Cloud Service Providers
+csp_secret_oci_secret_west_region</description>
+        <Point>
+          <coordinates>-97.3308,32.7555,0</coordinates>
+        </Point>
+      </Placemark>
+    </Folder>
+    <Folder>
+      <name>Edges</name>
       <Placemark>
         <name>AWS Secret East Region to Columbus, OH</name>
         <styleUrl>#edge_access</styleUrl>
@@ -1936,982 +1633,853 @@ carrier_pop_tustin_ca</description>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Akron, OH to Columbus, OH</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-109.7 miles
-northeast/overview</description>
+        <name>Albany, NY to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1052.5 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-81.519,41.0814,0 -82.9988,39.9612,0</coordinates>
+          <coordinates>-73.7562,42.6526,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Akron, OH to Toledo, OH</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-112.7 miles
-northeast</description>
+        <name>Albany, NY to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1652.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-81.519,41.0814,0 -83.5552,41.6528,0</coordinates>
+          <coordinates>-73.7562,42.6526,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Albany, NY to Buffalo, NY</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-260.3 miles
-northeast/overview</description>
+        <name>Albuquerque, NM to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>core_mesh
+920.7 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-73.7562,42.6526,0 -78.8784,42.8864,0</coordinates>
+          <coordinates>-106.6504,35.0844,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Albany, NY to Stamford, CT</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-111.1 miles
-northeast/overview</description>
+        <name>Ashburn, VA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1130.6 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-73.7562,42.6526,0 -73.5387,41.0534,0</coordinates>
+          <coordinates>-77.4875,39.0438,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Albuquerque, NM to Denver, CO</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-334.3 miles
-overview/west</description>
+        <name>Ashburn, VA to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1314.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-106.6504,35.0844,0 -104.9903,39.7392,0</coordinates>
+          <coordinates>-77.4875,39.0438,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Albuquerque, NM to El Paso, TX</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-229.8 miles
-southwest/west</description>
+        <name>Atlanta, GA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+885.3 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-106.6504,35.0844,0 -106.485,31.7619,0</coordinates>
+          <coordinates>-84.388,33.749,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Ashburn, VA to Baltimore, MD</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-49.9 miles
-northeast/overview</description>
+        <name>Atlanta, GA to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+703.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-77.4875,39.0438,0 -76.6122,39.2904,0</coordinates>
+          <coordinates>-84.388,33.749,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Ashburn, VA to Herndon, VA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-7.5 miles
-northeast/overview</description>
+        <name>Austin, TX to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+805.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-77.4875,39.0438,0 -77.3861,38.9696,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Atlanta, GA to Augusta, GA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-140.2 miles
-southeast/overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-84.388,33.749,0 -81.9748,33.4735,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Atlanta, GA to Billingsley, AL</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-153.9 miles
-southeast/overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-84.388,33.749,0 -86.7114,32.6601,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Atlanta, GA to Charlotte, NC</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-226.2 miles
-southeast/overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-84.388,33.749,0 -80.8431,35.2271,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Atlanta, GA to Nashville, TN</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-214.9 miles
-southeast/overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-84.388,33.749,0 -86.7816,36.1627,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Atlanta, GA to Tallahassee, FL</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-228.8 miles
-southeast/overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-84.388,33.749,0 -84.2807,30.4383,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Augusta, GA to Jacksonville, FL</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-217.8 miles
-southeast</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-81.9748,33.4735,0 -81.6557,30.3322,0</coordinates>
+          <coordinates>-97.7431,30.2672,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
         <name>Austin, TX to Houston, TX</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-146.2 miles
-southwest</description>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+146.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
           <coordinates>-97.7431,30.2672,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Austin, TX to San Antonio, TX</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-73.6 miles
-southwest</description>
+        <name>Baltimore, MD to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1080.7 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-97.7431,30.2672,0 -98.4936,29.4241,0</coordinates>
+          <coordinates>-76.6122,39.2904,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Baltimore, MD to McLean, VA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-39.0 miles
-northeast/overview</description>
+        <name>Baltimore, MD to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1334.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-76.6122,39.2904,0 -77.1773,38.9339,0</coordinates>
+          <coordinates>-76.6122,39.2904,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Baltimore, MD to Philadelphia, PA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-89.6 miles
-northeast/overview</description>
+        <name>Billingsley, AL to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1039.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-76.6122,39.2904,0 -75.1652,39.9526,0</coordinates>
+          <coordinates>-86.7114,32.6601,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
         <name>Billingsley, AL to Houston, TX</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-549.3 miles
-southeast/overview</description>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+549.3 miles</description>
         <LineString>
           <tessellate>1</tessellate>
           <coordinates>-86.7114,32.6601,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Boise, ID to Ogden, UT</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-271.7 miles
-overview/west</description>
+        <name>Charlotte, NC to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1009.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-116.2023,43.615,0 -111.9738,41.223,0</coordinates>
+          <coordinates>-80.8431,35.2271,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Boise, ID to Yakima, WA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-294.3 miles
-overview/west</description>
+        <name>Charlotte, NC to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+929.4 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-116.2023,43.615,0 -120.5059,46.6021,0</coordinates>
+          <coordinates>-80.8431,35.2271,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Buffalo, NY to Cleveland, OH</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-173.1 miles
-northeast/overview</description>
+        <name>Cheyenne, WY to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+431.5 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-78.8784,42.8864,0 -81.6944,41.4993,0</coordinates>
+          <coordinates>-104.8202,41.14,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Charlotte, NC to Nashville, TN</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-339.4 miles
-southeast/overview</description>
+        <name>Cheyenne, WY to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+584.4 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-80.8431,35.2271,0 -86.7816,36.1627,0</coordinates>
+          <coordinates>-104.8202,41.14,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Charlotte, NC to Raleigh, NC</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-129.8 miles
-southeast/overview</description>
+        <name>Columbus, OH to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+744.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-80.8431,35.2271,0 -78.6382,35.7796,0</coordinates>
+          <coordinates>-82.9988,39.9612,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Cheyenne, WY to Denver, CO</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-97.2 miles
-overview/west</description>
+        <name>Columbus, OH to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1387.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-104.8202,41.14,0 -104.9903,39.7392,0</coordinates>
+          <coordinates>-82.9988,39.9612,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Cheyenne, WY to Missoula, MT</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-603.3 miles
-overview/west</description>
+        <name>Dallas, TX to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+674.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-104.8202,41.14,0 -113.9966,46.8721,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Cheyenne, WY to Ogden, UT</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-371.9 miles
-overview/west</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-104.8202,41.14,0 -111.9738,41.223,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Cheyenne, WY to Omaha, NE</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-461.8 miles
-overview/west</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-104.8202,41.14,0 -95.9345,41.2565,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Chicago, IL to Davenport, IA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-154.0 miles
-overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-87.6298,41.8781,0 -90.5776,41.5236,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Chicago, IL to Indianapolis, IN</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-164.8 miles
-overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-87.6298,41.8781,0 -86.1581,39.7684,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Chicago, IL to Madison, WI</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-122.3 miles
-overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-87.6298,41.8781,0 -89.4012,43.0731,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Chicago, IL to Milwaukee, WI</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-81.4 miles
-overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-87.6298,41.8781,0 -87.9065,43.0389,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Chicago, IL to South Bend, IN</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-72.4 miles
-overview/northeast</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-87.6298,41.8781,0 -86.25,41.6764,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Chicago, IL to St. Louis, MO</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-262.3 miles
-overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-87.6298,41.8781,0 -90.1994,38.627,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Cincinnati, OH to Columbus, OH</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-100.1 miles
-northeast/overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-84.512,39.1031,0 -82.9988,39.9612,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Cincinnati, OH to Indianapolis, IN</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-99.1 miles
-northeast/overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-84.512,39.1031,0 -86.1581,39.7684,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Cleveland, OH to Pittsburgh, PA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-114.9 miles
-northeast/overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-81.6944,41.4993,0 -79.9959,40.4406,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Cleveland, OH to Toledo, OH</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-96.8 miles
-northeast/overview</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-81.6944,41.4993,0 -83.5552,41.6528,0</coordinates>
-        </LineString>
-      </Placemark>
-      <Placemark>
-        <name>Dallas, TX to Fort Worth, TX</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-31.0 miles
-southwest</description>
-        <LineString>
-          <tessellate>1</tessellate>
-          <coordinates>-96.797,32.7767,0 -97.3308,32.7555,0</coordinates>
+          <coordinates>-96.797,32.7767,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
         <name>Dallas, TX to Houston, TX</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-224.8 miles
-southwest</description>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+224.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
           <coordinates>-96.797,32.7767,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Davenport, IA to Des Moines, IA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-156.8 miles
-overview</description>
+        <name>Denver, CO to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+334.3 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-90.5776,41.5236,0 -93.6091,41.5868,0</coordinates>
+          <coordinates>-104.9903,39.7392,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Denver, CO to Omaha, NE</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-487.0 miles
-overview/west</description>
+        <name>Denver, CO to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+609.6 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-104.9903,39.7392,0 -95.9345,41.2565,0</coordinates>
+          <coordinates>-104.9903,39.7392,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Denver, CO to Salt Lake City, UT</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-370.6 miles
-overview/west</description>
+        <name>Des Moines, IA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>core_mesh
+943.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-104.9903,39.7392,0 -111.891,40.7608,0</coordinates>
+          <coordinates>-93.6091,41.5868,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Des Moines, IA to Kansas City, MO</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-179.3 miles
-overview</description>
+        <name>Des Moines, IA to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>core_mesh
+899.7 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-93.6091,41.5868,0 -94.5786,39.0997,0</coordinates>
+          <coordinates>-93.6091,41.5868,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Des Moines, IA to Minneapolis, MN</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-234.9 miles
-overview</description>
+        <name>Fort Worth, TX to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+643.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-93.6091,41.5868,0 -93.265,44.9778,0</coordinates>
+          <coordinates>-97.3308,32.7555,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Des Moines, IA to Omaha, NE</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-122.6 miles
-overview</description>
+        <name>Fort Worth, TX to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+255.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-93.6091,41.5868,0 -95.9345,41.2565,0</coordinates>
+          <coordinates>-97.3308,32.7555,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>El Paso, TX to San Antonio, TX</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-501.8 miles
-southwest</description>
+        <name>Hayward, CA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1306.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-106.485,31.7619,0 -98.4936,29.4241,0</coordinates>
+          <coordinates>-122.0808,37.6688,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>El Paso, TX to Tucson, AZ</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-265.0 miles
-overview/southwest</description>
+        <name>Hayward, CA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1613.4 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-106.485,31.7619,0 -110.9747,32.2226,0</coordinates>
+          <coordinates>-122.0808,37.6688,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Fort Worth, TX to Tulsa, OK</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-246.9 miles
-southwest</description>
+        <name>Herndon, VA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1138.1 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-97.3308,32.7555,0 -95.9928,36.154,0</coordinates>
+          <coordinates>-77.3861,38.9696,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Hayward, CA to San Francisco, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-19.9 miles
-overview/west</description>
+        <name>Herndon, VA to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1306.7 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-122.0808,37.6688,0 -122.4194,37.7749,0</coordinates>
+          <coordinates>-77.3861,38.9696,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Hayward, CA to Sunnyvale, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-20.9 miles
-overview/west</description>
+        <name>Indianapolis, IN to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+475.6 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-122.0808,37.6688,0 -122.0363,37.3688,0</coordinates>
+          <coordinates>-86.1581,39.7684,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Herndon, VA to McLean, VA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-11.5 miles
-northeast/overview</description>
+        <name>Indianapolis, IN to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1188.6 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-77.3861,38.9696,0 -77.1773,38.9339,0</coordinates>
+          <coordinates>-86.1581,39.7684,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Houston, TX to San Antonio, TX</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-189.1 miles
-southwest</description>
+        <name>Jacksonville, FL to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1243.3 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-95.3698,29.7604,0 -98.4936,29.4241,0</coordinates>
+          <coordinates>-81.6557,30.3322,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Houston, TX to Tallahassee, FL</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-664.3 miles
-southeast/overview</description>
+        <name>Jacksonville, FL to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+820.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-95.3698,29.7604,0 -84.2807,30.4383,0</coordinates>
+          <coordinates>-81.6557,30.3322,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Indianapolis, IN to St. Louis, MO</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-230.3 miles
-overview</description>
+        <name>Las Vegas, NV to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1091.0 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-86.1581,39.7684,0 -90.1994,38.627,0</coordinates>
+          <coordinates>-115.1398,36.1699,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Jacksonville, FL to Tallahassee, FL</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-156.6 miles
-southeast/overview</description>
+        <name>Las Vegas, NV to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1342.7 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-81.6557,30.3322,0 -84.2807,30.4383,0</coordinates>
+          <coordinates>-115.1398,36.1699,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Kansas City, MO to St. Louis, MO</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-237.8 miles
-overview</description>
+        <name>Los Angeles, CA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1012.4 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-94.5786,39.0997,0 -90.1994,38.627,0</coordinates>
+          <coordinates>-118.2437,34.0522,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Kansas City, MO to Tulsa, OK</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-217.7 miles
-overview</description>
+        <name>Los Angeles, CA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1584.7 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-94.5786,39.0997,0 -95.9928,36.154,0</coordinates>
+          <coordinates>-118.2437,34.0522,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Las Vegas, NV to Salt Lake City, UT</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-362.6 miles
-overview/west</description>
+        <name>Madison, WI to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+608.4 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-115.1398,36.1699,0 -111.891,40.7608,0</coordinates>
+          <coordinates>-89.4012,43.0731,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Las Vegas, NV to San Bernadino, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-187.2 miles
-overview/west</description>
+        <name>Madison, WI to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1342.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-115.1398,36.1699,0 -117.2898,34.1083,0</coordinates>
+          <coordinates>-89.4012,43.0731,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Los Angeles, CA to San Bernadino, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-54.7 miles
-overview/west</description>
+        <name>McLean, VA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1119.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-118.2437,34.0522,0 -117.2898,34.1083,0</coordinates>
+          <coordinates>-77.1773,38.9339,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Los Angeles, CA to San Luis Obispo, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-161.5 miles
-overview/west</description>
+        <name>McLean, VA to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1295.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-118.2437,34.0522,0 -120.6596,35.2828,0</coordinates>
+          <coordinates>-77.1773,38.9339,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Los Angeles, CA to Tustin, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-31.9 miles
-overview/west</description>
+        <name>Milwaukee, WI to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+532.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-118.2437,34.0522,0 -117.8265,33.7459,0</coordinates>
+          <coordinates>-87.9065,43.0389,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Madison, WI to Milwaukee, WI</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-75.5 miles
-overview</description>
+        <name>Milwaukee, WI to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1302.0 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-89.4012,43.0731,0 -87.9065,43.0389,0</coordinates>
+          <coordinates>-87.9065,43.0389,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>McLean, VA to Richmond, VA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-97.3 miles
-northeast/overview</description>
+        <name>Ogden, UT to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+737.1 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-77.1773,38.9339,0 -77.436,37.5407,0</coordinates>
+          <coordinates>-111.9738,41.223,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Milwaukee, WI to Minneapolis, MN</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-298.0 miles
-overview</description>
+        <name>Ogden, UT to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+956.4 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-87.9065,43.0389,0 -93.265,44.9778,0</coordinates>
+          <coordinates>-111.9738,41.223,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Missoula, MT to Yakima, WA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-308.7 miles
-overview/west</description>
+        <name>Omaha, NE to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+821.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-113.9966,46.8721,0 -120.5059,46.6021,0</coordinates>
+          <coordinates>-95.9345,41.2565,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Nashville, TN to St. Louis, MO</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-253.3 miles
-overview</description>
+        <name>Omaha, NE to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+122.6 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-86.7816,36.1627,0 -90.1994,38.627,0</coordinates>
+          <coordinates>-95.9345,41.2565,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>New York, NY to Newark, NJ</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-8.9 miles
-northeast/overview</description>
+        <name>Phoenix, AZ to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+600.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-74.006,40.7128,0 -74.1724,40.7357,0</coordinates>
+          <coordinates>-112.074,33.4484,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>New York, NY to Stamford, CT</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-33.9 miles
-northeast/overview</description>
+        <name>Phoenix, AZ to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1832.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-74.006,40.7128,0 -73.5387,41.0534,0</coordinates>
+          <coordinates>-112.074,33.4484,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Newark, NJ to Philadelphia, PA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-75.2 miles
-northeast/overview</description>
+        <name>Raleigh, NC to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1355.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-74.1724,40.7357,0 -75.1652,39.9526,0</coordinates>
+          <coordinates>-78.6382,35.7796,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Ogden, UT to Salt Lake City, UT</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-32.2 miles
-overview/west</description>
+        <name>Raleigh, NC to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1059.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-111.9738,41.223,0 -111.891,40.7608,0</coordinates>
+          <coordinates>-78.6382,35.7796,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Philadelphia, PA to Pittsburgh, PA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-257.1 miles
-northeast/overview</description>
+        <name>Reno, NV to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1513.3 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-75.1652,39.9526,0 -79.9959,40.4406,0</coordinates>
+          <coordinates>-119.8138,39.5296,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Phoenix, AZ to San Bernadino, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-303.0 miles
-overview/west</description>
+        <name>Reno, NV to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1407.0 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-112.074,33.4484,0 -117.2898,34.1083,0</coordinates>
+          <coordinates>-119.8138,39.5296,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Phoenix, AZ to San Diego, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-298.8 miles
-overview/west</description>
+        <name>Riverside, CA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+986.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-112.074,33.4484,0 -117.1611,32.7157,0</coordinates>
+          <coordinates>-117.3962,33.9533,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Phoenix, AZ to Tucson, AZ</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-106.0 miles
-overview/southwest</description>
+        <name>Riverside, CA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1542.2 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-112.074,33.4484,0 -110.9747,32.2226,0</coordinates>
+          <coordinates>-117.3962,33.9533,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Portland, OR to Sacramento, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-482.9 miles
-overview/west</description>
+        <name>Sacramento, CA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1401.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-122.6765,45.5152,0 -121.4944,38.5816,0</coordinates>
+          <coordinates>-121.4944,38.5816,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Portland, OR to Seattle, WA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-145.4 miles
-overview/west</description>
+        <name>Sacramento, CA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1518.5 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-122.6765,45.5152,0 -122.3321,47.6062,0</coordinates>
+          <coordinates>-121.4944,38.5816,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Raleigh, NC to Richmond, VA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-138.7 miles
-northeast/overview</description>
+        <name>Salt Lake City, UT to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+704.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-78.6382,35.7796,0 -77.436,37.5407,0</coordinates>
+          <coordinates>-111.891,40.7608,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Reno, NV to Sacramento, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-111.4 miles
-overview/west</description>
+        <name>Salt Lake City, UT to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+988.6 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-119.8138,39.5296,0 -121.4944,38.5816,0</coordinates>
+          <coordinates>-111.891,40.7608,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Reno, NV to Salt Lake City, UT</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-426.8 miles
-overview/west</description>
+        <name>San Antonio, TX to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+731.6 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-119.8138,39.5296,0 -111.891,40.7608,0</coordinates>
+          <coordinates>-98.4936,29.4241,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Riverside, CA to San Bernadino, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-12.3 miles
-overview/west</description>
+        <name>San Antonio, TX to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+189.1 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-117.3962,33.9533,0 -117.2898,34.1083,0</coordinates>
+          <coordinates>-98.4936,29.4241,0 -95.3698,29.7604,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Riverside, CA to San Diego, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-86.6 miles
-overview/west</description>
+        <name>San Bernadino, CA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+903.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-117.3962,33.9533,0 -117.1611,32.7157,0</coordinates>
+          <coordinates>-117.2898,34.1083,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Sacramento, CA to San Francisco, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-75.0 miles
-overview/west</description>
+        <name>San Bernadino, CA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1529.9 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-121.4944,38.5816,0 -122.4194,37.7749,0</coordinates>
+          <coordinates>-117.2898,34.1083,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>San Diego, CA to Tustin, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-80.9 miles
-overview/west</description>
+        <name>San Diego, CA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+899.6 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-117.1611,32.7157,0 -117.8265,33.7459,0</coordinates>
+          <coordinates>-117.1611,32.7157,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>San Jose, CA to San Luis Obispo, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-157.6 miles
-overview/west</description>
+        <name>San Diego, CA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1628.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-121.8863,37.3382,0 -120.6596,35.2828,0</coordinates>
+          <coordinates>-117.1611,32.7157,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>San Jose, CA to Sunnyvale, CA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-8.5 miles
-overview/west</description>
+        <name>San Francisco, CA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1326.8 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-121.8863,37.3382,0 -122.0363,37.3688,0</coordinates>
+          <coordinates>-122.4194,37.7749,0 -106.6504,35.0844,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>Seattle, WA to Yakima, WA</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-110.4 miles
-overview/west</description>
+        <name>San Francisco, CA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1593.5 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-122.3321,47.6062,0 -120.5059,46.6021,0</coordinates>
+          <coordinates>-122.4194,37.7749,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
       <Placemark>
-        <name>South Bend, IN to Toledo, OH</name>
-        <styleUrl>#edge_physical</styleUrl>
-        <description>carrier_physical
-139.1 miles
-northeast</description>
+        <name>San Jose, CA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1277.5 miles</description>
         <LineString>
           <tessellate>1</tessellate>
-          <coordinates>-86.25,41.6764,0 -83.5552,41.6528,0</coordinates>
+          <coordinates>-121.8863,37.3382,0 -106.6504,35.0844,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>San Jose, CA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1642.8 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-121.8863,37.3382,0 -93.6091,41.5868,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>San Luis Obispo, CA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1120.0 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-120.6596,35.2828,0 -106.6504,35.0844,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>San Luis Obispo, CA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1800.4 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-120.6596,35.2828,0 -93.6091,41.5868,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Seattle, WA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1871.4 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-122.3321,47.6062,0 -106.6504,35.0844,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Seattle, WA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1606.8 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-122.3321,47.6062,0 -93.6091,41.5868,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Stamford, CT to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1163.5 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-73.5387,41.0534,0 -93.6091,41.5868,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Stamford, CT to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1541.8 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-73.5387,41.0534,0 -95.3698,29.7604,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Tallahassee, FL to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1114.1 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-84.2807,30.4383,0 -93.6091,41.5868,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Tallahassee, FL to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+664.3 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-84.2807,30.4383,0 -95.3698,29.7604,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Tucson, AZ to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+494.8 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-110.9747,32.2226,0 -106.6504,35.0844,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Tucson, AZ to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1938.9 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-110.9747,32.2226,0 -93.6091,41.5868,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Tulsa, OK to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+397.0 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-95.9928,36.154,0 -93.6091,41.5868,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Tulsa, OK to Houston, TX</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+502.7 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-95.9928,36.154,0 -95.3698,29.7604,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Yakima, WA to Albuquerque, NM</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1303.0 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-120.5059,46.6021,0 -106.6504,35.0844,0</coordinates>
+        </LineString>
+      </Placemark>
+      <Placemark>
+        <name>Yakima, WA to Des Moines, IA</name>
+        <styleUrl>#edge_backbone</styleUrl>
+        <description>aggregation_to_core
+1496.4 miles</description>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>-120.5059,46.6021,0 -93.6091,41.5868,0</coordinates>
         </LineString>
       </Placemark>
     </Folder>

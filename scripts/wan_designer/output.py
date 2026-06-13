@@ -154,25 +154,39 @@ def write_csv(output_path: Path, artifacts: DesignArtifacts) -> None:
             row = csv_edge_row(design, nodes_by_id[left], nodes_by_id[right], meta)
             writer.writerow(row)
 
-def kml_color_for_role(role: str) -> str:
-    """Return the KML ABGR color string for a tier role."""
-    return {
-        "access": "ff25a8f9",
-        "aggregation": "ff00a5ff",
-        "core": "ff0000d9",
-        "transit": "ff999999",
-    }.get(role, "ffffffff")
+# (layer key, folder name, icon ABGR color, icon scale). KML colors are
+# aabbggrr: blue access, purple aggregation, red core, orange secret regions.
+LAYER_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    ("access", "Access Nodes", "ffff0000", "0.85"),
+    ("aggregation", "Aggregation Points", "ff800080", "0.9"),
+    ("core", "Core Nodes", "ff0000ff", "1.1"),
+    ("secret_east", "Secret East Regions", "ff00a5ff", "0.95"),
+    ("secret_west", "Secret West Regions", "ff00a5ff", "0.95"),
+)
+
+def kml_layer_for_node(node: Node, role: str) -> str | None:
+    """Map a node to one of the five output layers, or None to omit it."""
+    if node.kind == "csp_secret":
+        lowered = node.name.lower()
+        if "east" in lowered:
+            return "secret_east"
+        if "west" in lowered:
+            return "secret_west"
+        return None
+    if role in ("access", "aggregation", "core"):
+        return role
+    return None
 
 def write_kml_styles(document: ET.Element) -> None:
     """Append node and edge style definitions to the KML document."""
     circle = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
-    for role in ("access", "aggregation", "core", "transit"):
-        style = ET.SubElement(document, "Style", id=f"node_{role}")
+    for key, _name, color, scale in LAYER_SPECS:
+        style = ET.SubElement(document, "Style", id=f"node_{key}")
         icon_style = ET.SubElement(style, "IconStyle")
-        ET.SubElement(icon_style, "color").text = kml_color_for_role(role)
-        ET.SubElement(icon_style, "scale").text = "1.1" if role == "core" else "0.85"
+        ET.SubElement(icon_style, "color").text = color
+        ET.SubElement(icon_style, "scale").text = scale
         ET.SubElement(ET.SubElement(icon_style, "Icon"), "href").text = circle
-    for edge_kind, color, width in (("access", "ff25a8f9", "1.4"), ("physical", "ff333333", "2.2")):
+    for edge_kind, color, width in (("access", "ffff0000", "1.4"), ("backbone", "ff0000ff", "2.2")):
         style = ET.SubElement(document, "Style", id=f"edge_{edge_kind}")
         line_style = ET.SubElement(style, "LineStyle")
         ET.SubElement(line_style, "color").text = color
@@ -188,33 +202,39 @@ def add_kml_line(folder: ET.Element, label: str, style: str, desc: str, ends: st
     ET.SubElement(line, "tessellate").text = "1"
     ET.SubElement(line, "coordinates").text = ends
 
-def write_kml_nodes(folder: ET.Element, design: Design, nodes: list[Node]) -> None:
-    """Append a placemark for every included node to the KML folder."""
+def write_kml_nodes(
+    folder: ET.Element, design: Design, nodes: list[Node], layer_key: str
+) -> None:
+    """Append a placemark for every included node in one output layer."""
     included = included_node_ids(design)
-    for node in sorted(
-        (node for node in nodes if node.id in included),
-        key=lambda item: (node_role(item.id, design, item), item.name),
-    ):
-        role = node_role(node.id, design, node)
+    members = [
+        node
+        for node in nodes
+        if node.id in included
+        and kml_layer_for_node(node, node_role(node.id, design, node)) == layer_key
+    ]
+    for node in sorted(members, key=lambda item: item.name):
         placemark = ET.SubElement(folder, "Placemark")
         ET.SubElement(placemark, "name").text = node.name
-        ET.SubElement(placemark, "styleUrl").text = f"#node_{role}"
-        ET.SubElement(placemark, "description").text = f"{role}\n{node.category}\n{node.id}"
+        ET.SubElement(placemark, "styleUrl").text = f"#node_{layer_key}"
+        ET.SubElement(placemark, "description").text = f"{node.category}\n{node.id}"
         point = ET.SubElement(placemark, "Point")
         ET.SubElement(point, "coordinates").text = f"{node.lon},{node.lat},0"
 
 def kml_edge_specs(artifacts: DesignArtifacts) -> list[tuple[str, str, str, str]]:
-    """List (source_id, target_id, style, description) for every selected edge."""
+    """List (source_id, target_id, style, description) for every logical edge.
+
+    Backbone links are drawn end-to-end between aggregation and core PoPs,
+    skipping the intermediate Carrier PoPs each routed path passes through.
+    """
     design = artifacts.design
     specs: list[tuple[str, str, str, str]] = []
     for edge in sorted(design.access_edges, key=lambda item: (item.source, item.target)):
         desc = f"access_to_aggregation\n{edge.distance_miles:.1f} miles"
         specs.append((edge.source, edge.target, "#edge_access", desc))
-    for left, right in sorted_physical_edges(design):
-        physical_edge = artifacts.physical_edges[edge_key(left, right)]
-        miles = f"{physical_edge.distance_miles:.1f} miles"
-        desc = f"carrier_physical\n{miles}\n{physical_edge.source_page}"
-        specs.append((left, right, "#edge_physical", desc))
+    for use in sorted(design.path_uses, key=lambda item: (item.source, item.target)):
+        desc = f"{use.purpose}\n{use.distance_miles:.1f} miles"
+        specs.append((use.source, use.target, "#edge_backbone", desc))
     return specs
 
 def write_kml_edges(folder: ET.Element, artifacts: DesignArtifacts) -> None:
@@ -226,18 +246,19 @@ def write_kml_edges(folder: ET.Element, artifacts: DesignArtifacts) -> None:
         add_kml_line(folder, f"{source.name} to {target.name}", style, desc, ends)
 
 def write_kml(output_path: Path, artifacts: DesignArtifacts) -> None:
-    """Write nodes and selected edges as a styled KML map."""
+    """Write the design as a KML map with one folder per tier layer."""
     kml = ET.Element("kml", xmlns=KML_NS["k"])
     document = ET.SubElement(kml, "Document")
     ET.SubElement(document, "name").text = "Three-Tier Carrier WAN Design"
     write_kml_styles(document)
 
-    node_folder = ET.SubElement(document, "Folder")
-    ET.SubElement(node_folder, "name").text = "Included Nodes"
-    write_kml_nodes(node_folder, artifacts.design, artifacts.nodes)
+    for key, name, _color, _scale in LAYER_SPECS:
+        folder = ET.SubElement(document, "Folder")
+        ET.SubElement(folder, "name").text = name
+        write_kml_nodes(folder, artifacts.design, artifacts.nodes, key)
 
     edge_folder = ET.SubElement(document, "Folder")
-    ET.SubElement(edge_folder, "name").text = "Selected Edges"
+    ET.SubElement(edge_folder, "name").text = "Edges"
     write_kml_edges(edge_folder, artifacts)
 
     ET.indent(kml, space="  ")

@@ -56,7 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-dir",
-        default="outputs/carrier_network_design",
+        default="outputs",
         help="Directory for JSON, CSV, KML, and DOT outputs.",
     )
     parser.add_argument(
