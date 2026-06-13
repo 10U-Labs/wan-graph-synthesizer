@@ -6,69 +6,29 @@ from pathlib import Path
 
 import pytest
 
+import fixtures
 from wan_designer import Node, load_carrier_edges, load_nodes
-
-KML = """<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <name>Top</name>
-    <Folder>
-      <name>Carrier 400G PoPs</name>
-      <Placemark>
-        <name>Denver, CO</name>
-        <Point><coordinates>-104.9903,39.7392,0</coordinates></Point>
-      </Placemark>
-      <Placemark>
-        <name>Kansas City, MO</name>
-        <Point><coordinates>-94.5786,39.0997,0</coordinates></Point>
-      </Placemark>
-    </Folder>
-    <Folder>
-      <name>F-35 CONUS Installations</name>
-      <Placemark>
-        <name>Buckley</name>
-        <Point><coordinates>-104.75,39.7,0</coordinates></Point>
-      </Placemark>
-    </Folder>
-  </Document>
-</kml>
-"""
-
-EDGES_CSV = """source,target,source_page,note
-"Denver, CO","Kansas City, MO",overview,visible route
-"""
 
 
 @pytest.fixture(name="nodes", scope="module")
 def fixture_nodes(tmp_path_factory: pytest.TempPathFactory) -> list[Node]:
-    """Fixture providing the nodes."""
-    path = tmp_path_factory.mktemp("kml") / "doc.kml"
-    path.write_text(KML, encoding="utf-8")
-    return load_nodes(path)
+    """Fixture providing the nodes parsed from the sample KML."""
+    kml, _edges = fixtures.write_sample_inputs(tmp_path_factory.mktemp("kml"))
+    return load_nodes(kml)
 
 
-def test_loads_all_placemarks(nodes: list[Node]) -> None:
-    """Loads all placemarks."""
-    assert len(nodes) == 3
+def test_loads_all_geometry_placemarks(nodes: list[Node]) -> None:
+    """Loads all geometry placemarks."""
+    assert len(nodes) == 4
 
 
-def test_classifies_carrier_pops(nodes: list[Node]) -> None:
-    """Classifies carrier pops."""
+def test_classifies_two_carrier_pops(nodes: list[Node]) -> None:
+    """Classifies two carrier pops."""
     assert sum(1 for node in nodes if node.kind == "carrier_pop") == 2
 
 
-def test_classifies_access_node(nodes: list[Node]) -> None:
-    """Classifies access node."""
-    assert any(node.kind == "f35" for node in nodes)
-
-
-def test_loads_edge_with_computed_distance(
-    nodes: list[Node], tmp_path: Path
-) -> None:
-    """Loads edge with computed distance."""
-    carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
-    csv_path = tmp_path / "edges.csv"
-    csv_path.write_text(EDGES_CSV, encoding="utf-8")
-    edges = load_carrier_edges(csv_path, carrier_pops)
-    distance = next(iter(edges.values())).distance_miles
-    assert distance == pytest.approx(558.0, abs=20.0)
+def test_loads_edge_between_pops(nodes: list[Node], tmp_path: Path) -> None:
+    """Loads edge between pops."""
+    pops = [node for node in nodes if node.kind == "carrier_pop"]
+    _kml, edges_path = fixtures.write_sample_inputs(tmp_path)
+    assert len(load_carrier_edges(edges_path, pops)) == 1

@@ -121,7 +121,6 @@ def load_carrier_edges(path: Path, carrier_pops: list[Node]) -> dict[tuple[str, 
         raise ValueError(f"Carrier edge file does not exist: {path}")
 
     by_name = {pop.name.lower(): pop for pop in carrier_pops}
-    by_id = {pop.id: pop for pop in carrier_pops}
     edges: dict[tuple[str, str], PhysicalEdge] = {}
 
     with path.open(newline="", encoding="utf-8") as handle:
@@ -149,9 +148,6 @@ def load_carrier_edges(path: Path, carrier_pops: list[Node]) -> dict[tuple[str, 
                 note=row.get("note", ""),
             )
 
-    unknown_ids = {node_id for pair in edges for node_id in pair} - set(by_id)
-    if unknown_ids:
-        raise ValueError(f"Internal edge loading error for IDs: {sorted(unknown_ids)}")
     return edges
 
 def build_adjacency(

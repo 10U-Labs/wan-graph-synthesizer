@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 
+import fixtures
 from wan_designer import main
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -19,15 +20,12 @@ def fixture_design(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     """Fixture providing the design."""
     output_dir = tmp_path_factory.mktemp("design")
     exit_code = main(
-        [
-            str(REPO_ROOT / "f35_sentinel_secret_regions_carrier_400g.kmz"),
-            "--carrier-edges",
-            str(REPO_ROOT / "data" / "carrier_edges.csv"),
-            "--pop-roles",
-            str(REPO_ROOT / "data" / "carrier_pop_roles.csv"),
-            "--output-dir",
-            str(output_dir),
-        ]
+        fixtures.design_args(
+            REPO_ROOT / "f35_sentinel_secret_regions_carrier_400g.kmz",
+            REPO_ROOT / "data" / "carrier_edges.csv",
+            output_dir,
+            roles=str(REPO_ROOT / "data" / "carrier_pop_roles.csv"),
+        )
     )
     text = (output_dir / "network_design.json").read_text(encoding="utf-8")
     payload: dict[str, Any] = json.loads(text)

@@ -118,6 +118,35 @@ def test_three_cores_still_returns_two_paths() -> None:
     assert len(paths) == 2
 
 
+def test_dense_graph_routes_two_disjoint_paths() -> None:
+    """Dense graph routes two disjoint paths."""
+    adjacency = adjacency_from_edges(
+        [
+            ("S", "A", 1.0),
+            ("S", "B", 1.0),
+            ("A", "B", 1.0),
+            ("A", "C1", 1.0),
+            ("A", "C2", 3.0),
+            ("B", "C1", 3.0),
+            ("B", "C2", 1.0),
+        ]
+    )
+    _distance, paths = node_disjoint_paths_to_cores(adjacency, "S", ("C1", "C2"))
+    assert {path[-1] for path in paths} == {"C1", "C2"}
+
+
+def test_fewer_cores_than_count_is_infeasible() -> None:
+    """Fewer cores than count is infeasible."""
+    _distance, paths = node_disjoint_paths_to_cores(DIAMOND, "S", ("C1",), 2)
+    assert not paths
+
+
+def test_source_absent_from_graph_is_infeasible() -> None:
+    """Source absent from graph is infeasible."""
+    _distance, paths = node_disjoint_paths_to_cores(DIAMOND, "Z", ("C1", "C2"))
+    assert not paths
+
+
 def test_prefers_cheaper_pair_of_cores() -> None:
     """Prefers cheaper pair of cores."""
     adjacency = adjacency_from_edges(

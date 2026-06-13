@@ -97,7 +97,7 @@ jobs:
           --fail-on=C,R,W --fail-under=10.0
       - name: Run pylint on tests
         run: >-
-          PYTHONPATH=.:scripts python3 -m pylint --recursive=y
+          PYTHONPATH=.:scripts:test python3 -m pylint --recursive=y
           test/
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on source
@@ -106,7 +106,7 @@ jobs:
           --explicit-package-bases scripts/
       - name: Run mypy on tests
         run: >-
-          MYPYPATH=scripts python3 -m mypy --strict
+          MYPYPATH=scripts:test python3 -m mypy --strict
           --explicit-package-bases test/
       - name: Detect copy-paste in source
         run: >-
@@ -130,11 +130,15 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Install tools
-        run: pip install pytest
-      - name: Run unit tests
+        run: pip install pytest pytest-cov
+      - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:scripts python3 -m pytest
           test/unit/ --verbose --pythonwarnings=error
+          --cov=wan_designer
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
 name: design
 on:
   pull_request:

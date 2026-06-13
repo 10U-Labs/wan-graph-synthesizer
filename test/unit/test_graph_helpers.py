@@ -17,6 +17,7 @@ from wan_designer import (
     slugify,
     Node,
 )
+from wan_designer.graphs import path_edge_keys
 
 
 def make_node(node_id: str, lat: float, lon: float) -> Node:
@@ -114,3 +115,55 @@ def test_unreachable_target_has_infinite_distance() -> None:
     adjacency = {"a": [("b", 1.0)], "b": [("a", 1.0)], "c": []}
     distances, _predecessors = dijkstra(adjacency, "a")
     assert distances.get("c", math.inf) == math.inf
+
+
+def test_classify_category_f35() -> None:
+    """Classify category f35."""
+    assert classify_category("F-35 CONUS Installations") == "f35"
+
+
+def test_classify_category_falls_back_to_slug() -> None:
+    """Classify category falls back to slug."""
+    assert classify_category("Mystery Folder") == "mystery_folder"
+
+
+def test_dijkstra_relaxes_past_a_stale_heap_entry() -> None:
+    """Dijkstra relaxes past a stale heap entry."""
+    adjacency = {
+        "a": [("b", 10.0), ("c", 1.0)],
+        "b": [("a", 10.0), ("c", 1.0)],
+        "c": [("a", 1.0), ("b", 1.0)],
+    }
+    distances, _predecessors = dijkstra(adjacency, "a")
+    assert distances["b"] == 2.0
+
+
+def test_reconstruct_path_source_equals_target() -> None:
+    """Reconstruct path source equals target."""
+    assert reconstruct_path("a", "a", {}) == ("a",)
+
+
+def test_reconstruct_path_unreachable_returns_empty() -> None:
+    """Reconstruct path unreachable returns empty."""
+    assert not reconstruct_path("a", "z", {})
+
+
+def test_reconstruct_path_broken_chain_returns_empty() -> None:
+    """Reconstruct path broken chain returns empty."""
+    assert not reconstruct_path("a", "c", {"c": "b"})
+
+
+def test_path_edge_keys_for_a_three_node_path() -> None:
+    """Path edge keys for a three node path."""
+    assert path_edge_keys(("a", "b", "c")) == {edge_key("a", "b"), edge_key("b", "c")}
+
+
+def test_dfs_root_with_two_children_is_an_articulation_point() -> None:
+    """Dfs root with two children is an articulation point."""
+    assert articulation_points({"a", "b", "c"}, {("a", "b"), ("a", "c")}) == {"a"}
+
+
+def test_connected_components_ignores_external_endpoints() -> None:
+    """Connected components ignores external endpoints."""
+    components = connected_components({"a", "b"}, {("a", "b"), ("a", "z")})
+    assert components == [["a", "b"]]
