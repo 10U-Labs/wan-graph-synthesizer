@@ -3,8 +3,13 @@
 
 The operator role pins for the canonical design are expressed as explicit CLI
 flags (not hidden constants): Ashburn and Salt Lake City are co-located
-core+aggregation facilities, El Paso anchors the southwest as a core, Herndon is
-an aggregation, and Ogden is barred from every selected role.
+core+aggregation facilities, El Paso and Atlanta anchor the southwest and
+southeast as cores, Herndon, Los Angeles, San Luis Obispo, Phoenix, New York,
+and Newark are aggregations, and Ogden is barred from every selected role.
+
+The two Long Island demand intents (Brookhaven and Shirley, NY) are not Lumen
+PoPs in the mapbook, so they are mapped to the two nearest existing PoPs:
+Brookhaven to New York, NY and Shirley to Newark, NJ.
 """
 
 from __future__ import annotations
@@ -15,7 +20,13 @@ FORCED_DESIGN_ARGS = [
     "--force-core", "Salt Lake City, UT", "--force-aggregation", "Salt Lake City, UT",
     "--force-core", "Ashburn, VA", "--force-aggregation", "Ashburn, VA",
     "--force-core", "El Paso, TX",
+    "--force-core", "Atlanta, GA",
     "--force-aggregation", "Herndon, VA",
+    "--force-aggregation", "Los Angeles, CA",
+    "--force-aggregation", "San Luis Obispo, CA",
+    "--force-aggregation", "Phoenix, AZ",
+    "--force-aggregation", "New York, NY",
+    "--force-aggregation", "Newark, NJ",
     "--exclude", "Ogden, UT",
 ]
 

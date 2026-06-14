@@ -83,8 +83,11 @@ canonical design:
   co-located `AGGR` node, per hard constraint 8.
 
 The canonical design pins Salt Lake City and Ashburn as co-located
-core+aggregation facilities, El Paso as a core, Herndon as an aggregation,
-and excludes Ogden.
+core+aggregation facilities; El Paso and Atlanta as cores; Herndon, Los
+Angeles, San Luis Obispo, Phoenix, New York, and Newark as aggregations;
+and excludes Ogden. Two Long Island demand intents are not Lumen PoPs in
+the mapbook, so they are mapped to the nearest existing PoPs: Brookhaven
+to New York, NY and Shirley to Newark, NJ.
 
 ## Aggregation tier: intentional clusters
 

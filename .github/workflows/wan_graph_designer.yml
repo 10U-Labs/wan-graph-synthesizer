@@ -17,7 +17,7 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Download design outputs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: network-design
           path: outputs/
@@ -36,7 +36,7 @@ jobs:
         run: PYTHONPATH=scripts python3 scripts/design_network.py
       - if: always()
         name: Upload design outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: network-design
           path: outputs/
