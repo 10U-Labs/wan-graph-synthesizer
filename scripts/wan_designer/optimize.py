@@ -13,6 +13,15 @@ aggregation), stopping once extra cores stop helping.
 The three Sentinel bases are forced into the aggregation tier at their
 co-located PoPs; access sites with no aggregation within the last-mile cap are
 exempt from the cap and home to their nearest two regardless.
+
+On top of the algorithm, the operator may pin roles by PoP name (``RoleOverrides``,
+resolved by ``apply_role_overrides``): force a PoP to be a core, force it to be an
+aggregation, or exclude it from every selected role. A PoP forced as both a core
+and an aggregation is co-located: it is split into a distinct ``CORE`` node and a
+co-located ``AGGR`` node that share coordinates and a zero-mile in-facility
+cross-connect, with the core's fiber duplicated onto the aggregation's distinct
+hardware stack so the aggregation reaches its own co-located core as one of its two
+node-disjoint cores and a remote core as the other (see ``apply_role_overrides``).
 """
 
 from __future__ import annotations
@@ -32,6 +41,7 @@ from wan_designer.model import (
     Node,
     PathUse,
     PhysicalEdge,
+    RoleOverrides,
     edge_key,
     haversine_miles,
 )
@@ -512,6 +522,7 @@ class _SearchPlan:
     clusters: list[list[str]] = field(default_factory=list)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
     required_cores: frozenset[str] = field(default_factory=frozenset)
+    sentinel_ids: frozenset[str] = field(default_factory=frozenset)
 
 def nearest_pop_id(access: Node, carrier_pops: list[Node]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
@@ -587,11 +598,16 @@ def best_design_at_size(
     return build_design_for_cores(best_core_set, inputs, plan)
 
 def aggregation_demand(design: Design, plan: _SearchPlan) -> dict[str, int]:
-    """Sites behind each aggregation: its homed access count, or 165 for a base."""
+    """Sites behind each aggregation: its homed access count, or 165 for a base.
+
+    Only the Sentinel bases carry the modeled 165-site demand; an operator-forced
+    aggregation (Herndon, a co-located ``AGGR``) is weighted by the access sites it
+    actually homes, like any ordinary aggregation.
+    """
     demand: dict[str, int] = {}
     for edge in design.access_edges:
         demand[edge.target] = demand.get(edge.target, 0) + 1
-    for aggregation_id in plan.forced_aggregation_ids:
+    for aggregation_id in plan.sentinel_ids:
         demand[aggregation_id] = SENTINEL_SITE_COUNT
     return demand
 
@@ -669,23 +685,27 @@ def search_best_design(
     logger.info("Selected a %d-core design", len(best.core_ids))
     return best
 
+@dataclass(frozen=True)
+class _GraphContext:
+    """Node partition and precomputed shortest-path context shared across cores."""
+
+    carrier_pops: list[Node]
+    all_access: list[Node]
+    adjacency: dict[str, list[tuple[str, float]]]
+    all_distances: dict[str, dict[str, float]]
+    all_predecessors: dict[str, dict[str, str]]
+
 def graph_context(
     nodes: list[Node],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-) -> tuple[
-    list[Node],
-    list[Node],
-    dict[str, list[tuple[str, float]]],
-    dict[str, dict[str, float]],
-    dict[str, dict[str, str]],
-]:
+) -> _GraphContext:
     """Split nodes into PoPs/access and precompute the shared graph context."""
     carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
     all_access = [node for node in nodes if node.kind != "carrier_pop"]
     adjacency = unit_adjacency(physical_edges)
     validate_pop_graph(carrier_pops, physical_edges, adjacency)
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
-    return carrier_pops, all_access, adjacency, all_distances, all_predecessors
+    return _GraphContext(carrier_pops, all_access, adjacency, all_distances, all_predecessors)
 
 def sentinel_split(
     all_access: list[Node], carrier_pops: list[Node]
@@ -713,8 +733,15 @@ def build_search_plan(
     inputs: DesignInputs,
     eligible_ids: set[str],
     forced: frozenset[str],
+    sentinel_ids: frozenset[str],
+    forced_core_ids: frozenset[str],
 ) -> _SearchPlan:
-    """Compute node strengths, access-node clusters, and core candidates."""
+    """Compute node strengths, access-node clusters, and core candidates.
+
+    Required cores combine the named anchor (Salt Lake City) with any
+    operator-forced cores; forced aggregations (Sentinel bases, co-located
+    ``AGGR`` nodes, Herndon) are never free core candidates.
+    """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
     strength_by_id = {
@@ -725,42 +752,162 @@ def build_search_plan(
     core_candidates = sorted(
         eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
     )
-    required = required_core_ids(inputs.carrier_pops, eligible_ids) - forced
-    return _SearchPlan(
-        core_candidates, forced, strength_by_id,
-        clusters=clusters, required_cores=required,
+    required = required_core_ids(inputs.carrier_pops, eligible_ids) | (
+        forced_core_ids & eligible_ids
     )
+    return _SearchPlan(
+        core_candidates, forced, strength_by_id, clusters=clusters,
+        required_cores=frozenset(required), sentinel_ids=sentinel_ids,
+    )
+
+def pop_id_by_name(carrier_pops: list[Node]) -> dict[str, str]:
+    """Map each Carrier PoP's display name to its node id for pin resolution."""
+    return {pop.name: pop.id for pop in carrier_pops}
+
+def resolve_pinned_ids(
+    names: tuple[str, ...], name_to_id: dict[str, str], label: str
+) -> set[str]:
+    """Resolve operator-supplied PoP names to ids, rejecting any unknown name."""
+    resolved: set[str] = set()
+    for name in names:
+        if name not in name_to_id:
+            raise ValueError(f"--{label} PoP not found in the Carrier graph: {name}")
+        resolved.add(name_to_id[name])
+    return resolved
+
+def reject_override_conflicts(
+    forced_core: set[str], forced_aggregation: set[str], excluded: set[str]
+) -> None:
+    """Reject an excluded PoP that is also pinned as a core or aggregation."""
+    clash = excluded & (forced_core | forced_aggregation)
+    if clash:
+        raise ValueError(f"PoPs cannot be both excluded and forced: {sorted(clash)}")
+
+def colocated_twin(core: Node) -> Node:
+    """Build the co-located ``AGGR`` node that shares a core's coordinates."""
+    return Node(
+        id=f"aggr_{core.id}",
+        name=f"AGGR {core.name}",
+        category=core.category,
+        kind=core.kind,
+        lat=core.lat,
+        lon=core.lon,
+        description=core.description,
+    )
+
+def colocation_edges(
+    core_id: str, twin_id: str, physical_edges: dict[tuple[str, str], PhysicalEdge]
+) -> dict[tuple[str, str], PhysicalEdge]:
+    """Edges standing up a co-located ``AGGR`` stack beside its core.
+
+    A zero-mile in-facility cross-connect joins the two distinct hardware stacks,
+    and every one of the core's fiber handoffs is duplicated onto the aggregation
+    so it reaches a remote core without traversing its own co-located core.
+    """
+    facility = edge_key(core_id, twin_id)
+    new_edges: dict[tuple[str, str], PhysicalEdge] = {
+        facility: PhysicalEdge(
+            source=facility[0], target=facility[1], distance_miles=0.0,
+            note="in-facility core/aggregation cross-connect",
+        )
+    }
+    for (left, right), edge in physical_edges.items():
+        neighbor = right if left == core_id else left if right == core_id else None
+        if neighbor is None:
+            continue
+        handoff = edge_key(twin_id, neighbor)
+        new_edges[handoff] = PhysicalEdge(
+            source=handoff[0], target=handoff[1], distance_miles=edge.distance_miles,
+            source_page=edge.source_page, note="co-located aggregation fiber handoff",
+        )
+    return new_edges
+
+def split_colocated(
+    nodes: list[Node],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    colocated_ids: set[str],
+) -> tuple[list[Node], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
+    """Split each co-located PoP into its core node and a co-located ``AGGR`` twin."""
+    node_by_id = {node.id: node for node in nodes}
+    augmented_nodes = list(nodes)
+    augmented_edges = dict(physical_edges)
+    twin_by_core: dict[str, str] = {}
+    for core_id in sorted(colocated_ids):
+        twin = colocated_twin(node_by_id[core_id])
+        twin_by_core[core_id] = twin.id
+        augmented_nodes.append(twin)
+        augmented_edges.update(colocation_edges(core_id, twin.id, physical_edges))
+    return augmented_nodes, augmented_edges, twin_by_core
+
+def apply_role_overrides(
+    nodes: list[Node],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    params: DesignParams,
+) -> tuple[list[Node], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
+    """Resolve operator role pins and split any co-located PoP into two nodes.
+
+    Returns the (possibly augmented) nodes and physical edges plus the resolved
+    ``RoleOverrides``. A PoP pinned as both a core and an aggregation becomes a
+    ``CORE`` node (kept under its own id) and a co-located ``AGGR`` twin, and it is
+    the twin's id that enters ``forced_aggregation_ids``.
+    """
+    carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
+    name_to_id = pop_id_by_name(carrier_pops)
+    forced_core = resolve_pinned_ids(params.forced_core_names, name_to_id, "force-core")
+    forced_aggregation = resolve_pinned_ids(
+        params.forced_aggregation_names, name_to_id, "force-aggregation"
+    )
+    excluded = resolve_pinned_ids(params.excluded_names, name_to_id, "exclude")
+    reject_override_conflicts(forced_core, forced_aggregation, excluded)
+    colocated = forced_core & forced_aggregation
+    nodes, physical_edges, twin_by_core = split_colocated(nodes, physical_edges, colocated)
+    forced_aggregation_ids = (forced_aggregation - colocated) | set(twin_by_core.values())
+    overrides = RoleOverrides(
+        forced_core_ids=frozenset(forced_core),
+        forced_aggregation_ids=frozenset(forced_aggregation_ids),
+        excluded_ids=frozenset(excluded),
+    )
+    return nodes, physical_edges, overrides
 
 def optimize_three_tier_design(
     nodes: list[Node],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     roles: dict[str, str],
     params: DesignParams,
+    overrides: RoleOverrides | None = None,
 ) -> Design:
-    """Optimize a three-tier WAN over the Carrier graph for the given parameters."""
+    """Optimize a three-tier WAN over the Carrier graph for the given parameters.
+
+    ``overrides`` carries operator role pins already resolved to node ids (with any
+    co-located PoP split in ``nodes``/``physical_edges``); pass ``None`` for an
+    unpinned design.
+    """
+    overrides = overrides if overrides is not None else RoleOverrides()
     if params.core_count < 2:
         raise ValueError("core_count (the minimum number of cores) must be at least 2")
 
-    carrier_pops, all_access, adjacency, all_distances, all_predecessors = graph_context(
-        nodes, physical_edges
-    )
-    forced, access_nodes = sentinel_split(all_access, carrier_pops)
+    context = graph_context(nodes, physical_edges)
+    sentinel_ids, access_nodes = sentinel_split(context.all_access, context.carrier_pops)
+    forced = sentinel_ids | overrides.forced_aggregation_ids
     eligible_ids = compute_eligible_ids(
-        carrier_pops, roles, adjacency, params.allow_roadm_aggregation
-    ) | forced
+        context.carrier_pops, roles, context.adjacency, params.allow_roadm_aggregation
+    )
+    eligible_ids = (eligible_ids | forced | overrides.forced_core_ids) - overrides.excluded_ids
     if len(eligible_ids) < max(2, params.core_count):
         raise ValueError("Not enough eligible Carrier aggregation/core PoPs")
 
     inputs = DesignInputs(
         access_nodes=access_nodes,
-        carrier_pops=carrier_pops,
+        carrier_pops=context.carrier_pops,
         physical_edges=physical_edges,
         eligible_aggregation_ids=eligible_ids,
-        adjacency=adjacency,
-        all_distances=all_distances,
-        all_predecessors=all_predecessors,
+        adjacency=context.adjacency,
+        all_distances=context.all_distances,
+        all_predecessors=context.all_predecessors,
     )
-    plan = build_search_plan(inputs, eligible_ids, forced)
+    plan = build_search_plan(
+        inputs, eligible_ids, forced, sentinel_ids, overrides.forced_core_ids
+    )
     if len(plan.core_candidates) < params.core_count:
         raise ValueError("Not enough reachable core candidates")
     return search_best_design(inputs, params, plan)

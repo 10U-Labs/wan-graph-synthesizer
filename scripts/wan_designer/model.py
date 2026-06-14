@@ -80,6 +80,24 @@ class DesignParams:
     core_count: int = 3  # minimum number of cores; more are added if worthwhile
     allow_roadm_aggregation: bool = False
     core_coverage_improvement: float = 0.10  # min traffic-to-core cut to add a core
+    forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
+    forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations
+    excluded_names: tuple[str, ...] = ()  # PoPs barred from every selected role
+
+@dataclass(frozen=True)
+class RoleOverrides:
+    """Operator role pins resolved from PoP names to concrete node ids.
+
+    ``forced_core_ids`` and ``forced_aggregation_ids`` are the ids fixed into
+    the core and aggregation tiers; a PoP pinned as both is co-located and has
+    already been split into a distinct ``CORE`` node (kept here) and ``AGGR``
+    node (whose id is what lands in ``forced_aggregation_ids``). ``excluded_ids``
+    are barred from being a core, an aggregation, or an access home.
+    """
+
+    forced_core_ids: frozenset[str] = frozenset()
+    forced_aggregation_ids: frozenset[str] = frozenset()
+    excluded_ids: frozenset[str] = frozenset()
 
 @dataclass(frozen=True)
 class DesignInputs:

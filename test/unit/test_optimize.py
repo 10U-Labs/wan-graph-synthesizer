@@ -14,16 +14,20 @@ from wan_designer.model import (
     Node,
     PathUse,
     PhysicalEdge,
+    RoleOverrides,
+    edge_key,
     haversine_miles,
 )
 from wan_designer.optimize import (
     aggregation_core_paths,
     all_pairs_shortest,
+    apply_role_overrides,
     assign_access,
     best_design_at_size,
     build_design_for_cores,
     cluster_diameter,
     cluster_local_heads,
+    colocation_edges,
     complete_homes,
     core_combination_count,
     core_combinations,
@@ -36,7 +40,9 @@ from wan_designer.optimize import (
     nearest_pop_id,
     node_straightness,
     optimize_three_tier_design,
+    reject_override_conflicts,
     required_core_ids,
+    resolve_pinned_ids,
     search_best_design,
     unit_adjacency,
     _SearchPlan,
@@ -75,6 +81,7 @@ def _plan(
     forced: set[str] | None = None,
     strength: dict[str, float] | None = None,
     clusters: list[list[str]] | None = None,
+    sentinel: set[str] | None = None,
 ) -> _SearchPlan:
     """Build a search plan for direct optimizer tests."""
     return _SearchPlan(
@@ -82,6 +89,7 @@ def _plan(
         frozenset(forced or set()),
         strength or {},
         clusters=clusters or [],
+        sentinel_ids=frozenset(sentinel or set()),
     )
 
 
@@ -403,7 +411,7 @@ def test_coverage_score_weights_a_base_by_its_sites() -> None:
         PathUse("aggregation_to_core", "agg", "c1", ("agg", "c1"), 0.0),
     ]
     design = Design(("c1",), (), (), [], set(), paths, DesignMetrics(0.0, 0.0, 0.0))
-    plan = _plan([], forced={"base"})
+    plan = _plan([], sentinel={"base"})
     assert coverage_score(design, plan) == 165 * 2 + 1 * 1
 
 
@@ -452,3 +460,47 @@ def test_build_design_returns_none_when_a_forced_aggregation_cannot_route() -> N
     )
     plan = _plan([], forced={"z"})
     assert build_design_for_cores(("c1", "c2"), inputs, plan) is None
+
+
+def test_resolve_pinned_ids_maps_a_known_name_to_its_id() -> None:
+    """A known PoP name resolves to its node id."""
+    assert resolve_pinned_ids(("Denver, CO",), {"Denver, CO": "d"}, "force-core") == {"d"}
+
+
+def test_resolve_pinned_ids_rejects_an_unknown_name() -> None:
+    """An unknown PoP name is rejected rather than silently ignored."""
+    with pytest.raises(ValueError):
+        resolve_pinned_ids(("Nowhere",), {"Denver, CO": "d"}, "force-core")
+
+
+def test_reject_override_conflicts_rejects_excluding_a_forced_pop() -> None:
+    """A PoP that is both excluded and forced is rejected."""
+    with pytest.raises(ValueError):
+        reject_override_conflicts({"a"}, set(), {"a"})
+
+
+def test_colocation_edges_duplicate_a_cores_handoffs_onto_its_twin() -> None:
+    """The twin gains an in-facility cross-connect plus each of the core's handoffs."""
+    edges = physical({("m", "z"): 1.0, ("a", "m"): 1.0, ("p", "q"): 1.0})
+    result = colocation_edges("m", "aggr_m", edges)
+    assert set(result) == {
+        edge_key("m", "aggr_m"), edge_key("aggr_m", "z"), edge_key("a", "aggr_m")
+    }
+
+
+def test_apply_role_overrides_splits_a_co_located_pop() -> None:
+    """Pinning a PoP as both core and aggregation forces its split-off twin."""
+    params = DesignParams(forced_core_names=("Hub",), forced_aggregation_names=("Hub",))
+    _nodes, _edges, overrides = apply_role_overrides(
+        [pop("Hub"), pop("z")], physical({("Hub", "z"): 1.0}), params
+    )
+    assert "aggr_Hub" in overrides.forced_aggregation_ids
+
+
+def test_optimize_honors_a_forced_core_override() -> None:
+    """A forced-core override is fixed into the selected core tier."""
+    design = optimize_three_tier_design(
+        fixtures.ring_nodes(), fixtures.ring_physical_edges(), {},
+        DesignParams(core_count=2), RoleOverrides(forced_core_ids=frozenset({"P3"})),
+    )
+    assert "P3" in design.core_ids

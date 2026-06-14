@@ -54,7 +54,37 @@ A design is invalid unless all of the following hold.
 8. Co-location is allowed but identity is separate. A single PoP may
    host both a core and an aggregation. They are modeled as two distinct
    nodes that share coordinates (for example `AGGR Ashburn` and `CORE
-   Ashburn`), never one node serving both roles.
+   Ashburn`), never one node serving both roles. The two are distinct
+   hardware stacks joined by a zero-mile in-facility cross-connect, so a
+   co-located aggregation reaches its own co-located core as one of its
+   two node-disjoint cores (constraint 2) and a remote core as the other.
+   The core's fiber handoffs are duplicated onto the aggregation stack so
+   that second, disjoint path leaves the building without traversing the
+   core.
+
+## Operator role pins
+
+Beyond the algorithm, the operator may pin tier roles by PoP name. The
+pins are CLI flags on the designer — and are baked, as explicit flags
+rather than hidden constants, into `scripts/design_network.py` for the
+canonical design:
+
+- `--force-core NAME` makes a PoP a core. It is fixed into every candidate
+  core set the search considers; the search still adds any further cores
+  by strength.
+- `--force-aggregation NAME` makes a PoP an aggregation. It is always
+  selected, like a Sentinel base, but carries only the demand it actually
+  homes, not the 165-site base demand.
+- `--exclude NAME` bars a PoP from every selected role: never a core, an
+  aggregation, or an access home. It may still carry pass-through backbone
+  fiber as a transit PoP.
+- A PoP pinned as both a core and an aggregation is co-located: it is
+  split into a `CORE` node (kept under the PoP's own name) and a
+  co-located `AGGR` node, per hard constraint 8.
+
+The canonical design pins Salt Lake City and Ashburn as co-located
+core+aggregation facilities, El Paso as a core, Herndon as an aggregation,
+and excludes Ogden.
 
 ## Aggregation tier: intentional clusters
 
