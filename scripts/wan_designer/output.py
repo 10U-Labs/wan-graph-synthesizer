@@ -155,14 +155,17 @@ def write_csv(output_path: Path, artifacts: DesignArtifacts) -> None:
             row = csv_edge_row(design, nodes_by_id[left], nodes_by_id[right], meta)
             writer.writerow(row)
 
-# (layer key, folder name, icon ABGR color, icon scale). KML colors are
-# aabbggrr: blue access, purple aggregation, red core, orange secret regions.
+# (layer key, folder name, paddle icon color slug, icon scale). We use Google's
+# pre-colored paddle icons rather than tinting a white icon with IconStyle
+# <color>, because many viewers (Google My Maps, QGIS, web) ignore that tint and
+# render every tier identically. Slugs map to mapfiles/kml/paddle/<slug>-blank.png:
+# blue access, purple aggregation, red core, orange secret regions.
 LAYER_SPECS: tuple[tuple[str, str, str, str], ...] = (
-    ("access", "Access Nodes", "ffff0000", "0.85"),
-    ("aggregation", "Aggregation Points", "ff800080", "0.9"),
-    ("core", "Core Nodes", "ff0000ff", "1.1"),
-    ("secret_east", "Secret East Regions", "ff00a5ff", "0.95"),
-    ("secret_west", "Secret West Regions", "ff00a5ff", "0.95"),
+    ("access", "Access Nodes", "blu", "0.85"),
+    ("aggregation", "Aggregation Points", "purple", "0.9"),
+    ("core", "Core Nodes", "red", "1.1"),
+    ("secret_east", "Secret East Regions", "orange", "0.95"),
+    ("secret_west", "Secret West Regions", "orange", "0.95"),
 )
 
 def kml_layer_for_node(node: Node, role: str) -> str | None:
@@ -180,16 +183,14 @@ def kml_layer_for_node(node: Node, role: str) -> str | None:
 
 def write_kml_styles(document: ET.Element) -> None:
     """Append node and edge style definitions to the KML document."""
-    # A pure-white marker is required for IconStyle <color> to tint reliably.
-    # The shapes/placemark_circle.png icon ignores the tint in Google My Maps,
-    # QGIS, and most web viewers, so every tier rendered as one color there.
-    marker = "https://maps.google.com/mapfiles/kml/paddle/wht-blank.png"
-    for key, _name, color, scale in LAYER_SPECS:
+    base = "https://maps.google.com/mapfiles/kml/paddle"
+    for key, _name, slug, scale in LAYER_SPECS:
         style = ET.SubElement(document, "Style", id=f"node_{key}")
         icon_style = ET.SubElement(style, "IconStyle")
-        ET.SubElement(icon_style, "color").text = color
+        # No <color>: the paddle icon is already the right color, and tinting it
+        # would only darken it in the viewers that honor IconStyle <color>.
         ET.SubElement(icon_style, "scale").text = scale
-        ET.SubElement(ET.SubElement(icon_style, "Icon"), "href").text = marker
+        ET.SubElement(ET.SubElement(icon_style, "Icon"), "href").text = f"{base}/{slug}-blank.png"
     # Edges stay neutral gray so the tier palette reads on the node icons alone.
     for edge_kind, color, width in (("access", "ff9e9e9e", "1.2"), ("backbone", "ff5a5a5a", "2.0")):
         style = ET.SubElement(document, "Style", id=f"edge_{edge_kind}")
