@@ -1,4 +1,4 @@
-"""Unit tests for the optimizer's error paths and routing helpers."""
+"""Unit tests for the exact joint core/aggregation optimizer."""
 
 from __future__ import annotations
 
@@ -19,9 +19,12 @@ from wan_designer.optimize import (
     best_aggregation_pair,
     build_design_for_cores,
     core_mesh_paths,
+    nearest_pop_id,
     node_straightness,
     optimize_three_tier_design,
+    second_nearest_miles,
     unit_adjacency,
+    _SearchPlan,
 )
 
 pop = fixtures.carrier_pop
@@ -48,6 +51,19 @@ def _inputs_from_edges(
         all_predecessors=predecessors,
     )
 
+
+def _plan(
+    candidates: list[str],
+    forced: set[str] | None = None,
+    exempt: set[str] | None = None,
+    strength: dict[str, float] | None = None,
+) -> _SearchPlan:
+    """Build a search plan for direct build_design_for_cores tests."""
+    return _SearchPlan(
+        candidates, frozenset(forced or set()), frozenset(exempt or set()), strength or {}
+    )
+
+
 TRIANGLE = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
 TRIANGLE_NODES = [pop("a"), pop("b"), pop("c"), fixtures.access_node("s", 40.0, -99.0)]
 
@@ -56,17 +72,6 @@ def test_core_count_below_two_is_rejected() -> None:
     """Core count below two is rejected."""
     with pytest.raises(ValueError):
         optimize_three_tier_design(TRIANGLE_NODES, TRIANGLE, {}, DesignParams(core_count=1))
-
-
-def test_core_count_is_honored_as_a_minimum() -> None:
-    """Core count is a minimum: a larger floor yields at least that many cores."""
-    design = optimize_three_tier_design(
-        fixtures.ring_nodes(),
-        fixtures.ring_physical_edges(),
-        {},
-        DesignParams(core_count=3, core_candidate_limit=10),
-    )
-    assert len(design.core_ids) >= 3
 
 
 def test_unknown_pop_ids_are_rejected() -> None:
@@ -93,31 +98,60 @@ def test_not_enough_eligible_pops_is_rejected() -> None:
         )
 
 
-def test_not_enough_core_candidates_is_rejected() -> None:
-    """Not enough core candidates is rejected."""
-    params = DesignParams(core_count=2, core_candidate_limit=1)
-    with pytest.raises(ValueError):
-        optimize_three_tier_design(TRIANGLE_NODES, TRIANGLE, {}, params)
+def test_optimizes_ring_to_a_feasible_design() -> None:
+    """Optimizes ring to a feasible design."""
+    design = optimize_three_tier_design(
+        fixtures.ring_nodes(), fixtures.ring_physical_edges(), {}, fixtures.ring_params()
+    )
+    assert len(design.core_ids) == 2
+
+
+def test_core_count_is_honored_as_a_minimum() -> None:
+    """Core count is a minimum: a larger floor yields at least that many cores."""
+    design = optimize_three_tier_design(
+        fixtures.ring_nodes(), fixtures.ring_physical_edges(), {}, DesignParams(core_count=3)
+    )
+    assert len(design.core_ids) >= 3
 
 
 def test_no_feasible_design_is_rejected() -> None:
     """No feasible design is rejected when access cannot dual-home."""
-    params = DesignParams(core_count=2, core_candidate_limit=10)
     with pytest.raises(ValueError):
-        optimize_three_tier_design(TRIANGLE_NODES, TRIANGLE, {}, params)
+        optimize_three_tier_design(TRIANGLE_NODES, TRIANGLE, {}, DesignParams(core_count=2))
 
 
 def test_single_candidate_per_access_is_infeasible() -> None:
     """Single candidate per access is infeasible."""
-    params = DesignParams(
-        core_count=2,
-        aggregation_candidates_per_access=1,
-        core_candidate_limit=10,
-    )
+    params = DesignParams(core_count=2, aggregation_candidates_per_access=1)
     with pytest.raises(ValueError):
         optimize_three_tier_design(
             fixtures.ring_nodes(), fixtures.ring_physical_edges(), {}, params
         )
+
+
+def test_forces_a_sentinel_base_as_an_aggregation() -> None:
+    """A Sentinel base's nearest PoP is forced into the aggregation tier."""
+    base = fixtures.access_node("Minot AFB", 41.0, -99.9)
+    nodes = fixtures.ring_nodes() + [base]
+    design = optimize_three_tier_design(
+        nodes, fixtures.ring_physical_edges(), {}, DesignParams(core_count=2)
+    )
+    forced = nearest_pop_id(base, [n for n in nodes if n.kind == "carrier_pop"])
+    assert forced in design.aggregation_ids
+
+
+def test_not_enough_core_candidates_is_rejected() -> None:
+    """Forcing aggregations can leave too few candidates to be cores."""
+    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
+    nodes = [
+        pop("a", 0.0, 0.0),
+        pop("b", 0.0, 1.0),
+        pop("c", 0.0, 2.0),
+        fixtures.access_node("Minot AFB", 0.0, 0.0),
+        fixtures.access_node("Malmstrom AFB", 0.0, 1.0),
+    ]
+    with pytest.raises(ValueError):
+        optimize_three_tier_design(nodes, edges, {}, DesignParams(core_count=2))
 
 
 def test_aggregation_core_paths_infeasible_through_bottleneck() -> None:
@@ -148,20 +182,62 @@ def test_node_straightness_skips_zero_length_hops() -> None:
     assert node_straightness("a", by_id, {"b": "a"}) == 0.0
 
 
+def test_nearest_pop_id_picks_the_closest() -> None:
+    """Nearest pop id picks the closest."""
+    pops = [pop("far", 0.0, 50.0), pop("near", 0.0, 1.0)]
+    assert nearest_pop_id(fixtures.access_node("s", 0.0, 0.0), pops) == "near"
+
+
+def test_second_nearest_miles_returns_the_second_distance() -> None:
+    """Second nearest miles returns the second distance."""
+    pops = [pop("a", 0.0, 0.0), pop("b", 0.0, 1.0), pop("c", 0.0, 50.0)]
+    assert second_nearest_miles(fixtures.access_node("s", 0.0, 0.0), pops) > 0.0
+
+
 def test_best_aggregation_pair_is_none_with_single_candidate() -> None:
     """Best aggregation pair is none with single candidate."""
-    aggregation_core: dict[str, tuple[float, list[PathUse]]] = {
-        "g1": (0.0, []),
-        "g2": (0.0, []),
-    }
-    by_id = {"g1": pop("g1"), "g2": pop("g2")}
+    aggregation_core: dict[str, tuple[float, list[PathUse]]] = {"g1": (0.0, [])}
+    by_id = {"g1": pop("g1")}
     pair = best_aggregation_pair(
-        fixtures.access_node("s"),
-        aggregation_core,
-        by_id,
-        DesignParams(aggregation_candidates_per_access=1),
+        fixtures.access_node("s"), aggregation_core, by_id, DesignParams(), {}, None
     )
     assert pair is None
+
+
+def test_best_aggregation_pair_drops_aggregations_beyond_the_cap() -> None:
+    """Best aggregation pair drops aggregations beyond the cap."""
+    aggregation_core: dict[str, tuple[float, list[PathUse]]] = {
+        "near": (0.0, []),
+        "far": (0.0, []),
+    }
+    by_id = {"near": pop("near", 0.0, 0.0), "far": pop("far", 0.0, 50.0)}
+    access = fixtures.access_node("s", 0.0, 0.0)
+    assert best_aggregation_pair(access, aggregation_core, by_id, DesignParams(), {}, 100.0) is None
+
+
+def test_best_aggregation_pair_exempts_remote_sites_from_the_cap() -> None:
+    """Best aggregation pair exempts remote sites from the cap."""
+    aggregation_core: dict[str, tuple[float, list[PathUse]]] = {
+        "near": (0.0, []),
+        "far": (0.0, []),
+    }
+    by_id = {"near": pop("near", 0.0, 0.0), "far": pop("far", 0.0, 50.0)}
+    access = fixtures.access_node("s", 0.0, 0.0)
+    assert best_aggregation_pair(access, aggregation_core, by_id, DesignParams(), {}, None) is not None
+
+
+def test_best_aggregation_pair_breaks_distance_ties_by_strength() -> None:
+    """Best aggregation pair breaks distance ties by strength."""
+    aggregation_core: dict[str, tuple[float, list[PathUse]]] = {
+        "weak": (0.0, []),
+        "strong": (0.0, []),
+    }
+    by_id = {"weak": pop("weak", 0.0, 1.0), "strong": pop("strong", 0.0, -1.0)}
+    access = fixtures.access_node("s", 0.0, 0.0)
+    pair = best_aggregation_pair(
+        access, aggregation_core, by_id, DesignParams(), {"strong": 5.0}, None
+    )
+    assert pair is not None and pair[0][1] == "strong"
 
 
 def test_aggregation_core_map_skips_infeasible_aggregations() -> None:
@@ -179,8 +255,7 @@ def test_aggregation_core_map_skips_infeasible_aggregations() -> None:
     )
     ids = ["gA", "x1", "x2", "gB", "y", "c1", "c2"]
     inputs = _inputs_from_edges(ids, edges, {"gA", "gB", "c1", "c2"})
-    feasible = aggregation_core_map(("c1", "c2"), inputs)
-    assert set(feasible) == {"gA"}
+    assert set(aggregation_core_map(("c1", "c2"), inputs)) == {"gA"}
 
 
 def test_build_design_returns_none_without_aggregations() -> None:
@@ -189,7 +264,7 @@ def test_build_design_returns_none_without_aggregations() -> None:
     inputs = _inputs_from_edges(
         ["c1", "c2"], edges, {"c1", "c2"}, [fixtures.access_node("s")]
     )
-    assert build_design_for_cores(("c1", "c2"), inputs, DesignParams()) is None
+    assert build_design_for_cores(("c1", "c2"), inputs, DesignParams(), _plan([])) is None
 
 
 def test_build_design_returns_none_when_cores_are_not_meshed() -> None:
@@ -204,9 +279,16 @@ def test_build_design_returns_none_when_cores_are_not_meshed() -> None:
         }
     )
     inputs = _inputs_from_edges(
-        ["c1", "c2", "c3", "g1", "g2", "z"],
-        edges,
-        {"g1", "g2"},
-        [fixtures.access_node("s")],
+        ["c1", "c2", "c3", "g1", "g2", "z"], edges, {"g1", "g2"}, [fixtures.access_node("s")]
     )
-    assert build_design_for_cores(("c1", "c2", "c3"), inputs, DesignParams()) is None
+    assert build_design_for_cores(("c1", "c2", "c3"), inputs, DesignParams(), _plan([])) is None
+
+
+def test_build_design_returns_none_when_a_forced_aggregation_cannot_route() -> None:
+    """Build design returns none when a forced aggregation cannot dual-home."""
+    edges = physical({("c1", "g1"): 1.0, ("c2", "g1"): 1.0, ("c1", "c2"): 1.0, ("z", "g1"): 1.0})
+    inputs = _inputs_from_edges(
+        ["c1", "c2", "g1", "z"], edges, {"g1", "z"}, [fixtures.access_node("s")]
+    )
+    plan = _plan([], forced={"z"})
+    assert build_design_for_cores(("c1", "c2"), inputs, DesignParams(), plan) is None

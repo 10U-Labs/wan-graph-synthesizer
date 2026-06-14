@@ -99,6 +99,51 @@ def load_nodes(input_path: Path) -> list[Node]:
 
     return nodes
 
+def load_regional_nodes(path: Path) -> list[Node]:
+    """Load regional carrier PoPs (DCN, Vision Net) with their coordinates.
+
+    Each row is ``name,lat,lon,network``. Nodes are Carrier PoPs whose
+    category records which regional network they belong to; names are
+    curated to be unique across the regional files.
+    """
+    if not path.exists():
+        raise ValueError(f"Regional node file does not exist: {path}")
+    nodes: list[Node] = []
+    with path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            name = row["name"].strip()
+            nodes.append(
+                Node(
+                    id=f"carrier_pop_{slugify(name)}",
+                    name=name,
+                    category=row["network"].strip(),
+                    kind="carrier_pop",
+                    lat=float(row["lat"]),
+                    lon=float(row["lon"]),
+                )
+            )
+    return nodes
+
+def load_regional_networks(
+    node_path: Path,
+    edge_paths: list[Path],
+    lumen_pops: list[Node],
+) -> tuple[list[Node], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
+    """Load regional carriers and stitch them onto the Lumen PoP set.
+
+    Returns the regional nodes, all their edges (including interconnect
+    edges that land on Lumen PoPs), and their roles -- every regional PoP
+    is transit-only (``roadm``) so it is never picked as a core or
+    aggregation unless explicitly forced.
+    """
+    regional_nodes = load_regional_nodes(node_path)
+    combined = lumen_pops + regional_nodes
+    edges: dict[tuple[str, str], PhysicalEdge] = {}
+    for edge_path in edge_paths:
+        edges.update(load_carrier_edges(edge_path, combined))
+    roles = {node.id: "roadm" for node in regional_nodes}
+    return regional_nodes, edges, roles
+
 def load_pop_roles(path: Path | None, carrier_pops: list[Node]) -> dict[str, str]:
     """Load optional Carrier PoP roles, defaulting every PoP to aggregator."""
     roles = {pop.id: "aggregator" for pop in carrier_pops}

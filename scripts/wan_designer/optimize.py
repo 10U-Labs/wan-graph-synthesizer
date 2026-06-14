@@ -1,11 +1,16 @@
 """Optimize a three-tier core/aggregation/access WAN over the carrier graph.
 
-Core nodes are chosen for *strength*, not distance. The mapbook lists no
-mileage, so straight-line distance between PoPs is never used as a cost.
-A PoP's strength combines reach (degree), spread (how many compass
-directions its links cover), and straightness (how directly it reaches
-the rest of the graph). The strongest PoPs become cores; more cores are
-added only when fewer cannot satisfy the hard constraints.
+The objective, in order: aggregations win, cores break ties. Aggregation
+points exist to gather clusters of nearby access sites, so the design is
+ranked first by total access tail mileage (tighter clusters are better),
+and ties are broken by core strength (degree + compass spread + path
+straightness). The search is exact -- every feasible set of cores is
+tried, with all eligible PoPs as candidates (no truncation) -- so the
+result is the global best, not a heuristic.
+
+The three Sentinel bases are forced into the aggregation tier at their
+co-located PoPs; access sites with no aggregation within the tail cap are
+exempt from the cap and home to their nearest two regardless.
 """
 
 from __future__ import annotations
@@ -35,14 +40,13 @@ from wan_designer.graphs import (
 
 COMPASS_OCTANTS = 8
 
+# The Sentinel ICBM wings, forced into the aggregation tier at their PoPs.
+SENTINEL_BASE_NAMES = ("Malmstrom AFB", "Minot AFB", "F.E. Warren AFB")
+
 def unit_adjacency(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> dict[str, list[tuple[str, float]]]:
-    """Build a unit-weight adjacency map: every fiber span counts the same.
-
-    The mapbook has no distances, so routing weights every span equally
-    rather than by a fabricated straight-line mileage.
-    """
+    """Build a unit-weight adjacency map: every fiber span counts the same."""
     adjacency: dict[str, list[tuple[str, float]]] = {}
     for left, right in physical_edges:
         adjacency.setdefault(left, []).append((right, 1.0))
@@ -78,11 +82,7 @@ def node_straightness(
     pop_by_id: dict[str, Node],
     predecessors: dict[str, str],
 ) -> float:
-    """Mean directness to reachable PoPs: straight-line over routed geometry.
-
-    Near 1.0 means the PoP's paths head straight at their destinations;
-    lower values mean detours and odd, near-right-angle turns.
-    """
+    """Mean directness to reachable PoPs: straight-line over routed geometry."""
     origin = pop_by_id[pop_id]
     ratios: list[float] = []
     for dest_id in predecessors:
@@ -102,39 +102,17 @@ def core_strength(
     pop_by_id: dict[str, Node],
     max_degree: int,
 ) -> float:
-    """Score a PoP as a core: reach plus spread plus straightness.
-
-    Each term is normalized to roughly 0..1, so a strong hub that
-    radiates in every direction and reaches the graph directly scores
-    near 3.0, and a low-degree corridor PoP scores near 1.0.
-    """
+    """Score a PoP's strength: reach plus spread plus straightness (~0..3)."""
     degree = len(inputs.adjacency[pop_id])
     spread = len(link_octants(pop_id, inputs.adjacency, pop_by_id))
     straight = node_straightness(pop_id, pop_by_id, inputs.all_predecessors[pop_id])
     return degree / max_degree + spread / COMPASS_OCTANTS + straight
 
-def rank_core_candidates(
-    eligible_ids: set[str],
-    inputs: DesignInputs,
-    pop_by_id: dict[str, Node],
-    limit: int,
-) -> list[str]:
-    """Rank eligible PoPs strongest-first and keep the top `limit`."""
-    max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
-    ranked = sorted(
-        eligible_ids,
-        key=lambda pop_id: (-core_strength(pop_id, inputs, pop_by_id, max_degree), pop_id),
-    )
-    return ranked[:limit]
-
 def path_geometry_miles(
     path: tuple[str, ...],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> float:
-    """Sum the per-span straight-line estimate along a routed path.
-
-    This is a display estimate only; it never influences node selection.
-    """
+    """Sum the per-span straight-line estimate along a routed path (display)."""
     return sum(
         physical_edges[edge_key(path[index], path[index + 1])].distance_miles
         for index in range(len(path) - 1)
@@ -146,12 +124,7 @@ def aggregation_core_paths(
     adjacency: dict[str, list[tuple[str, float]]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> tuple[float, list[PathUse]]:
-    """Route an aggregation to two distinct cores over node-disjoint paths.
-
-    Returns the total hop distance and one ``aggregation_to_core`` PathUse
-    per core, or ``(math.inf, [])`` if two node-disjoint paths to two
-    distinct cores do not exist over the physical graph.
-    """
+    """Route an aggregation to two distinct cores over node-disjoint paths."""
     total, paths = node_disjoint_paths_to_cores(adjacency, aggregation_id, core_ids, 2)
     if not paths:
         return math.inf, []
@@ -211,27 +184,30 @@ def best_aggregation_pair(
     aggregation_core: dict[str, tuple[float, list[PathUse]]],
     by_id: dict[str, Node],
     params: DesignParams,
+    strength_by_id: dict[str, float],
+    cap: float | None,
 ) -> tuple[tuple[float, str], tuple[float, str]] | None:
-    """Pick the two nearest aggregations to dual-home one access node.
+    """Pick the two nearest aggregations to dual-home one access site.
 
-    The access tail is a new build, so straight-line distance from the
-    demand site to the aggregation PoP is a legitimate cost here.
+    Tails are the cost; node strength only breaks ties between equally
+    near aggregations. ``cap`` bounds the tail length, or is ``None`` for
+    a cap-exempt (remote) site.
     """
     ranked = sorted(
         (
-            (haversine_miles(access, by_id[aggregation_id]), aggregation_id)
+            (haversine_miles(access, by_id[aggregation_id]),
+             -strength_by_id.get(aggregation_id, 0.0),
+             aggregation_id)
             for aggregation_id in aggregation_core
         ),
-        key=lambda item: (item[0], item[1]),
-    )[: params.aggregation_candidates_per_access]
-    best_cost = math.inf
-    chosen: tuple[tuple[float, str], tuple[float, str]] | None = None
-    for left, right in itertools.combinations(ranked, 2):
-        pair_cost = left[0] + right[0]
-        if pair_cost < best_cost:
-            best_cost = pair_cost
-            chosen = (left, right)
-    return chosen
+        key=lambda item: item,
+    )
+    if cap is not None:
+        ranked = [item for item in ranked if item[0] <= cap]
+    ranked = ranked[: params.aggregation_candidates_per_access]
+    if len(ranked) < 2:
+        return None
+    return ((ranked[0][0], ranked[0][2]), (ranked[1][0], ranked[1][2]))
 
 def finalize_design(
     core_ids: tuple[str, ...],
@@ -271,17 +247,28 @@ def build_design_for_cores(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
     params: DesignParams,
+    plan: _SearchPlan,
 ) -> Design | None:
-    """Assemble a full three-tier design for one fixed set of core PoPs."""
+    """Assemble a full three-tier design for one fixed set of core PoPs.
+
+    Returns None if the cores cannot full-mesh, a forced aggregation
+    cannot dual-home to them, or some access site cannot find two
+    aggregations within its tail cap.
+    """
     aggregation_core = aggregation_core_map(core_ids, inputs)
+    if any(forced_id not in aggregation_core for forced_id in plan.forced_aggregation_ids):
+        return None
     if len(aggregation_core) < 2:
         return None
 
     by_id = {node.id: node for node in inputs.carrier_pops}
     access_edges: list[AccessEdge] = []
-    selected: set[str] = set()
+    selected: set[str] = set(plan.forced_aggregation_ids)
     for access in inputs.access_nodes:
-        chosen = best_aggregation_pair(access, aggregation_core, by_id, params)
+        cap = None if access.id in plan.exempt_access_ids else params.max_access_tail_miles
+        chosen = best_aggregation_pair(
+            access, aggregation_core, by_id, params, plan.strength_by_id, cap
+        )
         if chosen is None:
             return None
         for distance, aggregation_id in chosen:
@@ -292,7 +279,7 @@ def build_design_for_cores(
         core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges
     )
     if not path_uses:
-        return None  # the cores do not form a full mesh over the carrier graph
+        return None
     for aggregation_id in sorted(selected):
         path_uses.extend(aggregation_core[aggregation_id][1])
 
@@ -309,7 +296,6 @@ def compute_eligible_ids(
 
     A PoP needs at least two physical links to ever be dual-homed to two
     cores, so degree-one PoPs (spurs) are excluded regardless of role.
-    ROADM PoPs are excluded unless explicitly allowed.
     """
     return {
         pop.id
@@ -344,23 +330,51 @@ def validate_pop_graph(
         names = ", ".join(node.name for node in carrier_pops if node.id in missing_pops)
         raise ValueError(f"Carrier PoPs missing from physical edge graph: {names}")
 
-def grow_feasible_cores(
+@dataclass(frozen=True)
+class _SearchPlan:
+    """Pre-computed context shared across every candidate core set."""
+
+    core_candidates: list[str]
+    forced_aggregation_ids: frozenset[str]
+    exempt_access_ids: frozenset[str]
+    strength_by_id: dict[str, float]
+
+def nearest_pop_id(access: Node, carrier_pops: list[Node]) -> str:
+    """Id of the Carrier PoP nearest to an access site."""
+    return min(carrier_pops, key=lambda pop: haversine_miles(access, pop)).id
+
+def second_nearest_miles(access: Node, aggregators: list[Node]) -> float:
+    """Distance to the access site's second-nearest aggregation PoP."""
+    return sorted(haversine_miles(access, pop) for pop in aggregators)[1]
+
+def search_best_design(
     inputs: DesignInputs,
     params: DesignParams,
-    ranked: list[str],
+    plan: _SearchPlan,
 ) -> Design:
-    """Take the strongest cores, adding more until the constraints hold.
+    """Exhaustively find the best design: min total tail, then max core strength.
 
-    Starts at ``params.core_count`` (the minimum) and grows the core set
-    one strong PoP at a time. ``build_design_for_cores`` only returns a
-    design when the hard constraints hold, so the first non-None result
-    is the strongest feasible core set.
+    Tries every combination of ``core_count`` cores; only if none is
+    feasible does it grow the core set by one and try again.
     """
-    for size in range(params.core_count, len(ranked) + 1):
-        design = build_design_for_cores(tuple(ranked[:size]), inputs, params)
-        if design is not None:
-            return design
-    raise ValueError(f"No feasible design with {params.core_count} or more cores")
+    for size in range(params.core_count, len(plan.core_candidates) + 1):
+        best: Design | None = None
+        best_key: tuple[float, float] | None = None
+        for core_set in itertools.combinations(plan.core_candidates, size):
+            design = build_design_for_cores(tuple(core_set), inputs, params, plan)
+            if design is None:
+                continue
+            key = (
+                round(design.metrics.access_miles, 6),
+                -sum(plan.strength_by_id[core_id] for core_id in core_set),
+            )
+            if best_key is None or key < best_key:
+                best, best_key = design, key
+        if best is not None:
+            return best
+    raise ValueError(
+        f"No feasible design with {params.core_count} or more cores"
+    )
 
 def optimize_three_tier_design(
     nodes: list[Node],
@@ -372,15 +386,21 @@ def optimize_three_tier_design(
     if params.core_count < 2:
         raise ValueError("core_count (the minimum number of cores) must be at least 2")
 
-    access_nodes = [node for node in nodes if node.kind != "carrier_pop"]
     carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
+    all_access = [node for node in nodes if node.kind != "carrier_pop"]
     adjacency = unit_adjacency(physical_edges)
     validate_pop_graph(carrier_pops, physical_edges, adjacency)
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
+    pop_by_id = {pop.id: pop for pop in carrier_pops}
+
+    base_access = [node for node in all_access if node.name in SENTINEL_BASE_NAMES]
+    forced = frozenset(nearest_pop_id(node, carrier_pops) for node in base_access)
+    absorbed = frozenset(node.id for node in base_access)
+    access_nodes = [node for node in all_access if node.id not in absorbed]
 
     eligible_ids = compute_eligible_ids(
         carrier_pops, roles, adjacency, params.allow_roadm_aggregation
-    )
+    ) | forced
     if len(eligible_ids) < max(2, params.core_count):
         raise ValueError("Not enough eligible Carrier aggregation/core PoPs")
 
@@ -393,11 +413,22 @@ def optimize_three_tier_design(
         all_distances=all_distances,
         all_predecessors=all_predecessors,
     )
-    pop_by_id = {pop.id: pop for pop in carrier_pops}
-    ranked = rank_core_candidates(
-        eligible_ids, inputs, pop_by_id, params.core_candidate_limit
+    max_degree = max((len(adjacency[pop_id]) for pop_id in eligible_ids), default=1)
+    strength_by_id = {
+        pop_id: core_strength(pop_id, inputs, pop_by_id, max_degree)
+        for pop_id in eligible_ids
+    }
+    aggregators = [pop_by_id[pop_id] for pop_id in eligible_ids]
+    exempt = frozenset(
+        node.id
+        for node in access_nodes
+        if second_nearest_miles(node, aggregators) > params.max_access_tail_miles
     )
-    if len(ranked) < params.core_count:
+    core_candidates = sorted(
+        eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
+    )
+    if len(core_candidates) < params.core_count:
         raise ValueError("Not enough reachable core candidates")
 
-    return grow_feasible_cores(inputs, params, ranked)
+    plan = _SearchPlan(core_candidates, forced, exempt, strength_by_id)
+    return search_best_design(inputs, params, plan)

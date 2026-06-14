@@ -28,6 +28,8 @@ from wan_designer.parsing import (
     load_carrier_edges,
     load_nodes,
     load_pop_roles,
+    load_regional_networks,
+    load_regional_nodes,
 )
 from wan_designer.graphs import (
     articulation_points,
@@ -71,6 +73,8 @@ __all__ = [
     "load_carrier_edges",
     "load_nodes",
     "load_pop_roles",
+    "load_regional_networks",
+    "load_regional_nodes",
     "main",
     "node_disjoint_paths_to_cores",
     "optimize_three_tier_design",

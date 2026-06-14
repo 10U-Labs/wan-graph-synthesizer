@@ -15,7 +15,12 @@ from wan_designer.model import (
     SourceFiles,
     ValidationReport,
 )
-from wan_designer.parsing import load_carrier_edges, load_nodes, load_pop_roles
+from wan_designer.parsing import (
+    load_carrier_edges,
+    load_nodes,
+    load_pop_roles,
+    load_regional_networks,
+)
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.validation import (
     augment_physical_resilience,
@@ -66,10 +71,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum number of core nodes; more are added if needed. Default is 3.",
     )
     parser.add_argument(
-        "--core-candidate-limit",
-        type=int,
-        default=32,
-        help="Number of strongest Carrier PoPs to consider as cores.",
+        "--max-access-tail-miles",
+        type=float,
+        default=300.0,
+        help="Cap on an access site's tail to an aggregation; remote sites are exempt.",
+    )
+    parser.add_argument(
+        "--regional-nodes",
+        default="data/regional_nodes.csv",
+        help="Regional carrier node coordinates; pass empty to disable regional carriers.",
+    )
+    parser.add_argument(
+        "--regional-edges",
+        nargs="*",
+        default=["data/dcn_edges.csv", "data/vision_net_edges.csv"],
+        help="Regional carrier edge files stitched into the Lumen graph.",
     )
     parser.add_argument(
         "--aggregation-candidates-per-access",
@@ -103,15 +119,17 @@ def cli_paths(args: argparse.Namespace) -> CliPaths:
         role_path=Path(args.pop_roles) if args.pop_roles else None,
         mapbook_pdf=Path(args.mapbook_pdf) if args.mapbook_pdf else None,
         output_dir=Path(args.output_dir),
+        regional_node_path=Path(args.regional_nodes) if args.regional_nodes else None,
+        regional_edge_paths=tuple(Path(path) for path in args.regional_edges),
     )
 
 def params_from_args(args: argparse.Namespace) -> DesignParams:
     """Build the design parameter bundle from parsed CLI arguments."""
     return DesignParams(
         core_count=args.core_count,
-        core_candidate_limit=args.core_candidate_limit,
         aggregation_candidates_per_access=args.aggregation_candidates_per_access,
         aggregation_penalty_miles=args.aggregation_penalty_miles,
+        max_access_tail_miles=args.max_access_tail_miles,
         allow_roadm_aggregation=args.allow_roadm_aggregation,
     )
 
@@ -123,6 +141,13 @@ def run_design(paths: CliPaths, params: DesignParams, augment: bool) -> DesignAr
     carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
     physical_edges = load_carrier_edges(paths.edge_path, carrier_pops)
     roles = load_pop_roles(paths.role_path, carrier_pops)
+    if paths.regional_node_path is not None:
+        regional_nodes, regional_edges, regional_roles = load_regional_networks(
+            paths.regional_node_path, list(paths.regional_edge_paths), carrier_pops
+        )
+        nodes = nodes + regional_nodes
+        physical_edges = {**physical_edges, **regional_edges}
+        roles = {**roles, **regional_roles}
     design = optimize_three_tier_design(nodes, physical_edges, roles, params)
     if augment:
         design = augment_physical_resilience(nodes, physical_edges, design)
