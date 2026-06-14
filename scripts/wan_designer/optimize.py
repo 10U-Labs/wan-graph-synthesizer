@@ -269,27 +269,34 @@ def cluster_diameter(members: list[Node]) -> float:
 def cluster_local_heads(
     members: list[Node],
     feasible_ids: set[str],
+    selected: set[str],
     pop_by_id: dict[str, Node],
 ) -> list[str]:
     """Up to two distinct feasible PoPs local to a cluster, its heads.
 
     A PoP is local when it sits within the cluster's own extent -- its diameter,
     the farthest distance between two members -- of at least one member, so a
-    head is never much farther from the cluster than the cluster is wide. The two
-    locals nearest the cluster as a whole (least total distance to its members)
-    become its intentional aggregation heads. A distant PoP (Boise, ~243 mi from
-    the nearest Utah member, well beyond that cluster's ~100 mi extent) is never
-    built as the cluster's head; that cluster's second home comes from reuse.
+    head is never much farther from the cluster than the cluster is wide. Of the
+    locals, an already-selected facility (a forced aggregation, or a head placed
+    for an earlier cluster) is always preferred over a new build, so a cluster
+    sitting on a pin reuses it rather than standing up a redundant neighbor; the
+    cluster still opens a new head for any remaining slot. Within each group the
+    PoPs nearest the cluster as a whole (least total distance to its members)
+    win. A distant PoP (Boise, ~243 mi from the nearest Utah member, well beyond
+    that cluster's ~100 mi extent) is never built as the cluster's head; that
+    cluster's second home comes from reuse.
     """
     diameter = cluster_diameter(members)
-    scored: list[tuple[float, str]] = []
+    reuse: list[tuple[float, str]] = []
+    build: list[tuple[float, str]] = []
     for aggregation_id in feasible_ids:
         pop = pop_by_id[aggregation_id]
         if min(haversine_miles(member, pop) for member in members) <= diameter:
             total = sum(haversine_miles(member, pop) for member in members)
-            scored.append((total, aggregation_id))
-    scored.sort()
-    return [aggregation_id for _total, aggregation_id in scored[:2]]
+            (reuse if aggregation_id in selected else build).append((total, aggregation_id))
+    reuse.sort()
+    build.sort()
+    return [aggregation_id for _total, aggregation_id in (reuse + build)[:2]]
 
 def complete_homes(
     access: Node,
@@ -384,7 +391,7 @@ def assign_access(
     # Pass 1: stand up each cluster's local aggregation heads.
     for members in plan.clusters:
         member_nodes = [access_by_id[member] for member in members]
-        heads = cluster_local_heads(member_nodes, feasible_ids, pop_by_id)
+        heads = cluster_local_heads(member_nodes, feasible_ids, selected, pop_by_id)
         if not heads:
             continue
         selected.update(heads)
