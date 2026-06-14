@@ -184,19 +184,19 @@ def best_aggregation_pair(
     aggregation_core: dict[str, tuple[float, list[PathUse]]],
     by_id: dict[str, Node],
     params: DesignParams,
-    strength_by_id: dict[str, float],
-    cap: float | None,
+    plan: _SearchPlan,
 ) -> tuple[tuple[float, str], tuple[float, str]] | None:
     """Pick the two nearest aggregations to dual-home one access site.
 
     Tails are the cost; node strength only breaks ties between equally
-    near aggregations. ``cap`` bounds the tail length, or is ``None`` for
-    a cap-exempt (remote) site.
+    near aggregations. The tail cap applies unless the site is exempt
+    (too remote for any aggregation to be within the cap).
     """
+    cap = None if access.id in plan.exempt_access_ids else params.max_access_tail_miles
     ranked = sorted(
         (
             (haversine_miles(access, by_id[aggregation_id]),
-             -strength_by_id.get(aggregation_id, 0.0),
+             -plan.strength_by_id.get(aggregation_id, 0.0),
              aggregation_id)
             for aggregation_id in aggregation_core
         ),
@@ -265,10 +265,7 @@ def build_design_for_cores(
     access_edges: list[AccessEdge] = []
     selected: set[str] = set(plan.forced_aggregation_ids)
     for access in inputs.access_nodes:
-        cap = None if access.id in plan.exempt_access_ids else params.max_access_tail_miles
-        chosen = best_aggregation_pair(
-            access, aggregation_core, by_id, params, plan.strength_by_id, cap
-        )
+        chosen = best_aggregation_pair(access, aggregation_core, by_id, params, plan)
         if chosen is None:
             return None
         for distance, aggregation_id in chosen:
@@ -376,6 +373,62 @@ def search_best_design(
         f"No feasible design with {params.core_count} or more cores"
     )
 
+def graph_context(
+    nodes: list[Node],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+) -> tuple[
+    list[Node],
+    list[Node],
+    dict[str, list[tuple[str, float]]],
+    dict[str, dict[str, float]],
+    dict[str, dict[str, str]],
+]:
+    """Split nodes into PoPs/access and precompute the shared graph context."""
+    carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
+    all_access = [node for node in nodes if node.kind != "carrier_pop"]
+    adjacency = unit_adjacency(physical_edges)
+    validate_pop_graph(carrier_pops, physical_edges, adjacency)
+    all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
+    return carrier_pops, all_access, adjacency, all_distances, all_predecessors
+
+def sentinel_split(
+    all_access: list[Node], carrier_pops: list[Node]
+) -> tuple[frozenset[str], list[Node]]:
+    """Force each Sentinel base into the aggregation tier at its co-located PoP.
+
+    Returns the forced aggregation ids and the remaining (homed) access
+    nodes; the base demand sites are absorbed into their forced PoPs.
+    """
+    base_access = [node for node in all_access if node.name in SENTINEL_BASE_NAMES]
+    forced = frozenset(nearest_pop_id(node, carrier_pops) for node in base_access)
+    absorbed = frozenset(node.id for node in base_access)
+    access_nodes = [node for node in all_access if node.id not in absorbed]
+    return forced, access_nodes
+
+def build_search_plan(
+    inputs: DesignInputs,
+    eligible_ids: set[str],
+    forced: frozenset[str],
+    params: DesignParams,
+) -> _SearchPlan:
+    """Compute node strengths, cap-exempt access sites, and core candidates."""
+    pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
+    max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
+    strength_by_id = {
+        pop_id: core_strength(pop_id, inputs, pop_by_id, max_degree)
+        for pop_id in eligible_ids
+    }
+    aggregators = [pop_by_id[pop_id] for pop_id in eligible_ids]
+    exempt = frozenset(
+        node.id
+        for node in inputs.access_nodes
+        if second_nearest_miles(node, aggregators) > params.max_access_tail_miles
+    )
+    core_candidates = sorted(
+        eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
+    )
+    return _SearchPlan(core_candidates, forced, exempt, strength_by_id)
+
 def optimize_three_tier_design(
     nodes: list[Node],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
@@ -386,18 +439,10 @@ def optimize_three_tier_design(
     if params.core_count < 2:
         raise ValueError("core_count (the minimum number of cores) must be at least 2")
 
-    carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
-    all_access = [node for node in nodes if node.kind != "carrier_pop"]
-    adjacency = unit_adjacency(physical_edges)
-    validate_pop_graph(carrier_pops, physical_edges, adjacency)
-    all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
-    pop_by_id = {pop.id: pop for pop in carrier_pops}
-
-    base_access = [node for node in all_access if node.name in SENTINEL_BASE_NAMES]
-    forced = frozenset(nearest_pop_id(node, carrier_pops) for node in base_access)
-    absorbed = frozenset(node.id for node in base_access)
-    access_nodes = [node for node in all_access if node.id not in absorbed]
-
+    carrier_pops, all_access, adjacency, all_distances, all_predecessors = graph_context(
+        nodes, physical_edges
+    )
+    forced, access_nodes = sentinel_split(all_access, carrier_pops)
     eligible_ids = compute_eligible_ids(
         carrier_pops, roles, adjacency, params.allow_roadm_aggregation
     ) | forced
@@ -413,22 +458,7 @@ def optimize_three_tier_design(
         all_distances=all_distances,
         all_predecessors=all_predecessors,
     )
-    max_degree = max((len(adjacency[pop_id]) for pop_id in eligible_ids), default=1)
-    strength_by_id = {
-        pop_id: core_strength(pop_id, inputs, pop_by_id, max_degree)
-        for pop_id in eligible_ids
-    }
-    aggregators = [pop_by_id[pop_id] for pop_id in eligible_ids]
-    exempt = frozenset(
-        node.id
-        for node in access_nodes
-        if second_nearest_miles(node, aggregators) > params.max_access_tail_miles
-    )
-    core_candidates = sorted(
-        eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
-    )
-    if len(core_candidates) < params.core_count:
+    plan = build_search_plan(inputs, eligible_ids, forced, params)
+    if len(plan.core_candidates) < params.core_count:
         raise ValueError("Not enough reachable core candidates")
-
-    plan = _SearchPlan(core_candidates, forced, exempt, strength_by_id)
     return search_best_design(inputs, params, plan)
