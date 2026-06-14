@@ -188,13 +188,15 @@ def design_args(
         roles,
         "--output-dir",
         str(output),
+        "--regional-nodes",
+        "",
     ]
     return args + (extra or [])
 
 
 def ring_params() -> DesignParams:
     """Design parameters that solve the ring with a two-core tier."""
-    return DesignParams(core_count=2, core_candidate_limit=10)
+    return DesignParams(core_count=2)
 
 
 def ring_artifacts() -> DesignArtifacts:

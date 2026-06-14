@@ -15,8 +15,23 @@ from wan_designer.parsing import (
     load_carrier_edges,
     load_nodes,
     load_pop_roles,
+    load_regional_networks,
+    load_regional_nodes,
     read_kml_root,
 )
+
+REGIONAL_CSV = (
+    "name,lat,lon,network\n"
+    "Minot,48.232,-101.296,dcn\n"
+    "Great Falls,47.507,-111.300,vision_net\n"
+)
+
+
+def regional_file(tmp_path: Path) -> Path:
+    """Write a sample regional node CSV and return its path."""
+    path = tmp_path / "regional.csv"
+    path.write_text(REGIONAL_CSV, encoding="utf-8")
+    return path
 
 DUP_KML = """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -188,6 +203,57 @@ def test_load_carrier_edges_rejects_unknown_target(tmp_path: Path) -> None:
     path.write_text('source,target\n"Denver, CO",Nowhere\n', encoding="utf-8")
     with pytest.raises(ValueError):
         load_carrier_edges(path, [fixtures.carrier_pop("Denver, CO")])
+
+
+def test_load_regional_nodes_marks_them_carrier_pops(tmp_path: Path) -> None:
+    """Load regional nodes marks them carrier pops."""
+    nodes = load_regional_nodes(regional_file(tmp_path))
+    assert all(node.kind == "carrier_pop" for node in nodes)
+
+
+def test_load_regional_nodes_reads_coordinates(tmp_path: Path) -> None:
+    """Load regional nodes reads coordinates."""
+    assert load_regional_nodes(regional_file(tmp_path))[0].lat == 48.232
+
+
+def test_load_regional_nodes_uses_network_as_category(tmp_path: Path) -> None:
+    """Load regional nodes uses network as category."""
+    assert load_regional_nodes(regional_file(tmp_path))[0].category == "dcn"
+
+
+def test_load_regional_nodes_requires_existing_file(tmp_path: Path) -> None:
+    """Load regional nodes requires existing file."""
+    with pytest.raises(ValueError):
+        load_regional_nodes(tmp_path / "missing.csv")
+
+
+def regional_edge_file(tmp_path: Path) -> Path:
+    """Write a regional edge CSV that interconnects to a Lumen PoP."""
+    path = tmp_path / "regional_edges.csv"
+    path.write_text(
+        'source,target,type\nMinot,Great Falls,backbone\nMinot,"Cheyenne, WY",interconnect\n',
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_load_regional_networks_marks_every_node_roadm(tmp_path: Path) -> None:
+    """Load regional networks marks every node roadm."""
+    lumen = [fixtures.carrier_pop("Cheyenne, WY", 41.140, -104.820)]
+    _nodes, _edges, roles = load_regional_networks(
+        regional_file(tmp_path), [regional_edge_file(tmp_path)], lumen
+    )
+    assert set(roles.values()) == {"roadm"}
+
+
+def test_load_regional_networks_stitches_interconnect_to_lumen(tmp_path: Path) -> None:
+    """Load regional networks stitches interconnect to lumen."""
+    cheyenne = fixtures.carrier_pop("Cheyenne, WY", 41.140, -104.820)
+    _nodes, edges, _roles = load_regional_networks(
+        regional_file(tmp_path), [regional_edge_file(tmp_path)], [cheyenne]
+    )
+    endpoints = {node_id for key in edges for node_id in key}
+    assert cheyenne.id in endpoints
 
 
 def test_build_adjacency_is_bidirectional() -> None:

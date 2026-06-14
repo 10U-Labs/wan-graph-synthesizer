@@ -1,0 +1,35 @@
+source,target,type,note
+Williston,Ray,backbone,zoom-verified
+Ray,Stanley,backbone,zoom-verified
+Stanley,Minot,backbone,zoom-verified
+Williston,Alexander,backbone,zoom-verified
+Alexander,Parshall,backbone,zoom-verified
+Parshall,Max,backbone,zoom-verified
+Max,Minot,backbone,zoom-verified
+Max,Bismarck,backbone,zoom-verified
+Beach,Dickinson,backbone,zoom-verified
+Dickinson,Bismarck,backbone,zoom-verified
+Bismarck,Steele,backbone,zoom-verified
+Steele,Jamestown,backbone,zoom-verified
+Minot,Rugby,backbone,zoom-verified
+Rugby,Devils Lake,backbone,zoom-verified
+Devils Lake,Grand Forks,backbone,zoom-verified
+Devils Lake,Carrington,backbone,zoom-verified
+Carrington,Jamestown,backbone,zoom-verified
+Grand Forks,Fargo,backbone,zoom-verified
+Fargo,Buffalo,backbone,zoom-verified
+Buffalo,Jamestown,backbone,zoom-verified
+Fargo,Abercrombie,backbone,zoom-verified
+Abercrombie,Gwinner,backbone,zoom-verified
+Gwinner,Marion Jct.,backbone,zoom-verified
+Marion Jct.,Jamestown,backbone,zoom-verified
+Bismarck,Carrington,backbone,zoom-verified (spine branch Wilton-Regan-Wing to Carrington)
+Williston,"Seattle, WA",interconnect,confirmed
+Beach,"Denver, CO",interconnect,confirmed
+Dickinson,"Cheyenne, WY",interconnect,confirmed
+Grand Forks,"Minneapolis, MN",interconnect,confirmed
+Grand Forks,"Chicago, IL",interconnect,confirmed
+Fargo,"Minneapolis, MN",interconnect,confirmed
+Fargo,"Chicago, IL",interconnect,confirmed
+Gwinner,"Omaha, NE",interconnect,confirmed
+Abercrombie,"Omaha, NE",interconnect,confirmed

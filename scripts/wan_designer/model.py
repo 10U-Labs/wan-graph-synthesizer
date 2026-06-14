@@ -78,9 +78,9 @@ class DesignParams:
     """Tuning knobs for the three-tier optimization."""
 
     core_count: int = 3  # minimum number of cores; more are added if needed
-    core_candidate_limit: int = 32
     aggregation_candidates_per_access: int = 8
     aggregation_penalty_miles: float = 40.0
+    max_access_tail_miles: float = 300.0  # tail cap for non-exempt access sites
     allow_roadm_aggregation: bool = False
 
 @dataclass(frozen=True)
@@ -119,6 +119,8 @@ class CliPaths:
     role_path: Path | None
     mapbook_pdf: Path | None
     output_dir: Path
+    regional_node_path: Path | None = None
+    regional_edge_paths: tuple[Path, ...] = ()
 
 @dataclass(frozen=True)
 class SourceFiles:

@@ -94,6 +94,18 @@ def test_run_design_without_augmentation(tmp_path: Path) -> None:
     assert artifacts.validation["connected"] is True
 
 
+def test_run_design_stitches_regional_carriers(tmp_path: Path) -> None:
+    """Run design stitches regional carriers onto the Lumen graph."""
+    kml, edges = fixtures.write_solvable_inputs(tmp_path)
+    rnodes = tmp_path / "rnodes.csv"
+    rnodes.write_text("name,lat,lon,network\nR1,41.0,-100.0,dcn\n", encoding="utf-8")
+    redges = tmp_path / "redges.csv"
+    redges.write_text("source,target,type\nR1,P0,interconnect\n", encoding="utf-8")
+    paths = CliPaths(kml, edges, None, None, tmp_path, rnodes, (redges,))
+    artifacts = run_design(paths, fixtures.ring_params(), False)
+    assert any(node.name == "R1" for node in artifacts.nodes)
+
+
 def test_main_succeeds_on_solvable_inputs(tmp_path: Path) -> None:
     """Main succeeds on solvable inputs."""
     kml, edges = fixtures.write_solvable_inputs(tmp_path)

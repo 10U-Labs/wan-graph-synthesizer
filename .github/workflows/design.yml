@@ -3,9 +3,10 @@ concurrency:
   cancel-in-progress: true
   group: design-${{ github.head_ref || github.ref_name }}
 jobs:
-  e2e-test:
+  design:
     needs: integration-test
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - name: Restore pip cache
@@ -18,10 +19,18 @@ jobs:
             pip-design-test-
       - name: Install tools
         run: pip install pytest
-      - name: Run e2e tests
+      - name: Generate the network design (fails on an invalid design)
+        run: PYTHONPATH=scripts python3 scripts/design_network.py
+      - name: Validate the generated design
         run: >-
           PYTHONPATH=.:scripts python3 -m pytest
           test/e2e/ --verbose --pythonwarnings=error
+      - name: Upload design outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: network-design
+          path: outputs/
   integration-test:
     needs: unit-test
     runs-on: ubuntu-24.04
