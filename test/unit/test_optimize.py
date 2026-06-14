@@ -199,7 +199,7 @@ def test_best_aggregation_pair_is_none_with_single_candidate() -> None:
     aggregation_core: dict[str, tuple[float, list[PathUse]]] = {"g1": (0.0, [])}
     by_id = {"g1": pop("g1")}
     pair = best_aggregation_pair(
-        fixtures.access_node("s"), aggregation_core, by_id, DesignParams(), {}, None
+        fixtures.access_node("s"), aggregation_core, by_id, DesignParams(), _plan([])
     )
     assert pair is None
 
@@ -212,7 +212,10 @@ def test_best_aggregation_pair_drops_aggregations_beyond_the_cap() -> None:
     }
     by_id = {"near": pop("near", 0.0, 0.0), "far": pop("far", 0.0, 50.0)}
     access = fixtures.access_node("s", 0.0, 0.0)
-    assert best_aggregation_pair(access, aggregation_core, by_id, DesignParams(), {}, 100.0) is None
+    pair = best_aggregation_pair(
+        access, aggregation_core, by_id, DesignParams(max_access_tail_miles=100.0), _plan([])
+    )
+    assert pair is None
 
 
 def test_best_aggregation_pair_exempts_remote_sites_from_the_cap() -> None:
@@ -223,7 +226,10 @@ def test_best_aggregation_pair_exempts_remote_sites_from_the_cap() -> None:
     }
     by_id = {"near": pop("near", 0.0, 0.0), "far": pop("far", 0.0, 50.0)}
     access = fixtures.access_node("s", 0.0, 0.0)
-    assert best_aggregation_pair(access, aggregation_core, by_id, DesignParams(), {}, None) is not None
+    pair = best_aggregation_pair(
+        access, aggregation_core, by_id, DesignParams(), _plan([], exempt={"s"})
+    )
+    assert pair is not None
 
 
 def test_best_aggregation_pair_breaks_distance_ties_by_strength() -> None:
@@ -235,7 +241,7 @@ def test_best_aggregation_pair_breaks_distance_ties_by_strength() -> None:
     by_id = {"weak": pop("weak", 0.0, 1.0), "strong": pop("strong", 0.0, -1.0)}
     access = fixtures.access_node("s", 0.0, 0.0)
     pair = best_aggregation_pair(
-        access, aggregation_core, by_id, DesignParams(), {"strong": 5.0}, None
+        access, aggregation_core, by_id, DesignParams(), _plan([], strength={"strong": 5.0})
     )
     assert pair is not None and pair[0][1] == "strong"
 

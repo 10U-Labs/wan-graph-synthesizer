@@ -6,7 +6,6 @@ jobs:
   design:
     needs: integration-test
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - name: Restore pip cache
@@ -25,12 +24,13 @@ jobs:
         run: >-
           PYTHONPATH=.:scripts python3 -m pytest
           test/e2e/ --verbose --pythonwarnings=error
-      - name: Upload design outputs
-        if: always()
+      - if: always()
+        name: Upload design outputs
         uses: actions/upload-artifact@v4
         with:
           name: network-design
           path: outputs/
+    timeout-minutes: 30
   integration-test:
     needs: unit-test
     runs-on: ubuntu-24.04
