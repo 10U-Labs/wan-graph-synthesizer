@@ -78,9 +78,6 @@ class DesignParams:
     """Tuning knobs for the three-tier optimization."""
 
     core_count: int = 3  # minimum number of cores; more are added if worthwhile
-    aggregation_candidates_per_access: int = 8
-    aggregation_penalty_miles: float = 40.0
-    max_last_mile_miles: float = 300.0  # last-mile cap for non-exempt access sites
     allow_roadm_aggregation: bool = False
     core_coverage_improvement: float = 0.10  # min traffic-to-core cut to add a core
 
