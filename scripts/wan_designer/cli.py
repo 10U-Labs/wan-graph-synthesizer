@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 import zipfile
 from pathlib import Path
@@ -28,6 +29,8 @@ from wan_designer.validation import (
     validate_design,
 )
 from wan_designer.output import write_outputs
+
+logger = logging.getLogger(__name__)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -71,10 +74,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum number of core nodes; more are added if needed. Default is 3.",
     )
     parser.add_argument(
-        "--max-access-tail-miles",
+        "--max-last-mile-miles",
         type=float,
         default=300.0,
-        help="Cap on an access site's tail to an aggregation; remote sites are exempt.",
+        help="Cap on an access site's last-mile link to an aggregation; remote sites exempt.",
     )
     parser.add_argument(
         "--regional-nodes",
@@ -129,7 +132,7 @@ def params_from_args(args: argparse.Namespace) -> DesignParams:
         core_count=args.core_count,
         aggregation_candidates_per_access=args.aggregation_candidates_per_access,
         aggregation_penalty_miles=args.aggregation_penalty_miles,
-        max_access_tail_miles=args.max_access_tail_miles,
+        max_last_mile_miles=args.max_last_mile_miles,
         allow_roadm_aggregation=args.allow_roadm_aggregation,
     )
 
@@ -148,7 +151,12 @@ def run_design(paths: CliPaths, params: DesignParams, augment: bool) -> DesignAr
         nodes = nodes + regional_nodes
         physical_edges = {**physical_edges, **regional_edges}
         roles = {**roles, **regional_roles}
+    logger.info(
+        "Loaded %d nodes and %d physical edges; starting optimization",
+        len(nodes), len(physical_edges),
+    )
     design = optimize_three_tier_design(nodes, physical_edges, roles, params)
+    logger.info("Optimization done; validating and writing outputs")
     if augment:
         design = augment_physical_resilience(nodes, physical_edges, design)
     validation = validate_design(nodes, design)
@@ -208,6 +216,9 @@ def exit_code_for(validation: ValidationReport) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """Compute the three-tier WAN design and write all output renderings."""
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s | %(message)s", datefmt="%H:%M:%S"
+    )
     args = build_parser().parse_args(argv)
     paths = cli_paths(args)
     params = params_from_args(args)

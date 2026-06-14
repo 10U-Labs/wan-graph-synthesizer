@@ -217,7 +217,7 @@ def _near_far_pair_args() -> tuple[Node, dict[str, tuple[float, list[PathUse]]],
 def test_best_aggregation_pair_drops_aggregations_beyond_the_cap() -> None:
     """Best aggregation pair drops aggregations beyond the cap."""
     access, aggregation_core, by_id = _near_far_pair_args()
-    params = DesignParams(max_access_tail_miles=100.0)
+    params = DesignParams(max_last_mile_miles=100.0)
     assert best_aggregation_pair(access, aggregation_core, by_id, params, _plan([])) is None
 
 
