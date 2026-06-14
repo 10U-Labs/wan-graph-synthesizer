@@ -2,8 +2,6 @@
 concurrency:
   cancel-in-progress: true
   group: documentation-${{ github.ref }}
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   detect:
     outputs:

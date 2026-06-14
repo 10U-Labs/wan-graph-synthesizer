@@ -2,8 +2,6 @@
 concurrency:
   cancel-in-progress: true
   group: design-${{ github.head_ref || github.ref_name }}
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   e2e-test:
     needs: generate-graph
@@ -19,7 +17,7 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Download design outputs
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: network-design
           path: outputs/
@@ -38,7 +36,7 @@ jobs:
         run: PYTHONPATH=scripts python3 scripts/design_network.py
       - if: always()
         name: Upload design outputs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: network-design
           path: outputs/
