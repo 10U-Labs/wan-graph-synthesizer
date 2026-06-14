@@ -8,22 +8,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
-      - name: Restore pip cache
-        uses: actions/cache@v5
-        with:
-          key: >-
-            pip-design-test-${{ hashFiles('.github/workflows/design.yml') }}
-          path: ~/.cache/pip
-          restore-keys: |
-            pip-design-test-
-      - name: Install tools
-        run: pip install pytest
       - name: Generate the network design (fails on an invalid design)
         run: PYTHONPATH=scripts python3 scripts/design_network.py
-      - name: Validate the generated design
-        run: >-
-          PYTHONPATH=.:scripts python3 -m pytest
-          test/e2e/ --verbose --pythonwarnings=error
       - if: always()
         name: Upload design outputs
         uses: actions/upload-artifact@v4
@@ -31,6 +17,30 @@ jobs:
           name: network-design
           path: outputs/
     timeout-minutes: 30
+  e2e-test:
+    needs: design
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Restore pip cache
+        uses: actions/cache@v5
+        with:
+          key: >-
+            pip-design-test-${{ hashFiles('.github/workflows/wan_graph_designer.yml') }}
+          path: ~/.cache/pip
+          restore-keys: |
+            pip-design-test-
+      - name: Download design outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: network-design
+          path: outputs/
+      - name: Install tools
+        run: pip install pytest
+      - name: Run e2e tests
+        run: >-
+          PYTHONPATH=.:scripts python3 -m pytest
+          test/e2e/ --verbose --pythonwarnings=error
   integration-test:
     needs: unit-test
     runs-on: ubuntu-24.04
@@ -40,7 +50,7 @@ jobs:
         uses: actions/cache@v5
         with:
           key: >-
-            pip-design-test-${{ hashFiles('.github/workflows/design.yml') }}
+            pip-design-test-${{ hashFiles('.github/workflows/wan_graph_designer.yml') }}
           path: ~/.cache/pip
           restore-keys: |
             pip-design-test-
@@ -58,7 +68,7 @@ jobs:
         uses: actions/cache@v5
         with:
           key: >-
-            pip-design-static-${{ hashFiles('.github/workflows/design.yml') }}
+            pip-design-static-${{ hashFiles('.github/workflows/wan_graph_designer.yml') }}
           path: ~/.cache/pip
           restore-keys: |
             pip-design-static-
@@ -81,7 +91,7 @@ jobs:
           yamllint --strict \
             --config-data \
             "{extends: default, rules: {$RULES}}" \
-            .github/workflows/design.yml
+            .github/workflows/wan_graph_designer.yml
       - name: Assert no inline directives
         run: >-
           assert-no-inline-directives
@@ -134,7 +144,7 @@ jobs:
         uses: actions/cache@v5
         with:
           key: >-
-            pip-design-test-${{ hashFiles('.github/workflows/design.yml') }}
+            pip-design-test-${{ hashFiles('.github/workflows/wan_graph_designer.yml') }}
           path: ~/.cache/pip
           restore-keys: |
             pip-design-test-
@@ -148,11 +158,11 @@ jobs:
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
-name: design
+name: wan-graph-designer
 on:
   pull_request:
     paths:
-      - .github/workflows/design.yml
+      - .github/workflows/wan_graph_designer.yml
       - data/**
       - f35_sentinel_provider regions_carrier_400g.kmz
       - scripts/**
@@ -160,7 +170,7 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/design.yml
+      - .github/workflows/wan_graph_designer.yml
       - data/**
       - f35_sentinel_provider regions_carrier_400g.kmz
       - scripts/**
