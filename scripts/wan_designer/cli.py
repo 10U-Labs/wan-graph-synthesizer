@@ -22,7 +22,7 @@ from wan_designer.parsing import (
     load_pop_roles,
     load_regional_networks,
 )
-from wan_designer.optimize import optimize_three_tier_design
+from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
 from wan_designer.validation import (
     augment_physical_resilience,
     included_node_ids,
@@ -94,6 +94,28 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not add extra physical Carrier edges to reduce articulation or degree risk.",
     )
+    parser.add_argument(
+        "--force-core",
+        action="append",
+        default=[],
+        metavar="POP_NAME",
+        help="Pin a PoP (by name) as a core; repeatable. Pin it as an aggregation too "
+        "to co-locate a core and an aggregation in the one facility.",
+    )
+    parser.add_argument(
+        "--force-aggregation",
+        action="append",
+        default=[],
+        metavar="POP_NAME",
+        help="Pin a PoP (by name) as an aggregation; repeatable.",
+    )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        metavar="POP_NAME",
+        help="Bar a PoP (by name) from being a core, aggregation, or access home; repeatable.",
+    )
     return parser
 
 def cli_paths(args: argparse.Namespace) -> CliPaths:
@@ -113,6 +135,9 @@ def params_from_args(args: argparse.Namespace) -> DesignParams:
     return DesignParams(
         core_count=args.core_count,
         allow_roadm_aggregation=args.allow_roadm_aggregation,
+        forced_core_names=tuple(args.force_core),
+        forced_aggregation_names=tuple(args.force_aggregation),
+        excluded_names=tuple(args.exclude),
     )
 
 def run_design(paths: CliPaths, params: DesignParams, augment: bool) -> DesignArtifacts:
@@ -130,11 +155,12 @@ def run_design(paths: CliPaths, params: DesignParams, augment: bool) -> DesignAr
         nodes = nodes + regional_nodes
         physical_edges = {**physical_edges, **regional_edges}
         roles = {**roles, **regional_roles}
+    nodes, physical_edges, overrides = apply_role_overrides(nodes, physical_edges, params)
     logger.info(
         "Loaded %d nodes and %d physical edges; starting optimization",
         len(nodes), len(physical_edges),
     )
-    design = optimize_three_tier_design(nodes, physical_edges, roles, params)
+    design = optimize_three_tier_design(nodes, physical_edges, roles, params, overrides)
     logger.info("Optimization done; validating and writing outputs")
     if augment:
         design = augment_physical_resilience(nodes, physical_edges, design)

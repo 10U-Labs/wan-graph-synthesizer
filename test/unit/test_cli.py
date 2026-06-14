@@ -64,6 +64,19 @@ def test_params_from_args_reads_core_count() -> None:
     assert params_from_args(args).core_count == 2
 
 
+def test_build_parser_collects_repeated_force_core() -> None:
+    """The force-core flag accumulates each PoP name it is given."""
+    args = build_parser().parse_args(["--force-core", "Ashburn, VA", "--force-core", "El Paso, TX"])
+    assert args.force_core == ["Ashburn, VA", "El Paso, TX"]
+
+
+def test_params_from_args_reads_role_pins() -> None:
+    """Params from args carries the forced-aggregation and excluded PoP names."""
+    args = build_parser().parse_args(["--force-aggregation", "Herndon", "--exclude", "Ogden"])
+    pins = params_from_args(args)
+    assert pins.forced_aggregation_names == ("Herndon",) and pins.excluded_names == ("Ogden",)
+
+
 def test_exit_code_zero_when_all_pass() -> None:
     """Exit code zero when all pass."""
     assert exit_code_for(report()) == 0
