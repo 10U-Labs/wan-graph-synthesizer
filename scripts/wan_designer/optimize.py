@@ -18,7 +18,7 @@ from __future__ import annotations
 import itertools
 import logging
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from wan_designer.model import (
     AccessEdge,
@@ -167,50 +167,89 @@ class _DesignDraft:
     selected_aggregation_ids: set[str]
     path_uses: list[PathUse]
 
-def aggregation_core_map(
+def core_pairs(core_ids: tuple[str, ...]) -> list[tuple[str, str]]:
+    """The two-core combinations of a core set, each as an ordered key."""
+    return [edge_key(left, right) for left, right in itertools.combinations(core_ids, 2)]
+
+def dual_homes_to_pair(
+    aggregation_id: str,
+    pair: tuple[str, str],
+    inputs: DesignInputs,
+    cache: dict[tuple[str, str, str], bool],
+) -> bool:
+    """True if the aggregation has node-disjoint paths to both cores of a pair.
+
+    Results are memoized per (aggregation, core pair). Feasibility to a trio is
+    the OR over its three pairs, so each pair's max-flow is computed only once
+    and reused across every trio that contains it.
+    """
+    key = (aggregation_id, pair[0], pair[1])
+    cached = cache.get(key)
+    if cached is None:
+        cost, _paths = node_disjoint_paths_to_cores(inputs.adjacency, aggregation_id, pair, 2)
+        cached = math.isfinite(cost)
+        cache[key] = cached
+    return cached
+
+def aggregation_dual_homes(
+    aggregation_id: str,
+    pairs: list[tuple[str, str]],
+    inputs: DesignInputs,
+    cache: dict[tuple[str, str, str], bool],
+) -> bool:
+    """True if the aggregation can dual-home to two cores of the given set."""
+    return any(dual_homes_to_pair(aggregation_id, pair, inputs, cache) for pair in pairs)
+
+def feasible_aggregation_ids(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
-) -> dict[str, tuple[float, list[PathUse]]]:
-    """Map each eligible aggregation to its node-disjoint routing to two cores."""
-    allowed = sorted(inputs.eligible_aggregation_ids - set(core_ids))
-    feasible: dict[str, tuple[float, list[PathUse]]] = {}
-    for aggregation_id in allowed:
-        cost, paths = aggregation_core_paths(
-            aggregation_id, core_ids, inputs.adjacency, inputs.physical_edges
-        )
-        if math.isfinite(cost):
-            feasible[aggregation_id] = (cost, paths)
-    return feasible
+    plan: _SearchPlan,
+) -> set[str]:
+    """Eligible aggregations that can dual-home to two of the given cores.
+
+    Only feasibility is computed here -- routed paths are reconstructed once for
+    the winning core set -- because the design is ranked solely on last-mile
+    mileage and core strength, neither of which depends on those paths.
+    """
+    pairs = core_pairs(core_ids)
+    candidates = inputs.eligible_aggregation_ids - set(core_ids)
+    return {
+        aggregation_id
+        for aggregation_id in candidates
+        if aggregation_dual_homes(aggregation_id, pairs, inputs, plan.feasibility_cache)
+    }
+
+def cores_mesh(core_ids: tuple[str, ...], all_distances: dict[str, dict[str, float]]) -> bool:
+    """True if every pair of cores is connected over the carrier graph."""
+    return all(
+        math.isfinite(all_distances[left].get(right, math.inf))
+        for left, right in itertools.combinations(core_ids, 2)
+    )
 
 def best_aggregation_pair(
     access: Node,
-    aggregation_core: dict[str, tuple[float, list[PathUse]]],
-    by_id: dict[str, Node],
+    feasible_ids: set[str],
     params: DesignParams,
     plan: _SearchPlan,
 ) -> tuple[tuple[float, str], tuple[float, str]] | None:
-    """Pick the two nearest aggregations to dual-home one access site.
+    """Pick the two nearest feasible aggregations to dual-home one access site.
 
-    Last-mile links are the cost; node strength only breaks ties between equally
-    near aggregations. The last-mile cap applies unless the site is exempt
-    (too remote for any aggregation to be within the cap).
+    The site's aggregations are pre-ranked by last-mile distance (ties broken by
+    strength); this walks that order, keeping the nearest feasible ones within
+    the last-mile cap. The cap is waived for exempt (too-remote) sites.
     """
     cap = None if access.id in plan.exempt_access_ids else params.max_last_mile_miles
-    ranked = sorted(
-        (
-            (haversine_miles(access, by_id[aggregation_id]),
-             -plan.strength_by_id.get(aggregation_id, 0.0),
-             aggregation_id)
-            for aggregation_id in aggregation_core
-        ),
-        key=lambda item: item,
-    )
-    if cap is not None:
-        ranked = [item for item in ranked if item[0] <= cap]
-    ranked = ranked[: params.aggregation_candidates_per_access]
-    if len(ranked) < 2:
+    eligible: list[tuple[float, str]] = []
+    for distance, aggregation_id in plan.ranked_by_access[access.id]:
+        if cap is not None and distance > cap:
+            break
+        if aggregation_id in feasible_ids:
+            eligible.append((distance, aggregation_id))
+            if len(eligible) == params.aggregation_candidates_per_access:
+                break
+    if len(eligible) < 2:
         return None
-    return ((ranked[0][0], ranked[0][2]), (ranked[1][0], ranked[1][2]))
+    return (eligible[0], eligible[1])
 
 def finalize_design(
     core_ids: tuple[str, ...],
@@ -249,16 +288,74 @@ def finalize_design(
 def forced_can_dual_home(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
-    forced_aggregation_ids: frozenset[str],
+    plan: _SearchPlan,
 ) -> bool:
-    """True if every forced aggregation has node-disjoint paths to two cores."""
-    for forced_id in forced_aggregation_ids:
-        cost, _paths = aggregation_core_paths(
-            forced_id, core_ids, inputs.adjacency, inputs.physical_edges
+    """True if every forced aggregation can dual-home to two of the cores."""
+    pairs = core_pairs(core_ids)
+    return all(
+        aggregation_dual_homes(forced_id, pairs, inputs, plan.feasibility_cache)
+        for forced_id in plan.forced_aggregation_ids
+    )
+
+def assign_access(
+    core_ids: tuple[str, ...],
+    inputs: DesignInputs,
+    params: DesignParams,
+    plan: _SearchPlan,
+) -> tuple[list[AccessEdge], set[str]] | None:
+    """Home every access site to its two nearest feasible aggregations.
+
+    Returns the access edges and the selected aggregation ids, or None if too
+    few aggregations are feasible or some site cannot find two within its cap.
+    """
+    feasible_ids = feasible_aggregation_ids(core_ids, inputs, plan)
+    if len(feasible_ids) < 2:
+        return None
+    access_edges: list[AccessEdge] = []
+    selected: set[str] = set(plan.forced_aggregation_ids)
+    for access in inputs.access_nodes:
+        chosen = best_aggregation_pair(access, feasible_ids, params, plan)
+        if chosen is None:
+            return None
+        for distance, aggregation_id in chosen:
+            access_edges.append(AccessEdge(access.id, aggregation_id, distance))
+            selected.add(aggregation_id)
+    return access_edges, selected
+
+def evaluate_cores(
+    core_ids: tuple[str, ...],
+    inputs: DesignInputs,
+    params: DesignParams,
+    plan: _SearchPlan,
+) -> tuple[list[AccessEdge], set[str]] | None:
+    """Score a core set's feasibility and access homing without routing paths.
+
+    Returns None when the cores do not full-mesh, a forced aggregation cannot
+    dual-home, or some access site cannot find two aggregations within its cap.
+    Routed paths are deferred to the winning set, since they do not affect the
+    last-mile/strength ranking.
+    """
+    if not cores_mesh(core_ids, inputs.all_distances):
+        return None
+    if not forced_can_dual_home(core_ids, inputs, plan):
+        return None
+    return assign_access(core_ids, inputs, params, plan)
+
+def routed_path_uses(
+    core_ids: tuple[str, ...],
+    inputs: DesignInputs,
+    selected: set[str],
+) -> list[PathUse]:
+    """Reconstruct the core-mesh and aggregation-to-core paths for a design."""
+    path_uses = core_mesh_paths(
+        core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges
+    )
+    for aggregation_id in sorted(selected):
+        _cost, uses = aggregation_core_paths(
+            aggregation_id, core_ids, inputs.adjacency, inputs.physical_edges
         )
-        if not math.isfinite(cost):
-            return False
-    return True
+        path_uses.extend(uses)
+    return path_uses
 
 def build_design_for_cores(
     core_ids: tuple[str, ...],
@@ -268,36 +365,15 @@ def build_design_for_cores(
 ) -> Design | None:
     """Assemble a full three-tier design for one fixed set of core PoPs.
 
-    Returns None if the cores cannot full-mesh, a forced aggregation
-    cannot dual-home to them, or some access site cannot find two
-    aggregations within its last-mile cap.
+    Returns None if the cores cannot full-mesh, a forced aggregation cannot
+    dual-home to them, or some access site cannot find two aggregations within
+    its last-mile cap.
     """
-    path_uses = core_mesh_paths(
-        core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges
-    )
-    if not path_uses:
-        return None  # the cores do not form a full mesh over the carrier graph
-    if not forced_can_dual_home(core_ids, inputs, plan.forced_aggregation_ids):
-        return None  # a forced Sentinel aggregation cannot dual-home here
-
-    aggregation_core = aggregation_core_map(core_ids, inputs)
-    if len(aggregation_core) < 2:
+    evaluation = evaluate_cores(core_ids, inputs, params, plan)
+    if evaluation is None:
         return None
-
-    by_id = {node.id: node for node in inputs.carrier_pops}
-    access_edges: list[AccessEdge] = []
-    selected: set[str] = set(plan.forced_aggregation_ids)
-    for access in inputs.access_nodes:
-        chosen = best_aggregation_pair(access, aggregation_core, by_id, params, plan)
-        if chosen is None:
-            return None
-        for distance, aggregation_id in chosen:
-            access_edges.append(AccessEdge(access.id, aggregation_id, distance))
-            selected.add(aggregation_id)
-
-    for aggregation_id in sorted(selected):
-        path_uses.extend(aggregation_core[aggregation_id][1])
-
+    access_edges, selected = evaluation
+    path_uses = routed_path_uses(core_ids, inputs, selected)
     draft = _DesignDraft(access_edges, selected, path_uses)
     return finalize_design(core_ids, inputs, params, draft)
 
@@ -347,12 +423,33 @@ def validate_pop_graph(
 
 @dataclass(frozen=True)
 class _SearchPlan:
-    """Pre-computed context shared across every candidate core set."""
+    """Pre-computed context shared across every candidate core set.
+
+    ``ranked_by_access`` pre-sorts each access site's aggregations by last-mile
+    distance (it is core-independent), and ``feasibility_cache`` memoizes
+    per-pair node-disjoint reachability, so the search avoids re-sorting and
+    re-running max-flows for every trio.
+    """
 
     core_candidates: list[str]
     forced_aggregation_ids: frozenset[str]
     exempt_access_ids: frozenset[str]
     strength_by_id: dict[str, float]
+    ranked_by_access: dict[str, list[tuple[float, str]]] = field(default_factory=dict)
+    feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
+
+def rank_aggregations(
+    access: Node,
+    eligible_ids: set[str],
+    pop_by_id: dict[str, Node],
+    strength_by_id: dict[str, float],
+) -> list[tuple[float, str]]:
+    """An access site's eligible aggregations, nearest first, strength breaks ties."""
+    scored = sorted(
+        (haversine_miles(access, pop_by_id[agg_id]), -strength_by_id[agg_id], agg_id)
+        for agg_id in eligible_ids
+    )
+    return [(distance, agg_id) for distance, _strength, agg_id in scored]
 
 def nearest_pop_id(access: Node, carrier_pops: list[Node]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
@@ -380,6 +477,10 @@ def last_mile_lower_bound(
         total += distances[0] + distances[1]
     return total
 
+def core_set_strength(core_ids: tuple[str, ...], plan: _SearchPlan) -> float:
+    """Total strength of a core set, the tie-breaker among equal-last-mile sets."""
+    return sum(plan.strength_by_id[core_id] for core_id in core_ids)
+
 def best_design_at_size(
     inputs: DesignInputs,
     params: DesignParams,
@@ -389,32 +490,33 @@ def best_design_at_size(
 ) -> Design | None:
     """Best design using exactly ``size`` cores, or None if none is feasible.
 
-    Core sets are tried strongest-first; the moment one hits the last-mile lower
-    bound it is returned, because no stronger set could already have reached
-    it (or it would have won) and no weaker set can beat its last-mile.
+    Core sets are tried strongest-first, scored cheaply (feasibility plus access
+    homing, no routed paths). The moment one hits the last-mile lower bound the
+    search stops, because no weaker set can beat its last-mile. Routed paths are
+    reconstructed only for the winning set.
     """
     combos = sorted(
         itertools.combinations(plan.core_candidates, size),
-        key=lambda combo: -sum(plan.strength_by_id[core_id] for core_id in combo),
+        key=lambda combo: -core_set_strength(combo, plan),
     )
     logger.info("Evaluating %d core sets of size %d, strongest first", len(combos), size)
-    best: Design | None = None
+    best_core_set: tuple[str, ...] | None = None
     best_key: tuple[float, float] | None = None
     for index, core_set in enumerate(combos, start=1):
-        design = build_design_for_cores(tuple(core_set), inputs, params, plan)
-        if design is None:
+        evaluation = evaluate_cores(core_set, inputs, params, plan)
+        if evaluation is None:
             continue
-        key = (
-            round(design.metrics.access_miles, 6),
-            -sum(plan.strength_by_id[core_id] for core_id in core_set),
-        )
+        access_miles = sum(edge.distance_miles for edge in evaluation[0])
+        key = (round(access_miles, 6), -core_set_strength(core_set, plan))
         if best_key is None or key < best_key:
-            best, best_key = design, key
+            best_core_set, best_key = core_set, key
             logger.info("  trio %d/%d: new best last-mile %.0f mi", index, len(combos), key[0])
         if best_key[0] <= lower_bound + 1e-6:
             logger.info("  optimum locked at trio %d/%d", index, len(combos))
             break
-    return best
+    if best_core_set is None:
+        return None
+    return build_design_for_cores(best_core_set, inputs, params, plan)
 
 def search_best_design(
     inputs: DesignInputs,
@@ -488,10 +590,16 @@ def build_search_plan(
         for node in inputs.access_nodes
         if second_nearest_miles(node, aggregators) > params.max_last_mile_miles
     )
+    ranked_by_access = {
+        access.id: rank_aggregations(access, eligible_ids, pop_by_id, strength_by_id)
+        for access in inputs.access_nodes
+    }
     core_candidates = sorted(
         eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
     )
-    return _SearchPlan(core_candidates, forced, exempt, strength_by_id)
+    return _SearchPlan(
+        core_candidates, forced, exempt, strength_by_id, ranked_by_access
+    )
 
 def optimize_three_tier_design(
     nodes: list[Node],

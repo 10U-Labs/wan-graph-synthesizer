@@ -9,19 +9,21 @@ from wan_designer.model import (
     DesignInputs,
     DesignParams,
     Node,
-    PathUse,
     PhysicalEdge,
 )
 from wan_designer.optimize import (
-    aggregation_core_map,
     aggregation_core_paths,
     all_pairs_shortest,
     best_aggregation_pair,
     build_design_for_cores,
     core_mesh_paths,
+    cores_mesh,
+    dual_homes_to_pair,
+    feasible_aggregation_ids,
     nearest_pop_id,
     node_straightness,
     optimize_three_tier_design,
+    rank_aggregations,
     second_nearest_miles,
     unit_adjacency,
     _SearchPlan,
@@ -57,10 +59,15 @@ def _plan(
     forced: set[str] | None = None,
     exempt: set[str] | None = None,
     strength: dict[str, float] | None = None,
+    ranked: dict[str, list[tuple[float, str]]] | None = None,
 ) -> _SearchPlan:
     """Build a search plan for direct build_design_for_cores tests."""
     return _SearchPlan(
-        candidates, frozenset(forced or set()), frozenset(exempt or set()), strength or {}
+        candidates,
+        frozenset(forced or set()),
+        frozenset(exempt or set()),
+        strength or {},
+        ranked or {},
     )
 
 
@@ -196,54 +203,41 @@ def test_second_nearest_miles_returns_the_second_distance() -> None:
 
 def test_best_aggregation_pair_is_none_with_single_candidate() -> None:
     """Best aggregation pair is none with single candidate."""
-    aggregation_core: dict[str, tuple[float, list[PathUse]]] = {"g1": (0.0, [])}
-    by_id = {"g1": pop("g1")}
-    pair = best_aggregation_pair(
-        fixtures.access_node("s"), aggregation_core, by_id, DesignParams(), _plan([])
-    )
-    assert pair is None
+    access = fixtures.access_node("s")
+    plan = _plan([], ranked={access.id: [(0.0, "g1")]})
+    assert best_aggregation_pair(access, {"g1"}, DesignParams(), plan) is None
 
 
-def _near_far_pair_args() -> tuple[Node, dict[str, tuple[float, list[PathUse]]], dict[str, Node]]:
-    """Access site with one near and one far aggregation, for cap tests."""
-    aggregation_core: dict[str, tuple[float, list[PathUse]]] = {
-        "near": (0.0, []),
-        "far": (0.0, []),
-    }
-    by_id = {"near": pop("near", 0.0, 0.0), "far": pop("far", 0.0, 50.0)}
-    return fixtures.access_node("s", 0.0, 0.0), aggregation_core, by_id
+def _near_far_plan(exempt: set[str] | None = None) -> tuple[Node, _SearchPlan]:
+    """Access site pre-ranked with one near and one far aggregation, for cap tests."""
+    access = fixtures.access_node("s", 0.0, 0.0)
+    ranked = {access.id: [(0.0, "near"), (3450.0, "far")]}
+    return access, _plan([], exempt=exempt, ranked=ranked)
 
 
 def test_best_aggregation_pair_drops_aggregations_beyond_the_cap() -> None:
     """Best aggregation pair drops aggregations beyond the cap."""
-    access, aggregation_core, by_id = _near_far_pair_args()
+    access, plan = _near_far_plan()
     params = DesignParams(max_last_mile_miles=100.0)
-    assert best_aggregation_pair(access, aggregation_core, by_id, params, _plan([])) is None
+    assert best_aggregation_pair(access, {"near", "far"}, params, plan) is None
 
 
 def test_best_aggregation_pair_exempts_remote_sites_from_the_cap() -> None:
     """Best aggregation pair exempts remote sites from the cap."""
-    access, aggregation_core, by_id = _near_far_pair_args()
-    plan = _plan([], exempt={"s"})
-    assert best_aggregation_pair(access, aggregation_core, by_id, DesignParams(), plan) is not None
+    access, plan = _near_far_plan(exempt={"s"})
+    assert best_aggregation_pair(access, {"near", "far"}, DesignParams(), plan) is not None
 
 
-def test_best_aggregation_pair_breaks_distance_ties_by_strength() -> None:
-    """Best aggregation pair breaks distance ties by strength."""
-    aggregation_core: dict[str, tuple[float, list[PathUse]]] = {
-        "weak": (0.0, []),
-        "strong": (0.0, []),
-    }
-    by_id = {"weak": pop("weak", 0.0, 1.0), "strong": pop("strong", 0.0, -1.0)}
+def test_rank_aggregations_breaks_distance_ties_by_strength() -> None:
+    """Equally near aggregations are ranked stronger-first."""
     access = fixtures.access_node("s", 0.0, 0.0)
-    pair = best_aggregation_pair(
-        access, aggregation_core, by_id, DesignParams(), _plan([], strength={"strong": 5.0})
-    )
-    assert pair is not None and pair[0][1] == "strong"
+    by_id = {"weak": pop("weak", 0.0, 1.0), "strong": pop("strong", 0.0, -1.0)}
+    ranked = rank_aggregations(access, {"weak", "strong"}, by_id, {"strong": 5.0, "weak": 0.0})
+    assert ranked[0][1] == "strong"
 
 
-def test_aggregation_core_map_skips_infeasible_aggregations() -> None:
-    """Aggregation core map skips infeasible aggregations."""
+def test_feasible_aggregation_ids_skips_infeasible_aggregations() -> None:
+    """Feasible aggregation ids skip aggregations that cannot dual-home."""
     edges = physical(
         {
             ("gA", "x1"): 1.0,
@@ -257,7 +251,33 @@ def test_aggregation_core_map_skips_infeasible_aggregations() -> None:
     )
     ids = ["gA", "x1", "x2", "gB", "y", "c1", "c2"]
     inputs = _inputs_from_edges(ids, edges, {"gA", "gB", "c1", "c2"})
-    assert set(aggregation_core_map(("c1", "c2"), inputs)) == {"gA"}
+    assert feasible_aggregation_ids(("c1", "c2"), inputs, _plan([])) == {"gA"}
+
+
+def test_dual_homes_to_pair_memoizes_feasibility() -> None:
+    """Dual homes to pair records its computed feasibility in the cache."""
+    edges = physical({("g", "c1"): 1.0, ("g", "c2"): 1.0, ("c1", "c2"): 1.0})
+    inputs = _inputs_from_edges(["g", "c1", "c2"], edges, {"g", "c1", "c2"})
+    cache: dict[tuple[str, str, str], bool] = {}
+    dual_homes_to_pair("g", ("c1", "c2"), inputs, cache)
+    assert cache[("g", "c1", "c2")] is True
+
+
+def test_dual_homes_to_pair_uses_cached_result() -> None:
+    """Dual homes to pair trusts a cached verdict over the live graph."""
+    inputs = _inputs_from_edges(["g", "c1", "c2"], physical({("g", "c1"): 1.0}), {"g"})
+    cache = {("g", "c1", "c2"): True}
+    assert dual_homes_to_pair("g", ("c1", "c2"), inputs, cache) is True
+
+
+def test_cores_mesh_false_when_cores_disconnected() -> None:
+    """Cores mesh is false when two cores cannot reach each other."""
+    edges = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
+    adjacency = unit_adjacency(edges)
+    distances, _predecessors = all_pairs_shortest(
+        [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
+    )
+    assert not cores_mesh(("a", "c"), distances)
 
 
 def test_build_design_returns_none_without_aggregations() -> None:
