@@ -343,14 +343,27 @@ def test_cluster_local_heads_excludes_a_distant_pop() -> None:
     """A PoP beyond the cluster's extent is not chosen as a head."""
     members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
     by_id = {"near": pop("near", 0.0, 0.05), "far": pop("far", 0.0, 9.0)}
-    assert "far" not in cluster_local_heads(members, set(by_id), by_id)
+    assert "far" not in cluster_local_heads(members, set(by_id), set(), by_id)
 
 
 def test_cluster_local_heads_caps_at_two() -> None:
     """A cluster takes at most two heads even when more PoPs are local."""
     members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
     by_id = {key: pop(key, 0.0, off) for key, off in (("x", 0.0), ("y", 0.1), ("z", 0.2))}
-    assert len(cluster_local_heads(members, set(by_id), by_id)) == 2
+    assert len(cluster_local_heads(members, set(by_id), set(), by_id)) == 2
+
+
+def test_cluster_local_heads_prefers_a_selected_facility_over_a_nearer_build() -> None:
+    """A local pin becomes a head over closer new builds; reuse beats new-build."""
+    members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
+    by_id = {
+        "pin": pop("pin", 0.0, 0.0),   # at the cluster's edge: highest total distance
+        "b1": pop("b1", 0.0, 0.1),     # central: lower total distance than the pin
+        "b2": pop("b2", 0.0, 0.08),    # also nearer the cluster as a whole than the pin
+    }
+    heads = cluster_local_heads(members, set(by_id), {"pin"}, by_id)
+    assert heads[0] == "pin"           # reused first despite being the farthest local PoP
+    assert "b1" in heads               # remaining slot still opens the nearest new build
 
 
 HOMES_POPS = {key: pop(key, 0.0, off) for key, off in (("x", 1.0), ("y", 2.0), ("z", 3.0))}
