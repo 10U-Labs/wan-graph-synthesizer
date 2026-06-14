@@ -1,4 +1,4 @@
-"""Unit tests for the exact joint core/aggregation optimizer."""
+"""Unit tests for the cluster-driven core/aggregation optimizer."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import pytest
 
 import fixtures
 from wan_designer.model import (
+    AccessEdge,
     Design,
     DesignInputs,
     DesignMetrics,
@@ -13,13 +14,17 @@ from wan_designer.model import (
     Node,
     PathUse,
     PhysicalEdge,
+    haversine_miles,
 )
 from wan_designer.optimize import (
     aggregation_core_paths,
     all_pairs_shortest,
-    best_aggregation_pair,
+    assign_access,
     best_design_at_size,
     build_design_for_cores,
+    cluster_diameter,
+    cluster_local_heads,
+    complete_homes,
     core_combination_count,
     core_combinations,
     core_mesh_paths,
@@ -31,30 +36,31 @@ from wan_designer.optimize import (
     nearest_pop_id,
     node_straightness,
     optimize_three_tier_design,
-    rank_aggregations,
     required_core_ids,
     search_best_design,
-    second_nearest_miles,
     unit_adjacency,
     _SearchPlan,
 )
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
+access = fixtures.access_node
 
 
 def _inputs_from_edges(
     edge_ids: list[str],
     edges: dict[tuple[str, str], PhysicalEdge],
     eligible: set[str],
-    access: list[Node] | None = None,
+    access_nodes: list[Node] | None = None,
+    coords: dict[str, tuple[float, float]] | None = None,
 ) -> DesignInputs:
     """Build DesignInputs over a unit-weight graph for direct optimizer tests."""
-    pops = [pop(i) for i in edge_ids]
+    places = coords or {}
+    pops = [pop(node_id, *places.get(node_id, (0.0, 0.0))) for node_id in edge_ids]
     adjacency = unit_adjacency(edges)
     distances, predecessors = all_pairs_shortest(pops, adjacency)
     return DesignInputs(
-        access_nodes=access if access is not None else [],
+        access_nodes=access_nodes if access_nodes is not None else [],
         carrier_pops=pops,
         physical_edges=edges,
         eligible_aggregation_ids=eligible,
@@ -67,29 +73,27 @@ def _inputs_from_edges(
 def _plan(
     candidates: list[str],
     forced: set[str] | None = None,
-    exempt: set[str] | None = None,
     strength: dict[str, float] | None = None,
-    ranked: dict[str, list[tuple[float, str]]] | None = None,
+    clusters: list[list[str]] | None = None,
 ) -> _SearchPlan:
-    """Build a search plan for direct build_design_for_cores tests."""
+    """Build a search plan for direct optimizer tests."""
     return _SearchPlan(
         candidates,
         frozenset(forced or set()),
-        frozenset(exempt or set()),
         strength or {},
-        ranked or {},
+        clusters=clusters or [],
     )
 
 
 def _required_plan(candidates: list[str], required: set[str]) -> _SearchPlan:
     """Build a search plan with required cores, for core-combination tests."""
     return _SearchPlan(
-        candidates, frozenset(), frozenset(), {}, {}, required_cores=frozenset(required)
+        candidates, frozenset(), {}, required_cores=frozenset(required)
     )
 
 
 TRIANGLE = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-TRIANGLE_NODES = [pop("a"), pop("b"), pop("c"), fixtures.access_node("s", 40.0, -99.0)]
+TRIANGLE_NODES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
 
 
 def test_core_count_below_two_is_rejected() -> None:
@@ -139,23 +143,14 @@ def test_core_count_is_honored_as_a_minimum() -> None:
 
 
 def test_no_feasible_design_is_rejected() -> None:
-    """No feasible design is rejected when access cannot dual-home."""
+    """No feasible design is rejected when access cannot reach two aggregations."""
     with pytest.raises(ValueError):
         optimize_three_tier_design(TRIANGLE_NODES, TRIANGLE, {}, DesignParams(core_count=2))
 
 
-def test_single_candidate_per_access_is_infeasible() -> None:
-    """Single candidate per access is infeasible."""
-    params = DesignParams(core_count=2, aggregation_candidates_per_access=1)
-    with pytest.raises(ValueError):
-        optimize_three_tier_design(
-            fixtures.ring_nodes(), fixtures.ring_physical_edges(), {}, params
-        )
-
-
 def test_forces_a_sentinel_base_as_an_aggregation() -> None:
     """A Sentinel base's nearest PoP is forced into the aggregation tier."""
-    base = fixtures.access_node("Minot AFB", 41.0, -99.9)
+    base = access("Minot AFB", 41.0, -99.9)
     nodes = fixtures.ring_nodes() + [base]
     design = optimize_three_tier_design(
         nodes, fixtures.ring_physical_edges(), {}, DesignParams(core_count=2)
@@ -171,8 +166,8 @@ def test_not_enough_core_candidates_is_rejected() -> None:
         pop("a", 0.0, 0.0),
         pop("b", 0.0, 1.0),
         pop("c", 0.0, 2.0),
-        fixtures.access_node("Minot AFB", 0.0, 0.0),
-        fixtures.access_node("Malmstrom AFB", 0.0, 1.0),
+        access("Minot AFB", 0.0, 0.0),
+        access("Malmstrom AFB", 0.0, 1.0),
     ]
     with pytest.raises(ValueError):
         optimize_three_tier_design(nodes, edges, {}, DesignParams(core_count=2))
@@ -209,48 +204,7 @@ def test_node_straightness_skips_zero_length_hops() -> None:
 def test_nearest_pop_id_picks_the_closest() -> None:
     """Nearest pop id picks the closest."""
     pops = [pop("far", 0.0, 50.0), pop("near", 0.0, 1.0)]
-    assert nearest_pop_id(fixtures.access_node("s", 0.0, 0.0), pops) == "near"
-
-
-def test_second_nearest_miles_returns_the_second_distance() -> None:
-    """Second nearest miles returns the second distance."""
-    pops = [pop("a", 0.0, 0.0), pop("b", 0.0, 1.0), pop("c", 0.0, 50.0)]
-    assert second_nearest_miles(fixtures.access_node("s", 0.0, 0.0), pops) > 0.0
-
-
-def test_best_aggregation_pair_is_none_with_single_candidate() -> None:
-    """Best aggregation pair is none with single candidate."""
-    access = fixtures.access_node("s")
-    plan = _plan([], ranked={access.id: [(0.0, "g1")]})
-    assert best_aggregation_pair(access, {"g1"}, DesignParams(), plan) is None
-
-
-def _near_far_plan(exempt: set[str] | None = None) -> tuple[Node, _SearchPlan]:
-    """Access site pre-ranked with one near and one far aggregation, for cap tests."""
-    access = fixtures.access_node("s", 0.0, 0.0)
-    ranked = {access.id: [(0.0, "near"), (3450.0, "far")]}
-    return access, _plan([], exempt=exempt, ranked=ranked)
-
-
-def test_best_aggregation_pair_drops_aggregations_beyond_the_cap() -> None:
-    """Best aggregation pair drops aggregations beyond the cap."""
-    access, plan = _near_far_plan()
-    params = DesignParams(max_last_mile_miles=100.0)
-    assert best_aggregation_pair(access, {"near", "far"}, params, plan) is None
-
-
-def test_best_aggregation_pair_exempts_remote_sites_from_the_cap() -> None:
-    """Best aggregation pair exempts remote sites from the cap."""
-    access, plan = _near_far_plan(exempt={"s"})
-    assert best_aggregation_pair(access, {"near", "far"}, DesignParams(), plan) is not None
-
-
-def test_rank_aggregations_breaks_distance_ties_by_strength() -> None:
-    """Equally near aggregations are ranked stronger-first."""
-    access = fixtures.access_node("s", 0.0, 0.0)
-    by_id = {"weak": pop("weak", 0.0, 1.0), "strong": pop("strong", 0.0, -1.0)}
-    ranked = rank_aggregations(access, {"weak", "strong"}, by_id, {"strong": 5.0, "weak": 0.0})
-    assert ranked[0][1] == "strong"
+    assert nearest_pop_id(access("s", 0.0, 0.0), pops) == "near"
 
 
 def test_feasible_aggregation_ids_skips_infeasible_aggregations() -> None:
@@ -297,44 +251,118 @@ def test_cores_mesh_false_when_cores_disconnected() -> None:
     assert not cores_mesh(("a", "c"), distances)
 
 
+MESH_EDGES = physical(
+    {
+        ("a", "b"): 1.0, ("a", "c"): 1.0, ("a", "d"): 1.0,
+        ("b", "c"): 1.0, ("b", "d"): 1.0, ("c", "d"): 1.0,
+    }
+)
+# c and d sit beside the access site; a and b are far. Whichever pair is cores,
+# the design that homes the site to the near pair (c, d) wins on last-mile.
+MESH_COORDS = {"a": (0.0, 50.0), "b": (0.0, 51.0), "c": (0.0, 1.0), "d": (0.0, 2.0)}
+
+
 def _mesh_inputs() -> DesignInputs:
     """A four-PoP full mesh with one access site, for core-selection tests."""
-    edges = physical(
-        {
-            ("a", "b"): 1.0, ("a", "c"): 1.0, ("a", "d"): 1.0,
-            ("b", "c"): 1.0, ("b", "d"): 1.0, ("c", "d"): 1.0,
-        }
-    )
     return _inputs_from_edges(
-        ["a", "b", "c", "d"], edges, {"a", "b", "c", "d"},
-        [fixtures.access_node("s", 0.0, 0.0)],
+        ["a", "b", "c", "d"], MESH_EDGES, {"a", "b", "c", "d"},
+        [access("s", 0.0, 0.0)], MESH_COORDS,
     )
 
 
 @pytest.mark.parametrize(
-    "strength, ranked",
+    "strength",
     [
-        # Strength is primary: {a,b} wins though it forces the costlier last-mile.
-        (
-            {"a": 10.0, "b": 10.0, "c": 1.0, "d": 1.0},
-            {"s": [(0.5, "a"), (0.6, "b"), (5.0, "c"), (5.1, "d")]},
-        ),
-        # Equal strength: the least-last-mile set {a,b} breaks the tie.
-        (
-            {"a": 10.0, "b": 10.0, "c": 10.0, "d": 10.0},
-            {"s": [(0.1, "c"), (0.2, "d"), (5.0, "a"), (5.1, "b")]},
-        ),
+        {"a": 10.0, "b": 10.0, "c": 1.0, "d": 1.0},  # strength primary: {a,b} strongest
+        {"a": 10.0, "b": 10.0, "c": 10.0, "d": 10.0},  # equal: {a,b} wins least-last-mile
     ],
 )
 def test_best_design_at_size_selects_strongest_then_least_last_mile(
     strength: dict[str, float],
-    ranked: dict[str, list[tuple[float, str]]],
 ) -> None:
     """Cores are chosen by strength first, with last-mile only breaking ties."""
-    plan = _plan(["a", "b", "c", "d"], strength=strength, ranked=ranked)
-    params = DesignParams(core_count=2, max_last_mile_miles=100000.0)
-    design = best_design_at_size(_mesh_inputs(), params, plan, 2)
+    design = best_design_at_size(_mesh_inputs(), _plan(["a", "b", "c", "d"], strength=strength), 2)
     assert design is not None and set(design.core_ids) == {"a", "b"}
+
+
+# g1 and g2 each reach both cores over node-disjoint paths; the cores mesh.
+DUAL_EDGES = physical(
+    {
+        ("g1", "c1"): 1.0, ("g1", "c2"): 1.0,
+        ("g2", "c1"): 1.0, ("g2", "c2"): 1.0, ("c1", "c2"): 1.0,
+    }
+)
+DUAL_IDS = ["g1", "g2", "c1", "c2"]
+CLUSTER_ACCESS = {"A1": (0.0, 0.0), "A2": (0.0, 0.03), "A3": (0.0, 0.06)}
+
+
+def _assign(
+    g1_coord: tuple[float, float], g2_coord: tuple[float, float]
+) -> tuple[list[AccessEdge], set[str]] | None:
+    """Run cluster-driven assignment over the dual-aggregation graph."""
+    coords = {"g1": g1_coord, "g2": g2_coord}
+    access_nodes = [access(name, lat, lon) for name, (lat, lon) in CLUSTER_ACCESS.items()]
+    inputs = _inputs_from_edges(DUAL_IDS, DUAL_EDGES, {"g1", "g2"}, access_nodes, coords)
+    plan = _plan([], clusters=[list(CLUSTER_ACCESS)])
+    return assign_access(("c1", "c2"), inputs, plan)
+
+
+def test_assign_access_places_two_cluster_heads() -> None:
+    """A cluster with two local PoPs adopts both as its aggregation heads."""
+    result = _assign((0.0, 0.0), (0.0, 0.05))
+    assert result is not None and {"g1", "g2"} <= result[1]
+
+
+def test_assign_access_completes_a_single_head_cluster_by_reuse() -> None:
+    """A cluster with one local PoP gains its second home from the other facility."""
+    result = _assign((0.0, 0.0), (3.0, 3.0))
+    assert result is not None and {"g1", "g2"} <= result[1]
+
+
+def test_assign_access_completes_a_cluster_with_no_local_head() -> None:
+    """A cluster whose PoPs are all distant still homes every member to two."""
+    result = _assign((3.0, 0.0), (3.0, 1.0))
+    assert result is not None and len(result[0]) == 2 * len(CLUSTER_ACCESS)
+
+
+def test_cluster_diameter_is_the_farthest_member_pair() -> None:
+    """A cluster's diameter is the greatest distance between two members."""
+    members = [access("a", 0.0, 0.0), access("b", 0.0, 1.0), access("c", 0.0, 3.0)]
+    assert cluster_diameter(members) == pytest.approx(haversine_miles(members[0], members[2]))
+
+
+def test_cluster_local_heads_excludes_a_distant_pop() -> None:
+    """A PoP beyond the cluster's extent is not chosen as a head."""
+    members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
+    by_id = {"near": pop("near", 0.0, 0.05), "far": pop("far", 0.0, 9.0)}
+    assert "far" not in cluster_local_heads(members, set(by_id), by_id)
+
+
+def test_cluster_local_heads_caps_at_two() -> None:
+    """A cluster takes at most two heads even when more PoPs are local."""
+    members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
+    by_id = {key: pop(key, 0.0, off) for key, off in (("x", 0.0), ("y", 0.1), ("z", 0.2))}
+    assert len(cluster_local_heads(members, set(by_id), by_id)) == 2
+
+
+HOMES_POPS = {key: pop(key, 0.0, off) for key, off in (("x", 1.0), ("y", 2.0), ("z", 3.0))}
+
+
+@pytest.mark.parametrize(
+    "current, selected, feasible, expected",
+    [
+        ([], {"x", "y"}, {"x", "y", "z"}, {"x", "y"}),  # reuse fills both homes
+        ([], set(), {"x", "y"}, {"x", "y"}),  # nothing to reuse: build two
+        ([], set(), {"x"}, {"x"}),  # only one reachable: returns one
+        (["x"], {"y"}, {"x", "y", "z"}, {"x", "y"}),  # keep the prefilled home, add one
+    ],
+)
+def test_complete_homes(
+    current: list[str], selected: set[str], feasible: set[str], expected: set[str]
+) -> None:
+    """Homes prefer reuse, then build, and keep any prefilled home."""
+    result = complete_homes(access("s", 0.0, 0.0), current, selected, feasible, HOMES_POPS)
+    assert set(result) == expected
 
 
 def test_required_core_is_fixed_into_every_core_set() -> None:
@@ -393,12 +421,10 @@ def test_search_stops_when_the_core_space_is_too_large() -> None:
 
 
 def test_build_design_returns_none_without_aggregations() -> None:
-    """Build design returns none without aggregations."""
+    """Build design returns none without two feasible aggregations."""
     edges = physical({("c1", "c2"): 1.0})
-    inputs = _inputs_from_edges(
-        ["c1", "c2"], edges, {"c1", "c2"}, [fixtures.access_node("s")]
-    )
-    assert build_design_for_cores(("c1", "c2"), inputs, DesignParams(), _plan([])) is None
+    inputs = _inputs_from_edges(["c1", "c2"], edges, {"c1", "c2"}, [access("s")])
+    assert build_design_for_cores(("c1", "c2"), inputs, _plan([])) is None
 
 
 def test_build_design_returns_none_when_cores_are_not_meshed() -> None:
@@ -413,16 +439,16 @@ def test_build_design_returns_none_when_cores_are_not_meshed() -> None:
         }
     )
     inputs = _inputs_from_edges(
-        ["c1", "c2", "c3", "g1", "g2", "z"], edges, {"g1", "g2"}, [fixtures.access_node("s")]
+        ["c1", "c2", "c3", "g1", "g2", "z"], edges, {"g1", "g2"}, [access("s")]
     )
-    assert build_design_for_cores(("c1", "c2", "c3"), inputs, DesignParams(), _plan([])) is None
+    assert build_design_for_cores(("c1", "c2", "c3"), inputs, _plan([])) is None
 
 
 def test_build_design_returns_none_when_a_forced_aggregation_cannot_route() -> None:
     """Build design returns none when a forced aggregation cannot dual-home."""
     edges = physical({("c1", "g1"): 1.0, ("c2", "g1"): 1.0, ("c1", "c2"): 1.0, ("z", "g1"): 1.0})
     inputs = _inputs_from_edges(
-        ["c1", "c2", "g1", "z"], edges, {"g1", "z"}, [fixtures.access_node("s")]
+        ["c1", "c2", "g1", "z"], edges, {"g1", "z"}, [access("s")]
     )
     plan = _plan([], forced={"z"})
-    assert build_design_for_cores(("c1", "c2"), inputs, DesignParams(), plan) is None
+    assert build_design_for_cores(("c1", "c2"), inputs, plan) is None

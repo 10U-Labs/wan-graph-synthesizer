@@ -47,6 +47,52 @@ A design is invalid unless all of the following hold.
    - 165 sites aggregate toward Malmstrom AFB.
    - 165 sites aggregate toward Minot AFB.
    - 165 sites aggregate toward F.E. Warren AFB.
+7. Strict tiering. Access nodes connect only to aggregation points;
+   only aggregation points connect to cores. An access node never
+   connects directly to a core, even when an aggregation and a core are
+   co-located in the same building.
+8. Co-location is allowed but identity is separate. A single PoP may
+   host both a core and an aggregation. They are modeled as two distinct
+   nodes that share coordinates (for example `AGGR Ashburn` and `CORE
+   Ashburn`), never one node serving both roles.
+
+## Aggregation tier: intentional clusters
+
+Aggregation points are not placed per access site by nearest-distance.
+They are placed as the heads of genuine clusters of access nodes, so a
+new accredited facility is built only when it aggregates many
+geographically close access nodes.
+
+- Cluster the access nodes by density (DBSCAN). A cluster forms wherever
+  at least **three** access nodes sit close together (the `N = 3`
+  minimum-points parameter).
+- The neighborhood radius `R` is **derived from the data** — the elbow
+  of the sorted nearest-neighbor distances — not a hand-picked constant,
+  consistent with this project's rejection of magic numbers. California,
+  Florida, and Northern Virginia must fall out as clusters.
+- Each cluster is served by aggregation points at **two distinct Lumen
+  PoPs**, so its members dual-home over node-disjoint paths (hard
+  constraint 1). The two PoPs are chosen for reachability and
+  disjointness, not for being geographically central.
+
+### Diversity and sparse access nodes by reuse
+
+A new aggregation facility is built only to be a genuine cluster head.
+Every other homing requirement is satisfied by reusing a facility that
+already exists.
+
+- A sparse, lone access node that belongs to no cluster homes to the
+  nearest **existing** aggregation points (still two, still
+  node-disjoint, both aggregations) over the carrier backbone.
+- A site's second (diversity) home is always an existing facility —
+  another cluster's aggregation, a Sentinel base, or an aggregation
+  co-located with a core. No facility is ever stood up solely to serve
+  as a backup.
+
+This rule is what prevents redundant facilities (for example a separate
+aggregation built only to be the Utah cluster's distant second home, or
+a third aggregation inside a metro already served by two) from ever
+being created, without any site-specific special-casing.
 
 ## Objective
 
@@ -81,3 +127,44 @@ follows:
 
 This constraint is layered on after the strength-based, three-core
 optimizer rewrite lands.
+
+## Facility and circuit costs
+
+The network carries classified traffic under RED/BLACK separation
+(CNSSAM TEMPEST/1-13), and every node is an accredited facility (ICD
+705). Cost is in dollars, amortized straight-line over **one year**. It
+is used as a reporting layer and to break ties between otherwise-equal
+designs; it does not replace strength as the core-selection objective.
+
+### One-time (capital)
+
+- A standalone facility — a core alone or an aggregation alone — costs
+  **$5.6M**: $600K TEMPEST / ICD 705 accreditation plus $5M of hardware
+  (RED/BLACK crypto included).
+- Adding the second function in the **same building** (a co-located
+  core+aggregation pair) costs **about $2M more**, roughly $7.6M for the
+  pair, because the accreditation is shared and only the footprint and
+  gear are incremental. Two separate buildings would be $11.2M.
+- Reusing a site that is already built and equipped — for example a
+  Sentinel base that already acts as an aggregation — for additional
+  homing costs **about $0** at the margin.
+
+### Recurring (monthly)
+
+- Colocation is **$50K per month** per facility (cross-connects
+  included), scaling with footprint.
+- Fiber is **tail-driven, never per route-mile**. A circuit's cost is
+  the tail from a site to its nearest Lumen on-net PoP; PoP-to-PoP across
+  the Lumen backbone is **free** (on-net). Short metro strands (such as
+  Ashburn–McLean) are local builds under $15K. The blended average cost
+  of an access circuit is **about $15K per month**. Distance enters only
+  through tails and metro builds, consistent with the rule that backbone
+  mileage is never a cost.
+
+### Consequence
+
+Facilities dominate (on the order of $6.2M per year, against roughly
+$180K per year for a circuit) and backbone geography is free. The design
+therefore minimizes the number of accredited facilities and favors
+co-location and reuse over greenfield builds — the economic backing for
+the intentional-cluster aggregation tier above.

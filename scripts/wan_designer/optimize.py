@@ -41,6 +41,7 @@ from wan_designer.graphs import (
     path_edge_keys,
     reconstruct_path,
 )
+from wan_designer.clustering import cluster_access_nodes
 
 COMPASS_OCTANTS = 8
 
@@ -248,35 +249,68 @@ def cores_mesh(core_ids: tuple[str, ...], all_distances: dict[str, dict[str, flo
         for left, right in itertools.combinations(core_ids, 2)
     )
 
-def best_aggregation_pair(
-    access: Node,
-    feasible_ids: set[str],
-    params: DesignParams,
-    plan: _SearchPlan,
-) -> tuple[tuple[float, str], tuple[float, str]] | None:
-    """Pick the two nearest feasible aggregations to dual-home one access site.
+def cluster_diameter(members: list[Node]) -> float:
+    """The farthest great-circle distance between any two members of a cluster."""
+    return max(
+        (haversine_miles(left, right) for left in members for right in members),
+        default=0.0,
+    )
 
-    The site's aggregations are pre-ranked by last-mile distance (ties broken by
-    strength); this walks that order, keeping the nearest feasible ones within
-    the last-mile cap. The cap is waived for exempt (too-remote) sites.
+def cluster_local_heads(
+    members: list[Node],
+    feasible_ids: set[str],
+    pop_by_id: dict[str, Node],
+) -> list[str]:
+    """Up to two distinct feasible PoPs local to a cluster, its heads.
+
+    A PoP is local when it sits within the cluster's own extent -- its diameter,
+    the farthest distance between two members -- of at least one member, so a
+    head is never much farther from the cluster than the cluster is wide. The two
+    locals nearest the cluster as a whole (least total distance to its members)
+    become its intentional aggregation heads. A distant PoP (Boise, ~243 mi from
+    the nearest Utah member, well beyond that cluster's ~100 mi extent) is never
+    built as the cluster's head; that cluster's second home comes from reuse.
     """
-    cap = None if access.id in plan.exempt_access_ids else params.max_last_mile_miles
-    eligible: list[tuple[float, str]] = []
-    for distance, aggregation_id in plan.ranked_by_access[access.id]:
-        if cap is not None and distance > cap:
-            break
-        if aggregation_id in feasible_ids:
-            eligible.append((distance, aggregation_id))
-            if len(eligible) == params.aggregation_candidates_per_access:
+    diameter = cluster_diameter(members)
+    scored: list[tuple[float, str]] = []
+    for aggregation_id in feasible_ids:
+        pop = pop_by_id[aggregation_id]
+        if min(haversine_miles(member, pop) for member in members) <= diameter:
+            total = sum(haversine_miles(member, pop) for member in members)
+            scored.append((total, aggregation_id))
+    scored.sort()
+    return [aggregation_id for _total, aggregation_id in scored[:2]]
+
+def complete_homes(
+    access: Node,
+    current: list[str],
+    selected: set[str],
+    feasible_ids: set[str],
+    pop_by_id: dict[str, Node],
+) -> list[str]:
+    """Fill an access node out toward two homes, preferring reuse over a build.
+
+    Existing facilities (cluster heads already placed, forced bases) are reused
+    first; a new aggregation is opened only when fewer than two existing
+    facilities are reachable -- the last resort for a lone node or a synthetic
+    graph with no clusters. With two or more feasible aggregations available this
+    always reaches two; it can return fewer only when the graph cannot offer two.
+    """
+    homes = list(current)
+    for source in (selected, feasible_ids):
+        for _distance, facility in sorted(
+            (haversine_miles(access, pop_by_id[facility]), facility)
+            for facility in source
+            if facility not in homes
+        ):
+            if len(homes) >= 2:
                 break
-    if len(eligible) < 2:
-        return None
-    return (eligible[0], eligible[1])
+            homes.append(facility)
+    return homes
 
 def finalize_design(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
-    params: DesignParams,
     draft: _DesignDraft,
 ) -> Design:
     """Compute edge sets, mileage estimate, and score for a design draft."""
@@ -288,11 +322,7 @@ def finalize_design(
     physical_miles = sum(
         inputs.physical_edges[key].distance_miles for key in physical_edge_keys
     )
-    score = (
-        access_miles
-        + physical_miles
-        + params.aggregation_penalty_miles * len(draft.selected_aggregation_ids)
-    )
+    score = access_miles + physical_miles
     carrier_on_paths = {node_id for use in draft.path_uses for node_id in use.path}
     transit_ids = tuple(
         sorted(carrier_on_paths - set(core_ids) - draft.selected_aggregation_ids)
@@ -322,46 +352,71 @@ def forced_can_dual_home(
 def assign_access(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
-    params: DesignParams,
     plan: _SearchPlan,
 ) -> tuple[list[AccessEdge], set[str]] | None:
-    """Home every access site to its two nearest feasible aggregations.
+    """Home every access node by clustering: cluster heads first, then reuse.
 
-    Returns the access edges and the selected aggregation ids, or None if too
-    few aggregations are feasible or some site cannot find two within its cap.
+    Aggregations are placed as the heads of dense access-node clusters (two
+    distinct local PoPs each). Every node then dual-homes to two facilities,
+    completing any gap (a cluster with one local head, or a sparse lone node) by
+    reusing an existing facility rather than building a redundant one. Returns
+    the access edges and selected aggregation ids, or None if some node cannot
+    reach two facilities.
     """
     feasible_ids = feasible_aggregation_ids(core_ids, inputs, plan)
     if len(feasible_ids) < 2:
         return None
-    access_edges: list[AccessEdge] = []
+    pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
+    access_by_id = {access.id: access for access in inputs.access_nodes}
     selected: set[str] = set(plan.forced_aggregation_ids)
+    homes: dict[str, list[str]] = {}
+
+    # Pass 1: stand up each cluster's local aggregation heads.
+    for members in plan.clusters:
+        member_nodes = [access_by_id[member] for member in members]
+        heads = cluster_local_heads(member_nodes, feasible_ids, pop_by_id)
+        if not heads:
+            continue
+        selected.update(heads)
+        for member in members:
+            homes[member] = list(heads)
+
+    # Pass 2: complete every node to two homes, reusing existing facilities.
     for access in inputs.access_nodes:
-        chosen = best_aggregation_pair(access, feasible_ids, params, plan)
-        if chosen is None:
-            return None
-        for distance, aggregation_id in chosen:
-            access_edges.append(AccessEdge(access.id, aggregation_id, distance))
-            selected.add(aggregation_id)
+        if len(homes.get(access.id, [])) >= 2:
+            continue
+        completed = complete_homes(
+            access, homes.get(access.id, []), selected, feasible_ids, pop_by_id
+        )
+        homes[access.id] = completed
+        selected.update(completed)
+
+    access_edges = [
+        AccessEdge(
+            access_id, aggregation_id,
+            haversine_miles(access_by_id[access_id], pop_by_id[aggregation_id]),
+        )
+        for access_id, aggregations in homes.items()
+        for aggregation_id in aggregations
+    ]
     return access_edges, selected
 
 def evaluate_cores(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
-    params: DesignParams,
     plan: _SearchPlan,
 ) -> tuple[list[AccessEdge], set[str]] | None:
     """Score a core set's feasibility and access homing without routing paths.
 
     Returns None when the cores do not full-mesh, a forced aggregation cannot
-    dual-home, or some access site cannot find two aggregations within its cap.
-    Routed paths are deferred to the winning set, since they do not affect the
-    last-mile/strength ranking.
+    dual-home, or some access node cannot reach two facilities. Routed paths are
+    deferred to the winning set, since they do not affect the strength ranking.
     """
     if not cores_mesh(core_ids, inputs.all_distances):
         return None
     if not forced_can_dual_home(core_ids, inputs, plan):
         return None
-    return assign_access(core_ids, inputs, params, plan)
+    return assign_access(core_ids, inputs, plan)
 
 def routed_path_uses(
     core_ids: tuple[str, ...],
@@ -382,22 +437,20 @@ def routed_path_uses(
 def build_design_for_cores(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
-    params: DesignParams,
     plan: _SearchPlan,
 ) -> Design | None:
     """Assemble a full three-tier design for one fixed set of core PoPs.
 
     Returns None if the cores cannot full-mesh, a forced aggregation cannot
-    dual-home to them, or some access site cannot find two aggregations within
-    its last-mile cap.
+    dual-home to them, or some access node cannot reach two facilities.
     """
-    evaluation = evaluate_cores(core_ids, inputs, params, plan)
+    evaluation = evaluate_cores(core_ids, inputs, plan)
     if evaluation is None:
         return None
     access_edges, selected = evaluation
     path_uses = routed_path_uses(core_ids, inputs, selected)
     draft = _DesignDraft(access_edges, selected, path_uses)
-    return finalize_design(core_ids, inputs, params, draft)
+    return finalize_design(core_ids, inputs, draft)
 
 def compute_eligible_ids(
     carrier_pops: list[Node],
@@ -447,40 +500,22 @@ def validate_pop_graph(
 class _SearchPlan:
     """Pre-computed context shared across every candidate core set.
 
-    ``ranked_by_access`` pre-sorts each access site's aggregations by last-mile
-    distance (it is core-independent), and ``feasibility_cache`` memoizes
-    per-pair node-disjoint reachability, so the search avoids re-sorting and
-    re-running max-flows for every trio.
+    ``clusters`` comes from density-clustering the access nodes once (geography
+    is core-independent); each cluster's heads are then chosen relative to its
+    own extent. ``feasibility_cache`` memoizes per-pair node-disjoint
+    reachability so the search avoids re-running max-flows for every core set.
     """
 
     core_candidates: list[str]
     forced_aggregation_ids: frozenset[str]
-    exempt_access_ids: frozenset[str]
     strength_by_id: dict[str, float]
-    ranked_by_access: dict[str, list[tuple[float, str]]] = field(default_factory=dict)
+    clusters: list[list[str]] = field(default_factory=list)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
     required_cores: frozenset[str] = field(default_factory=frozenset)
-
-def rank_aggregations(
-    access: Node,
-    eligible_ids: set[str],
-    pop_by_id: dict[str, Node],
-    strength_by_id: dict[str, float],
-) -> list[tuple[float, str]]:
-    """An access site's eligible aggregations, nearest first, strength breaks ties."""
-    scored = sorted(
-        (haversine_miles(access, pop_by_id[agg_id]), -strength_by_id[agg_id], agg_id)
-        for agg_id in eligible_ids
-    )
-    return [(distance, agg_id) for distance, _strength, agg_id in scored]
 
 def nearest_pop_id(access: Node, carrier_pops: list[Node]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
     return min(carrier_pops, key=lambda pop: haversine_miles(access, pop)).id
-
-def second_nearest_miles(access: Node, aggregators: list[Node]) -> float:
-    """Distance to the access site's second-nearest aggregation PoP."""
-    return sorted(haversine_miles(access, pop) for pop in aggregators)[1]
 
 def core_set_strength(core_ids: tuple[str, ...], plan: _SearchPlan) -> float:
     """Total strength of a core set: the primary objective the search maximizes."""
@@ -510,7 +545,6 @@ def core_combinations(plan: _SearchPlan, size: int) -> list[tuple[str, ...]]:
 
 def best_design_at_size(
     inputs: DesignInputs,
-    params: DesignParams,
     plan: _SearchPlan,
     size: int,
 ) -> Design | None:
@@ -537,7 +571,7 @@ def best_design_at_size(
         if strength < best_strength:
             logger.info("  strongest feasible cores locked at set %d/%d", index, len(combos))
             break
-        evaluation = evaluate_cores(core_set, inputs, params, plan)
+        evaluation = evaluate_cores(core_set, inputs, plan)
         if evaluation is None:
             continue
         access_miles = sum(edge.distance_miles for edge in evaluation[0])
@@ -550,7 +584,7 @@ def best_design_at_size(
             )
     if best_core_set is None:
         return None
-    return build_design_for_cores(best_core_set, inputs, params, plan)
+    return build_design_for_cores(best_core_set, inputs, plan)
 
 def aggregation_demand(design: Design, plan: _SearchPlan) -> dict[str, int]:
     """Sites behind each aggregation: its homed access count, or 165 for a base."""
@@ -613,7 +647,7 @@ def search_best_design(
                 size, sets, sets * CORE_SET_PEAK_BYTES / 1e9,
             )
             break
-        design = best_design_at_size(inputs, params, plan, size)
+        design = best_design_at_size(inputs, plan, size)
         if design is None:
             continue
         coverage = coverage_score(design, plan)
@@ -679,32 +713,22 @@ def build_search_plan(
     inputs: DesignInputs,
     eligible_ids: set[str],
     forced: frozenset[str],
-    params: DesignParams,
 ) -> _SearchPlan:
-    """Compute node strengths, cap-exempt access sites, and core candidates."""
+    """Compute node strengths, access-node clusters, and core candidates."""
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
     strength_by_id = {
         pop_id: core_strength(pop_id, inputs, pop_by_id, max_degree)
         for pop_id in eligible_ids
     }
-    aggregators = [pop_by_id[pop_id] for pop_id in eligible_ids]
-    exempt = frozenset(
-        node.id
-        for node in inputs.access_nodes
-        if second_nearest_miles(node, aggregators) > params.max_last_mile_miles
-    )
-    ranked_by_access = {
-        access.id: rank_aggregations(access, eligible_ids, pop_by_id, strength_by_id)
-        for access in inputs.access_nodes
-    }
+    clusters, _sparse, _radius = cluster_access_nodes(inputs.access_nodes)
     core_candidates = sorted(
         eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
     )
     required = required_core_ids(inputs.carrier_pops, eligible_ids) - forced
     return _SearchPlan(
-        core_candidates, forced, exempt, strength_by_id, ranked_by_access,
-        required_cores=required,
+        core_candidates, forced, strength_by_id,
+        clusters=clusters, required_cores=required,
     )
 
 def optimize_three_tier_design(
@@ -736,7 +760,7 @@ def optimize_three_tier_design(
         all_distances=all_distances,
         all_predecessors=all_predecessors,
     )
-    plan = build_search_plan(inputs, eligible_ids, forced, params)
+    plan = build_search_plan(inputs, eligible_ids, forced)
     if len(plan.core_candidates) < params.core_count:
         raise ValueError("Not enough reachable core candidates")
     return search_best_design(inputs, params, plan)

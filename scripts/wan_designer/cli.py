@@ -74,12 +74,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum number of core nodes; more are added if needed. Default is 3.",
     )
     parser.add_argument(
-        "--max-last-mile-miles",
-        type=float,
-        default=300.0,
-        help="Cap on an access site's last-mile link to an aggregation; remote sites exempt.",
-    )
-    parser.add_argument(
         "--regional-nodes",
         default="data/regional_nodes.csv",
         help="Regional carrier node coordinates; pass empty to disable regional carriers.",
@@ -89,18 +83,6 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="*",
         default=["data/dcn_edges.csv", "data/vision_net_edges.csv"],
         help="Regional carrier edge files stitched into the Lumen graph.",
-    )
-    parser.add_argument(
-        "--aggregation-candidates-per-access",
-        type=int,
-        default=8,
-        help="Nearest eligible aggregation PoPs considered per access node.",
-    )
-    parser.add_argument(
-        "--aggregation-penalty-miles",
-        type=float,
-        default=40.0,
-        help="Facility penalty used to avoid selecting unnecessary aggregation PoPs.",
     )
     parser.add_argument(
         "--allow-roadm-aggregation",
@@ -130,9 +112,6 @@ def params_from_args(args: argparse.Namespace) -> DesignParams:
     """Build the design parameter bundle from parsed CLI arguments."""
     return DesignParams(
         core_count=args.core_count,
-        aggregation_candidates_per_access=args.aggregation_candidates_per_access,
-        aggregation_penalty_miles=args.aggregation_penalty_miles,
-        max_last_mile_miles=args.max_last_mile_miles,
         allow_roadm_aggregation=args.allow_roadm_aggregation,
     )
 
