@@ -2,6 +2,8 @@
 concurrency:
   cancel-in-progress: true
   group: design-${{ github.head_ref || github.ref_name }}
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 jobs:
   e2e-test:
     needs: generate-graph
