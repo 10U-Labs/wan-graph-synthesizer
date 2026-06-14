@@ -295,25 +295,27 @@ def _mesh_inputs() -> DesignInputs:
     )
 
 
-def test_best_design_at_size_prefers_strength_over_last_mile() -> None:
-    """The strongest feasible core set wins even when it costs more last-mile."""
-    plan = _plan(
-        ["a", "b", "c", "d"],
-        strength={"a": 10.0, "b": 10.0, "c": 1.0, "d": 1.0},
-        ranked={"s": [(0.5, "a"), (0.6, "b"), (5.0, "c"), (5.1, "d")]},
-    )
-    params = DesignParams(core_count=2, max_last_mile_miles=100000.0)
-    design = best_design_at_size(_mesh_inputs(), params, plan, 2)
-    assert design is not None and set(design.core_ids) == {"a", "b"}
-
-
-def test_best_design_at_size_breaks_strength_ties_by_last_mile() -> None:
-    """Among equally strong core sets, the one with the least last-mile wins."""
-    plan = _plan(
-        ["a", "b", "c", "d"],
-        strength={"a": 10.0, "b": 10.0, "c": 10.0, "d": 10.0},
-        ranked={"s": [(0.1, "c"), (0.2, "d"), (5.0, "a"), (5.1, "b")]},
-    )
+@pytest.mark.parametrize(
+    "strength, ranked",
+    [
+        # Strength is primary: {a,b} wins though it forces the costlier last-mile.
+        (
+            {"a": 10.0, "b": 10.0, "c": 1.0, "d": 1.0},
+            {"s": [(0.5, "a"), (0.6, "b"), (5.0, "c"), (5.1, "d")]},
+        ),
+        # Equal strength: the least-last-mile set {a,b} breaks the tie.
+        (
+            {"a": 10.0, "b": 10.0, "c": 10.0, "d": 10.0},
+            {"s": [(0.1, "c"), (0.2, "d"), (5.0, "a"), (5.1, "b")]},
+        ),
+    ],
+)
+def test_best_design_at_size_selects_strongest_then_least_last_mile(
+    strength: dict[str, float],
+    ranked: dict[str, list[tuple[float, str]]],
+) -> None:
+    """Cores are chosen by strength first, with last-mile only breaking ties."""
+    plan = _plan(["a", "b", "c", "d"], strength=strength, ranked=ranked)
     params = DesignParams(core_count=2, max_last_mile_miles=100000.0)
     design = best_design_at_size(_mesh_inputs(), params, plan, 2)
     assert design is not None and set(design.core_ids) == {"a", "b"}
