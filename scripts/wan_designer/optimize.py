@@ -20,6 +20,7 @@ from __future__ import annotations
 import itertools
 import logging
 import math
+import os
 from dataclasses import dataclass, field
 
 from wan_designer.model import (
@@ -56,10 +57,14 @@ REQUIRED_CORE_NAMES = ("Salt Lake City, UT",)
 # distance to its cores counts when deciding how many cores the design needs.
 SENTINEL_SITE_COUNT = 165
 
-# The most core sets the search will enumerate exactly for one core count.
-# Past this the candidate space is too large to sort in memory, so the core-count
-# sweep stops rather than search a size approximately.
-CORE_ENUM_LIMIT = 3_000_000
+# Peak bytes one enumerated-and-sorted core set costs (the tuple, its list slot,
+# and the transient the sort holds). Used to size the search to the machine's
+# actual memory instead of a hand-picked cap.
+CORE_SET_PEAK_BYTES = 160
+
+# Share of the machine's RAM the core enumeration may use at its peak. The rest
+# is headroom for the operating system and the rest of the program.
+ENUM_MEMORY_FRACTION = 0.6
 
 logger = logging.getLogger(__name__)
 
@@ -570,6 +575,14 @@ def coverage_score(design: Design, plan: _SearchPlan) -> float:
             total += demand.get(use.source, 1) * (len(use.path) - 1)
     return total
 
+def total_memory_bytes() -> int:
+    """Physical RAM installed on this machine, in bytes (portable across OSes)."""
+    return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+
+def enumeration_limit(memory_bytes: int) -> int:
+    """How many core sets fit in the share of RAM the enumeration may use."""
+    return int(memory_bytes * ENUM_MEMORY_FRACTION / CORE_SET_PEAK_BYTES)
+
 def search_best_design(
     inputs: DesignInputs,
     params: DesignParams,
@@ -581,19 +594,24 @@ def search_best_design(
     is built and scored by how near demand sits to its cores. A larger count is
     adopted only when it cuts that traffic-distance by at least
     ``core_coverage_improvement``; once a couple of larger counts fail to clear
-    that bar (or the candidate space grows too large to search exactly) the sweep
-    stops. Every count tried is logged so the chosen number can be reviewed.
+    that bar (or enumerating that many core sets would not fit in the machine's
+    free RAM) the sweep stops. Every count tried is logged for review.
     """
+    limit = enumeration_limit(total_memory_bytes())
     logger.info(
-        "Optimizing %d access sites; cores >= %d, %d required",
-        len(inputs.access_nodes), params.core_count, len(plan.required_cores),
+        "Optimizing %d access sites; cores >= %d, %d required; up to %d core sets per size",
+        len(inputs.access_nodes), params.core_count, len(plan.required_cores), limit,
     )
     best: Design | None = None
     best_coverage = math.inf
     stale = 0
     for size in range(params.core_count, len(plan.core_candidates) + 1):
-        if core_combination_count(plan, size) > CORE_ENUM_LIMIT:
-            logger.info("  %d cores: candidate space too large to search exactly; stopping", size)
+        sets = core_combination_count(plan, size)
+        if sets > limit:
+            logger.info(
+                "  %d cores: %d core sets (~%.1f GB) exceed the RAM budget; stopping",
+                size, sets, sets * CORE_SET_PEAK_BYTES / 1e9,
+            )
             break
         design = best_design_at_size(inputs, params, plan, size)
         if design is None:

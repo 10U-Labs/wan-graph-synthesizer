@@ -26,6 +26,7 @@ from wan_designer.optimize import (
     cores_mesh,
     coverage_score,
     dual_homes_to_pair,
+    enumeration_limit,
     feasible_aggregation_ids,
     nearest_pop_id,
     node_straightness,
@@ -378,8 +379,13 @@ def test_coverage_score_weights_a_base_by_its_sites() -> None:
     assert coverage_score(design, plan) == 165 * 2 + 1 * 1
 
 
+def test_enumeration_limit_grows_with_available_memory() -> None:
+    """The core sets the search may enumerate scale with the machine's free RAM."""
+    assert enumeration_limit(32 * 10**9) > enumeration_limit(16 * 10**9)
+
+
 def test_search_stops_when_the_core_space_is_too_large() -> None:
-    """The sweep stops rather than enumerate an astronomically large core space."""
+    """The sweep stops rather than enumerate more core sets than RAM can hold."""
     inputs = _inputs_from_edges([], {}, set(), [])
     plan = _plan([f"c{index}" for index in range(40)])
     with pytest.raises(ValueError):
