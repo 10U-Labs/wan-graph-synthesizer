@@ -243,6 +243,20 @@ def finalize_design(
         metrics=DesignMetrics(score, access_miles, physical_miles),
     )
 
+def forced_can_dual_home(
+    core_ids: tuple[str, ...],
+    inputs: DesignInputs,
+    forced_aggregation_ids: frozenset[str],
+) -> bool:
+    """True if every forced aggregation has node-disjoint paths to two cores."""
+    for forced_id in forced_aggregation_ids:
+        cost, _paths = aggregation_core_paths(
+            forced_id, core_ids, inputs.adjacency, inputs.physical_edges
+        )
+        if not math.isfinite(cost):
+            return False
+    return True
+
 def build_design_for_cores(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
@@ -255,9 +269,15 @@ def build_design_for_cores(
     cannot dual-home to them, or some access site cannot find two
     aggregations within its tail cap.
     """
+    path_uses = core_mesh_paths(
+        core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges
+    )
+    if not path_uses:
+        return None  # the cores do not form a full mesh over the carrier graph
+    if not forced_can_dual_home(core_ids, inputs, plan.forced_aggregation_ids):
+        return None  # a forced Sentinel aggregation cannot dual-home here
+
     aggregation_core = aggregation_core_map(core_ids, inputs)
-    if any(forced_id not in aggregation_core for forced_id in plan.forced_aggregation_ids):
-        return None
     if len(aggregation_core) < 2:
         return None
 
@@ -272,11 +292,6 @@ def build_design_for_cores(
             access_edges.append(AccessEdge(access.id, aggregation_id, distance))
             selected.add(aggregation_id)
 
-    path_uses = core_mesh_paths(
-        core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges
-    )
-    if not path_uses:
-        return None
     for aggregation_id in sorted(selected):
         path_uses.extend(aggregation_core[aggregation_id][1])
 
@@ -344,34 +359,73 @@ def second_nearest_miles(access: Node, aggregators: list[Node]) -> float:
     """Distance to the access site's second-nearest aggregation PoP."""
     return sorted(haversine_miles(access, pop) for pop in aggregators)[1]
 
+def tail_lower_bound(
+    inputs: DesignInputs, params: DesignParams, exempt: frozenset[str]
+) -> float:
+    """Least possible total access tail: every site to its 2 nearest aggregations.
+
+    This ignores whether those aggregations can actually dual-home to the
+    cores, so it is a true lower bound on any feasible design's tail.
+    """
+    by_id = {pop.id: pop for pop in inputs.carrier_pops}
+    aggregators = [by_id[pop_id] for pop_id in inputs.eligible_aggregation_ids]
+    total = 0.0
+    for access in inputs.access_nodes:
+        distances = sorted(haversine_miles(access, agg) for agg in aggregators)
+        if access.id not in exempt:
+            distances = [d for d in distances if d <= params.max_access_tail_miles]
+        total += distances[0] + distances[1]
+    return total
+
+def best_design_at_size(
+    inputs: DesignInputs,
+    params: DesignParams,
+    plan: _SearchPlan,
+    size: int,
+    lower_bound: float,
+) -> Design | None:
+    """Best design using exactly ``size`` cores, or None if none is feasible.
+
+    Core sets are tried strongest-first; the moment one hits the tail lower
+    bound it is returned, because no stronger set could already have reached
+    it (or it would have won) and no weaker set can beat its tail.
+    """
+    combos = sorted(
+        itertools.combinations(plan.core_candidates, size),
+        key=lambda combo: -sum(plan.strength_by_id[core_id] for core_id in combo),
+    )
+    best: Design | None = None
+    best_key: tuple[float, float] | None = None
+    for core_set in combos:
+        design = build_design_for_cores(tuple(core_set), inputs, params, plan)
+        if design is None:
+            continue
+        key = (
+            round(design.metrics.access_miles, 6),
+            -sum(plan.strength_by_id[core_id] for core_id in core_set),
+        )
+        if best_key is None or key < best_key:
+            best, best_key = design, key
+        if best_key[0] <= lower_bound + 1e-6:
+            break
+    return best
+
 def search_best_design(
     inputs: DesignInputs,
     params: DesignParams,
     plan: _SearchPlan,
 ) -> Design:
-    """Exhaustively find the best design: min total tail, then max core strength.
+    """Find the globally best design: min total tail, then max core strength.
 
-    Tries every combination of ``core_count`` cores; only if none is
-    feasible does it grow the core set by one and try again.
+    Grows the core set from ``core_count`` only when no smaller set is
+    feasible.
     """
+    lower_bound = tail_lower_bound(inputs, params, plan.exempt_access_ids)
     for size in range(params.core_count, len(plan.core_candidates) + 1):
-        best: Design | None = None
-        best_key: tuple[float, float] | None = None
-        for core_set in itertools.combinations(plan.core_candidates, size):
-            design = build_design_for_cores(tuple(core_set), inputs, params, plan)
-            if design is None:
-                continue
-            key = (
-                round(design.metrics.access_miles, 6),
-                -sum(plan.strength_by_id[core_id] for core_id in core_set),
-            )
-            if best_key is None or key < best_key:
-                best, best_key = design, key
-        if best is not None:
-            return best
-    raise ValueError(
-        f"No feasible design with {params.core_count} or more cores"
-    )
+        design = best_design_at_size(inputs, params, plan, size, lower_bound)
+        if design is not None:
+            return design
+    raise ValueError(f"No feasible design with {params.core_count} or more cores")
 
 def graph_context(
     nodes: list[Node],
