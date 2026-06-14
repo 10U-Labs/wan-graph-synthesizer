@@ -362,8 +362,7 @@ def test_cluster_local_heads_prefers_a_selected_facility_over_a_nearer_build() -
         "b2": pop("b2", 0.0, 0.08),    # also nearer the cluster as a whole than the pin
     }
     heads = cluster_local_heads(members, set(by_id), {"pin"}, by_id)
-    assert heads[0] == "pin"           # reused first despite being the farthest local PoP
-    assert "b1" in heads               # remaining slot still opens the nearest new build
+    assert heads == ["pin", "b1"]      # pin reused first, then the nearest new build
 
 
 HOMES_POPS = {key: pop(key, 0.0, off) for key, off in (("x", 1.0), ("y", 2.0), ("z", 3.0))}
