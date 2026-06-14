@@ -26,7 +26,7 @@ The mapbook draws routes as geographic lines that follow real
 right-of-way, not straight lines, and it lists no mileage. There is no
 direct line between PoPs. Straight-line (haversine) distance between
 PoPs must not be used as a design objective or cost. Distance may be
-used only for access tail circuits (a demand site to its aggregation
+used only for last-mile circuits (a demand site to its aggregation
 PoP), which are new builds rather than existing carrier routes.
 
 ## Hard constraints

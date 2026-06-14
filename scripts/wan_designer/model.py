@@ -80,7 +80,7 @@ class DesignParams:
     core_count: int = 3  # minimum number of cores; more are added if needed
     aggregation_candidates_per_access: int = 8
     aggregation_penalty_miles: float = 40.0
-    max_access_tail_miles: float = 300.0  # tail cap for non-exempt access sites
+    max_last_mile_miles: float = 300.0  # last-mile cap for non-exempt access sites
     allow_roadm_aggregation: bool = False
 
 @dataclass(frozen=True)

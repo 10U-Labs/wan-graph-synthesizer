@@ -3,22 +3,8 @@ concurrency:
   cancel-in-progress: true
   group: design-${{ github.head_ref || github.ref_name }}
 jobs:
-  design:
-    needs: integration-test
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Generate the network design (fails on an invalid design)
-        run: PYTHONPATH=scripts python3 scripts/design_network.py
-      - if: always()
-        name: Upload design outputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: network-design
-          path: outputs/
-    timeout-minutes: 30
   e2e-test:
-    needs: design
+    needs: generate-graph
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -41,6 +27,20 @@ jobs:
         run: >-
           PYTHONPATH=.:scripts python3 -m pytest
           test/e2e/ --verbose --pythonwarnings=error
+  generate-graph:
+    needs: integration-test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate the network design (fails on an invalid design)
+        run: PYTHONPATH=scripts python3 scripts/design_network.py
+      - if: always()
+        name: Upload design outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: network-design
+          path: outputs/
+    timeout-minutes: 30
   integration-test:
     needs: unit-test
     runs-on: ubuntu-24.04

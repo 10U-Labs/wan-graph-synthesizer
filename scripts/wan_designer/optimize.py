@@ -2,20 +2,21 @@
 
 The objective, in order: aggregations win, cores break ties. Aggregation
 points exist to gather clusters of nearby access sites, so the design is
-ranked first by total access tail mileage (tighter clusters are better),
+ranked first by total last-mile mileage (tighter clusters are better),
 and ties are broken by core strength (degree + compass spread + path
 straightness). The search is exact -- every feasible set of cores is
 tried, with all eligible PoPs as candidates (no truncation) -- so the
 result is the global best, not a heuristic.
 
 The three Sentinel bases are forced into the aggregation tier at their
-co-located PoPs; access sites with no aggregation within the tail cap are
+co-located PoPs; access sites with no aggregation within the last-mile cap are
 exempt from the cap and home to their nearest two regardless.
 """
 
 from __future__ import annotations
 
 import itertools
+import logging
 import math
 from dataclasses import dataclass
 
@@ -42,6 +43,8 @@ COMPASS_OCTANTS = 8
 
 # The Sentinel ICBM wings, forced into the aggregation tier at their PoPs.
 SENTINEL_BASE_NAMES = ("Malmstrom AFB", "Minot AFB", "F.E. Warren AFB")
+
+logger = logging.getLogger(__name__)
 
 def unit_adjacency(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
@@ -188,11 +191,11 @@ def best_aggregation_pair(
 ) -> tuple[tuple[float, str], tuple[float, str]] | None:
     """Pick the two nearest aggregations to dual-home one access site.
 
-    Tails are the cost; node strength only breaks ties between equally
-    near aggregations. The tail cap applies unless the site is exempt
+    Last-mile links are the cost; node strength only breaks ties between equally
+    near aggregations. The last-mile cap applies unless the site is exempt
     (too remote for any aggregation to be within the cap).
     """
-    cap = None if access.id in plan.exempt_access_ids else params.max_access_tail_miles
+    cap = None if access.id in plan.exempt_access_ids else params.max_last_mile_miles
     ranked = sorted(
         (
             (haversine_miles(access, by_id[aggregation_id]),
@@ -267,7 +270,7 @@ def build_design_for_cores(
 
     Returns None if the cores cannot full-mesh, a forced aggregation
     cannot dual-home to them, or some access site cannot find two
-    aggregations within its tail cap.
+    aggregations within its last-mile cap.
     """
     path_uses = core_mesh_paths(
         core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges
@@ -359,13 +362,13 @@ def second_nearest_miles(access: Node, aggregators: list[Node]) -> float:
     """Distance to the access site's second-nearest aggregation PoP."""
     return sorted(haversine_miles(access, pop) for pop in aggregators)[1]
 
-def tail_lower_bound(
+def last_mile_lower_bound(
     inputs: DesignInputs, params: DesignParams, exempt: frozenset[str]
 ) -> float:
-    """Least possible total access tail: every site to its 2 nearest aggregations.
+    """Least possible total last-mile: every site to its 2 nearest aggregations.
 
     This ignores whether those aggregations can actually dual-home to the
-    cores, so it is a true lower bound on any feasible design's tail.
+    cores, so it is a true lower bound on any feasible design's last-mile.
     """
     by_id = {pop.id: pop for pop in inputs.carrier_pops}
     aggregators = [by_id[pop_id] for pop_id in inputs.eligible_aggregation_ids]
@@ -373,7 +376,7 @@ def tail_lower_bound(
     for access in inputs.access_nodes:
         distances = sorted(haversine_miles(access, agg) for agg in aggregators)
         if access.id not in exempt:
-            distances = [d for d in distances if d <= params.max_access_tail_miles]
+            distances = [d for d in distances if d <= params.max_last_mile_miles]
         total += distances[0] + distances[1]
     return total
 
@@ -386,17 +389,18 @@ def best_design_at_size(
 ) -> Design | None:
     """Best design using exactly ``size`` cores, or None if none is feasible.
 
-    Core sets are tried strongest-first; the moment one hits the tail lower
+    Core sets are tried strongest-first; the moment one hits the last-mile lower
     bound it is returned, because no stronger set could already have reached
-    it (or it would have won) and no weaker set can beat its tail.
+    it (or it would have won) and no weaker set can beat its last-mile.
     """
     combos = sorted(
         itertools.combinations(plan.core_candidates, size),
         key=lambda combo: -sum(plan.strength_by_id[core_id] for core_id in combo),
     )
+    logger.info("Evaluating %d core sets of size %d, strongest first", len(combos), size)
     best: Design | None = None
     best_key: tuple[float, float] | None = None
-    for core_set in combos:
+    for index, core_set in enumerate(combos, start=1):
         design = build_design_for_cores(tuple(core_set), inputs, params, plan)
         if design is None:
             continue
@@ -406,7 +410,9 @@ def best_design_at_size(
         )
         if best_key is None or key < best_key:
             best, best_key = design, key
+            logger.info("  trio %d/%d: new best last-mile %.0f mi", index, len(combos), key[0])
         if best_key[0] <= lower_bound + 1e-6:
+            logger.info("  optimum locked at trio %d/%d", index, len(combos))
             break
     return best
 
@@ -415,12 +421,16 @@ def search_best_design(
     params: DesignParams,
     plan: _SearchPlan,
 ) -> Design:
-    """Find the globally best design: min total tail, then max core strength.
+    """Find the globally best design: min total last-mile, then max core strength.
 
     Grows the core set from ``core_count`` only when no smaller set is
     feasible.
     """
-    lower_bound = tail_lower_bound(inputs, params, plan.exempt_access_ids)
+    lower_bound = last_mile_lower_bound(inputs, params, plan.exempt_access_ids)
+    logger.info(
+        "Optimizing %d access sites over %d core candidates; last-mile lower bound %.0f mi",
+        len(inputs.access_nodes), len(plan.core_candidates), lower_bound,
+    )
     for size in range(params.core_count, len(plan.core_candidates) + 1):
         design = best_design_at_size(inputs, params, plan, size, lower_bound)
         if design is not None:
@@ -476,7 +486,7 @@ def build_search_plan(
     exempt = frozenset(
         node.id
         for node in inputs.access_nodes
-        if second_nearest_miles(node, aggregators) > params.max_access_tail_miles
+        if second_nearest_miles(node, aggregators) > params.max_last_mile_miles
     )
     core_candidates = sorted(
         eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
