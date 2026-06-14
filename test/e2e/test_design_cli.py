@@ -64,9 +64,14 @@ def test_access_nodes_are_dual_homed(design: dict[str, Any]) -> None:
     assert design["validation"]["access_nodes_with_two_aggregation_links"] is True
 
 
-def test_core_tier_has_three_nodes(design: dict[str, Any]) -> None:
-    """Core tier has three nodes."""
-    assert len(core_names(design)) == 3
+def test_core_tier_has_at_least_three_nodes(design: dict[str, Any]) -> None:
+    """Core tier has at least the minimum three nodes."""
+    assert len(core_names(design)) >= 3
+
+
+def test_salt_lake_city_is_a_required_core(design: dict[str, Any]) -> None:
+    """Salt Lake City anchors the mountain-west as a required core."""
+    assert "Salt Lake City, UT" in core_names(design)
 
 
 def test_every_aggregation_reaches_two_distinct_cores(design: dict[str, Any]) -> None:

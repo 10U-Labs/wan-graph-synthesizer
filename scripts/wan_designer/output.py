@@ -41,7 +41,8 @@ def write_json(
         "objective": (
             "Three-tier WAN design: access nodes dual-home to Carrier aggregation PoPs, "
             "aggregation PoPs dual-home to core PoPs over the physical Carrier graph, "
-            "and the core tier uses at most three nodes."
+            "and the core tier uses at least three strong nodes, with Salt Lake City "
+            "required and extra cores added where they bring demand closer."
         ),
         "summary": {
             "core_count": len(design.core_ids),
