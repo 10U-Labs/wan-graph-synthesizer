@@ -459,26 +459,8 @@ def second_nearest_miles(access: Node, aggregators: list[Node]) -> float:
     """Distance to the access site's second-nearest aggregation PoP."""
     return sorted(haversine_miles(access, pop) for pop in aggregators)[1]
 
-def last_mile_lower_bound(
-    inputs: DesignInputs, params: DesignParams, exempt: frozenset[str]
-) -> float:
-    """Least possible total last-mile: every site to its 2 nearest aggregations.
-
-    This ignores whether those aggregations can actually dual-home to the
-    cores, so it is a true lower bound on any feasible design's last-mile.
-    """
-    by_id = {pop.id: pop for pop in inputs.carrier_pops}
-    aggregators = [by_id[pop_id] for pop_id in inputs.eligible_aggregation_ids]
-    total = 0.0
-    for access in inputs.access_nodes:
-        distances = sorted(haversine_miles(access, agg) for agg in aggregators)
-        if access.id not in exempt:
-            distances = [d for d in distances if d <= params.max_last_mile_miles]
-        total += distances[0] + distances[1]
-    return total
-
 def core_set_strength(core_ids: tuple[str, ...], plan: _SearchPlan) -> float:
-    """Total strength of a core set, the tie-breaker among equal-last-mile sets."""
+    """Total strength of a core set: the primary objective the search maximizes."""
     return sum(plan.strength_by_id[core_id] for core_id in core_ids)
 
 def best_design_at_size(
@@ -486,13 +468,15 @@ def best_design_at_size(
     params: DesignParams,
     plan: _SearchPlan,
     size: int,
-    lower_bound: float,
 ) -> Design | None:
     """Best design using exactly ``size`` cores, or None if none is feasible.
 
-    Core sets are tried strongest-first, scored cheaply (feasibility plus access
-    homing, no routed paths). The moment one hits the last-mile lower bound the
-    search stops, because no weaker set can beat its last-mile. Routed paths are
+    The objective is core strength (the spec forbids mileage as a design cost):
+    the strongest feasible core set wins, with total last-mile only breaking ties
+    among equally strong sets. Core sets are tried strongest-first and scored
+    cheaply (feasibility plus access homing, no routed paths). Because strength
+    is non-increasing down that order, the moment a feasible set is in hand the
+    search stops as soon as a candidate is strictly weaker. Routed paths are
     reconstructed only for the winning set.
     """
     combos = sorted(
@@ -502,18 +486,23 @@ def best_design_at_size(
     logger.info("Evaluating %d core sets of size %d, strongest first", len(combos), size)
     best_core_set: tuple[str, ...] | None = None
     best_key: tuple[float, float] | None = None
+    best_strength = -math.inf
     for index, core_set in enumerate(combos, start=1):
+        strength = core_set_strength(core_set, plan)
+        if strength < best_strength:
+            logger.info("  strongest feasible cores locked at set %d/%d", index, len(combos))
+            break
         evaluation = evaluate_cores(core_set, inputs, params, plan)
         if evaluation is None:
             continue
         access_miles = sum(edge.distance_miles for edge in evaluation[0])
-        key = (round(access_miles, 6), -core_set_strength(core_set, plan))
+        key = (-strength, round(access_miles, 6))
         if best_key is None or key < best_key:
-            best_core_set, best_key = core_set, key
-            logger.info("  trio %d/%d: new best last-mile %.0f mi", index, len(combos), key[0])
-        if best_key[0] <= lower_bound + 1e-6:
-            logger.info("  optimum locked at trio %d/%d", index, len(combos))
-            break
+            best_core_set, best_key, best_strength = core_set, key, strength
+            logger.info(
+                "  set %d/%d: new best strength %.3f, last-mile %.0f mi",
+                index, len(combos), strength, access_miles,
+            )
     if best_core_set is None:
         return None
     return build_design_for_cores(best_core_set, inputs, params, plan)
@@ -523,18 +512,17 @@ def search_best_design(
     params: DesignParams,
     plan: _SearchPlan,
 ) -> Design:
-    """Find the globally best design: min total last-mile, then max core strength.
+    """Find the globally best design: max core strength, then min total last-mile.
 
     Grows the core set from ``core_count`` only when no smaller set is
     feasible.
     """
-    lower_bound = last_mile_lower_bound(inputs, params, plan.exempt_access_ids)
     logger.info(
-        "Optimizing %d access sites over %d core candidates; last-mile lower bound %.0f mi",
-        len(inputs.access_nodes), len(plan.core_candidates), lower_bound,
+        "Optimizing %d access sites over %d core candidates, strongest cores first",
+        len(inputs.access_nodes), len(plan.core_candidates),
     )
     for size in range(params.core_count, len(plan.core_candidates) + 1):
-        design = best_design_at_size(inputs, params, plan, size, lower_bound)
+        design = best_design_at_size(inputs, params, plan, size)
         if design is not None:
             return design
     raise ValueError(f"No feasible design with {params.core_count} or more cores")

@@ -15,6 +15,7 @@ from wan_designer.optimize import (
     aggregation_core_paths,
     all_pairs_shortest,
     best_aggregation_pair,
+    best_design_at_size,
     build_design_for_cores,
     core_mesh_paths,
     cores_mesh,
@@ -278,6 +279,68 @@ def test_cores_mesh_false_when_cores_disconnected() -> None:
         [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
     )
     assert not cores_mesh(("a", "c"), distances)
+
+
+def test_best_design_at_size_prefers_strength_over_last_mile() -> None:
+    """The strongest feasible core set wins even when it costs more last-mile."""
+    edges = physical(
+        {
+            ("a", "b"): 1.0, ("a", "c"): 1.0, ("a", "d"): 1.0,
+            ("b", "c"): 1.0, ("b", "d"): 1.0, ("c", "d"): 1.0,
+        }
+    )
+    pops = [pop("a", 0.0, 0.5), pop("b", 0.0, 0.6), pop("c", 0.0, 5.0), pop("d", 0.0, 5.1)]
+    access = [fixtures.access_node("s", 0.0, 0.0)]
+    adjacency = unit_adjacency(edges)
+    distances, predecessors = all_pairs_shortest(pops, adjacency)
+    inputs = DesignInputs(
+        access_nodes=access,
+        carrier_pops=pops,
+        physical_edges=edges,
+        eligible_aggregation_ids={"a", "b", "c", "d"},
+        adjacency=adjacency,
+        all_distances=distances,
+        all_predecessors=predecessors,
+    )
+    plan = _plan(
+        ["a", "b", "c", "d"],
+        strength={"a": 10.0, "b": 10.0, "c": 1.0, "d": 1.0},
+        ranked={"s": [(0.5, "a"), (0.6, "b"), (5.0, "c"), (5.1, "d")]},
+    )
+    params = DesignParams(core_count=2, max_last_mile_miles=100000.0)
+    design = best_design_at_size(inputs, params, plan, 2)
+    assert design is not None and set(design.core_ids) == {"a", "b"}
+
+
+def test_best_design_at_size_breaks_strength_ties_by_last_mile() -> None:
+    """Among equally strong core sets, the one with the least last-mile wins."""
+    edges = physical(
+        {
+            ("a", "b"): 1.0, ("a", "c"): 1.0, ("a", "d"): 1.0,
+            ("b", "c"): 1.0, ("b", "d"): 1.0, ("c", "d"): 1.0,
+        }
+    )
+    pops = [pop("a"), pop("b"), pop("c"), pop("d")]
+    access = [fixtures.access_node("s", 0.0, 0.0)]
+    adjacency = unit_adjacency(edges)
+    distances, predecessors = all_pairs_shortest(pops, adjacency)
+    inputs = DesignInputs(
+        access_nodes=access,
+        carrier_pops=pops,
+        physical_edges=edges,
+        eligible_aggregation_ids={"a", "b", "c", "d"},
+        adjacency=adjacency,
+        all_distances=distances,
+        all_predecessors=predecessors,
+    )
+    plan = _plan(
+        ["a", "b", "c", "d"],
+        strength={"a": 10.0, "b": 10.0, "c": 10.0, "d": 10.0},
+        ranked={"s": [(0.1, "c"), (0.2, "d"), (5.0, "a"), (5.1, "b")]},
+    )
+    params = DesignParams(core_count=2, max_last_mile_miles=100000.0)
+    design = best_design_at_size(inputs, params, plan, 2)
+    assert design is not None and set(design.core_ids) == {"a", "b"}
 
 
 def test_build_design_returns_none_without_aggregations() -> None:
