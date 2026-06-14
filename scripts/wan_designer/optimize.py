@@ -1,12 +1,14 @@
 """Optimize a three-tier core/aggregation/access WAN over the carrier graph.
 
-The objective, in order: aggregations win, cores break ties. Aggregation
-points exist to gather clusters of nearby access sites, so the design is
-ranked first by total last-mile mileage (tighter clusters are better),
-and ties are broken by core strength (degree + compass spread + path
-straightness). The search is exact -- every feasible set of cores is
-tried, with all eligible PoPs as candidates (no truncation) -- so the
-result is the global best, not a heuristic.
+Cores are chosen for strength, not mileage (the source mapbook has no
+distances): each core's strength is its degree plus compass spread plus path
+straightness, and for a given core count the strongest feasible set wins, with
+total last-mile only breaking ties. Salt Lake City is required as a core to
+anchor the mountain-west, where the three Sentinel wings concentrate their
+demand. The number of cores is not fixed at the minimum: the search sweeps core
+counts upward and keeps adding a core while doing so meaningfully shortens how
+far demand sits from its cores (in hops, weighted by the sites behind each
+aggregation), stopping once extra cores stop helping.
 
 The three Sentinel bases are forced into the aggregation tier at their
 co-located PoPs; access sites with no aggregation within the last-mile cap are
@@ -43,6 +45,21 @@ COMPASS_OCTANTS = 8
 
 # The Sentinel ICBM wings, forced into the aggregation tier at their PoPs.
 SENTINEL_BASE_NAMES = ("Malmstrom AFB", "Minot AFB", "F.E. Warren AFB")
+
+# PoPs required as cores regardless of raw strength, to anchor a region whose
+# demand justifies a core. Salt Lake City anchors the mountain-west, where the
+# three Sentinel wings concentrate 165 sites each behind Minot, Great Falls,
+# and Cheyenne.
+REQUIRED_CORE_NAMES = ("Salt Lake City, UT",)
+
+# Modeled demand behind each Sentinel base, used to weight how heavily a base's
+# distance to its cores counts when deciding how many cores the design needs.
+SENTINEL_SITE_COUNT = 165
+
+# The most core sets the search will enumerate exactly for one core count.
+# Past this the candidate space is too large to sort in memory, so the core-count
+# sweep stops rather than search a size approximately.
+CORE_ENUM_LIMIT = 3_000_000
 
 logger = logging.getLogger(__name__)
 
@@ -437,6 +454,7 @@ class _SearchPlan:
     strength_by_id: dict[str, float]
     ranked_by_access: dict[str, list[tuple[float, str]]] = field(default_factory=dict)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
+    required_cores: frozenset[str] = field(default_factory=frozenset)
 
 def rank_aggregations(
     access: Node,
@@ -463,24 +481,46 @@ def core_set_strength(core_ids: tuple[str, ...], plan: _SearchPlan) -> float:
     """Total strength of a core set: the primary objective the search maximizes."""
     return sum(plan.strength_by_id[core_id] for core_id in core_ids)
 
+def free_core_candidates(plan: _SearchPlan) -> list[str]:
+    """Core candidates the search may choose freely, excluding required cores."""
+    return [pop_id for pop_id in plan.core_candidates if pop_id not in plan.required_cores]
+
+def core_combination_count(plan: _SearchPlan, size: int) -> int:
+    """How many core sets of ``size`` exist once required cores are fixed in."""
+    required = len(plan.required_cores)
+    if required > size:
+        return 0
+    return math.comb(len(free_core_candidates(plan)), size - required)
+
+def core_combinations(plan: _SearchPlan, size: int) -> list[tuple[str, ...]]:
+    """Every ``size``-core set, with the required cores fixed into each one."""
+    required = tuple(sorted(plan.required_cores))
+    if len(required) > size:
+        return []
+    free = free_core_candidates(plan)
+    return [
+        required + extra
+        for extra in itertools.combinations(free, size - len(required))
+    ]
+
 def best_design_at_size(
     inputs: DesignInputs,
     params: DesignParams,
     plan: _SearchPlan,
     size: int,
 ) -> Design | None:
-    """Best design using exactly ``size`` cores, or None if none is feasible.
+    """Strongest feasible design using exactly ``size`` cores, or None.
 
-    The objective is core strength (the spec forbids mileage as a design cost):
-    the strongest feasible core set wins, with total last-mile only breaking ties
-    among equally strong sets. Core sets are tried strongest-first and scored
-    cheaply (feasibility plus access homing, no routed paths). Because strength
-    is non-increasing down that order, the moment a feasible set is in hand the
-    search stops as soon as a candidate is strictly weaker. Routed paths are
-    reconstructed only for the winning set.
+    The required cores (e.g. Salt Lake City) are fixed into every candidate set;
+    the rest are chosen by strength (the spec forbids mileage as a design cost),
+    with total last-mile only breaking ties among equally strong sets. Core sets
+    are tried strongest-first and scored cheaply (feasibility plus access homing,
+    no routed paths). Because strength is non-increasing down that order, the
+    moment a feasible set is in hand the search stops as soon as a candidate is
+    strictly weaker. Routed paths are reconstructed only for the winning set.
     """
     combos = sorted(
-        itertools.combinations(plan.core_candidates, size),
+        core_combinations(plan, size),
         key=lambda combo: -core_set_strength(combo, plan),
     )
     logger.info("Evaluating %d core sets of size %d, strongest first", len(combos), size)
@@ -507,25 +547,75 @@ def best_design_at_size(
         return None
     return build_design_for_cores(best_core_set, inputs, params, plan)
 
+def aggregation_demand(design: Design, plan: _SearchPlan) -> dict[str, int]:
+    """Sites behind each aggregation: its homed access count, or 165 for a base."""
+    demand: dict[str, int] = {}
+    for edge in design.access_edges:
+        demand[edge.target] = demand.get(edge.target, 0) + 1
+    for aggregation_id in plan.forced_aggregation_ids:
+        demand[aggregation_id] = SENTINEL_SITE_COUNT
+    return demand
+
+def coverage_score(design: Design, plan: _SearchPlan) -> float:
+    """Total traffic-distance to the cores: lower means demand sits nearer a core.
+
+    Each aggregation's two routed paths to its cores are counted in hops and
+    weighted by the sites behind it, so a base's 165 sites pull far harder than a
+    single access link. Hops avoid mileage, which the spec forbids as a cost.
+    """
+    demand = aggregation_demand(design, plan)
+    total = 0.0
+    for use in design.path_uses:
+        if use.purpose == "aggregation_to_core":
+            total += demand.get(use.source, 1) * (len(use.path) - 1)
+    return total
+
 def search_best_design(
     inputs: DesignInputs,
     params: DesignParams,
     plan: _SearchPlan,
 ) -> Design:
-    """Find the globally best design: max core strength, then min total last-mile.
+    """Find the best design across core counts, not just the fewest that work.
 
-    Grows the core set from ``core_count`` only when no smaller set is
-    feasible.
+    For each core count from ``core_count`` upward the strongest feasible design
+    is built and scored by how near demand sits to its cores. A larger count is
+    adopted only when it cuts that traffic-distance by at least
+    ``core_coverage_improvement``; once a couple of larger counts fail to clear
+    that bar (or the candidate space grows too large to search exactly) the sweep
+    stops. Every count tried is logged so the chosen number can be reviewed.
     """
     logger.info(
-        "Optimizing %d access sites over %d core candidates, strongest cores first",
-        len(inputs.access_nodes), len(plan.core_candidates),
+        "Optimizing %d access sites; cores >= %d, %d required",
+        len(inputs.access_nodes), params.core_count, len(plan.required_cores),
     )
+    best: Design | None = None
+    best_coverage = math.inf
+    stale = 0
     for size in range(params.core_count, len(plan.core_candidates) + 1):
+        if core_combination_count(plan, size) > CORE_ENUM_LIMIT:
+            logger.info("  %d cores: candidate space too large to search exactly; stopping", size)
+            break
         design = best_design_at_size(inputs, params, plan, size)
-        if design is not None:
-            return design
-    raise ValueError(f"No feasible design with {params.core_count} or more cores")
+        if design is None:
+            continue
+        coverage = coverage_score(design, plan)
+        improvement = (best_coverage - coverage) / best_coverage if best else 1.0
+        logger.info(
+            "  %d cores -> traffic-to-core %.0f hop-sites (%.1f%% better): %s",
+            size, coverage, 100.0 * improvement,
+            ", ".join(design.core_ids),
+        )
+        if best is None or improvement >= params.core_coverage_improvement:
+            best, best_coverage, stale = design, coverage, 0
+            continue
+        stale += 1
+        if stale >= 2:
+            logger.info("  adding cores past this no longer helps; stopping the sweep")
+            break
+    if best is None:
+        raise ValueError(f"No feasible design with {params.core_count} or more cores")
+    logger.info("Selected a %d-core design", len(best.core_ids))
+    return best
 
 def graph_context(
     nodes: list[Node],
@@ -559,6 +649,14 @@ def sentinel_split(
     access_nodes = [node for node in all_access if node.id not in absorbed]
     return forced, access_nodes
 
+def required_core_ids(carrier_pops: list[Node], eligible_ids: set[str]) -> frozenset[str]:
+    """Ids of the PoPs that must be cores (e.g. Salt Lake City), when eligible."""
+    return frozenset(
+        pop.id
+        for pop in carrier_pops
+        if pop.name in REQUIRED_CORE_NAMES and pop.id in eligible_ids
+    )
+
 def build_search_plan(
     inputs: DesignInputs,
     eligible_ids: set[str],
@@ -585,8 +683,10 @@ def build_search_plan(
     core_candidates = sorted(
         eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
     )
+    required = required_core_ids(inputs.carrier_pops, eligible_ids) - forced
     return _SearchPlan(
-        core_candidates, forced, exempt, strength_by_id, ranked_by_access
+        core_candidates, forced, exempt, strength_by_id, ranked_by_access,
+        required_cores=required,
     )
 
 def optimize_three_tier_design(

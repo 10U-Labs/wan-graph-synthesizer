@@ -11,9 +11,9 @@ import fixtures
 ARTIFACTS = fixtures.ring_artifacts()
 
 
-def test_selects_two_cores() -> None:
-    """Selects two cores."""
-    assert len(ARTIFACTS.design.core_ids) == 2
+def test_honors_the_core_count_minimum() -> None:
+    """The design has at least the minimum number of cores."""
+    assert len(ARTIFACTS.design.core_ids) >= 2
 
 
 def test_degree_one_spur_is_not_an_aggregation() -> None:

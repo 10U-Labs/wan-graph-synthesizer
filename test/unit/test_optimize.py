@@ -6,9 +6,12 @@ import pytest
 
 import fixtures
 from wan_designer.model import (
+    Design,
     DesignInputs,
+    DesignMetrics,
     DesignParams,
     Node,
+    PathUse,
     PhysicalEdge,
 )
 from wan_designer.optimize import (
@@ -17,14 +20,19 @@ from wan_designer.optimize import (
     best_aggregation_pair,
     best_design_at_size,
     build_design_for_cores,
+    core_combination_count,
+    core_combinations,
     core_mesh_paths,
     cores_mesh,
+    coverage_score,
     dual_homes_to_pair,
     feasible_aggregation_ids,
     nearest_pop_id,
     node_straightness,
     optimize_three_tier_design,
     rank_aggregations,
+    required_core_ids,
+    search_best_design,
     second_nearest_miles,
     unit_adjacency,
     _SearchPlan,
@@ -72,6 +80,13 @@ def _plan(
     )
 
 
+def _required_plan(candidates: list[str], required: set[str]) -> _SearchPlan:
+    """Build a search plan with required cores, for core-combination tests."""
+    return _SearchPlan(
+        candidates, frozenset(), frozenset(), {}, {}, required_cores=frozenset(required)
+    )
+
+
 TRIANGLE = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
 TRIANGLE_NODES = [pop("a"), pop("b"), pop("c"), fixtures.access_node("s", 40.0, -99.0)]
 
@@ -107,11 +122,11 @@ def test_not_enough_eligible_pops_is_rejected() -> None:
 
 
 def test_optimizes_ring_to_a_feasible_design() -> None:
-    """Optimizes ring to a feasible design."""
+    """Optimizes ring to a feasible design with at least the minimum cores."""
     design = optimize_three_tier_design(
         fixtures.ring_nodes(), fixtures.ring_physical_edges(), {}, fixtures.ring_params()
     )
-    assert len(design.core_ids) == 2
+    assert len(design.core_ids) >= 2
 
 
 def test_core_count_is_honored_as_a_minimum() -> None:
@@ -319,6 +334,56 @@ def test_best_design_at_size_selects_strongest_then_least_last_mile(
     params = DesignParams(core_count=2, max_last_mile_miles=100000.0)
     design = best_design_at_size(_mesh_inputs(), params, plan, 2)
     assert design is not None and set(design.core_ids) == {"a", "b"}
+
+
+def test_required_core_is_fixed_into_every_core_set() -> None:
+    """Required cores appear in every candidate set the search considers."""
+    plan = _required_plan(["a", "b", "c"], {"a"})
+    assert core_combinations(plan, 2) == [("a", "b"), ("a", "c")]
+
+
+def test_core_combinations_empty_when_size_below_required() -> None:
+    """No core set exists when more cores are required than the size allows."""
+    plan = _required_plan(["a", "b"], {"a", "b"})
+    assert core_combinations(plan, 1) == []
+
+
+def test_core_combination_count_zero_when_size_below_required() -> None:
+    """The count is zero when more cores are required than the size allows."""
+    plan = _required_plan(["a", "b"], {"a", "b"})
+    assert core_combination_count(plan, 1) == 0
+
+
+def test_required_core_ids_picks_the_eligible_named_pop() -> None:
+    """Salt Lake City is required as a core when it is an eligible PoP."""
+    pops = [pop("Salt Lake City, UT"), pop("other")]
+    assert required_core_ids(pops, {"Salt Lake City, UT", "other"}) == frozenset(
+        {"Salt Lake City, UT"}
+    )
+
+
+def test_required_core_ids_skips_an_ineligible_named_pop() -> None:
+    """A required city that is not an eligible PoP is not forced as a core."""
+    assert required_core_ids([pop("Salt Lake City, UT")], {"other"}) == frozenset()
+
+
+def test_coverage_score_weights_a_base_by_its_sites() -> None:
+    """A base's 165 sites pull far harder on the score than a single access link."""
+    paths = [
+        PathUse("aggregation_to_core", "base", "c1", ("base", "x", "c1"), 0.0),
+        PathUse("aggregation_to_core", "agg", "c1", ("agg", "c1"), 0.0),
+    ]
+    design = Design(("c1",), (), (), [], set(), paths, DesignMetrics(0.0, 0.0, 0.0))
+    plan = _plan([], forced={"base"})
+    assert coverage_score(design, plan) == 165 * 2 + 1 * 1
+
+
+def test_search_stops_when_the_core_space_is_too_large() -> None:
+    """The sweep stops rather than enumerate an astronomically large core space."""
+    inputs = _inputs_from_edges([], {}, set(), [])
+    plan = _plan([f"c{index}" for index in range(40)])
+    with pytest.raises(ValueError):
+        search_best_design(inputs, DesignParams(core_count=20), plan)
 
 
 def test_build_design_returns_none_without_aggregations() -> None:
