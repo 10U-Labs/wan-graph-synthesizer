@@ -180,13 +180,16 @@ def kml_layer_for_node(node: Node, role: str) -> str | None:
 
 def write_kml_styles(document: ET.Element) -> None:
     """Append node and edge style definitions to the KML document."""
-    circle = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
+    # A pure-white marker is required for IconStyle <color> to tint reliably.
+    # The shapes/placemark_circle.png icon ignores the tint in Google My Maps,
+    # QGIS, and most web viewers, so every tier rendered as one color there.
+    marker = "https://maps.google.com/mapfiles/kml/paddle/wht-blank.png"
     for key, _name, color, scale in LAYER_SPECS:
         style = ET.SubElement(document, "Style", id=f"node_{key}")
         icon_style = ET.SubElement(style, "IconStyle")
         ET.SubElement(icon_style, "color").text = color
         ET.SubElement(icon_style, "scale").text = scale
-        ET.SubElement(ET.SubElement(icon_style, "Icon"), "href").text = circle
+        ET.SubElement(ET.SubElement(icon_style, "Icon"), "href").text = marker
     # Edges stay neutral gray so the tier palette reads on the node icons alone.
     for edge_kind, color, width in (("access", "ff9e9e9e", "1.2"), ("backbone", "ff5a5a5a", "2.0")):
         style = ET.SubElement(document, "Style", id=f"edge_{edge_kind}")
