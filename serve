@@ -4,6 +4,7 @@
 # Usage:
 #   ./serve start    # bootstrap deps (first run only) and serve on :8000
 #   ./serve stop     # stop the running server
+#   ./serve restart  # stop then start (picks up edited etc/ configs)
 #
 # The first start creates an isolated .venv and installs the runtime
 # dependencies into it, so there is nothing to install by hand. Later
@@ -43,19 +44,27 @@ start() {
 
 stop() {
   if running; then
-    kill "$(cat "$PIDFILE")"
-    echo "Stopped (PID $(cat "$PIDFILE"))."
+    pid="$(cat "$PIDFILE")"
+    kill "$pid"
+    while kill -0 "$pid" 2>/dev/null; do sleep 0.2; done
+    echo "Stopped (PID $pid)."
   else
     echo "Not running."
   fi
   rm -f "$PIDFILE"
 }
 
+restart() {
+  stop
+  start
+}
+
 case "${1:-}" in
   start) start ;;
   stop) stop ;;
+  restart) restart ;;
   *)
-    echo "Usage: $0 {start|stop}" >&2
+    echo "Usage: $0 {start|stop|restart}" >&2
     exit 2
     ;;
 esac
