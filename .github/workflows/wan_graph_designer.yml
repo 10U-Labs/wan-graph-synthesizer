@@ -167,7 +167,6 @@ on:
       - .github/workflows/wan_graph_designer.yml
       - data/**
       - etc/**
-      - f35_sentinel_secret_regions_carrier_400g.kmz
       - scripts/**
       - test/**
   push:
@@ -176,7 +175,6 @@ on:
       - .github/workflows/wan_graph_designer.yml
       - data/**
       - etc/**
-      - f35_sentinel_secret_regions_carrier_400g.kmz
       - scripts/**
       - test/**
   workflow_dispatch:
