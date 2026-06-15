@@ -14,7 +14,7 @@ from __future__ import annotations
 from wan_designer.model import Vertex, haversine_miles
 
 # Default algorithm dials, mirrored by the matching ``DesignParams`` fields so a
-# direct caller (and the test suite) need not pass them; ``etc/config.yml`` drives
+# direct caller (and the test suite) need not pass them; ``etc/joint.yml`` drives
 # the real run. A cluster needs at least this many close access vertices (DBSCAN
 # minPts, N). The radius is clamped to a metro-to-regional band: the floor keeps a
 # single dense metro from fragmenting; the ceiling keeps a distant PoP (e.g. Boise,

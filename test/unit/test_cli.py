@@ -103,14 +103,19 @@ def test_resolve_paths_empty_mapbook_pdf_disables() -> None:
     assert _paths(["--mapbook-pdf", ""]).mapbook_pdf is None
 
 
-def test_resolve_paths_input_override() -> None:
-    """A positional input overrides the config's vertices file."""
-    assert _paths(["some.csv"]).vertices_path == Path("some.csv")
+def test_resolve_paths_keeps_default_vertex_files() -> None:
+    """The default config's per-tenant vertex files are kept."""
+    assert ("Lumen", Path("data/vertices/lumen.csv")) in _paths([]).vertex_files
 
 
-def test_resolve_paths_keeps_default_input() -> None:
-    """With no positional the config's vertices path is kept."""
-    assert _paths([]).vertices_path == Path("data/vertices/joint.csv")
+def test_resolve_paths_carrier_edges_override() -> None:
+    """A non-empty carrier-edges flag overrides the config path."""
+    assert _paths(["--carrier-edges", "e.csv"]).edge_path == Path("e.csv")
+
+
+def test_resolve_paths_output_dir_override() -> None:
+    """A non-empty output-dir flag overrides the config path."""
+    assert _paths(["--output-dir", "out2"]).output_dir == Path("out2")
 
 
 def test_resolve_paths_regional_edges_override() -> None:
@@ -123,8 +128,8 @@ def test_resolve_paths_keeps_default_regional_edges() -> None:
     """With no flag the config's regional edge files are kept."""
     edges = _paths([]).regional_edge_paths
     assert edges == (
-        Path("data/edges/dcn_edges.csv"),
-        Path("data/edges/vision_net_edges.csv"),
+        Path("data/edges/dcn.csv"),
+        Path("data/edges/vision_net.csv"),
     )
 
 
@@ -171,60 +176,53 @@ def test_exit_code_two_when_degree_deficient() -> None:
 
 def test_run_design_without_augmentation(tmp_path: Path) -> None:
     """Run design without augmentation."""
-    vertices_csv, edges = fixtures.write_solvable_inputs(tmp_path)
-    paths = CliPaths(vertices_csv, edges, None, tmp_path)
+    vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
+    paths = CliPaths(vertex_files, edges, None, tmp_path)
     artifacts = run_design(paths, fixtures.ring_params(), False)
     assert artifacts.validation["connected"] is True
 
 
 def test_run_design_stitches_regional_edges(tmp_path: Path) -> None:
     """Run design loads regional edge files against the carrier PoP set."""
-    vertices_csv = tmp_path / "vertices.csv"
-    vertices_csv.write_text(
-        fixtures.solvable_vertices_csv() + "R1,42.0,-100.0,DCN,ROADM,Not shown in map,\n",
+    vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
+    dcn = tmp_path / "dcn.csv"
+    dcn.write_text(
+        "name,latitude,longitude,kind,shown_in_map,description\n"
+        "R1,42.0,-100.0,ROADM,Not shown in map,\n",
         encoding="utf-8",
     )
-    edges = tmp_path / "edges.csv"
-    edges.write_text(fixtures.solvable_edges_csv(), encoding="utf-8")
     redges = tmp_path / "redges.csv"
     redges.write_text("source,target\nR1,P0\n", encoding="utf-8")
-    paths = CliPaths(vertices_csv, edges, None, tmp_path, (redges,))
+    paths = CliPaths(vertex_files + (("DCN", dcn),), edges, None, tmp_path, (redges,))
     artifacts = run_design(paths, fixtures.ring_params(), False)
     assert any(vertex.name == "R1" for vertex in artifacts.vertices)
 
 
 def test_main_succeeds_on_solvable_inputs(tmp_path: Path) -> None:
     """Main succeeds on solvable inputs."""
-    vertices_csv, edges = fixtures.write_solvable_inputs(tmp_path)
-    args = fixtures.design_args(
-        vertices_csv,
-        edges,
-        tmp_path / "out",
-        extra=["--core-count", "2"],
-    )
-    assert main(args) == 0
+    cfg = fixtures.write_solvable_config(tmp_path)
+    assert main(["--config", str(cfg), "--core-count", "2"]) == 0
 
 
 def test_main_returns_one_on_missing_input(tmp_path: Path) -> None:
-    """Main returns one on missing input."""
-    assert main([str(tmp_path / "nope.csv")]) == 1
+    """Main returns one when a configured vertex file is missing."""
+    cfg = tmp_path / "joint.yml"
+    cfg.write_text(f"inputs:\n  vertices:\n    Lumen: {tmp_path / 'nope.csv'}\n", encoding="utf-8")
+    assert main(["--config", str(cfg)]) == 1
 
 
 def test_main_honors_config_file(tmp_path: Path) -> None:
     """Main reads the design parameters from a --config file."""
-    vertices_csv, edges = fixtures.write_solvable_inputs(tmp_path)
-    cfg = tmp_path / "config.yml"
-    cfg.write_text("design:\n  core_count: 2\n", encoding="utf-8")
-    args = fixtures.design_args(vertices_csv, edges, tmp_path / "out", extra=["--config", str(cfg)])
-    assert main(args) == 0
+    cfg = fixtures.write_solvable_config(tmp_path, core_count=2)
+    assert main(["--config", str(cfg)]) == 0
 
 
 def test_run_design_rejects_empty_vertices(tmp_path: Path) -> None:
-    """Run design rejects a vertices file with no rows."""
-    vertices_csv = tmp_path / "empty.csv"
-    vertices_csv.write_text(
-        "name,latitude,longitude,tenant,kind,shown_in_map,description\n", encoding="utf-8"
+    """Run design rejects vertex files with no rows."""
+    empty = tmp_path / "empty.csv"
+    empty.write_text(
+        "name,latitude,longitude,kind,shown_in_map,description\n", encoding="utf-8"
     )
-    paths = CliPaths(vertices_csv, tmp_path / "e.csv", None, tmp_path)
+    paths = CliPaths((("Lumen", empty),), tmp_path / "e.csv", None, tmp_path)
     with pytest.raises(ValueError):
         run_design(paths, fixtures.ring_params(), False)

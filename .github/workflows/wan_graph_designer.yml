@@ -93,7 +93,7 @@ jobs:
           yamllint --strict \
             --config-data \
             "{extends: default, rules: {$RULES}}" \
-            .github/workflows/wan_graph_designer.yml etc/config.yml
+            .github/workflows/wan_graph_designer.yml etc/joint.yml etc/f_35.yml
       - name: Assert no inline directives
         run: >-
           assert-no-inline-directives

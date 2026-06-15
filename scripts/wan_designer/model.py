@@ -96,7 +96,7 @@ class Design:
 class Tuning:
     """Algorithm dials for the optimizer.
 
-    These defaults are the single source of truth; ``etc/config.yml`` overrides
+    These defaults are the single source of truth; ``etc/joint.yml`` overrides
     them. The clustering defaults are mirrored as function-argument defaults in
     ``clustering.py`` (which ``model`` cannot import without a cycle), so keep the
     two in step.
@@ -164,9 +164,13 @@ class ValidationReport(TypedDict):
 
 @dataclass(frozen=True)
 class CliPaths:
-    """All file paths resolved from the command line."""
+    """All file paths resolved from the command line.
 
-    vertices_path: Path
+    ``vertex_files`` pairs each tenant with its per-tenant vertices CSV; the
+    tenant is carried here because the CSVs no longer hold a ``tenant`` column.
+    """
+
+    vertex_files: tuple[tuple[str, Path], ...]
     edge_path: Path
     mapbook_pdf: Path | None
     output_dir: Path
@@ -176,7 +180,7 @@ class CliPaths:
 class SourceFiles:
     """Input file paths recorded in the JSON output for provenance."""
 
-    vertices_path: Path
+    vertex_files: tuple[Path, ...]
     edge_path: Path
     mapbook_pdf: Path | None
 
