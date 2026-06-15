@@ -8,6 +8,7 @@ from pathlib import Path
 from wan_designer.model import (
     PhysicalEdge,
     Vertex,
+    VertexInfo,
     edge_key,
     haversine_miles,
     slugify,
@@ -48,9 +49,11 @@ def load_vertices(vertex_files: list[tuple[str, Path]]) -> list[Vertex]:
                         tenant=tenant,
                         kind=row["kind"].strip(),
                         coords=(float(row["latitude"]), float(row["longitude"])),
-                        description=row.get("description", "").strip(),
-                        municipality=row.get("municipality", "").strip(),
-                        state=row.get("state", "").strip(),
+                        info=VertexInfo(
+                            description=row.get("description", "").strip(),
+                            municipality=row.get("municipality", "").strip(),
+                            state=row.get("state", "").strip(),
+                        ),
                         shown_in_map=row.get("shown_in_map", "").strip() != "Not shown in map",
                     )
                 )

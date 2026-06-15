@@ -41,8 +41,9 @@ function styleFor(vertex) {
 
 // Tooltip: the vertex name, its municipality/state beneath, then the tenant.
 function vertexLabel(vertex) {
-  const located = vertex.municipality && vertex.state
-    ? `<br>${vertex.municipality}, ${vertex.state}`
+  const info = vertex.info || {};
+  const located = info.municipality && info.state
+    ? `<br>${info.municipality}, ${info.state}`
     : "";
   return `<strong>${vertex.name}</strong>${located}<br>Tenant: ${vertex.tenant}`;
 }

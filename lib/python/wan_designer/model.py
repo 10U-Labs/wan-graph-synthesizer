@@ -14,6 +14,19 @@ KML_NS = {"k": "http://www.opengis.net/kml/2.2"}
 EARTH_RADIUS_MILES = 3958.7613
 
 @dataclass(frozen=True)
+class VertexInfo:
+    """Descriptive, non-structural attributes of a vertex.
+
+    ``description`` is free-text source provenance; ``municipality`` and ``state``
+    are the serving city and 2-letter U.S. state shown in the map tooltip (carrier
+    PoPs derive these from their ``City, ST`` name).
+    """
+
+    description: str = ""
+    municipality: str = ""
+    state: str = ""
+
+@dataclass(frozen=True)
 class Vertex:
     """A geographic vertex: an access site, a cloud region, or a carrier PoP.
 
@@ -29,11 +42,9 @@ class Vertex:
     tenant: str
     kind: str
     coords: tuple[float, float]  # (latitude, longitude)
-    description: str = ""
-    # Serving municipality and 2-letter U.S. state for display (e.g. "Montgomery",
-    # "AL"); carrier PoPs derive these from their "City, ST" name.
-    municipality: str = ""
-    state: str = ""
+    # Descriptive (non-structural) attributes: source notes plus the serving
+    # municipality and 2-letter state shown in the map tooltip.
+    info: VertexInfo = field(default_factory=VertexInfo)
     # Whether the vertex appears on the source mapbook layer (carrier PoPs are
     # backbone infrastructure and are not shown; installations and regions are).
     shown_in_map: bool = True

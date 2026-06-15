@@ -49,14 +49,14 @@ def test_load_vertices_reads_municipality_and_state(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     vertex = load_vertices([("F-35", path)])[0]
-    assert (vertex.municipality, vertex.state) == ("Montgomery", "AL")
+    assert (vertex.info.municipality, vertex.info.state) == ("Montgomery", "AL")
 
 
 def test_load_vertices_defaults_missing_location_columns(tmp_path: Path) -> None:
     """Files without the location columns parse with empty municipality/state."""
     vertex_files = fixtures.write_sample_inputs(tmp_path)[0]
     vertex = load_vertices(list(vertex_files))[0]
-    assert (vertex.municipality, vertex.state) == ("", "")
+    assert (vertex.info.municipality, vertex.info.state) == ("", "")
 
 
 def test_load_vertices_deduplicates_ids_across_files(tmp_path: Path) -> None:

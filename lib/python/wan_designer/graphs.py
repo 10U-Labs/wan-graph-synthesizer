@@ -245,6 +245,19 @@ def connected_components(vertex_ids: set[str], edges: set[tuple[str, str]]) -> l
         components.append(sorted(component))
     return components
 
+def is_two_edge_connected(vertex_ids: set[str], edges: set[tuple[str, str]]) -> bool:
+    """True if the graph is connected and survives the loss of any single edge.
+
+    A graph is 2-edge-connected when it is connected and bridgeless. Vertex sets
+    here are tiny (a handful of cores), so each edge is probed by removal rather
+    than via a linear-time bridge search.
+    """
+    if len(connected_components(vertex_ids, edges)) != 1:
+        return False
+    return all(
+        len(connected_components(vertex_ids, edges - {edge})) == 1 for edge in edges
+    )
+
 def articulation_points(vertex_ids: set[str], edges: set[tuple[str, str]]) -> set[str]:
     """Return cut vertices whose removal would disconnect the design graph."""
     adjacency = undirected_adjacency(vertex_ids, edges)

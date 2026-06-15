@@ -7,7 +7,7 @@ import math
 import pytest
 
 import fixtures
-from wan_designer.graphs import connected_components
+from wan_designer.graphs import is_two_edge_connected
 from wan_designer.model import (
     AccessEdge,
     DesignInputs,
@@ -220,15 +220,6 @@ def _degrees(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> dict[st
     return {core: sum(1 for pair in pairs if core in pair) for core in core_ids}
 
 
-def _is_two_edge_connected(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> bool:
-    """True if the pairs connect every core and survive losing any one link."""
-    ids = set(core_ids)
-    edges = set(pairs)
-    if len(connected_components(ids, edges)) != 1:
-        return False
-    return all(len(connected_components(ids, edges - {pair})) == 1 for pair in edges)
-
-
 def _capped_backbone() -> list[tuple[str, str]]:
     """The degree-3 backbone selected over the five-core mesh (asserted non-None)."""
     pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, 3)
@@ -243,7 +234,7 @@ def test_core_backbone_caps_degree_at_three() -> None:
 
 def test_core_backbone_stays_two_edge_connected() -> None:
     """The capped backbone still survives the loss of any single link."""
-    assert _is_two_edge_connected(_FIVE_CORES, _capped_backbone())
+    assert is_two_edge_connected(set(_FIVE_CORES), set(_capped_backbone()))
 
 
 def test_core_backbone_drops_the_longest_link() -> None:

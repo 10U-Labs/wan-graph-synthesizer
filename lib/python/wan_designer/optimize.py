@@ -41,8 +41,8 @@ from wan_designer.model import (
     is_carrier_pop,
 )
 from wan_designer.graphs import (
-    connected_components,
     dijkstra,
+    is_two_edge_connected,
     vertex_disjoint_paths_to_cores,
     path_edge_keys,
     reconstruct_path,
@@ -178,17 +178,12 @@ def select_core_backbone_pairs(
     def degree(node: str) -> int:
         return sum(1 for pair in selected if node in pair)
 
-    def two_edge_connected(edges: set[tuple[str, str]]) -> bool:
-        if len(connected_components(ids, edges)) != 1:
-            return False
-        return all(len(connected_components(ids, edges - {pair})) == 1 for pair in edges)
-
     for pair in sorted(weight, key=lambda item: (-weight[item], item)):
         if pair not in selected:
             continue
         if degree(pair[0]) <= degree_cap and degree(pair[1]) <= degree_cap:
             continue
-        if two_edge_connected(selected - {pair}):
+        if is_two_edge_connected(ids, selected - {pair}):
             selected.discard(pair)
     return sorted(selected)
 
@@ -755,7 +750,7 @@ def colocated_twin(core: Vertex) -> Vertex:
         tenant=core.tenant,
         kind=core.kind,
         coords=core.coords,
-        description=core.description,
+        info=core.info,
         shown_in_map=core.shown_in_map,
     )
 

@@ -17,6 +17,7 @@ from wan_designer.graphs import (
     articulation_points,
     connected_components,
     dijkstra,
+    is_two_edge_connected,
     vertex_disjoint_paths_to_cores,
 )
 
@@ -174,10 +175,7 @@ def core_backbone_two_edge_connected(design: Design) -> bool:
     ids = set(design.core_ids)
     if len(ids) < 2:
         return True
-    pairs = core_backbone_pairs(design)
-    if len(connected_components(ids, pairs)) != 1:
-        return False
-    return all(len(connected_components(ids, pairs - {pair})) == 1 for pair in pairs)
+    return is_two_edge_connected(ids, core_backbone_pairs(design))
 
 def neighbor_degrees(
     ids: set[str], edges: set[tuple[str, str]]
