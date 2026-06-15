@@ -85,8 +85,12 @@ def test_population_access_state_gets_two_aggregations(tmp_path: Path) -> None:
     assert len(colorado) >= 2
 
 
-def test_population_city_a_co_locates_a_core_and_aggregation(tmp_path: Path) -> None:
-    """Denver, both CO's core city and an aggregation city, splits into a co-located twin."""
+def test_population_cored_metro_aggregates_on_its_second_city(tmp_path: Path) -> None:
+    """Denver cores Colorado, so its aggregation is Aurora (the metro's 2nd city), not a twin."""
     artifacts = fixtures.population_artifacts(tmp_path)
     roles = (artifacts.design.core_ids, artifacts.design.aggregation_ids)
-    assert ("denver_co" in roles[0], "aggr_denver_co" in roles[1]) == (True, True)
+    assert ("denver_co" in roles[0], "aurora_co" in roles[1], "aggr_denver_co" in roles[1]) == (
+        True,
+        True,
+        False,
+    )
