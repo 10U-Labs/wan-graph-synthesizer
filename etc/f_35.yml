@@ -16,16 +16,18 @@ design:
   forced_aggregations:
     - Boston, MA
     - Los Angeles, CA
-    - McLean, VA
     - New York, NY
     - Portland, OR
     - Richmond, VA
   # PoPs pinned into the core tier. Atlanta anchors the southeast and Dallas the
-  # south-central; the third core is chosen by strength. McLean is pinned as an
-  # aggregation (above), not a core, in the F-35 design.
+  # south-central; Denver and Sacramento anchor the west and McLean the
+  # national-capital region in the F-35 design.
   forced_cores:
     - Atlanta, GA
     - Dallas, TX
+    - Denver, CO
+    - McLean, VA
+    - Sacramento, CA
   # Minimum number of core PoPs. The search adds more cores only when feasibility
   # requires it; it never drops below this floor.
   min_core_count: 3

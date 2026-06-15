@@ -92,11 +92,6 @@ def test_goodyear_is_not_an_aggregation(design: dict[str, Any]) -> None:
     assert "Goodyear, AZ" not in aggregation_names(design)
 
 
-def test_f35_mclean_is_an_aggregation(f35_design: dict[str, Any]) -> None:
-    """F-35 pins McLean as an aggregation point."""
-    assert "McLean, VA" in aggregation_names(f35_design)
-
-
-def test_f35_mclean_is_not_a_core(f35_design: dict[str, Any]) -> None:
-    """F-35 does not force McLean into the core tier."""
-    assert "McLean, VA" not in core_names(f35_design)
+def test_f35_forces_denver_sacramento_and_mclean_cores(f35_design: dict[str, Any]) -> None:
+    """F-35 pins Denver, Sacramento, and McLean into the core tier."""
+    assert {"Denver, CO", "Sacramento, CA", "McLean, VA"} <= core_names(f35_design)
