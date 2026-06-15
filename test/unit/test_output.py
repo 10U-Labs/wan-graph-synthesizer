@@ -95,14 +95,20 @@ def test_kml_layer_for_node_omits_directionless_secret() -> None:
 
 def test_kml_layer_for_node_routes_provider regions() -> None:
     """provider regions split regions into their own layers."""
-    assert kml_layer_for_node(_region("provider region", "provider regions"), "access") == "provider region"
-    assert kml_layer_for_node(_region("provider region", "provider regions"), "access") == "provider region"
+    layers = (
+        kml_layer_for_node(_region("provider region", "provider regions"), "access"),
+        kml_layer_for_node(_region("provider region", "provider regions"), "access"),
+    )
+    assert layers == ("provider region", "provider region")
 
 
 def test_kml_layer_for_node_routes_provider regions() -> None:
     """provider regions split regions into their own layers."""
-    assert kml_layer_for_node(_region("provider region", "provider_region"), "access") == "ts_east"
-    assert kml_layer_for_node(_region("provider region", "provider_region"), "access") == "ts_west"
+    layers = (
+        kml_layer_for_node(_region("provider region", "provider_region"), "access"),
+        kml_layer_for_node(_region("provider region", "provider_region"), "access"),
+    )
+    assert layers == ("ts_east", "ts_west")
 
 
 def test_kml_layer_for_node_uses_tier_role_for_carrier_pops() -> None:
