@@ -13,8 +13,12 @@ design:
   # single-homed ROADM leaf) so southeast-Virginia demand homes into a PoP that
   # can dual-home to two cores. Boston is dual-homed via Cambridge and Stamford
   # (mapbook page 7).
+  # Atlanta and Dallas are also pinned as cores below; naming them here
+  # co-locates an aggregation stack beside each core in the same facility.
   forced_aggregations:
+    - Atlanta, GA
     - Boston, MA
+    - Dallas, TX
     - Los Angeles, CA
     - New York, NY
     - Portland, OR
