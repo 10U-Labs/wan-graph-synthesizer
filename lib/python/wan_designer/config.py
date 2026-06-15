@@ -108,7 +108,7 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
     """Resolve the design and tuning configuration into :class:`DesignParams`."""
     base = DesignParams()
     return DesignParams(
-        core_count=design.get("core_count", base.core_count),
+        min_core_count=design.get("min_core_count", base.min_core_count),
         allow_roadm_aggregation=design.get(
             "allow_roadm_aggregation", base.allow_roadm_aggregation
         ),

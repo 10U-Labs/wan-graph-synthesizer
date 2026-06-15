@@ -113,7 +113,7 @@ class Tuning:
 class DesignParams:
     """Operator choices plus the algorithm :class:`Tuning` for the optimization."""
 
-    core_count: int = 3  # exact number of cores in the design
+    min_core_count: int = 3  # minimum cores; the search adds more only if needed
     allow_roadm_aggregation: bool = False
     forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
     forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations

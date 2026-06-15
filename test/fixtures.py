@@ -153,12 +153,12 @@ def write_solvable_inputs(directory: Path) -> tuple[tuple[tuple[str, Path], ...]
     return vertex_files, edges_path
 
 
-def write_solvable_config(directory: Path, core_count: int | None = None) -> Path:
+def write_solvable_config(directory: Path, min_core_count: int | None = None) -> Path:
     """Write a config naming the solvable per-tenant vertices and edges; return its path."""
     vertex_files, edges_path = write_solvable_inputs(directory)
     lines = []
-    if core_count is not None:
-        lines += ["design:", f"  core_count: {core_count}"]
+    if min_core_count is not None:
+        lines += ["design:", f"  min_core_count: {min_core_count}"]
     lines += [
         "inputs:",
         f"  carrier_edges: {edges_path}",
@@ -185,7 +185,7 @@ def physical_edges_from(
 
 def ring_params() -> DesignParams:
     """Design parameters that solve the ring with a two-core tier."""
-    return DesignParams(core_count=2)
+    return DesignParams(min_core_count=2)
 
 
 def _ring_inputs() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
@@ -218,12 +218,12 @@ def _forced_artifacts(params: DesignParams) -> DesignArtifacts:
 
 def forced_aggregation_artifacts(name: str) -> DesignArtifacts:
     """Ring artifacts with one PoP forced onto the aggregation tier."""
-    return _forced_artifacts(DesignParams(core_count=2, forced_aggregation_names=(name,)))
+    return _forced_artifacts(DesignParams(min_core_count=2, forced_aggregation_names=(name,)))
 
 
 def forced_core_artifacts(name: str) -> DesignArtifacts:
     """Ring artifacts with one PoP forced onto the core tier."""
-    return _forced_artifacts(DesignParams(core_count=2, forced_core_names=(name,)))
+    return _forced_artifacts(DesignParams(min_core_count=2, forced_core_names=(name,)))
 
 
 def sample_sources() -> SourceFiles:
@@ -233,7 +233,7 @@ def sample_sources() -> SourceFiles:
 
 def api_client(directory: Path) -> TestClient:
     """Build a TestClient over the app: a solvable 'joint' config plus a static UI."""
-    write_solvable_config(directory, core_count=2)
+    write_solvable_config(directory, min_core_count=2)
     static_dir = directory / "www"
     static_dir.mkdir()
     (static_dir / "index.html").write_text("<html>ok</html>", encoding="utf-8")

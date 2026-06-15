@@ -2,8 +2,8 @@
 
 Cores are chosen for strength, not mileage (the source mapbook has no
 distances): each core's strength is its degree plus compass spread plus path
-straightness, and the strongest feasible set of the configured ``core_count``
-wins, with total last-mile only breaking ties.
+straightness, and the strongest feasible set of at least the configured
+``min_core_count`` wins, with total last-mile only breaking ties.
 
 Access sites with no aggregation within the last-mile cap are exempt from the cap
 and home to their nearest two regardless.
@@ -586,29 +586,35 @@ def search_best_design(
     params: DesignParams,
     plan: _SearchPlan,
 ) -> Design:
-    """Build the strongest feasible design using exactly ``core_count`` cores.
+    """Build the strongest feasible design using at least ``min_core_count`` cores.
 
-    The core count is fixed by the operator: the strongest feasible set of that
-    size wins, with total last-mile only breaking ties. Enumerating that many
-    core sets must fit in the share of RAM the search may use, or the design is
-    refused rather than risk exhausting memory.
+    The core count is a floor set by the operator, not an exact target: the
+    search tries that many cores first and keeps the strongest feasible set,
+    with total last-mile only breaking ties. If no feasible design exists at
+    that size it grows the core tier one PoP at a time until a feasible design
+    appears or the candidates are exhausted, so more cores are added only when
+    needed for feasibility. Enumerating each size must fit the share of RAM the
+    search may use, or the design is refused rather than risk exhausting memory.
     """
     limit = enumeration_limit(total_memory_bytes(), params)
-    sets = core_combination_count(plan, params.core_count)
-    logger.info(
-        "Optimizing %d access sites; %d cores, %d required; %d core sets (limit %d)",
-        len(inputs.access_vertices), params.core_count, len(plan.required_cores), sets, limit,
-    )
-    if sets > limit:
-        raise ValueError(
-            f"Enumerating {sets} core sets of size {params.core_count} "
-            f"exceeds the RAM budget of {limit}"
+    for size in range(params.min_core_count, len(plan.core_candidates) + 1):
+        sets = core_combination_count(plan, size)
+        if sets > limit:
+            raise ValueError(
+                f"Enumerating {sets} core sets of size {size} "
+                f"exceeds the RAM budget of {limit}"
+            )
+        if sets == 0:
+            continue
+        logger.info(
+            "Optimizing %d access sites; %d cores, %d required; %d core sets (limit %d)",
+            len(inputs.access_vertices), size, len(plan.required_cores), sets, limit,
         )
-    design = best_design_at_size(inputs, plan, params.core_count)
-    if design is None:
-        raise ValueError(f"No feasible design with {params.core_count} cores")
-    logger.info("Selected a %d-core design", len(design.core_ids))
-    return design
+        design = best_design_at_size(inputs, plan, size)
+        if design is not None:
+            logger.info("Selected a %d-core design", len(design.core_ids))
+            return design
+    raise ValueError(f"No feasible design with at least {params.min_core_count} cores")
 
 @dataclass(frozen=True)
 class _GraphContext:
@@ -788,8 +794,8 @@ def optimize_three_tier_design(
     unpinned design.
     """
     overrides = overrides if overrides is not None else RoleOverrides()
-    if params.core_count < 2:
-        raise ValueError("core_count (the number of cores) must be at least 2")
+    if params.min_core_count < 2:
+        raise ValueError("min_core_count (the minimum number of cores) must be at least 2")
 
     context = graph_context(vertices, physical_edges)
     forced = overrides.forced_aggregation_ids
@@ -797,7 +803,7 @@ def optimize_three_tier_design(
         context.carrier_pops, roles, context.adjacency, params.allow_roadm_aggregation
     )
     eligible_ids = (eligible_ids | forced | overrides.forced_core_ids) - overrides.excluded_ids
-    if len(eligible_ids) < max(2, params.core_count):
+    if len(eligible_ids) < max(2, params.min_core_count):
         raise ValueError("Not enough eligible Carrier aggregation/core PoPs")
 
     inputs = DesignInputs(
@@ -812,6 +818,6 @@ def optimize_three_tier_design(
     plan = build_search_plan(
         inputs, eligible_ids, forced, overrides.forced_core_ids, params
     )
-    if len(plan.core_candidates) < params.core_count:
+    if len(plan.core_candidates) < params.min_core_count:
         raise ValueError("Not enough reachable core candidates")
     return search_best_design(inputs, params, plan)
