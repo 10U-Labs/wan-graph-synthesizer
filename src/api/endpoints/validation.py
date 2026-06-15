@@ -14,4 +14,5 @@ router = APIRouter()
 @router.get("/api/wan-maps/{wan_map_id}/validation")
 def get_validation(wan_map_id: str, request: Request) -> dict[str, Any]:
     """Return the connectivity, dual-homing, and full-mesh validation report."""
-    return payload_for(request, wan_map_id)["validation"]
+    report: dict[str, Any] = payload_for(request, wan_map_id)["validation"]
+    return report

@@ -14,4 +14,5 @@ router = APIRouter()
 @router.get("/api/wan-maps/{wan_map_id}/vertices")
 def get_vertices(wan_map_id: str, request: Request) -> list[dict[str, Any]]:
     """Return every vertex with its tier role, kind, tenant, and coordinates."""
-    return payload_for(request, wan_map_id)["vertices"]
+    vertices: list[dict[str, Any]] = payload_for(request, wan_map_id)["vertices"]
+    return vertices

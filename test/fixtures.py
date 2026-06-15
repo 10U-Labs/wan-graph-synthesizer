@@ -12,7 +12,6 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from api.app import build_app
 from wan_designer.model import (
     DesignArtifacts,
     DesignParams,
@@ -26,6 +25,8 @@ from wan_designer.model import (
 )
 from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
 from wan_designer.validation import validate_design
+
+from api.app import build_app
 
 VERTEX_HEADER = ["name", "latitude", "longitude", "kind", "shown_in_map", "description"]
 
