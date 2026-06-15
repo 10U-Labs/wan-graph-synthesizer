@@ -270,8 +270,8 @@ def write_population_inputs(directory: Path) -> DesignPaths:
     vertex_path = directory / "pop_vertices.csv"
     _write_csv(vertex_path, POPULATION_VERTEX_HEADER, POPULATION_VERTEX_ROWS)
     edge_path = directory / "pop_edges.csv"
-    edge_rows = "\n".join(f"{left},{right},500" for left, right in POPULATION_EDGE_PAIRS)
-    edge_path.write_text(f"source,target,distance_miles\n{edge_rows}\n", encoding="utf-8")
+    edge_rows = [(left, right, 500) for left, right in POPULATION_EDGE_PAIRS]
+    _write_csv(edge_path, ["source", "target", "distance_miles"], edge_rows)
     county_path = directory / "pop_counties.csv"
     county_path.write_text(POPULATION_COUNTIES_CSV, encoding="utf-8")
     municipality_path = directory / "pop_municipalities.csv"
