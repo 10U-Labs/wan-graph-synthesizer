@@ -462,11 +462,11 @@ def test_colocation_edges_duplicate_a_cores_handoffs_onto_its_twin() -> None:
 
 def test_apply_role_overrides_splits_a_co_located_pop() -> None:
     """Pinning a PoP as both core and aggregation forces its split-off twin."""
-    params = DesignParams(forced_core_names=("Hub",), forced_aggregation_names=("Hub",))
+    params = DesignParams(forced_core_names=("Colo",), forced_aggregation_names=("Colo",))
     _nodes, _edges, overrides = apply_role_overrides(
-        [pop("Hub"), pop("z")], physical({("Hub", "z"): 1.0}), params
+        [pop("Colo"), pop("z")], physical({("Colo", "z"): 1.0}), params
     )
-    assert "aggr_Hub" in overrides.forced_aggregation_ids
+    assert "aggr_Colo" in overrides.forced_aggregation_ids
 
 
 def test_optimize_honors_a_forced_core_override() -> None:
