@@ -158,6 +158,9 @@ def design_args(
         str(edges),
         "--output-dir",
         str(output),
+        # No regional carriers in the ring fixture: pass an empty --regional-edges
+        # so the default config's regional edge files are not loaded.
+        "--regional-edges",
     ]
     return args + (extra or [])
 
