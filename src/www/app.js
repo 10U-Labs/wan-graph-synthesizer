@@ -5,68 +5,87 @@
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIB = "© OpenStreetMap contributors";
 
-// Tier styling: color and circle radius per tier role.
-const TIER_STYLE = {
-  core: { color: "#c62828", radius: 8, group: "Cores" },
-  aggregation: { color: "#00897b", radius: 6, group: "Aggregations" },
-  access: { color: "#f9a825", radius: 4, group: "Access" },
-  transit: { color: "#757575", radius: 3, group: "Carrier PoPs" },
-  unused: { color: "#757575", radius: 3, group: "Carrier PoPs" },
+// Vertex color and radius. CSP data centers are colored by kind; every other
+// drawn vertex is colored by its tier role. Transit/unused carrier PoPs are
+// not drawn.
+const CSP_KIND = "CSP data center";
+const CSP_STYLE = { color: "#ef6c00", radius: 5 };
+const ROLE_STYLE = {
+  core: { color: "#c62828", radius: 8 },
+  aggregation: { color: "#6a1b9a", radius: 6 },
+  access: { color: "#1565c0", radius: 4 },
 };
 
-// Which overlay groups start visible (the carrier backbone is busy, so off).
-const DEFAULT_ON = new Set([
-  "Cores",
-  "Aggregations",
-  "Access",
-  "Access links",
-  "Backbone routes",
-]);
+// Every link is drawn in one neutral color, regardless of edge type.
+const LINK_COLOR = "#607d8b";
 
 const map = L.map("map").setView([39.5, -98.35], 4);
 L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(map);
 
-let overlays = [];
-let layerControl = null;
+let drawn = [];
 
-function styleFor(role) {
-  return TIER_STYLE[role] || TIER_STYLE.unused;
+function styleFor(vertex) {
+  if (vertex.kind === CSP_KIND) {
+    return CSP_STYLE;
+  }
+  return ROLE_STYLE[vertex.tier_role] || null;
 }
 
-function vertexPopup(vertex) {
-  return `<strong>${vertex.name}</strong><br>${vertex.tenant} — ${vertex.kind}` +
-    `<br>role: ${vertex.tier_role}`;
+function vertexLabel(vertex) {
+  return `<strong>${vertex.name}</strong><br>${vertex.tier_role} · ${vertex.kind}` +
+    `<br>${vertex.tenant}`;
 }
 
-// Build one Leaflet layer group per tier; return {group name: layerGroup}.
-function vertexGroups(vertices, coordsById) {
-  const groups = {};
+function edgeLabel(label, source, target) {
+  return `${label}<br><strong>${source.name}</strong> ↔ <strong>${target.name}</strong>`;
+}
+
+function clear() {
+  for (const layer of drawn) {
+    map.removeLayer(layer);
+  }
+  drawn = [];
+}
+
+function add(layer) {
+  layer.addTo(map);
+  drawn.push(layer);
+}
+
+// Draw every tiered vertex; skip transit/unused carrier PoPs. Returns the
+// vertices indexed by id so edges can resolve their endpoints.
+function drawVertices(vertices) {
+  const byId = {};
   for (const vertex of vertices) {
-    coordsById[vertex.id] = vertex.coords;
-    const style = styleFor(vertex.tier_role);
-    const marker = L.circleMarker(vertex.coords, {
+    byId[vertex.id] = vertex;
+    const style = styleFor(vertex);
+    if (!style) {
+      continue;
+    }
+    add(L.circleMarker(vertex.coords, {
       radius: style.radius,
       color: style.color,
       fillColor: style.color,
       fillOpacity: 0.85,
       weight: 1,
-    }).bindPopup(vertexPopup(vertex));
-    (groups[style.group] = groups[style.group] || L.layerGroup()).addLayer(marker);
+    }).bindTooltip(vertexLabel(vertex)));
   }
-  return groups;
+  return byId;
 }
 
-// Build a polyline layer group from edges that carry source_id/target_id.
-function edgeGroup(edges, coordsById, color, weight) {
-  const group = L.layerGroup();
+// Draw one set of edges as same-colored links, each with a hover tooltip.
+function drawEdges(edges, byId, label) {
   for (const edge of edges) {
-    const a = coordsById[edge.source_id];
-    const b = coordsById[edge.target_id];
-    if (a && b) {
-      group.addLayer(L.polyline([a, b], { color, weight, opacity: 0.7 }));
+    const source = byId[edge.source_id];
+    const target = byId[edge.target_id];
+    if (source && target) {
+      add(L.polyline([source.coords, target.coords], {
+        color: LINK_COLOR,
+        weight: 1.5,
+        opacity: 0.7,
+      }).bindTooltip(edgeLabel(label, source, target), { sticky: true }));
     }
   }
-  return group;
 }
 
 function setStatus(validation, summary) {
@@ -80,26 +99,6 @@ function setStatus(validation, summary) {
     `${summary.access_vertex_count} access`;
 }
 
-function resetOverlays() {
-  for (const layer of overlays) {
-    map.removeLayer(layer);
-  }
-  if (layerControl) {
-    map.removeControl(layerControl);
-  }
-  overlays = [];
-}
-
-// Add a named overlay: track it, show it if on by default, and collect it for
-// the layer control.
-function addOverlay(named, name, layer) {
-  named[name] = layer;
-  overlays.push(layer);
-  if (DEFAULT_ON.has(name)) {
-    layer.addTo(map);
-  }
-}
-
 async function getJSON(path) {
   const response = await fetch(path);
   if (!response.ok) {
@@ -109,7 +108,7 @@ async function getJSON(path) {
 }
 
 async function render(mapId) {
-  resetOverlays();
+  clear();
   const [vertices, edges, validation, summary] = await Promise.all([
     getJSON(`/api/wan-maps/${mapId}/vertices`),
     getJSON(`/api/wan-maps/${mapId}/edges`),
@@ -117,17 +116,9 @@ async function render(mapId) {
     getJSON(`/api/wan-maps/${mapId}/summary`),
   ]);
 
-  const coordsById = {};
-  const named = {};
-  const groups = vertexGroups(vertices, coordsById);
-  for (const name of Object.keys(groups)) {
-    addOverlay(named, name, groups[name]);
-  }
-  addOverlay(named, "Access links", edgeGroup(edges.access_edges, coordsById, "#f9a825", 1.5));
-  addOverlay(named, "Backbone routes", edgeGroup(edges.path_uses, coordsById, "#1565c0", 2.5));
-  addOverlay(named, "Carrier backbone", edgeGroup(edges.physical_edges, coordsById, "#9e9e9e", 1));
-
-  layerControl = L.control.layers(null, named, { collapsed: false }).addTo(map);
+  const byId = drawVertices(vertices);
+  drawEdges(edges.access_edges, byId, "Access link");
+  drawEdges(edges.path_uses, byId, "Backbone route");
   setStatus(validation, summary);
 
   const points = vertices.map((vertex) => vertex.coords);
@@ -136,18 +127,30 @@ async function render(mapId) {
   }
 }
 
+// Mark the chosen tenant link active and redraw its WAN map.
+function select(link, mapId) {
+  for (const other of document.querySelectorAll("#tenants a")) {
+    other.classList.toggle("active", other === link);
+  }
+  return render(mapId);
+}
+
 async function init() {
-  const select = document.getElementById("config");
+  const tenants = document.getElementById("tenants");
   const wanMaps = await getJSON("/api/wan-maps");
   for (const wanMap of wanMaps) {
-    const option = document.createElement("option");
-    option.value = wanMap.id;
-    option.textContent = wanMap.label;
-    select.appendChild(option);
+    const link = document.createElement("a");
+    link.href = "#";
+    link.textContent = wanMap.label;
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      select(link, wanMap.id);
+    });
+    tenants.appendChild(link);
   }
-  select.addEventListener("change", () => render(select.value));
-  if (wanMaps.length) {
-    await render(wanMaps[0].id);
+  const first = tenants.querySelector("a");
+  if (first) {
+    await select(first, wanMaps[0].id);
   }
 }
 
