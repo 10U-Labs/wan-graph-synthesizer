@@ -21,7 +21,7 @@ from wan_designer.graphs import path_edge_keys
 
 def make_vertex(vertex_id: str, lat: float, lon: float) -> Vertex:
     """Test helper: build make vertex."""
-    return Vertex(id=vertex_id, name=vertex_id, tenant="Lumen", kind="PoP", lat=lat, lon=lon)
+    return Vertex(id=vertex_id, name=vertex_id, tenant="Lumen", kind="PoP", coords=(lat, lon))
 
 
 def test_slugify_replaces_punctuation() -> None:

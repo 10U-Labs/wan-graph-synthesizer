@@ -61,8 +61,7 @@ def carrier_pop(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
         name=vertex_id,
         tenant="Lumen",
         kind="PoP",
-        lat=lat,
-        lon=lon,
+        coords=(lat, lon),
         shown_in_map=False,
     )
 
@@ -70,7 +69,7 @@ def carrier_pop(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
 def access_vertex(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
     """Build an access (F-35 installation) vertex."""
     return Vertex(
-        id=vertex_id, name=vertex_id, tenant="F-35", kind="Military installation", lat=lat, lon=lon
+        id=vertex_id, name=vertex_id, tenant="F-35", kind="Military installation", coords=(lat, lon)
     )
 
 

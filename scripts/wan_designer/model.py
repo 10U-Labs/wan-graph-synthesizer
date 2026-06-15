@@ -28,12 +28,21 @@ class Vertex:
     name: str
     tenant: str
     kind: str
-    lat: float
-    lon: float
+    coords: tuple[float, float]  # (latitude, longitude)
     description: str = ""
     # Whether the vertex appears on the source mapbook layer (carrier PoPs are
     # backbone infrastructure and are not shown; installations and regions are).
     shown_in_map: bool = True
+
+    @property
+    def lat(self) -> float:
+        """Latitude in degrees."""
+        return self.coords[0]
+
+    @property
+    def lon(self) -> float:
+        """Longitude in degrees."""
+        return self.coords[1]
 
 @dataclass(frozen=True)
 class PhysicalEdge:

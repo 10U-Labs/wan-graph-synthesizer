@@ -21,7 +21,7 @@ from wan_designer.output import (
 
 def _region(name: str) -> Vertex:
     """Build a provider-data-center region vertex with the given name."""
-    return Vertex(id=name, name=name, tenant="Providers", kind="provider region", lat=0.0, lon=0.0)
+    return Vertex(id=name, name=name, tenant="Providers", kind="provider region", coords=(0.0, 0.0))
 
 
 def _provider regions(name: str) -> Vertex:

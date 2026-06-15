@@ -695,8 +695,7 @@ def colocated_twin(core: Vertex) -> Vertex:
         name=f"AGGR {core.name}",
         tenant=core.tenant,
         kind=core.kind,
-        lat=core.lat,
-        lon=core.lon,
+        coords=core.coords,
         description=core.description,
         shown_in_map=core.shown_in_map,
     )
