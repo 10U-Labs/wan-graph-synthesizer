@@ -1,222 +1,59 @@
-"""Parse KMZ/KML placemarks and the carrier edge CSV into the data model."""
+"""Load the vertices CSV and the carrier edge CSVs into the data model."""
 
 from __future__ import annotations
 
 import csv
-import html
-import re
-import zipfile
 from pathlib import Path
-from xml.etree import ElementTree as ET
 
 from wan_designer.model import (
-    KML_NS,
-    Node,
     PhysicalEdge,
-    classify_category,
+    Vertex,
     edge_key,
     haversine_miles,
     slugify,
 )
 
 
-def read_kml_root(input_path: Path) -> ET.Element:
-    """Parse the root KML element from a .kmz or .kml file."""
-    if input_path.suffix.lower() == ".kmz":
-        with zipfile.ZipFile(input_path) as archive:
-            kml_names = [name for name in archive.namelist() if name.lower().endswith(".kml")]
-            if not kml_names:
-                raise ValueError(f"{input_path} does not contain a .kml file")
-            preferred = "doc.kml" if "doc.kml" in kml_names else kml_names[0]
-            return ET.fromstring(archive.read(preferred))
-    if input_path.suffix.lower() == ".kml":
-        return ET.parse(input_path).getroot()
-    raise ValueError(f"Unsupported input type: {input_path}. Expected .kmz or .kml")
+def load_vertices(path: Path) -> list[Vertex]:
+    """Load every vertex from the merged vertices CSV.
 
-def clean_description(raw_text: str | None) -> str:
-    """Strip HTML markup from a placemark description into plain text."""
-    if not raw_text:
-        return ""
-    text = html.unescape(raw_text)
-    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
-    text = re.sub(r"<[^>]+>", "", text)
-    lines = [line.strip() for line in text.splitlines()]
-    return "\n".join(line for line in lines if line)
-
-def build_node(
-    name: str,
-    category: str,
-    coords: tuple[float, float],
-    description: str,
-    used_ids: set[str],
-) -> Node:
-    """Build a Node with a category-derived kind and an id unique within a load.
-
-    Shared by the KML and CSV node loaders so both derive ids and kinds
-    identically; ``coords`` is ``(lat, lon)`` and ``used_ids`` is mutated to
-    reserve each id as it is handed out.
-    """
-    kind = classify_category(category)
-    base_id = f"{kind}_{slugify(name)}"
-    node_id = base_id
-    suffix = 2
-    while node_id in used_ids:
-        node_id = f"{base_id}_{suffix}"
-        suffix += 1
-    used_ids.add(node_id)
-
-    lat, lon = coords
-    return Node(
-        id=node_id,
-        name=name,
-        category=category,
-        kind=kind,
-        lat=lat,
-        lon=lon,
-        description=description,
-    )
-
-def parse_point_placemark(placemark: ET.Element, category: str, used_ids: set[str]) -> Node | None:
-    """Parse one point placemark into a Node, or None if it has no point."""
-    coordinates = placemark.find(".//k:Point/k:coordinates", KML_NS)
-    if coordinates is None or not coordinates.text or not coordinates.text.strip():
-        return None
-
-    lon_text, lat_text, *_ = coordinates.text.strip().split(",")
-    return build_node(
-        name=placemark.findtext("k:name", default="Unnamed", namespaces=KML_NS).strip(),
-        category=category,
-        coords=(float(lat_text), float(lon_text)),
-        description=clean_description(
-            placemark.findtext("k:description", default="", namespaces=KML_NS)
-        ),
-        used_ids=used_ids,
-    )
-
-def load_nodes(input_path: Path) -> list[Node]:
-    """Load the placemark nodes from a CSV, KMZ, or KML mapbook file.
-
-    A ``.csv`` mapbook is the canonical node source (see :func:`load_node_csv`);
-    ``.kmz``/``.kml`` files are parsed from their point placemarks.
-    """
-    if input_path.suffix.lower() == ".csv":
-        return load_node_csv(input_path)
-    return load_kml_nodes(input_path)
-
-def load_node_csv(path: Path) -> list[Node]:
-    """Load mapbook nodes from a CSV exported from the KMZ placemarks.
-
-    Each row is ``name,category,lat,lon,description``. The ``category`` drives
-    the node kind (carrier PoP, F-35, Sentinel, region, ...) exactly as the KML
-    folder label does, so the CSV and KMZ paths yield identical node sets.
+    Each row is ``name,latitude,longitude,tenant,kind,description``. ``kind``
+    classifies the vertex -- ``PoP``/``ROADM`` carrier PoPs versus access and
+    cloud-region vertices -- and ``tenant`` records its operator or program.
+    Ids are slugged from the name and de-duplicated within the load.
     """
     if not path.exists():
-        raise ValueError(f"Mapbook node file does not exist: {path}")
-    nodes: list[Node] = []
+        raise ValueError(f"Vertex file does not exist: {path}")
+    vertices: list[Vertex] = []
     used_ids: set[str] = set()
-    with path.open(newline="", encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            nodes.append(
-                build_node(
-                    name=row["name"].strip(),
-                    category=row["category"].strip(),
-                    coords=(float(row["lat"]), float(row["lon"])),
-                    description=row.get("description", "").strip(),
-                    used_ids=used_ids,
-                )
-            )
-    return nodes
-
-def load_kml_nodes(input_path: Path) -> list[Node]:
-    """Load every point placemark from a KMZ/KML file as a list of nodes."""
-    root = read_kml_root(input_path)
-    document = root.find("k:Document", KML_NS)
-    if document is None:
-        raise ValueError("KML document does not contain a Document element")
-
-    document_name = document.findtext(
-        "k:name", default="Top Level Placemarks", namespaces=KML_NS
-    ).strip()
-    nodes: list[Node] = []
-    used_ids: set[str] = set()
-
-    for placemark in document.findall("k:Placemark", KML_NS):
-        node = parse_point_placemark(placemark, document_name, used_ids)
-        if node is not None:
-            nodes.append(node)
-
-    for folder in document.findall("k:Folder", KML_NS):
-        category = folder.findtext("k:name", default="Folder", namespaces=KML_NS).strip()
-        for placemark in folder.findall("k:Placemark", KML_NS):
-            node = parse_point_placemark(placemark, category, used_ids)
-            if node is not None:
-                nodes.append(node)
-
-    return nodes
-
-def load_regional_nodes(path: Path) -> list[Node]:
-    """Load regional carrier PoPs (DCN, Vision Net) with their coordinates.
-
-    Each row is ``name,lat,lon,network``. Nodes are Carrier PoPs whose
-    category records which regional network they belong to; names are
-    curated to be unique across the regional files.
-    """
-    if not path.exists():
-        raise ValueError(f"Regional node file does not exist: {path}")
-    nodes: list[Node] = []
     with path.open(newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             name = row["name"].strip()
-            nodes.append(
-                Node(
-                    id=f"carrier_pop_{slugify(name)}",
+            base_id = slugify(name)
+            vertex_id = base_id
+            suffix = 2
+            while vertex_id in used_ids:
+                vertex_id = f"{base_id}_{suffix}"
+                suffix += 1
+            used_ids.add(vertex_id)
+            vertices.append(
+                Vertex(
+                    id=vertex_id,
                     name=name,
-                    category=row["network"].strip(),
-                    kind="carrier_pop",
-                    lat=float(row["lat"]),
-                    lon=float(row["lon"]),
+                    tenant=row["tenant"].strip(),
+                    kind=row["kind"].strip(),
+                    lat=float(row["latitude"]),
+                    lon=float(row["longitude"]),
+                    description=row.get("description", "").strip(),
+                    shown_in_map=row.get("shown_in_map", "").strip() != "Not shown in map",
                 )
             )
-    return nodes
+    return vertices
 
-def load_regional_networks(
-    node_path: Path,
-    edge_paths: list[Path],
-    lumen_pops: list[Node],
-) -> tuple[list[Node], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
-    """Load regional carriers and stitch them onto the Lumen PoP set.
-
-    Returns the regional nodes, all their edges (including interconnect
-    edges that land on Lumen PoPs), and their roles -- every regional PoP
-    is transit-only (``roadm``) so it is never picked as a core or
-    aggregation unless explicitly forced.
-    """
-    regional_nodes = load_regional_nodes(node_path)
-    combined = lumen_pops + regional_nodes
-    edges: dict[tuple[str, str], PhysicalEdge] = {}
-    for edge_path in edge_paths:
-        edges.update(load_carrier_edges(edge_path, combined))
-    roles = {node.id: "roadm" for node in regional_nodes}
-    return regional_nodes, edges, roles
-
-def load_pop_roles(path: Path | None, carrier_pops: list[Node]) -> dict[str, str]:
-    """Load optional Carrier PoP roles, defaulting every PoP to aggregator."""
-    roles = {pop.id: "aggregator" for pop in carrier_pops}
-    if path is None or not path.exists():
-        return roles
-
-    by_name = {pop.name.lower(): pop for pop in carrier_pops}
-    with path.open(newline="", encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            name = row["name"].strip().lower()
-            role = row["role"].strip().lower()
-            if name not in by_name:
-                raise ValueError(f"PoP role file references unknown Carrier PoP: {row['name']}")
-            roles[by_name[name].id] = role
-    return roles
-
-def load_carrier_edges(path: Path, carrier_pops: list[Node]) -> dict[tuple[str, str], PhysicalEdge]:
-    """Load the physical Carrier edge graph from the mapbook-derived CSV."""
+def load_carrier_edges(
+    path: Path, carrier_pops: list[Vertex]
+) -> dict[tuple[str, str], PhysicalEdge]:
+    """Load a physical Carrier edge graph from a mapbook-derived edge CSV."""
     if not path.exists():
         raise ValueError(f"Carrier edge file does not exist: {path}")
 

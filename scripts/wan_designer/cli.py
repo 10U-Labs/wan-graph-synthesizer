@@ -5,28 +5,24 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-import zipfile
 from pathlib import Path
-from xml.etree import ElementTree as ET
 
 from wan_designer.config import AppConfig, default_config, load_config
 from wan_designer.model import (
     CliPaths,
     DesignArtifacts,
     DesignParams,
+    PhysicalEdge,
     SourceFiles,
     ValidationReport,
+    carrier_role,
+    is_carrier_pop,
 )
-from wan_designer.parsing import (
-    load_carrier_edges,
-    load_nodes,
-    load_pop_roles,
-    load_regional_networks,
-)
+from wan_designer.parsing import load_carrier_edges, load_vertices
 from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
 from wan_designer.validation import (
     augment_physical_resilience,
-    included_node_ids,
+    included_vertex_ids,
     validate_design,
 )
 from wan_designer.output import write_outputs
@@ -51,17 +47,13 @@ def build_parser() -> argparse.ArgumentParser:
         "input",
         nargs="?",
         default=None,
-        help="Input mapbook node CSV (or KMZ/KML). Overrides the config's mapbook.",
+        help="Vertices CSV (name,latitude,longitude,tenant,kind,description). "
+        "Overrides the config's vertices file.",
     )
     parser.add_argument(
         "--carrier-edges",
         default=None,
         help="CSV of physical Carrier mapbook route edges.",
-    )
-    parser.add_argument(
-        "--pop-roles",
-        default=None,
-        help="Optional CSV of Carrier PoP roles; pass empty to disable.",
     )
     parser.add_argument(
         "--mapbook-pdf",
@@ -77,12 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--core-count",
         type=int,
         default=None,
-        help="Exact number of core nodes. Overrides the config's core_count.",
-    )
-    parser.add_argument(
-        "--regional-nodes",
-        default=None,
-        help="Regional carrier node coordinates; pass empty to disable regional carriers.",
+        help="Exact number of core vertices. Overrides the config's core_count.",
     )
     parser.add_argument(
         "--regional-edges",
@@ -93,7 +80,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--allow-roadm-aggregation",
         action="store_true",
-        help="Allow mapbook ROADM nodes to be selected as aggregation/core points.",
+        help="Allow mapbook ROADM vertices to be selected as aggregation/core points.",
     )
     parser.add_argument(
         "--no-resilience-augmentation",
@@ -149,12 +136,10 @@ def resolve_paths(config: AppConfig, args: argparse.Namespace) -> CliPaths:
         else base.regional_edge_paths
     )
     return CliPaths(
-        input_path=_path_or(args.input, base.input_path),
+        vertices_path=_path_or(args.input, base.vertices_path),
         edge_path=_path_or(args.carrier_edges, base.edge_path),
-        role_path=_optional_path_override(args.pop_roles, base.role_path),
         mapbook_pdf=_optional_path_override(args.mapbook_pdf, base.mapbook_pdf),
         output_dir=_path_or(args.output_dir, base.output_dir),
-        regional_node_path=_optional_path_override(args.regional_nodes, base.regional_node_path),
         regional_edge_paths=regional_edges,
     )
 
@@ -172,30 +157,25 @@ def resolve_params(config: AppConfig, args: argparse.Namespace) -> DesignParams:
 
 def run_design(paths: CliPaths, params: DesignParams, augment: bool) -> DesignArtifacts:
     """Load inputs, optimize the design, and validate it."""
-    nodes = load_nodes(paths.input_path)
-    if not nodes:
-        raise ValueError(f"No point placemarks found in {paths.input_path}")
-    carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
-    physical_edges = load_carrier_edges(paths.edge_path, carrier_pops)
-    roles = load_pop_roles(paths.role_path, carrier_pops)
-    if paths.regional_node_path is not None:
-        regional_nodes, regional_edges, regional_roles = load_regional_networks(
-            paths.regional_node_path, list(paths.regional_edge_paths), carrier_pops
-        )
-        nodes = nodes + regional_nodes
-        physical_edges = {**physical_edges, **regional_edges}
-        roles = {**roles, **regional_roles}
-    nodes, physical_edges, overrides = apply_role_overrides(nodes, physical_edges, params)
+    vertices = load_vertices(paths.vertices_path)
+    if not vertices:
+        raise ValueError(f"No vertices found in {paths.vertices_path}")
+    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
+    physical_edges: dict[tuple[str, str], PhysicalEdge] = {}
+    for edge_path in (paths.edge_path, *paths.regional_edge_paths):
+        physical_edges.update(load_carrier_edges(edge_path, carrier_pops))
+    roles = {pop.id: carrier_role(pop) for pop in carrier_pops}
+    vertices, physical_edges, overrides = apply_role_overrides(vertices, physical_edges, params)
     logger.info(
-        "Loaded %d nodes and %d physical edges; starting optimization",
-        len(nodes), len(physical_edges),
+        "Loaded %d vertices and %d physical edges; starting optimization",
+        len(vertices), len(physical_edges),
     )
-    design = optimize_three_tier_design(nodes, physical_edges, roles, params, overrides)
+    design = optimize_three_tier_design(vertices, physical_edges, roles, params, overrides)
     logger.info("Optimization done; validating and writing outputs")
     if augment:
-        design = augment_physical_resilience(nodes, physical_edges, design)
-    validation = validate_design(nodes, design)
-    return DesignArtifacts(nodes, physical_edges, design, validation)
+        design = augment_physical_resilience(vertices, physical_edges, design)
+    validation = validate_design(vertices, design)
+    return DesignArtifacts(vertices, physical_edges, design, validation)
 
 def print_summary(
     paths: CliPaths, artifacts: DesignArtifacts, outputs: dict[str, Path]
@@ -203,16 +183,16 @@ def print_summary(
     """Print a human-readable summary of the computed design."""
     design = artifacts.design
     validation = artifacts.validation
-    nodes_by_id = {node.id: node for node in artifacts.nodes}
-    print(f"Loaded {len(artifacts.nodes)} point nodes from {paths.input_path}")
+    vertices_by_id = {vertex.id: vertex for vertex in artifacts.vertices}
+    print(f"Loaded {len(artifacts.vertices)} vertices from {paths.vertices_path}")
     print(f"Loaded {len(artifacts.physical_edges)} physical Carrier edges from {paths.edge_path}")
     print(
         f"Selected {len(design.core_ids)} cores, {len(design.aggregation_ids)} "
         f"aggregations, and {len(design.transit_ids)} transit PoPs"
     )
-    print("Cores: " + ", ".join(nodes_by_id[node_id].name for node_id in design.core_ids))
+    print("Cores: " + ", ".join(vertices_by_id[vertex_id].name for vertex_id in design.core_ids))
     print(
-        f"Designed {len(included_node_ids(design))} included nodes and "
+        f"Designed {len(included_vertex_ids(design))} included vertices and "
         f"{len(design.access_edges) + len(design.physical_edge_keys)} selected edges "
         f"({design.metrics.access_miles + design.metrics.physical_miles:,.1f} total miles)"
     )
@@ -220,7 +200,7 @@ def print_summary(
         "Validation: "
         f"connected={validation['connected']}, "
         f"min_degree={validation['min_distinct_neighbor_degree']}, "
-        f"access_dual_homed={validation['access_nodes_with_two_aggregation_links']}, "
+        f"access_dual_homed={validation['access_vertices_with_two_aggregation_links']}, "
         f"agg_dual_homed_to_cores={validation['aggregations_dual_homed_to_cores']}, "
         f"cores_full_mesh={validation['cores_full_mesh']}"
     )
@@ -234,16 +214,16 @@ def exit_code_for(validation: ValidationReport) -> int:
             entry["name"] for entry in validation["aggregations_missing_core_redundancy"]
         )
         print(
-            f"error: aggregations lacking two node-disjoint paths to two cores: {names}",
+            f"error: aggregations lacking two vertex-disjoint paths to two cores: {names}",
             file=sys.stderr,
         )
         return 2
     if not validation["cores_full_mesh"]:
         print("error: core tier is not a full mesh", file=sys.stderr)
         return 2
-    if validation["degree_deficient_nodes"]:
+    if validation["degree_deficient_vertices"]:
         print(
-            "warning: validation found nodes with fewer than two distinct neighbors",
+            "warning: validation found vertices with fewer than two distinct neighbors",
             file=sys.stderr,
         )
         return 2
@@ -264,9 +244,9 @@ def main(argv: list[str] | None = None) -> int:
         mapbook = (
             paths.mapbook_pdf if paths.mapbook_pdf and paths.mapbook_pdf.exists() else None
         )
-        sources = SourceFiles(paths.input_path, paths.edge_path, mapbook)
+        sources = SourceFiles(paths.vertices_path, paths.edge_path, mapbook)
         outputs = write_outputs(paths.output_dir, sources, artifacts)
-    except (ValueError, OSError, ET.ParseError, zipfile.BadZipFile) as exc:
+    except (ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

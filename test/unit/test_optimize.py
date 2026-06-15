@@ -9,7 +9,7 @@ from wan_designer.model import (
     AccessEdge,
     DesignInputs,
     DesignParams,
-    Node,
+    Vertex,
     PhysicalEdge,
     RoleOverrides,
     edge_key,
@@ -34,7 +34,7 @@ from wan_designer.optimize import (
     enumeration_limit,
     feasible_aggregation_ids,
     nearest_pop_id,
-    node_straightness,
+    vertex_straightness,
     optimize_three_tier_design,
     reject_override_conflicts,
     resolve_pinned_ids,
@@ -45,23 +45,23 @@ from wan_designer.optimize import (
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
-access = fixtures.access_node
+access = fixtures.access_vertex
 
 
 def _inputs_from_edges(
     edge_ids: list[str],
     edges: dict[tuple[str, str], PhysicalEdge],
     eligible: set[str],
-    access_nodes: list[Node] | None = None,
+    access_vertices: list[Vertex] | None = None,
     coords: dict[str, tuple[float, float]] | None = None,
 ) -> DesignInputs:
     """Build DesignInputs over a unit-weight graph for direct optimizer tests."""
     places = coords or {}
-    pops = [pop(node_id, *places.get(node_id, (0.0, 0.0))) for node_id in edge_ids]
+    pops = [pop(vertex_id, *places.get(vertex_id, (0.0, 0.0))) for vertex_id in edge_ids]
     adjacency = unit_adjacency(edges)
     distances, predecessors = all_pairs_shortest(pops, adjacency)
     return DesignInputs(
-        access_nodes=access_nodes if access_nodes is not None else [],
+        access_vertices=access_vertices if access_vertices is not None else [],
         carrier_pops=pops,
         physical_edges=edges,
         eligible_aggregation_ids=eligible,
@@ -94,13 +94,13 @@ def _required_plan(candidates: list[str], required: set[str]) -> _SearchPlan:
 
 
 TRIANGLE = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-TRIANGLE_NODES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
+TRIANGLE_VERTICES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
 
 
 def test_core_count_below_two_is_rejected() -> None:
     """Core count below two is rejected."""
     with pytest.raises(ValueError):
-        optimize_three_tier_design(TRIANGLE_NODES, TRIANGLE, {}, DesignParams(core_count=1))
+        optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(core_count=1))
 
 
 def test_unknown_pop_ids_are_rejected() -> None:
@@ -130,7 +130,7 @@ def test_not_enough_eligible_pops_is_rejected() -> None:
 def test_optimizes_ring_to_a_feasible_design() -> None:
     """Optimizes ring to a feasible design with at least the minimum cores."""
     design = optimize_three_tier_design(
-        fixtures.ring_nodes(), fixtures.ring_physical_edges(), {}, fixtures.ring_params()
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {}, fixtures.ring_params()
     )
     assert len(design.core_ids) >= 2
 
@@ -138,7 +138,7 @@ def test_optimizes_ring_to_a_feasible_design() -> None:
 def test_core_count_is_honored_exactly() -> None:
     """Core count is exact: the design uses precisely that many cores."""
     design = optimize_three_tier_design(
-        fixtures.ring_nodes(), fixtures.ring_physical_edges(), {}, DesignParams(core_count=3)
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {}, DesignParams(core_count=3)
     )
     assert len(design.core_ids) == 3
 
@@ -146,13 +146,13 @@ def test_core_count_is_honored_exactly() -> None:
 def test_no_feasible_design_is_rejected() -> None:
     """No feasible design is rejected when access cannot reach two aggregations."""
     with pytest.raises(ValueError):
-        optimize_three_tier_design(TRIANGLE_NODES, TRIANGLE, {}, DesignParams(core_count=2))
+        optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(core_count=2))
 
 
 def test_not_enough_core_candidates_is_rejected() -> None:
     """Forcing aggregations can leave too few candidates to be cores."""
     edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-    nodes = [
+    vertices = [
         pop("a", 0.0, 0.0),
         pop("b", 0.0, 1.0),
         pop("c", 0.0, 2.0),
@@ -161,7 +161,7 @@ def test_not_enough_core_candidates_is_rejected() -> None:
     ]
     overrides = RoleOverrides(forced_aggregation_ids=frozenset({"a", "b"}))
     with pytest.raises(ValueError):
-        optimize_three_tier_design(nodes, edges, {}, DesignParams(core_count=2), overrides)
+        optimize_three_tier_design(vertices, edges, {}, DesignParams(core_count=2), overrides)
 
 
 def test_aggregation_core_paths_infeasible_through_bottleneck() -> None:
@@ -181,15 +181,15 @@ def test_core_mesh_paths_empty_when_cores_disconnected() -> None:
     assert not core_mesh_paths(("a", "c"), distances, predecessors, edges)
 
 
-def test_node_straightness_is_zero_without_reachable_nodes() -> None:
-    """Node straightness is zero when no other PoP is reachable."""
-    assert node_straightness("a", {"a": pop("a")}, {}) == 0.0
+def test_vertex_straightness_is_zero_without_reachable_vertices() -> None:
+    """Vertex straightness is zero when no other PoP is reachable."""
+    assert vertex_straightness("a", {"a": pop("a")}, {}) == 0.0
 
 
-def test_node_straightness_skips_zero_length_hops() -> None:
-    """Node straightness ignores hops between coincident PoPs."""
+def test_vertex_straightness_skips_zero_length_hops() -> None:
+    """Vertex straightness ignores hops between coincident PoPs."""
     by_id = {"a": pop("a", 0.0, 0.0), "b": pop("b", 0.0, 0.0)}
-    assert node_straightness("a", by_id, {"b": "a"}) == 0.0
+    assert vertex_straightness("a", by_id, {"b": "a"}) == 0.0
 
 
 def test_nearest_pop_id_picks_the_closest() -> None:
@@ -276,7 +276,7 @@ def test_best_design_at_size_selects_strongest_then_least_last_mile(
     assert design is not None and set(design.core_ids) == {"a", "b"}
 
 
-# g1 and g2 each reach both cores over node-disjoint paths; the cores mesh.
+# g1 and g2 each reach both cores over vertex-disjoint paths; the cores mesh.
 DUAL_EDGES = physical(
     {
         ("g1", "c1"): 1.0, ("g1", "c2"): 1.0,
@@ -292,8 +292,8 @@ def _assign(
 ) -> tuple[list[AccessEdge], set[str]] | None:
     """Run cluster-driven assignment over the dual-aggregation graph."""
     coords = {"g1": g1_coord, "g2": g2_coord}
-    access_nodes = [access(name, lat, lon) for name, (lat, lon) in CLUSTER_ACCESS.items()]
-    inputs = _inputs_from_edges(DUAL_IDS, DUAL_EDGES, {"g1", "g2"}, access_nodes, coords)
+    access_vertices = [access(name, lat, lon) for name, (lat, lon) in CLUSTER_ACCESS.items()]
+    inputs = _inputs_from_edges(DUAL_IDS, DUAL_EDGES, {"g1", "g2"}, access_vertices, coords)
     plan = _plan([], clusters=[list(CLUSTER_ACCESS)])
     return assign_access(("c1", "c2"), inputs, plan)
 
@@ -435,7 +435,7 @@ def test_build_design_returns_none_when_a_forced_aggregation_cannot_route() -> N
 
 
 def test_resolve_pinned_ids_maps_a_known_name_to_its_id() -> None:
-    """A known PoP name resolves to its node id."""
+    """A known PoP name resolves to its vertex id."""
     assert resolve_pinned_ids(("Denver, CO",), {"Denver, CO": "d"}, "force-core") == {"d"}
 
 
@@ -463,7 +463,7 @@ def test_colocation_edges_duplicate_a_cores_handoffs_onto_its_twin() -> None:
 def test_apply_role_overrides_splits_a_co_located_pop() -> None:
     """Pinning a PoP as both core and aggregation forces its split-off twin."""
     params = DesignParams(forced_core_names=("Colo",), forced_aggregation_names=("Colo",))
-    _nodes, _edges, overrides = apply_role_overrides(
+    _vertices, _edges, overrides = apply_role_overrides(
         [pop("Colo"), pop("z")], physical({("Colo", "z"): 1.0}), params
     )
     assert "aggr_Colo" in overrides.forced_aggregation_ids
@@ -472,7 +472,7 @@ def test_apply_role_overrides_splits_a_co_located_pop() -> None:
 def test_optimize_honors_a_forced_core_override() -> None:
     """A forced-core override is fixed into the selected core tier."""
     design = optimize_three_tier_design(
-        fixtures.ring_nodes(), fixtures.ring_physical_edges(), {},
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {},
         DesignParams(core_count=2), RoleOverrides(forced_core_ids=frozenset({"P3"})),
     )
     assert "P3" in design.core_ids

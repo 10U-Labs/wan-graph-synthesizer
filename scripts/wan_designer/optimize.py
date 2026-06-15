@@ -11,11 +11,11 @@ and home to their nearest two regardless.
 On top of the algorithm, the operator may pin roles by PoP name (``RoleOverrides``,
 resolved by ``apply_role_overrides``): force a PoP to be a core, force it to be an
 aggregation, or exclude it from every selected role. A PoP forced as both a core
-and an aggregation is co-located: it is split into a distinct ``CORE`` node and a
-co-located ``AGGR`` node that share coordinates and a zero-mile in-facility
+and an aggregation is co-located: it is split into a distinct ``CORE`` vertex and a
+co-located ``AGGR`` vertex that share coordinates and a zero-mile in-facility
 cross-connect, with the core's fiber duplicated onto the aggregation's distinct
 hardware stack so the aggregation reaches its own co-located core as one of its two
-node-disjoint cores and a remote core as the other (see ``apply_role_overrides``).
+vertex-disjoint cores and a remote core as the other (see ``apply_role_overrides``).
 """
 
 from __future__ import annotations
@@ -32,20 +32,21 @@ from wan_designer.model import (
     DesignInputs,
     DesignMetrics,
     DesignParams,
-    Node,
+    Vertex,
     PathUse,
     PhysicalEdge,
     RoleOverrides,
     edge_key,
     haversine_miles,
+    is_carrier_pop,
 )
 from wan_designer.graphs import (
     dijkstra,
-    node_disjoint_paths_to_cores,
+    vertex_disjoint_paths_to_cores,
     path_edge_keys,
     reconstruct_path,
 )
-from wan_designer.clustering import cluster_access_nodes
+from wan_designer.clustering import cluster_access_vertices
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +62,8 @@ def unit_adjacency(
         neighbors.sort()
     return adjacency
 
-def link_bearing(origin: Node, neighbor: Node) -> float:
-    """Initial compass bearing in degrees from one node toward another."""
+def link_bearing(origin: Vertex, neighbor: Vertex) -> float:
+    """Initial compass bearing in degrees from one vertex toward another."""
     lat1, lat2 = math.radians(origin.lat), math.radians(neighbor.lat)
     delta_lon = math.radians(neighbor.lon - origin.lon)
     x = math.sin(delta_lon) * math.cos(lat2)
@@ -74,7 +75,7 @@ def link_bearing(origin: Node, neighbor: Node) -> float:
 def link_octants(
     pop_id: str,
     adjacency: dict[str, list[tuple[str, float]]],
-    pop_by_id: dict[str, Node],
+    pop_by_id: dict[str, Vertex],
 ) -> set[int]:
     """The distinct compass octants (of eight) the PoP's links point toward."""
     origin = pop_by_id[pop_id]
@@ -83,9 +84,9 @@ def link_octants(
         for neighbor, _weight in adjacency[pop_id]
     }
 
-def node_straightness(
+def vertex_straightness(
     pop_id: str,
-    pop_by_id: dict[str, Node],
+    pop_by_id: dict[str, Vertex],
     predecessors: dict[str, str],
 ) -> float:
     """Mean directness to reachable PoPs: straight-line over routed geometry."""
@@ -105,14 +106,14 @@ def node_straightness(
 def core_strength(
     pop_id: str,
     inputs: DesignInputs,
-    pop_by_id: dict[str, Node],
+    pop_by_id: dict[str, Vertex],
     max_degree: int,
     compass_octants: int,
 ) -> float:
     """Score a PoP's strength: reach plus spread plus straightness (~0..3)."""
     degree = len(inputs.adjacency[pop_id])
     spread = len(link_octants(pop_id, inputs.adjacency, pop_by_id))
-    straight = node_straightness(pop_id, pop_by_id, inputs.all_predecessors[pop_id])
+    straight = vertex_straightness(pop_id, pop_by_id, inputs.all_predecessors[pop_id])
     return degree / max_degree + spread / compass_octants + straight
 
 def path_geometry_miles(
@@ -131,8 +132,8 @@ def aggregation_core_paths(
     adjacency: dict[str, list[tuple[str, float]]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> tuple[float, list[PathUse]]:
-    """Route an aggregation to two distinct cores over node-disjoint paths."""
-    total, paths = node_disjoint_paths_to_cores(adjacency, aggregation_id, core_ids, 2)
+    """Route an aggregation to two distinct cores over vertex-disjoint paths."""
+    total, paths = vertex_disjoint_paths_to_cores(adjacency, aggregation_id, core_ids, 2)
     if not paths:
         return math.inf, []
     uses = [
@@ -181,7 +182,7 @@ def dual_homes_to_pair(
     inputs: DesignInputs,
     cache: dict[tuple[str, str, str], bool],
 ) -> bool:
-    """True if the aggregation has node-disjoint paths to both cores of a pair.
+    """True if the aggregation has vertex-disjoint paths to both cores of a pair.
 
     Results are memoized per (aggregation, core pair). Feasibility to a trio is
     the OR over its three pairs, so each pair's max-flow is computed only once
@@ -190,7 +191,7 @@ def dual_homes_to_pair(
     key = (aggregation_id, pair[0], pair[1])
     cached = cache.get(key)
     if cached is None:
-        cost, _paths = node_disjoint_paths_to_cores(inputs.adjacency, aggregation_id, pair, 2)
+        cost, _paths = vertex_disjoint_paths_to_cores(inputs.adjacency, aggregation_id, pair, 2)
         cached = math.isfinite(cost)
         cache[key] = cached
     return cached
@@ -230,7 +231,7 @@ def cores_mesh(core_ids: tuple[str, ...], all_distances: dict[str, dict[str, flo
         for left, right in itertools.combinations(core_ids, 2)
     )
 
-def cluster_diameter(members: list[Node]) -> float:
+def cluster_diameter(members: list[Vertex]) -> float:
     """The farthest great-circle distance between any two members of a cluster."""
     return max(
         (haversine_miles(left, right) for left in members for right in members),
@@ -238,10 +239,10 @@ def cluster_diameter(members: list[Node]) -> float:
     )
 
 def cluster_local_heads(
-    members: list[Node],
+    members: list[Vertex],
     feasible_ids: set[str],
     selected: set[str],
-    pop_by_id: dict[str, Node],
+    pop_by_id: dict[str, Vertex],
 ) -> list[str]:
     """Up to two distinct feasible PoPs local to a cluster, its heads.
 
@@ -270,17 +271,17 @@ def cluster_local_heads(
     return [aggregation_id for _total, aggregation_id in (reuse + build)[:2]]
 
 def complete_homes(
-    access: Node,
+    access: Vertex,
     current: list[str],
     selected: set[str],
     feasible_ids: set[str],
-    pop_by_id: dict[str, Node],
+    pop_by_id: dict[str, Vertex],
 ) -> list[str]:
-    """Fill an access node out toward two homes, preferring reuse over a build.
+    """Fill an access vertex out toward two homes, preferring reuse over a build.
 
     Existing facilities (cluster heads already placed, forced bases) are reused
     first; a new aggregation is opened only when fewer than two existing
-    facilities are reachable -- the last resort for a lone node or a synthetic
+    facilities are reachable -- the last resort for a lone vertex or a synthetic
     graph with no clusters. With two or more feasible aggregations available this
     always reaches two; it can return fewer only when the graph cannot offer two.
     """
@@ -311,7 +312,7 @@ def finalize_design(
         inputs.physical_edges[key].distance_miles for key in physical_edge_keys
     )
     score = access_miles + physical_miles
-    carrier_on_paths = {node_id for use in draft.path_uses for node_id in use.path}
+    carrier_on_paths = {vertex_id for use in draft.path_uses for vertex_id in use.path}
     transit_ids = tuple(
         sorted(carrier_on_paths - set(core_ids) - draft.selected_aggregation_ids)
     )
@@ -342,20 +343,20 @@ def assign_access(
     inputs: DesignInputs,
     plan: _SearchPlan,
 ) -> tuple[list[AccessEdge], set[str]] | None:
-    """Home every access node by clustering: cluster heads first, then reuse.
+    """Home every access vertex by clustering: cluster heads first, then reuse.
 
-    Aggregations are placed as the heads of dense access-node clusters (two
-    distinct local PoPs each). Every node then dual-homes to two facilities,
-    completing any gap (a cluster with one local head, or a sparse lone node) by
+    Aggregations are placed as the heads of dense access-vertex clusters (two
+    distinct local PoPs each). Every vertex then dual-homes to two facilities,
+    completing any gap (a cluster with one local head, or a sparse lone vertex) by
     reusing an existing facility rather than building a redundant one. Returns
-    the access edges and selected aggregation ids, or None if some node cannot
+    the access edges and selected aggregation ids, or None if some vertex cannot
     reach two facilities.
     """
     feasible_ids = feasible_aggregation_ids(core_ids, inputs, plan)
     if len(feasible_ids) < 2:
         return None
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
-    access_by_id = {access.id: access for access in inputs.access_nodes}
+    access_by_id = {access.id: access for access in inputs.access_vertices}
     selected: set[str] = set(plan.forced_aggregation_ids)
     homes: dict[str, list[str]] = {}
 
@@ -365,12 +366,12 @@ def assign_access(
     # homes to whichever selected facility is actually nearest, not to a distant
     # common head chosen for the cluster as a whole.
     for members in plan.clusters:
-        member_nodes = [access_by_id[member] for member in members]
-        selected.update(cluster_local_heads(member_nodes, feasible_ids, selected, pop_by_id))
+        member_vertices = [access_by_id[member] for member in members]
+        selected.update(cluster_local_heads(member_vertices, feasible_ids, selected, pop_by_id))
 
-    # Pass 2: home every node to its nearest two facilities, reusing the placed
+    # Pass 2: home every vertex to its nearest two facilities, reusing the placed
     # heads before opening any new build.
-    for access in inputs.access_nodes:
+    for access in inputs.access_vertices:
         completed = complete_homes(access, [], selected, feasible_ids, pop_by_id)
         homes[access.id] = completed
         selected.update(completed)
@@ -393,7 +394,7 @@ def evaluate_cores(
     """Score a core set's feasibility and access homing without routing paths.
 
     Returns None when the cores do not full-mesh, a forced aggregation cannot
-    dual-home, or some access node cannot reach two facilities. Routed paths are
+    dual-home, or some access vertex cannot reach two facilities. Routed paths are
     deferred to the winning set, since they do not affect the strength ranking.
     """
     if not cores_mesh(core_ids, inputs.all_distances):
@@ -426,7 +427,7 @@ def build_design_for_cores(
     """Assemble a full three-tier design for one fixed set of core PoPs.
 
     Returns None if the cores cannot full-mesh, a forced aggregation cannot
-    dual-home to them, or some access node cannot reach two facilities.
+    dual-home to them, or some access vertex cannot reach two facilities.
     """
     evaluation = evaluate_cores(core_ids, inputs, plan)
     if evaluation is None:
@@ -437,12 +438,12 @@ def build_design_for_cores(
     return finalize_design(core_ids, inputs, draft)
 
 def compute_eligible_ids(
-    carrier_pops: list[Node],
+    carrier_pops: list[Vertex],
     roles: dict[str, str],
     adjacency: dict[str, list[tuple[str, float]]],
     allow_roadm_aggregation: bool,
 ) -> set[str]:
-    """Carrier PoPs that may serve as core or aggregation nodes.
+    """Carrier PoPs that may serve as core or aggregation vertices.
 
     A PoP needs at least two physical links to ever be dual-homed to two
     cores, so degree-one PoPs (spurs) are excluded regardless of role.
@@ -455,7 +456,7 @@ def compute_eligible_ids(
     }
 
 def all_pairs_shortest(
-    carrier_pops: list[Node],
+    carrier_pops: list[Vertex],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, str]]]:
     """Run Dijkstra from every Carrier PoP for reuse across core sets."""
@@ -466,27 +467,27 @@ def all_pairs_shortest(
     return all_distances, all_predecessors
 
 def validate_pop_graph(
-    carrier_pops: list[Node],
+    carrier_pops: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> None:
     """Raise if the physical edge graph and Carrier PoP set are inconsistent."""
     pop_ids = {pop.id for pop in carrier_pops}
-    physical_node_ids = {node_id for edge in physical_edges for node_id in edge}
-    if not pop_ids.issuperset(physical_node_ids):
+    physical_vertex_ids = {vertex_id for edge in physical_edges for vertex_id in edge}
+    if not pop_ids.issuperset(physical_vertex_ids):
         raise ValueError("Physical edge graph references unknown Carrier PoP IDs")
     missing_pops = sorted(pop_ids - set(adjacency))
     if missing_pops:
-        names = ", ".join(node.name for node in carrier_pops if node.id in missing_pops)
+        names = ", ".join(vertex.name for vertex in carrier_pops if vertex.id in missing_pops)
         raise ValueError(f"Carrier PoPs missing from physical edge graph: {names}")
 
 @dataclass(frozen=True)
 class _SearchPlan:
     """Pre-computed context shared across every candidate core set.
 
-    ``clusters`` comes from density-clustering the access nodes once (geography
+    ``clusters`` comes from density-clustering the access vertices once (geography
     is core-independent); each cluster's heads are then chosen relative to its
-    own extent. ``feasibility_cache`` memoizes per-pair node-disjoint
+    own extent. ``feasibility_cache`` memoizes per-pair vertex-disjoint
     reachability so the search avoids re-running max-flows for every core set.
     """
 
@@ -497,7 +498,7 @@ class _SearchPlan:
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
     required_cores: frozenset[str] = field(default_factory=frozenset)
 
-def nearest_pop_id(access: Node, carrier_pops: list[Node]) -> str:
+def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
     return min(carrier_pops, key=lambda pop: haversine_miles(access, pop)).id
 
@@ -596,7 +597,7 @@ def search_best_design(
     sets = core_combination_count(plan, params.core_count)
     logger.info(
         "Optimizing %d access sites; %d cores, %d required; %d core sets (limit %d)",
-        len(inputs.access_nodes), params.core_count, len(plan.required_cores), sets, limit,
+        len(inputs.access_vertices), params.core_count, len(plan.required_cores), sets, limit,
     )
     if sets > limit:
         raise ValueError(
@@ -611,21 +612,21 @@ def search_best_design(
 
 @dataclass(frozen=True)
 class _GraphContext:
-    """Node partition and precomputed shortest-path context shared across cores."""
+    """Vertex partition and precomputed shortest-path context shared across cores."""
 
-    carrier_pops: list[Node]
-    all_access: list[Node]
+    carrier_pops: list[Vertex]
+    all_access: list[Vertex]
     adjacency: dict[str, list[tuple[str, float]]]
     all_distances: dict[str, dict[str, float]]
     all_predecessors: dict[str, dict[str, str]]
 
 def graph_context(
-    nodes: list[Node],
+    vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> _GraphContext:
-    """Split nodes into PoPs/access and precompute the shared graph context."""
-    carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
-    all_access = [node for node in nodes if node.kind != "carrier_pop"]
+    """Split vertices into PoPs/access and precompute the shared graph context."""
+    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
+    all_access = [vertex for vertex in vertices if not is_carrier_pop(vertex)]
     adjacency = unit_adjacency(physical_edges)
     validate_pop_graph(carrier_pops, physical_edges, adjacency)
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
@@ -638,10 +639,10 @@ def build_search_plan(
     forced_core_ids: frozenset[str],
     params: DesignParams,
 ) -> _SearchPlan:
-    """Compute node strengths, access-node clusters, and core candidates.
+    """Compute vertex strengths, access-vertex clusters, and core candidates.
 
     Required cores are the operator-forced cores; forced aggregations (co-located
-    ``AGGR`` nodes and any operator-pinned PoP) are never free core candidates.
+    ``AGGR`` vertices and any operator-pinned PoP) are never free core candidates.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
@@ -649,8 +650,8 @@ def build_search_plan(
         pop_id: core_strength(pop_id, inputs, pop_by_id, max_degree, params.tuning.compass_octants)
         for pop_id in eligible_ids
     }
-    clusters, _sparse, _radius = cluster_access_nodes(
-        inputs.access_nodes,
+    clusters, _sparse, _radius = cluster_access_vertices(
+        inputs.access_vertices,
         params.tuning.cluster_min_points,
         params.tuning.cluster_min_radius_miles,
         params.tuning.cluster_max_radius_miles,
@@ -664,8 +665,8 @@ def build_search_plan(
         required_cores=frozenset(required),
     )
 
-def pop_id_by_name(carrier_pops: list[Node]) -> dict[str, str]:
-    """Map each Carrier PoP's display name to its node id for pin resolution."""
+def pop_id_by_name(carrier_pops: list[Vertex]) -> dict[str, str]:
+    """Map each Carrier PoP's display name to its vertex id for pin resolution."""
     return {pop.name: pop.id for pop in carrier_pops}
 
 def resolve_pinned_ids(
@@ -687,16 +688,17 @@ def reject_override_conflicts(
     if clash:
         raise ValueError(f"PoPs cannot be both excluded and forced: {sorted(clash)}")
 
-def colocated_twin(core: Node) -> Node:
-    """Build the co-located ``AGGR`` node that shares a core's coordinates."""
-    return Node(
+def colocated_twin(core: Vertex) -> Vertex:
+    """Build the co-located ``AGGR`` vertex that shares a core's coordinates."""
+    return Vertex(
         id=f"aggr_{core.id}",
         name=f"AGGR {core.name}",
-        category=core.category,
+        tenant=core.tenant,
         kind=core.kind,
         lat=core.lat,
         lon=core.lon,
         description=core.description,
+        shown_in_map=core.shown_in_map,
     )
 
 def colocation_edges(
@@ -727,35 +729,35 @@ def colocation_edges(
     return new_edges
 
 def split_colocated(
-    nodes: list[Node],
+    vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     colocated_ids: set[str],
-) -> tuple[list[Node], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
-    """Split each co-located PoP into its core node and a co-located ``AGGR`` twin."""
-    node_by_id = {node.id: node for node in nodes}
-    augmented_nodes = list(nodes)
+) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
+    """Split each co-located PoP into its core vertex and a co-located ``AGGR`` twin."""
+    vertex_by_id = {vertex.id: vertex for vertex in vertices}
+    augmented_vertices = list(vertices)
     augmented_edges = dict(physical_edges)
     twin_by_core: dict[str, str] = {}
     for core_id in sorted(colocated_ids):
-        twin = colocated_twin(node_by_id[core_id])
+        twin = colocated_twin(vertex_by_id[core_id])
         twin_by_core[core_id] = twin.id
-        augmented_nodes.append(twin)
+        augmented_vertices.append(twin)
         augmented_edges.update(colocation_edges(core_id, twin.id, physical_edges))
-    return augmented_nodes, augmented_edges, twin_by_core
+    return augmented_vertices, augmented_edges, twin_by_core
 
 def apply_role_overrides(
-    nodes: list[Node],
+    vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
-) -> tuple[list[Node], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
-    """Resolve operator role pins and split any co-located PoP into two nodes.
+) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
+    """Resolve operator role pins and split any co-located PoP into two vertices.
 
-    Returns the (possibly augmented) nodes and physical edges plus the resolved
+    Returns the (possibly augmented) vertices and physical edges plus the resolved
     ``RoleOverrides``. A PoP pinned as both a core and an aggregation becomes a
-    ``CORE`` node (kept under its own id) and a co-located ``AGGR`` twin, and it is
+    ``CORE`` vertex (kept under its own id) and a co-located ``AGGR`` twin, and it is
     the twin's id that enters ``forced_aggregation_ids``.
     """
-    carrier_pops = [node for node in nodes if node.kind == "carrier_pop"]
+    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     name_to_id = pop_id_by_name(carrier_pops)
     forced_core = resolve_pinned_ids(params.forced_core_names, name_to_id, "force-core")
     forced_aggregation = resolve_pinned_ids(
@@ -764,17 +766,17 @@ def apply_role_overrides(
     excluded = resolve_pinned_ids(params.excluded_names, name_to_id, "exclude")
     reject_override_conflicts(forced_core, forced_aggregation, excluded)
     colocated = forced_core & forced_aggregation
-    nodes, physical_edges, twin_by_core = split_colocated(nodes, physical_edges, colocated)
+    vertices, physical_edges, twin_by_core = split_colocated(vertices, physical_edges, colocated)
     forced_aggregation_ids = (forced_aggregation - colocated) | set(twin_by_core.values())
     overrides = RoleOverrides(
         forced_core_ids=frozenset(forced_core),
         forced_aggregation_ids=frozenset(forced_aggregation_ids),
         excluded_ids=frozenset(excluded),
     )
-    return nodes, physical_edges, overrides
+    return vertices, physical_edges, overrides
 
 def optimize_three_tier_design(
-    nodes: list[Node],
+    vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     roles: dict[str, str],
     params: DesignParams,
@@ -782,15 +784,15 @@ def optimize_three_tier_design(
 ) -> Design:
     """Optimize a three-tier WAN over the Carrier graph for the given parameters.
 
-    ``overrides`` carries operator role pins already resolved to node ids (with any
-    co-located PoP split in ``nodes``/``physical_edges``); pass ``None`` for an
+    ``overrides`` carries operator role pins already resolved to vertex ids (with any
+    co-located PoP split in ``vertices``/``physical_edges``); pass ``None`` for an
     unpinned design.
     """
     overrides = overrides if overrides is not None else RoleOverrides()
     if params.core_count < 2:
         raise ValueError("core_count (the number of cores) must be at least 2")
 
-    context = graph_context(nodes, physical_edges)
+    context = graph_context(vertices, physical_edges)
     forced = overrides.forced_aggregation_ids
     eligible_ids = compute_eligible_ids(
         context.carrier_pops, roles, context.adjacency, params.allow_roadm_aggregation
@@ -800,7 +802,7 @@ def optimize_three_tier_design(
         raise ValueError("Not enough eligible Carrier aggregation/core PoPs")
 
     inputs = DesignInputs(
-        access_nodes=context.all_access,
+        access_vertices=context.all_access,
         carrier_pops=context.carrier_pops,
         physical_edges=physical_edges,
         eligible_aggregation_ids=eligible_ids,

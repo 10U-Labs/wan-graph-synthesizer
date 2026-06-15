@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 
 import fixtures
-from wan_designer.model import Node
+from wan_designer.model import Vertex
 from wan_designer.output import (
     dot_escape,
-    kml_layer_for_node,
+    kml_layer_for_vertex,
     sorted_physical_edges,
     write_csv,
     write_dot,
@@ -19,14 +19,14 @@ from wan_designer.output import (
 )
 
 
-def _region(name: str, kind: str) -> Node:
-    """Build a classified-region access node of the given kind and name."""
-    return Node(id=name, name=name, category=name, kind=kind, lat=0.0, lon=0.0)
+def _region(name: str) -> Vertex:
+    """Build a provider-data-center region vertex with the given name."""
+    return Vertex(id=name, name=name, tenant="Providers", kind="provider region", lat=0.0, lon=0.0)
 
 
-def _provider regions(name: str) -> Node:
-    """Build a cloud provider regions access node with the given name."""
-    return _region(name, "provider")
+def _provider regions(name: str) -> Vertex:
+    """Build a cloud provider regions vertex with the given name."""
+    return _region(name)
 
 ARTIFACTS = fixtures.ring_artifacts()
 SOURCES = fixtures.sample_sources()
@@ -65,9 +65,9 @@ def test_write_kml_emits_every_tier_layer(tmp_path: Path) -> None:
     write_kml(path, ARTIFACTS)
     text = path.read_text(encoding="utf-8")
     for name in (
-        "Access Nodes",
+        "Access Vertices",
         "Aggregation Points",
-        "Core Nodes",
+        "Core Vertices",
         "provider region",
         "provider region",
         "provider region",
@@ -78,47 +78,52 @@ def test_write_kml_emits_every_tier_layer(tmp_path: Path) -> None:
         assert f"<name>{name}</name>" in text
 
 
-def test_kml_layer_for_node_routes_provider region() -> None:
+def test_kml_layer_for_vertex_routes_provider region() -> None:
     """An provider region maps to the provider region."""
-    assert kml_layer_for_node(_provider regions("Provider Region"), "access") == "provider region"
+    assert kml_layer_for_vertex(_provider regions("Provider Region"), "access") == "provider region"
 
 
-def test_kml_layer_for_node_routes_provider region() -> None:
+def test_kml_layer_for_vertex_routes_provider region() -> None:
     """A provider region maps to the provider region."""
-    assert kml_layer_for_node(_provider regions("Provider Region"), "access") == "provider region"
+    assert kml_layer_for_vertex(_provider regions("Provider Region"), "access") == "provider region"
 
 
-def test_kml_layer_for_node_omits_directionless_secret() -> None:
+def test_kml_layer_for_vertex_omits_directionless_secret() -> None:
     """A provider regions without an regions hint is omitted."""
-    assert kml_layer_for_node(_provider regions("provider Central Region"), "access") is None
+    assert kml_layer_for_vertex(_provider regions("provider Central Region"), "access") is None
 
 
-def test_kml_layer_for_node_routes_provider regions() -> None:
+def test_kml_layer_for_vertex_omits_unclassified_region() -> None:
+    """A provider region whose name names no provider/provider/TS family is omitted."""
+    assert kml_layer_for_vertex(_region("Mystery Region"), "access") is None
+
+
+def test_kml_layer_for_vertex_routes_provider regions() -> None:
     """provider regions split regions into their own layers."""
     layers = (
-        kml_layer_for_node(_region("provider region", "provider regions"), "access"),
-        kml_layer_for_node(_region("provider region", "provider regions"), "access"),
+        kml_layer_for_vertex(_region("provider region"), "access"),
+        kml_layer_for_vertex(_region("provider region"), "access"),
     )
     assert layers == ("provider region", "provider region")
 
 
-def test_kml_layer_for_node_routes_provider regions() -> None:
+def test_kml_layer_for_vertex_routes_provider regions() -> None:
     """provider regions split regions into their own layers."""
     layers = (
-        kml_layer_for_node(_region("provider region", "provider_region"), "access"),
-        kml_layer_for_node(_region("provider region", "provider_region"), "access"),
+        kml_layer_for_vertex(_region("provider region"), "access"),
+        kml_layer_for_vertex(_region("provider region"), "access"),
     )
     assert layers == ("ts_east", "ts_west")
 
 
-def test_kml_layer_for_node_uses_tier_role_for_carrier_pops() -> None:
-    """Non-provider nodes map by their tier role."""
-    assert kml_layer_for_node(fixtures.carrier_pop("P0"), "core") == "core"
+def test_kml_layer_for_vertex_uses_tier_role_for_carrier_pops() -> None:
+    """Non-provider vertices map by their tier role."""
+    assert kml_layer_for_vertex(fixtures.carrier_pop("P0"), "core") == "core"
 
 
-def test_kml_layer_for_node_omits_transit_pops() -> None:
+def test_kml_layer_for_vertex_omits_transit_pops() -> None:
     """Transit PoPs are not assigned to any output layer."""
-    assert kml_layer_for_node(fixtures.carrier_pop("P0"), "transit") is None
+    assert kml_layer_for_vertex(fixtures.carrier_pop("P0"), "transit") is None
 
 
 def test_write_dot_declares_graph(tmp_path: Path) -> None:

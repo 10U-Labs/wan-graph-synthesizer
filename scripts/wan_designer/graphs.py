@@ -1,4 +1,4 @@
-"""Graph algorithms: shortest paths, node-disjoint routing, connectivity."""
+"""Graph algorithms: shortest paths, vertex-disjoint routing, connectivity."""
 
 from __future__ import annotations
 
@@ -19,20 +19,20 @@ def dijkstra(
     queue = [(0.0, source)]
 
     while queue:
-        distance, node_id = heapq.heappop(queue)
-        if distance > distances[node_id] + 1e-9:
+        distance, vertex_id = heapq.heappop(queue)
+        if distance > distances[vertex_id] + 1e-9:
             continue
-        for neighbor, weight in adjacency.get(node_id, []):
+        for neighbor, weight in adjacency.get(vertex_id, []):
             new_distance = distance + weight
             if new_distance + 1e-9 < distances.get(neighbor, math.inf):
                 distances[neighbor] = new_distance
-                predecessors[neighbor] = node_id
+                predecessors[neighbor] = vertex_id
                 heapq.heappush(queue, (new_distance, neighbor))
 
     return distances, predecessors
 
 def reconstruct_path(source: str, target: str, predecessors: dict[str, str]) -> tuple[str, ...]:
-    """Rebuild the node path from source to target via the predecessor map."""
+    """Rebuild the vertex path from source to target via the predecessor map."""
     if source == target:
         return (source,)
     if target not in predecessors:
@@ -47,7 +47,7 @@ def reconstruct_path(source: str, target: str, predecessors: dict[str, str]) -> 
     return tuple(path)
 
 def path_edge_keys(path: tuple[str, ...]) -> set[tuple[str, str]]:
-    """Return the set of edge keys traversed by a node path."""
+    """Return the set of edge keys traversed by a vertex path."""
     return {edge_key(path[index], path[index + 1]) for index in range(len(path) - 1)}
 
 @dataclass
@@ -76,13 +76,13 @@ def _spfa_augment(
     in_queue[source] = True
 
     while queue:
-        node = queue.popleft()
-        in_queue[node] = False
-        for edge_index in graph[node]:
+        vertex = queue.popleft()
+        in_queue[vertex] = False
+        for edge_index in graph[vertex]:
             edge = edges[edge_index]
             if edge.capacity - edge.flow <= 1e-9:
                 continue
-            candidate = distance[node] + edge.cost
+            candidate = distance[vertex] + edge.cost
             if candidate + 1e-9 < distance[edge.head]:
                 distance[edge.head] = candidate
                 parent_edge[edge.head] = edge_index
@@ -93,19 +93,19 @@ def _spfa_augment(
     if math.isinf(distance[sink]):
         return False
 
-    node = sink
-    while node != source:
-        edge_index = parent_edge[node]
+    vertex = sink
+    while vertex != source:
+        edge_index = parent_edge[vertex]
         edges[edge_index].flow += 1.0
         edges[edge_index ^ 1].flow -= 1.0
-        node = edges[edge_index ^ 1].head
+        vertex = edges[edge_index ^ 1].head
     return True
 
 @dataclass
 class _FlowNetwork:
     graph: list[list[int]]
     edges: list[_FlowEdge]
-    node_ids: list[str]
+    vertex_ids: list[str]
     flow_source: int
     sink: int
 
@@ -114,14 +114,14 @@ def _build_disjoint_flow_network(
     source: str,
     core_set: set[str],
 ) -> _FlowNetwork:
-    """Build the node-split min-cost flow network used for disjoint routing.
+    """Build the vertex-split min-cost flow network used for disjoint routing.
 
-    Every node is split into an in/out pair with unit capacity (node-disjoint
+    Every vertex is split into an in/out pair with unit capacity (vertex-disjoint
     routing); cores are pure sinks behind a super-sink so each carries one path.
     """
-    node_ids = sorted(adjacency)
-    index = {node_id: position for position, node_id in enumerate(node_ids)}
-    sink = 2 * len(node_ids)
+    vertex_ids = sorted(adjacency)
+    index = {vertex_id: position for position, vertex_id in enumerate(vertex_ids)}
+    sink = 2 * len(vertex_ids)
     graph: list[list[int]] = [[] for _ in range(sink + 1)]
     edges: list[_FlowEdge] = []
 
@@ -131,21 +131,21 @@ def _build_disjoint_flow_network(
         graph[head].append(len(edges))
         edges.append(_FlowEdge(tail, 0.0, -cost))
 
-    for node_id in node_ids:
-        if node_id != source:
-            add_edge(2 * index[node_id], 2 * index[node_id] + 1, 1.0, 0.0)
-    for node_id in node_ids:
-        if node_id in core_set:
+    for vertex_id in vertex_ids:
+        if vertex_id != source:
+            add_edge(2 * index[vertex_id], 2 * index[vertex_id] + 1, 1.0, 0.0)
+    for vertex_id in vertex_ids:
+        if vertex_id in core_set:
             continue
-        for neighbor, distance in adjacency[node_id]:
-            add_edge(2 * index[node_id] + 1, 2 * index[neighbor], 1.0, distance)
+        for neighbor, distance in adjacency[vertex_id]:
+            add_edge(2 * index[vertex_id] + 1, 2 * index[neighbor], 1.0, distance)
     for core in sorted(core_set):
         add_edge(2 * index[core] + 1, sink, 1.0, 0.0)
 
-    return _FlowNetwork(graph, edges, node_ids, 2 * index[source] + 1, sink)
+    return _FlowNetwork(graph, edges, vertex_ids, 2 * index[source] + 1, sink)
 
 def _trace_flow_paths(network: _FlowNetwork, count: int) -> list[tuple[str, ...]]:
-    """Decompose the integral unit flow into `count` node sequences."""
+    """Decompose the integral unit flow into `count` vertex sequences."""
     # Forward edges occupy even indices; their tail is the paired reverse head.
     used: dict[int, list[int]] = {}
     for index in range(0, len(network.edges), 2):
@@ -154,7 +154,7 @@ def _trace_flow_paths(network: _FlowNetwork, count: int) -> list[tuple[str, ...]
             tail = network.edges[index + 1].head
             used.setdefault(tail, []).append(edge.head)
 
-    source = network.node_ids[network.flow_source // 2]
+    source = network.vertex_ids[network.flow_source // 2]
     paths: list[tuple[str, ...]] = []
     for _ in range(count):
         sequence = [source]
@@ -164,7 +164,7 @@ def _trace_flow_paths(network: _FlowNetwork, count: int) -> list[tuple[str, ...]
             if nxt == network.sink:
                 break
             if nxt % 2 == 0:
-                sequence.append(network.node_ids[nxt // 2])
+                sequence.append(network.vertex_ids[nxt // 2])
             vertex = nxt
         paths.append(tuple(sequence))
 
@@ -176,25 +176,25 @@ def _paths_distance(
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> float:
     weight: dict[tuple[str, str], float] = {}
-    for node_id, neighbors in adjacency.items():
+    for vertex_id, neighbors in adjacency.items():
         for neighbor, distance in neighbors:
-            weight[(node_id, neighbor)] = distance
+            weight[(vertex_id, neighbor)] = distance
     total = 0.0
     for path in paths:
         for index in range(len(path) - 1):
             total += weight[(path[index], path[index + 1])]
     return total
 
-def node_disjoint_paths_to_cores(
+def vertex_disjoint_paths_to_cores(
     adjacency: dict[str, list[tuple[str, float]]],
     source: str,
     core_ids: tuple[str, ...],
     count: int = 2,
 ) -> tuple[float, list[tuple[str, ...]]]:
-    """Return `count` node-disjoint shortest paths from `source` to distinct cores.
+    """Return `count` vertex-disjoint shortest paths from `source` to distinct cores.
 
-    Routing is over the physical `adjacency` graph. Each node has unit capacity
-    (node splitting), so the returned paths share only `source`; each terminates
+    Routing is over the physical `adjacency` graph. Each vertex has unit capacity
+    (vertex splitting), so the returned paths share only `source`; each terminates
     at a different core and the combined distance is minimized. Returns
     ``(math.inf, [])`` when fewer than `count` such paths exist.
     """
@@ -215,19 +215,19 @@ def node_disjoint_paths_to_cores(
     return _paths_distance(paths, adjacency), paths
 
 def undirected_adjacency(
-    node_ids: set[str], edges: set[tuple[str, str]]
+    vertex_ids: set[str], edges: set[tuple[str, str]]
 ) -> dict[str, set[str]]:
-    """Build an undirected neighbor map restricted to the given node ids."""
-    adjacency: dict[str, set[str]] = {node_id: set() for node_id in node_ids}
+    """Build an undirected neighbor map restricted to the given vertex ids."""
+    adjacency: dict[str, set[str]] = {vertex_id: set() for vertex_id in vertex_ids}
     for left, right in edges:
         if left in adjacency and right in adjacency:
             adjacency[left].add(right)
             adjacency[right].add(left)
     return adjacency
 
-def connected_components(node_ids: set[str], edges: set[tuple[str, str]]) -> list[list[str]]:
+def connected_components(vertex_ids: set[str], edges: set[tuple[str, str]]) -> list[list[str]]:
     """Return the connected components of the design graph as sorted id lists."""
-    adjacency = undirected_adjacency(node_ids, edges)
+    adjacency = undirected_adjacency(vertex_ids, edges)
     remaining = set(adjacency)
     components: list[list[str]] = []
     while remaining:
@@ -236,18 +236,18 @@ def connected_components(node_ids: set[str], edges: set[tuple[str, str]]) -> lis
         queue: deque[str] = deque([start])
         component: list[str] = []
         while queue:
-            node_id = queue.popleft()
-            component.append(node_id)
-            for neighbor in sorted(adjacency[node_id]):
+            vertex_id = queue.popleft()
+            component.append(vertex_id)
+            for neighbor in sorted(adjacency[vertex_id]):
                 if neighbor in remaining:
                     remaining.remove(neighbor)
                     queue.append(neighbor)
         components.append(sorted(component))
     return components
 
-def articulation_points(node_ids: set[str], edges: set[tuple[str, str]]) -> set[str]:
+def articulation_points(vertex_ids: set[str], edges: set[tuple[str, str]]) -> set[str]:
     """Return cut vertices whose removal would disconnect the design graph."""
-    adjacency = undirected_adjacency(node_ids, edges)
+    adjacency = undirected_adjacency(vertex_ids, edges)
     visited: set[str] = set()
     discovery: dict[str, int] = {}
     low: dict[str, int] = {}
@@ -255,30 +255,30 @@ def articulation_points(node_ids: set[str], edges: set[tuple[str, str]]) -> set[
     points: set[str] = set()
     time = 0
 
-    def dfs(node_id: str) -> None:
+    def dfs(vertex_id: str) -> None:
         nonlocal time
-        visited.add(node_id)
-        discovery[node_id] = time
-        low[node_id] = time
+        visited.add(vertex_id)
+        discovery[vertex_id] = time
+        low[vertex_id] = time
         time += 1
         children = 0
 
-        for neighbor in sorted(adjacency[node_id]):
+        for neighbor in sorted(adjacency[vertex_id]):
             if neighbor not in visited:
-                parent[neighbor] = node_id
+                parent[neighbor] = vertex_id
                 children += 1
                 dfs(neighbor)
-                low[node_id] = min(low[node_id], low[neighbor])
-                if parent.get(node_id) is None and children > 1:
-                    points.add(node_id)
-                if parent.get(node_id) is not None and low[neighbor] >= discovery[node_id]:
-                    points.add(node_id)
-            elif neighbor != parent.get(node_id):
-                low[node_id] = min(low[node_id], discovery[neighbor])
+                low[vertex_id] = min(low[vertex_id], low[neighbor])
+                if parent.get(vertex_id) is None and children > 1:
+                    points.add(vertex_id)
+                if parent.get(vertex_id) is not None and low[neighbor] >= discovery[vertex_id]:
+                    points.add(vertex_id)
+            elif neighbor != parent.get(vertex_id):
+                low[vertex_id] = min(low[vertex_id], discovery[neighbor])
 
-    for node_id in sorted(adjacency):
-        if node_id not in visited:
-            parent[node_id] = None
-            dfs(node_id)
+    for vertex_id in sorted(adjacency):
+        if vertex_id not in visited:
+            parent[vertex_id] = None
+            dfs(vertex_id)
 
     return points

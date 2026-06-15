@@ -3,7 +3,7 @@
 # in source: change the design by editing this file. CLI flags override these.
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 design:
-  # Allow mapbook ROADM nodes to be selected as aggregation/core points.
+  # Allow mapbook ROADM vertices to be selected as aggregation/core points.
   allow_roadm_aggregation: false
   # Exact number of core PoPs in the design.
   core_count: 3
@@ -34,24 +34,21 @@ design:
   # Add extra physical Carrier edges to reduce articulation or degree risk.
   resilience_augmentation: true
 inputs:
-  carrier_edges: data/carrier_edges.csv
-  # Mapbook placemark nodes (carrier PoPs and access sites) as a CSV exported
-  # from the source KMZ. A .kmz/.kml path is also accepted here.
-  mapbook: data/mapbook_nodes.csv
+  # Physical Lumen backbone edges between carrier PoPs.
+  carrier_edges: data/edges/carrier_edges.csv
   # Optional source PDF path recorded in the JSON output for provenance.
   mapbook_pdf: ""
-  # Optional CSV of Carrier PoP roles; set to "" to disable.
-  pop_roles: data/carrier_pop_roles.csv
+  # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
   regional_edges:
-    - data/dcn_edges.csv
-    - data/vision_net_edges.csv
-  # Regional carrier node coordinates; set to "" to disable regional carriers.
-  regional_nodes: data/regional_nodes.csv
+    - data/edges/dcn_edges.csv
+    - data/edges/vision_net_edges.csv
+  # All vertices (carrier PoPs, access sites, cloud regions) with tenant + kind.
+  vertices: data/vertices.csv
 output_dir: outputs
 tuning:
   # Ceiling (miles) on the data-derived DBSCAN cluster radius.
   cluster_max_radius_miles: 250.0
-  # A cluster needs at least this many close access nodes to seed an aggregation.
+  # A cluster needs at least this many close access vertices to seed an aggregation.
   cluster_min_points: 2
   # Floor (miles) on the data-derived DBSCAN cluster radius.
   cluster_min_radius_miles: 0.0

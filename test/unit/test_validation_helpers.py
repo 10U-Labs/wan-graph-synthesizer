@@ -7,7 +7,7 @@ from wan_designer.model import (
     AccessEdge,
     Design,
     DesignMetrics,
-    Node,
+    Vertex,
     edge_key,
 )
 from wan_designer.validation import (
@@ -17,18 +17,18 @@ from wan_designer.validation import (
     design_badness,
     design_edge_set,
     disconnected_core_pairs,
-    included_node_ids,
+    included_vertex_ids,
     neighbor_degrees,
-    node_role,
+    vertex_role,
     refresh_physical_costs,
     with_updated_physical_edges,
 )
 
 
-def pop(node_id: str) -> Node:
-    """Test helper: build a carrier PoP node."""
-    return Node(
-        id=node_id, name=node_id, category="c", kind="carrier_pop", lat=0.0, lon=0.0
+def pop(vertex_id: str) -> Vertex:
+    """Test helper: build a carrier PoP vertex."""
+    return Vertex(
+        id=vertex_id, name=vertex_id, tenant="Lumen", kind="PoP", lat=0.0, lon=0.0
     )
 
 
@@ -53,42 +53,42 @@ def make_design(
 
 
 PATH_DESIGN = make_design([("a", "b"), ("b", "c")], transit_ids=("a", "b", "c"))
-PATH_NODES = [pop("a"), pop("b"), pop("c")]
+PATH_VERTICES = [pop("a"), pop("b"), pop("c")]
 
 
-def test_node_role_access_for_non_pop() -> None:
-    """Node role access for non pop."""
-    access = Node(id="s", name="s", category="F-35", kind="f35", lat=0.0, lon=0.0)
-    assert node_role("s", make_design([]), access) == "access"
+def test_vertex_role_access_for_non_pop() -> None:
+    """Vertex role access for non pop."""
+    access = Vertex(id="s", name="s", tenant="F-35", kind="Military installation", lat=0.0, lon=0.0)
+    assert vertex_role("s", make_design([]), access) == "access"
 
 
-def test_node_role_core() -> None:
-    """Node role core."""
+def test_vertex_role_core() -> None:
+    """Vertex role core."""
     design = make_design([], core_ids=("a",))
-    assert node_role("a", design, pop("a")) == "core"
+    assert vertex_role("a", design, pop("a")) == "core"
 
 
-def test_node_role_aggregation() -> None:
-    """Node role aggregation."""
+def test_vertex_role_aggregation() -> None:
+    """Vertex role aggregation."""
     design = make_design([], aggregation_ids=("a",))
-    assert node_role("a", design, pop("a")) == "aggregation"
+    assert vertex_role("a", design, pop("a")) == "aggregation"
 
 
-def test_node_role_transit() -> None:
-    """Node role transit."""
+def test_vertex_role_transit() -> None:
+    """Vertex role transit."""
     design = make_design([], transit_ids=("a",))
-    assert node_role("a", design, pop("a")) == "transit"
+    assert vertex_role("a", design, pop("a")) == "transit"
 
 
-def test_node_role_unused() -> None:
-    """Node role unused."""
-    assert node_role("a", make_design([]), pop("a")) == "unused"
+def test_vertex_role_unused() -> None:
+    """Vertex role unused."""
+    assert vertex_role("a", make_design([]), pop("a")) == "unused"
 
 
-def test_included_node_ids_covers_access_endpoints() -> None:
-    """Included node ids covers access endpoints."""
+def test_included_vertex_ids_covers_access_endpoints() -> None:
+    """Included vertex ids covers access endpoints."""
     design = make_design([("a", "b")], access_edges=[AccessEdge("s", "a", 1.0)])
-    assert included_node_ids(design) == {"a", "b", "s"}
+    assert included_vertex_ids(design) == {"a", "b", "s"}
 
 
 def test_design_edge_set_merges_access_and_physical() -> None:
@@ -113,7 +113,7 @@ def test_access_attachment_counts_per_source() -> None:
 
 def test_design_badness_flags_articulation_and_degree() -> None:
     """Design badness flags articulation and degree."""
-    assert design_badness(PATH_NODES, PATH_DESIGN) == (0, 1, 2)
+    assert design_badness(PATH_VERTICES, PATH_DESIGN) == (0, 1, 2)
 
 
 def test_with_updated_physical_edges_recomputes_transit() -> None:
@@ -132,45 +132,45 @@ def test_refresh_physical_costs_sums_distances() -> None:
 def test_best_edge_to_add_returns_none_when_no_improvement() -> None:
     """Best edge to add returns none when no improvement."""
     edges = fixtures.physical_edges_from({("a", "b"): 1.0, ("b", "c"): 1.0})
-    key, _badness = best_edge_to_add(PATH_NODES, edges, PATH_DESIGN, (0, 1, 2))
+    key, _badness = best_edge_to_add(PATH_VERTICES, edges, PATH_DESIGN, (0, 1, 2))
     assert key is None
 
 
 def test_best_edge_to_add_picks_the_fixing_edge() -> None:
     """Best edge to add picks the fixing edge."""
     edges = fixtures.physical_edges_from({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 5.0})
-    key, _badness = best_edge_to_add(PATH_NODES, edges, PATH_DESIGN, (0, 1, 2))
+    key, _badness = best_edge_to_add(PATH_VERTICES, edges, PATH_DESIGN, (0, 1, 2))
     assert key == edge_key("a", "c")
 
 
 def test_augment_adds_edge_to_remove_articulation() -> None:
     """Augment adds edge to remove articulation."""
     edges = fixtures.physical_edges_from({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 5.0})
-    result = augment_physical_resilience(PATH_NODES, edges, PATH_DESIGN)
+    result = augment_physical_resilience(PATH_VERTICES, edges, PATH_DESIGN)
     assert edge_key("a", "c") in result.physical_edge_keys
 
 
 def test_augment_stops_when_no_edge_helps() -> None:
     """Augment stops when no edge helps."""
     edges = fixtures.physical_edges_from({("a", "b"): 1.0, ("b", "c"): 1.0})
-    result = augment_physical_resilience(PATH_NODES, edges, PATH_DESIGN)
+    result = augment_physical_resilience(PATH_VERTICES, edges, PATH_DESIGN)
     assert result.physical_edge_keys == {edge_key("a", "b"), edge_key("b", "c")}
 
 
 def test_best_edge_to_add_skips_a_worsening_candidate() -> None:
     """Best edge to add skips a worsening candidate."""
-    nodes = PATH_NODES + [pop("d")]
+    vertices = PATH_VERTICES + [pop("d")]
     edges = fixtures.physical_edges_from(
         {("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 5.0, ("c", "d"): 1.0}
     )
-    key, _badness = best_edge_to_add(nodes, edges, PATH_DESIGN, (0, 1, 2))
+    key, _badness = best_edge_to_add(vertices, edges, PATH_DESIGN, (0, 1, 2))
     assert key == edge_key("a", "c")
 
 
 PATH4_DESIGN = make_design(
     [("a", "b"), ("b", "c"), ("c", "d")], transit_ids=("a", "b", "c", "d")
 )
-PATH4_NODES = [pop("a"), pop("b"), pop("c"), pop("d")]
+PATH4_VERTICES = [pop("a"), pop("b"), pop("c"), pop("d")]
 
 
 def test_best_edge_to_add_keeps_the_stronger_of_two_improvers() -> None:
@@ -184,7 +184,7 @@ def test_best_edge_to_add_keeps_the_stronger_of_two_improvers() -> None:
             ("a", "c"): 2.0,
         }
     )
-    key, _badness = best_edge_to_add(PATH4_NODES, edges, PATH4_DESIGN, (0, 2, 2))
+    key, _badness = best_edge_to_add(PATH4_VERTICES, edges, PATH4_DESIGN, (0, 2, 2))
     assert key == edge_key("a", "d")
 
 

@@ -1,213 +1,76 @@
-"""Unit tests for KML/KMZ and CSV parsing."""
+"""Unit tests for loading vertices and carrier edges from CSV."""
 
 from __future__ import annotations
 
-import zipfile
 from pathlib import Path
 
 import pytest
 
 import fixtures
-from wan_designer.model import Node
-from wan_designer.parsing import (
-    build_adjacency,
-    clean_description,
-    load_carrier_edges,
-    load_node_csv,
-    load_nodes,
-    load_pop_roles,
-    load_regional_networks,
-    load_regional_nodes,
-    read_kml_root,
+from wan_designer import Vertex, is_carrier_pop
+from wan_designer.parsing import build_adjacency, load_carrier_edges, load_vertices
+
+VERTICES_CSV = (
+    "name,latitude,longitude,tenant,kind,shown_in_map,description\n"
+    '"Denver, CO",39.7392,-104.9903,Lumen,PoP,Not shown in map,a Lumen PoP\n'
+    '"Kansas City, MO",39.0997,-94.5786,Lumen,ROADM,Not shown in map,\n'
+    "Buckley,39.7,-104.75,F-35,Military installation,Shown in map,\n"
 )
 
-NODES_CSV = (
-    "name,category,lat,lon,description\n"
-    '"Denver, CO",Carrier 400G PoPs,39.7392,-104.9903,"State: Colorado\nCarrier 400G PoP"\n'
-    '"Kansas City, MO",Carrier 400G PoPs,39.0997,-94.5786,\n'
-    "Buckley,F-35 CONUS Installations,39.7,-104.75,\n"
-)
-
-DUP_NODES_CSV = (
-    "name,category,lat,lon,description\n"
-    "Twin,Carrier 400G PoPs,39,-90,\n"
-    "Twin,Carrier 400G PoPs,38,-91,\n"
+DUP_VERTICES_CSV = (
+    "name,latitude,longitude,tenant,kind,shown_in_map,description\n"
+    "Twin,39,-90,Lumen,PoP,Not shown in map,\n"
+    "Twin,38,-91,Lumen,PoP,Not shown in map,\n"
 )
 
 
-def nodes_csv_file(tmp_path: Path, text: str = NODES_CSV) -> Path:
-    """Write a mapbook node CSV to a temp file and return its path."""
-    path = tmp_path / "mapbook_nodes.csv"
-    path.write_text(text, encoding="utf-8")
-    return path
-
-REGIONAL_CSV = (
-    "name,lat,lon,network\n"
-    "Minot,48.232,-101.296,dcn\n"
-    "Great Falls,47.507,-111.300,vision_net\n"
-)
-
-
-def regional_file(tmp_path: Path) -> Path:
-    """Write a sample regional node CSV and return its path."""
-    path = tmp_path / "regional.csv"
-    path.write_text(REGIONAL_CSV, encoding="utf-8")
-    return path
-
-DUP_KML = """<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document><name>D</name>
-    <Folder><name>Carrier 400G PoPs</name>
-      <Placemark><name>Twin</name>
-        <Point><coordinates>-90,39,0</coordinates></Point></Placemark>
-      <Placemark><name>Twin</name>
-        <Point><coordinates>-91,38,0</coordinates></Point></Placemark>
-    </Folder>
-  </Document>
-</kml>
-"""
-
-NO_DOCUMENT_KML = '<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"/>'
-
-
-def kml_file(tmp_path: Path, text: str) -> Path:
-    """Write KML text to a temp file and return its path."""
-    path = tmp_path / "doc.kml"
+def vertices_file(tmp_path: Path, text: str = VERTICES_CSV) -> Path:
+    """Write a vertices CSV to a temp file and return its path."""
+    path = tmp_path / "vertices.csv"
     path.write_text(text, encoding="utf-8")
     return path
 
 
-def kmz_file(tmp_path: Path, members: dict[str, str]) -> Path:
-    """Write a .kmz archive from name->text members."""
-    path = tmp_path / "doc.kmz"
-    with zipfile.ZipFile(path, "w") as archive:
-        for name, text in members.items():
-            archive.writestr(name, text)
-    return path
+def carrier_names(vertices: list[Vertex]) -> set[str]:
+    """Names of the carrier PoP vertices."""
+    return {vertex.name for vertex in vertices if is_carrier_pop(vertex)}
 
 
-def carrier_names(nodes: list[Node]) -> set[str]:
-    """Names of the carrier PoP nodes."""
-    return {node.name for node in nodes if node.kind == "carrier_pop"}
+def test_load_vertices_reads_all_rows(tmp_path: Path) -> None:
+    """Load vertices reads every row."""
+    assert len(load_vertices(vertices_file(tmp_path))) == 3
 
 
-def test_read_kml_root_reads_kml_file(tmp_path: Path) -> None:
-    """Read kml root reads kml file."""
-    root = read_kml_root(kml_file(tmp_path, fixtures.SAMPLE_KML))
-    assert root.tag.endswith("kml")
+def test_load_vertices_reads_tenant_and_kind(tmp_path: Path) -> None:
+    """Load vertices reads tenant and kind from the row."""
+    buckley = next(v for v in load_vertices(vertices_file(tmp_path)) if v.name == "Buckley")
+    assert (buckley.tenant, buckley.kind) == ("F-35", "Military installation")
 
 
-def test_read_kml_root_reads_kmz_file(tmp_path: Path) -> None:
-    """Read kml root reads kmz file."""
-    root = read_kml_root(kmz_file(tmp_path, {"doc.kml": fixtures.SAMPLE_KML}))
-    assert root.tag.endswith("kml")
-
-
-def test_read_kml_root_prefers_doc_kml(tmp_path: Path) -> None:
-    """Read kml root prefers doc kml."""
-    archive = kmz_file(tmp_path, {"other.kml": NO_DOCUMENT_KML, "doc.kml": fixtures.SAMPLE_KML})
-    assert read_kml_root(archive).find("{http://www.opengis.net/kml/2.2}Document") is not None
-
-
-def test_read_kml_root_rejects_kmz_without_kml(tmp_path: Path) -> None:
-    """Read kml root rejects kmz without kml."""
-    with pytest.raises(ValueError):
-        read_kml_root(kmz_file(tmp_path, {"readme.txt": "hi"}))
-
-
-def test_read_kml_root_rejects_unknown_suffix(tmp_path: Path) -> None:
-    """Read kml root rejects unknown suffix."""
-    bad = tmp_path / "data.json"
-    bad.write_text("{}", encoding="utf-8")
-    with pytest.raises(ValueError):
-        read_kml_root(bad)
-
-
-def test_clean_description_handles_empty() -> None:
-    """Clean description handles empty."""
-    assert clean_description(None) == ""
-
-
-def test_clean_description_strips_markup() -> None:
-    """Clean description strips markup."""
-    assert clean_description("<b>a</b><br/>b") == "a\nb"
-
-
-def test_load_nodes_counts_all_placemarks(tmp_path: Path) -> None:
-    """Load nodes counts all placemarks."""
-    nodes = load_nodes(kml_file(tmp_path, fixtures.SAMPLE_KML))
-    assert len(nodes) == 4
-
-
-def test_load_nodes_classifies_carrier_pops(tmp_path: Path) -> None:
-    """Load nodes classifies carrier pops."""
-    nodes = load_nodes(kml_file(tmp_path, fixtures.SAMPLE_KML))
-    assert carrier_names(nodes) == {"Denver, CO", "Kansas City, MO"}
-
-
-def test_load_nodes_deduplicates_ids(tmp_path: Path) -> None:
-    """Load nodes deduplicates ids."""
-    nodes = load_nodes(kml_file(tmp_path, DUP_KML))
-    assert len({node.id for node in nodes}) == 2
-
-
-def test_load_nodes_requires_document(tmp_path: Path) -> None:
-    """Load nodes requires document."""
-    with pytest.raises(ValueError):
-        load_nodes(kml_file(tmp_path, NO_DOCUMENT_KML))
-
-
-def test_load_node_csv_reads_all_rows(tmp_path: Path) -> None:
-    """Load node csv reads all rows."""
-    assert len(load_node_csv(nodes_csv_file(tmp_path))) == 3
-
-
-def test_load_node_csv_classifies_carrier_pops(tmp_path: Path) -> None:
-    """Load node csv classifies carrier pops."""
-    assert carrier_names(load_node_csv(nodes_csv_file(tmp_path))) == {
+def test_load_vertices_identifies_carrier_pops(tmp_path: Path) -> None:
+    """PoP and ROADM kinds are carrier PoPs; installations are not."""
+    assert carrier_names(load_vertices(vertices_file(tmp_path))) == {
         "Denver, CO",
         "Kansas City, MO",
     }
 
 
-def test_load_node_csv_deduplicates_ids(tmp_path: Path) -> None:
-    """Load node csv deduplicates ids."""
-    nodes = load_node_csv(nodes_csv_file(tmp_path, DUP_NODES_CSV))
-    assert len({node.id for node in nodes}) == 2
+def test_load_vertices_parses_shown_in_map(tmp_path: Path) -> None:
+    """The shown_in_map column maps to a boolean on each vertex."""
+    by_name = {v.name: v for v in load_vertices(vertices_file(tmp_path))}
+    assert (by_name["Denver, CO"].shown_in_map, by_name["Buckley"].shown_in_map) == (False, True)
 
 
-def test_load_node_csv_requires_existing_file(tmp_path: Path) -> None:
-    """Load node csv requires existing file."""
+def test_load_vertices_deduplicates_ids(tmp_path: Path) -> None:
+    """Two vertices that slug to the same id get distinct ids."""
+    vertices = load_vertices(vertices_file(tmp_path, DUP_VERTICES_CSV))
+    assert len({vertex.id for vertex in vertices}) == 2
+
+
+def test_load_vertices_requires_existing_file(tmp_path: Path) -> None:
+    """Load vertices rejects a missing file."""
     with pytest.raises(ValueError):
-        load_node_csv(tmp_path / "missing.csv")
-
-
-def test_load_nodes_dispatches_csv_by_suffix(tmp_path: Path) -> None:
-    """Load nodes routes a .csv mapbook through the CSV loader."""
-    assert len(load_nodes(nodes_csv_file(tmp_path))) == 3
-
-
-def test_load_pop_roles_defaults_to_aggregator() -> None:
-    """Load pop roles defaults to aggregator."""
-    pops = [fixtures.carrier_pop("Denver, CO")]
-    roles = load_pop_roles(None, pops)
-    assert roles[pops[0].id] == "aggregator"
-
-
-def test_load_pop_roles_reads_file(tmp_path: Path) -> None:
-    """Load pop roles reads file."""
-    pops = [fixtures.carrier_pop("Denver, CO")]
-    path = tmp_path / "roles.csv"
-    path.write_text('name,role\n"Denver, CO",roadm\n', encoding="utf-8")
-    assert load_pop_roles(path, pops)[pops[0].id] == "roadm"
-
-
-def test_load_pop_roles_rejects_unknown_name(tmp_path: Path) -> None:
-    """Load pop roles rejects unknown name."""
-    path = tmp_path / "roles.csv"
-    path.write_text("name,role\nNowhere,roadm\n", encoding="utf-8")
-    with pytest.raises(ValueError):
-        load_pop_roles(path, [fixtures.carrier_pop("Denver, CO")])
+        load_vertices(tmp_path / "missing.csv")
 
 
 def test_load_carrier_edges_requires_existing_file(tmp_path: Path) -> None:
@@ -254,57 +117,6 @@ def test_load_carrier_edges_rejects_unknown_target(tmp_path: Path) -> None:
     path.write_text('source,target\n"Denver, CO",Nowhere\n', encoding="utf-8")
     with pytest.raises(ValueError):
         load_carrier_edges(path, [fixtures.carrier_pop("Denver, CO")])
-
-
-def test_load_regional_nodes_marks_them_carrier_pops(tmp_path: Path) -> None:
-    """Load regional nodes marks them carrier pops."""
-    nodes = load_regional_nodes(regional_file(tmp_path))
-    assert all(node.kind == "carrier_pop" for node in nodes)
-
-
-def test_load_regional_nodes_reads_coordinates(tmp_path: Path) -> None:
-    """Load regional nodes reads coordinates."""
-    assert load_regional_nodes(regional_file(tmp_path))[0].lat == 48.232
-
-
-def test_load_regional_nodes_uses_network_as_category(tmp_path: Path) -> None:
-    """Load regional nodes uses network as category."""
-    assert load_regional_nodes(regional_file(tmp_path))[0].category == "dcn"
-
-
-def test_load_regional_nodes_requires_existing_file(tmp_path: Path) -> None:
-    """Load regional nodes requires existing file."""
-    with pytest.raises(ValueError):
-        load_regional_nodes(tmp_path / "missing.csv")
-
-
-def regional_edge_file(tmp_path: Path) -> Path:
-    """Write a regional edge CSV that interconnects to a Lumen PoP."""
-    path = tmp_path / "regional_edges.csv"
-    path.write_text(
-        'source,target,type\nMinot,Great Falls,backbone\nMinot,"Cheyenne, WY",interconnect\n',
-        encoding="utf-8",
-    )
-    return path
-
-
-def test_load_regional_networks_marks_every_node_roadm(tmp_path: Path) -> None:
-    """Load regional networks marks every node roadm."""
-    lumen = [fixtures.carrier_pop("Cheyenne, WY", 41.140, -104.820)]
-    _nodes, _edges, roles = load_regional_networks(
-        regional_file(tmp_path), [regional_edge_file(tmp_path)], lumen
-    )
-    assert set(roles.values()) == {"roadm"}
-
-
-def test_load_regional_networks_stitches_interconnect_to_lumen(tmp_path: Path) -> None:
-    """Load regional networks stitches interconnect to lumen."""
-    cheyenne = fixtures.carrier_pop("Cheyenne, WY", 41.140, -104.820)
-    _nodes, edges, _roles = load_regional_networks(
-        regional_file(tmp_path), [regional_edge_file(tmp_path)], [cheyenne]
-    )
-    endpoints = {node_id for key in edges for node_id in key}
-    assert cheyenne.id in endpoints
 
 
 def test_build_adjacency_is_bidirectional() -> None:

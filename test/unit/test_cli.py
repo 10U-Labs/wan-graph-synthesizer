@@ -32,10 +32,10 @@ def report(
         "connected": True,
         "component_count": 1,
         "min_distinct_neighbor_degree": 2,
-        "degree_deficient_nodes": deficient or [],
+        "degree_deficient_vertices": deficient or [],
         "biconnected_no_articulation_points": True,
         "articulation_points": [],
-        "access_nodes_with_two_aggregation_links": True,
+        "access_vertices_with_two_aggregation_links": True,
         "aggregations_dual_homed_to_cores": dual_homed,
         "aggregations_missing_core_redundancy": missing or [],
         "cores_full_mesh": full_mesh,
@@ -93,29 +93,24 @@ def test_resolve_paths_blank_mapbook_pdf_is_none() -> None:
     assert _paths([]).mapbook_pdf is None
 
 
-def test_resolve_paths_blank_roles_becomes_none() -> None:
-    """An explicit empty pop-roles flag disables the roles file."""
-    assert _paths(["--pop-roles", ""]).role_path is None
+def test_resolve_paths_mapbook_pdf_override() -> None:
+    """A non-empty mapbook-pdf flag overrides the config path."""
+    assert _paths(["--mapbook-pdf", "m.pdf"]).mapbook_pdf == Path("m.pdf")
 
 
-def test_resolve_paths_keeps_default_roles() -> None:
-    """With no flag the config's pop-roles path is kept."""
-    assert _paths([]).role_path == Path("data/carrier_pop_roles.csv")
-
-
-def test_resolve_paths_pop_roles_override() -> None:
-    """A non-empty pop-roles flag overrides the config path."""
-    assert _paths(["--pop-roles", "roles.csv"]).role_path == Path("roles.csv")
+def test_resolve_paths_empty_mapbook_pdf_disables() -> None:
+    """An explicit empty mapbook-pdf flag disables the path."""
+    assert _paths(["--mapbook-pdf", ""]).mapbook_pdf is None
 
 
 def test_resolve_paths_input_override() -> None:
-    """A positional input overrides the config's mapbook."""
-    assert _paths(["some.kml"]).input_path == Path("some.kml")
+    """A positional input overrides the config's vertices file."""
+    assert _paths(["some.csv"]).vertices_path == Path("some.csv")
 
 
 def test_resolve_paths_keeps_default_input() -> None:
-    """With no positional the config's mapbook path is kept."""
-    assert _paths([]).input_path == Path("data/mapbook_nodes.csv")
+    """With no positional the config's vertices path is kept."""
+    assert _paths([]).vertices_path == Path("data/vertices.csv")
 
 
 def test_resolve_paths_regional_edges_override() -> None:
@@ -127,7 +122,10 @@ def test_resolve_paths_regional_edges_override() -> None:
 def test_resolve_paths_keeps_default_regional_edges() -> None:
     """With no flag the config's regional edge files are kept."""
     edges = _paths([]).regional_edge_paths
-    assert edges == (Path("data/dcn_edges.csv"), Path("data/vision_net_edges.csv"))
+    assert edges == (
+        Path("data/edges/dcn_edges.csv"),
+        Path("data/edges/vision_net_edges.csv"),
+    )
 
 
 def test_load_app_config_without_flag_is_default() -> None:
@@ -173,29 +171,33 @@ def test_exit_code_two_when_degree_deficient() -> None:
 
 def test_run_design_without_augmentation(tmp_path: Path) -> None:
     """Run design without augmentation."""
-    kml, edges = fixtures.write_solvable_inputs(tmp_path)
-    paths = CliPaths(kml, edges, None, None, tmp_path)
+    vertices_csv, edges = fixtures.write_solvable_inputs(tmp_path)
+    paths = CliPaths(vertices_csv, edges, None, tmp_path)
     artifacts = run_design(paths, fixtures.ring_params(), False)
     assert artifacts.validation["connected"] is True
 
 
-def test_run_design_stitches_regional_carriers(tmp_path: Path) -> None:
-    """Run design stitches regional carriers onto the Lumen graph."""
-    kml, edges = fixtures.write_solvable_inputs(tmp_path)
-    rnodes = tmp_path / "rnodes.csv"
-    rnodes.write_text("name,lat,lon,network\nR1,41.0,-100.0,dcn\n", encoding="utf-8")
+def test_run_design_stitches_regional_edges(tmp_path: Path) -> None:
+    """Run design loads regional edge files against the carrier PoP set."""
+    vertices_csv = tmp_path / "vertices.csv"
+    vertices_csv.write_text(
+        fixtures.solvable_vertices_csv() + "R1,42.0,-100.0,DCN,ROADM,Not shown in map,\n",
+        encoding="utf-8",
+    )
+    edges = tmp_path / "edges.csv"
+    edges.write_text(fixtures.solvable_edges_csv(), encoding="utf-8")
     redges = tmp_path / "redges.csv"
-    redges.write_text("source,target,type\nR1,P0,interconnect\n", encoding="utf-8")
-    paths = CliPaths(kml, edges, None, None, tmp_path, rnodes, (redges,))
+    redges.write_text("source,target\nR1,P0\n", encoding="utf-8")
+    paths = CliPaths(vertices_csv, edges, None, tmp_path, (redges,))
     artifacts = run_design(paths, fixtures.ring_params(), False)
-    assert any(node.name == "R1" for node in artifacts.nodes)
+    assert any(vertex.name == "R1" for vertex in artifacts.vertices)
 
 
 def test_main_succeeds_on_solvable_inputs(tmp_path: Path) -> None:
     """Main succeeds on solvable inputs."""
-    kml, edges = fixtures.write_solvable_inputs(tmp_path)
+    vertices_csv, edges = fixtures.write_solvable_inputs(tmp_path)
     args = fixtures.design_args(
-        kml,
+        vertices_csv,
         edges,
         tmp_path / "out",
         extra=["--core-count", "2"],
@@ -205,26 +207,24 @@ def test_main_succeeds_on_solvable_inputs(tmp_path: Path) -> None:
 
 def test_main_returns_one_on_missing_input(tmp_path: Path) -> None:
     """Main returns one on missing input."""
-    assert main([str(tmp_path / "nope.kml")]) == 1
+    assert main([str(tmp_path / "nope.csv")]) == 1
 
 
 def test_main_honors_config_file(tmp_path: Path) -> None:
     """Main reads the design parameters from a --config file."""
-    kml, edges = fixtures.write_solvable_inputs(tmp_path)
+    vertices_csv, edges = fixtures.write_solvable_inputs(tmp_path)
     cfg = tmp_path / "config.yml"
     cfg.write_text("design:\n  core_count: 2\n", encoding="utf-8")
-    args = fixtures.design_args(kml, edges, tmp_path / "out", extra=["--config", str(cfg)])
+    args = fixtures.design_args(vertices_csv, edges, tmp_path / "out", extra=["--config", str(cfg)])
     assert main(args) == 0
 
 
-def test_run_design_rejects_empty_document(tmp_path: Path) -> None:
-    """Run design rejects empty document."""
-    kml = tmp_path / "empty.kml"
-    kml.write_text(
-        '<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2">'
-        "<Document><name>x</name></Document></kml>",
-        encoding="utf-8",
+def test_run_design_rejects_empty_vertices(tmp_path: Path) -> None:
+    """Run design rejects a vertices file with no rows."""
+    vertices_csv = tmp_path / "empty.csv"
+    vertices_csv.write_text(
+        "name,latitude,longitude,tenant,kind,shown_in_map,description\n", encoding="utf-8"
     )
-    paths = CliPaths(kml, tmp_path / "e.csv", None, None, tmp_path)
+    paths = CliPaths(vertices_csv, tmp_path / "e.csv", None, tmp_path)
     with pytest.raises(ValueError):
         run_design(paths, fixtures.ring_params(), False)

@@ -1,4 +1,4 @@
-"""Shared test fixtures: node factories, a sample KML/CSV, and a ring graph.
+"""Shared test fixtures: vertex factories, a sample CSV, and a ring graph.
 
 Centralized so unit, integration, and e2e tests reuse identical inputs without
 duplicating data (which copy-paste detection would otherwise flag).
@@ -11,50 +11,25 @@ from pathlib import Path
 from wan_designer.model import (
     DesignArtifacts,
     DesignParams,
-    Node,
+    Vertex,
     PhysicalEdge,
     SourceFiles,
+    carrier_role,
     edge_key,
+    is_carrier_pop,
 )
 from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
 from wan_designer.validation import validate_design
 
-SAMPLE_KML = """<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <name>Top</name>
-    <Placemark>
-      <name>Loose Site</name>
-      <Point><coordinates>-90.0,39.0,0</coordinates></Point>
-    </Placemark>
-    <Placemark>
-      <name>Ghost</name>
-    </Placemark>
-    <Folder>
-      <name>Carrier 400G PoPs</name>
-      <Placemark>
-        <name>Denver, CO</name>
-        <description>Carrier 400G PoP</description>
-        <Point><coordinates>-104.9903,39.7392,0</coordinates></Point>
-      </Placemark>
-      <Placemark>
-        <name>Kansas City, MO</name>
-        <Point><coordinates>-94.5786,39.0997,0</coordinates></Point>
-      </Placemark>
-      <Placemark>
-        <name>No Geometry</name>
-      </Placemark>
-    </Folder>
-    <Folder>
-      <name>F-35 CONUS Installations</name>
-      <Placemark>
-        <name>Buckley</name>
-        <Point><coordinates>-104.75,39.7,0</coordinates></Point>
-      </Placemark>
-    </Folder>
-  </Document>
-</kml>
-"""
+# A four-vertex sample: two Lumen carrier PoPs plus two access sites, in the
+# merged vertices schema (name,latitude,longitude,tenant,kind,shown_in_map,description).
+SAMPLE_VERTICES_CSV = (
+    "name,latitude,longitude,tenant,kind,shown_in_map,description\n"
+    "Loose Site,39.0,-90.0,F-35,Military installation,Shown in map,\n"
+    '"Denver, CO",39.7392,-104.9903,Lumen,PoP,Not shown in map,a Lumen PoP\n'
+    '"Kansas City, MO",39.0997,-94.5786,Lumen,PoP,Not shown in map,\n'
+    "Buckley,39.7,-104.75,F-35,Military installation,Shown in map,\n"
+)
 
 SAMPLE_EDGES_CSV = 'source,target,source_page,note\n"Denver, CO","Kansas City, MO",p,r\n'
 
@@ -79,28 +54,31 @@ RING_EDGE_PAIRS = [
 ]
 
 
-def carrier_pop(node_id: str, lat: float = 0.0, lon: float = 0.0) -> Node:
-    """Build a carrier PoP node."""
-    return Node(
-        id=node_id,
-        name=node_id,
-        category="Carrier 400G PoPs",
-        kind="carrier_pop",
+def carrier_pop(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
+    """Build a Lumen carrier PoP vertex (a backbone PoP, not shown on the map)."""
+    return Vertex(
+        id=vertex_id,
+        name=vertex_id,
+        tenant="Lumen",
+        kind="PoP",
         lat=lat,
         lon=lon,
+        shown_in_map=False,
     )
 
 
-def access_node(node_id: str, lat: float = 0.0, lon: float = 0.0) -> Node:
-    """Build an access (F-35) node."""
-    return Node(id=node_id, name=node_id, category="F-35", kind="f35", lat=lat, lon=lon)
+def access_vertex(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
+    """Build an access (F-35 installation) vertex."""
+    return Vertex(
+        id=vertex_id, name=vertex_id, tenant="F-35", kind="Military installation", lat=lat, lon=lon
+    )
 
 
-def ring_nodes() -> list[Node]:
-    """Build the six-PoP ring, a degree-one spur, and three access nodes."""
+def ring_vertices() -> list[Vertex]:
+    """Build the six-PoP ring, a degree-one spur, and three access vertices."""
     pops = [carrier_pop(n, lat, lon) for n, (lat, lon) in RING_COORDS.items()]
     pops += [carrier_pop(n, lat, lon) for n, (lat, lon) in SPUR_COORDS.items()]
-    access = [access_node(n, lat, lon) for n, (lat, lon) in ACCESS_COORDS.items()]
+    access = [access_vertex(n, lat, lon) for n, (lat, lon) in ACCESS_COORDS.items()]
     return pops + access
 
 
@@ -114,51 +92,46 @@ def ring_physical_edges(distance: float = 100.0) -> dict[tuple[str, str], Physic
 
 
 def write_sample_inputs(directory: Path) -> tuple[Path, Path]:
-    """Write the sample KML and edge CSV into a directory; return their paths."""
-    kml_path = directory / "doc.kml"
-    kml_path.write_text(SAMPLE_KML, encoding="utf-8")
+    """Write the sample vertices and edge CSVs into a directory; return their paths."""
+    vertices_path = directory / "vertices.csv"
+    vertices_path.write_text(SAMPLE_VERTICES_CSV, encoding="utf-8")
     edges_path = directory / "edges.csv"
     edges_path.write_text(SAMPLE_EDGES_CSV, encoding="utf-8")
-    return kml_path, edges_path
+    return vertices_path, edges_path
 
 
-def _placemark(name: str, lat: float, lon: float) -> str:
-    """Render one point placemark."""
-    return (
-        f"      <Placemark><name>{name}</name>"
-        f"<Point><coordinates>{lon},{lat},0</coordinates></Point></Placemark>"
-    )
+def _vertex_row(name: str, lat: float, lon: float, tenant: str, kind: str, shown: str) -> str:
+    """Render one vertices-CSV row."""
+    return f"{name},{lat},{lon},{tenant},{kind},{shown},"
 
 
-def solvable_kml() -> str:
-    """Render a KML whose ring graph the optimizer can actually solve."""
+def solvable_vertices_csv() -> str:
+    """Render a vertices CSV whose ring graph the optimizer can actually solve."""
     pops = "\n".join(
-        _placemark(n, lat, lon)
+        _vertex_row(n, lat, lon, "Lumen", "PoP", "Not shown in map")
         for n, (lat, lon) in {**RING_COORDS, **SPUR_COORDS}.items()
     )
-    access = "\n".join(_placemark(n, lat, lon) for n, (lat, lon) in ACCESS_COORDS.items())
-    return (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Net</name>\n'
-        f"<Folder><name>Carrier 400G PoPs</name>\n{pops}\n</Folder>\n"
-        f"<Folder><name>F-35 CONUS Installations</name>\n{access}\n</Folder>\n"
-        "</Document></kml>\n"
+    access = "\n".join(
+        _vertex_row(n, lat, lon, "F-35", "Military installation", "Shown in map")
+        for n, (lat, lon) in ACCESS_COORDS.items()
     )
+    header = "name,latitude,longitude,tenant,kind,shown_in_map,description\n"
+    return f"{header}{pops}\n{access}\n"
 
 
 def solvable_edges_csv() -> str:
-    """Render the ring edge CSV matching the solvable KML."""
+    """Render the ring edge CSV matching the solvable vertices."""
     rows = "\n".join(f"{left},{right},100" for left, right in RING_EDGE_PAIRS)
     return f"source,target,distance_miles\n{rows}\n"
 
 
 def write_solvable_inputs(directory: Path) -> tuple[Path, Path]:
-    """Write a solvable KML and edge CSV into a directory; return their paths."""
-    kml_path = directory / "net.kml"
-    kml_path.write_text(solvable_kml(), encoding="utf-8")
+    """Write a solvable vertices and edge CSV into a directory; return their paths."""
+    vertices_path = directory / "vertices.csv"
+    vertices_path.write_text(solvable_vertices_csv(), encoding="utf-8")
     edges_path = directory / "ring_edges.csv"
     edges_path.write_text(solvable_edges_csv(), encoding="utf-8")
-    return kml_path, edges_path
+    return vertices_path, edges_path
 
 
 def physical_edges_from(
@@ -173,23 +146,18 @@ def physical_edges_from(
 
 
 def design_args(
-    kml: Path,
+    vertices: Path,
     edges: Path,
     output: Path,
-    roles: str = "",
     extra: list[str] | None = None,
 ) -> list[str]:
     """Assemble argv for the design CLI."""
     args = [
-        str(kml),
+        str(vertices),
         "--carrier-edges",
         str(edges),
-        "--pop-roles",
-        roles,
         "--output-dir",
         str(output),
-        "--regional-nodes",
-        "",
     ]
     return args + (extra or [])
 
@@ -199,19 +167,19 @@ def ring_params() -> DesignParams:
     return DesignParams(core_count=2)
 
 
-def _ring_inputs() -> tuple[list[Node], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
-    """The ring nodes, physical edges, and default all-aggregator carrier roles."""
-    nodes = ring_nodes()
+def _ring_inputs() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
+    """The ring vertices, physical edges, and default all-aggregator carrier roles."""
+    vertices = ring_vertices()
     edges = ring_physical_edges()
-    roles = {node.id: "aggregator" for node in nodes if node.kind == "carrier_pop"}
-    return nodes, edges, roles
+    roles = {vertex.id: carrier_role(vertex) for vertex in vertices if is_carrier_pop(vertex)}
+    return vertices, edges, roles
 
 
 def ring_artifacts() -> DesignArtifacts:
     """Run the optimizer over the in-memory ring and bundle the artifacts."""
-    nodes, edges, roles = _ring_inputs()
-    design = optimize_three_tier_design(nodes, edges, roles, ring_params())
-    return DesignArtifacts(nodes, edges, design, validate_design(nodes, design))
+    vertices, edges, roles = _ring_inputs()
+    design = optimize_three_tier_design(vertices, edges, roles, ring_params())
+    return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 
 
 def _forced_artifacts(params: DesignParams) -> DesignArtifacts:
@@ -221,10 +189,10 @@ def _forced_artifacts(params: DesignParams) -> DesignArtifacts:
     means the artifacts reflect genuinely honored force-core/force-aggregation
     requests rather than emergent selections.
     """
-    nodes, edges, roles = _ring_inputs()
-    nodes, edges, overrides = apply_role_overrides(nodes, edges, params)
-    design = optimize_three_tier_design(nodes, edges, roles, params, overrides)
-    return DesignArtifacts(nodes, edges, design, validate_design(nodes, design))
+    vertices, edges, roles = _ring_inputs()
+    vertices, edges, overrides = apply_role_overrides(vertices, edges, params)
+    design = optimize_three_tier_design(vertices, edges, roles, params, overrides)
+    return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 
 
 def forced_aggregation_artifacts(name: str) -> DesignArtifacts:
@@ -239,4 +207,4 @@ def forced_core_artifacts(name: str) -> DesignArtifacts:
 
 def sample_sources() -> SourceFiles:
     """Provenance paths for output rendering tests."""
-    return SourceFiles(Path("input.kml"), Path("edges.csv"), None)
+    return SourceFiles(Path("vertices.csv"), Path("edges.csv"), None)

@@ -1,9 +1,9 @@
-"""Density clustering (DBSCAN) of access nodes into intentional aggregation clusters.
+"""Density clustering (DBSCAN) of access vertices into intentional aggregation clusters.
 
 Aggregation points are placed as the heads of genuine clusters -- groups of at
-least ``MIN_POINTS`` access nodes that sit close together -- so a new accredited
+least ``MIN_POINTS`` access vertices that sit close together -- so a new accredited
 facility is built only where it aggregates many geographically close access
-nodes. The neighborhood radius is derived from the data (the elbow of the sorted
+vertices. The neighborhood radius is derived from the data (the elbow of the sorted
 k-nearest-neighbor distances), not a hand-picked constant, then clamped to a
 sane metro-to-regional band so far-flung outliers cannot merge unrelated metros
 or shatter real ones.
@@ -11,11 +11,11 @@ or shatter real ones.
 
 from __future__ import annotations
 
-from wan_designer.model import Node, haversine_miles
+from wan_designer.model import Vertex, haversine_miles
 
 # Default algorithm dials, mirrored by the matching ``DesignParams`` fields so a
 # direct caller (and the test suite) need not pass them; ``etc/config.yml`` drives
-# the real run. A cluster needs at least this many close access nodes (DBSCAN
+# the real run. A cluster needs at least this many close access vertices (DBSCAN
 # minPts, N). The radius is clamped to a metro-to-regional band: the floor keeps a
 # single dense metro from fragmenting; the ceiling keeps a distant PoP (e.g. Boise,
 # ~276 mi from the Utah sites) from ever counting as that cluster's local head.
@@ -24,13 +24,13 @@ MIN_RADIUS_MILES = 50.0
 MAX_RADIUS_MILES = 250.0
 
 
-def pairwise_miles(nodes: list[Node]) -> list[list[float]]:
-    """Full symmetric matrix of great-circle distances between access nodes."""
-    count = len(nodes)
+def pairwise_miles(vertices: list[Vertex]) -> list[list[float]]:
+    """Full symmetric matrix of great-circle distances between access vertices."""
+    count = len(vertices)
     matrix = [[0.0] * count for _ in range(count)]
     for i in range(count):
         for j in range(i + 1, count):
-            distance = haversine_miles(nodes[i], nodes[j])
+            distance = haversine_miles(vertices[i], vertices[j])
             matrix[i][j] = matrix[j][i] = distance
     return matrix
 
@@ -84,11 +84,11 @@ def derive_radius(
 def dbscan_labels(
     matrix: list[list[float]], radius: float, min_points: int = MIN_POINTS
 ) -> list[int]:
-    """Label each node with its cluster id, or -1 for noise (a sparse, lone node).
+    """Label each vertex with its cluster id, or -1 for noise (a sparse, lone vertex).
 
-    Standard DBSCAN: a node is a core point when at least ``min_points`` nodes
+    Standard DBSCAN: a vertex is a core point when at least ``min_points`` vertices
     (itself included) lie within ``radius``; clusters grow by absorbing the
-    neighborhoods of core points. Border points join a touching cluster; nodes
+    neighborhoods of core points. Border points join a touching cluster; vertices
     in neither are noise.
     """
     count = len(matrix)
@@ -113,31 +113,31 @@ def dbscan_labels(
     return labels
 
 
-def cluster_access_nodes(
-    access_nodes: list[Node],
+def cluster_access_vertices(
+    access_vertices: list[Vertex],
     min_points: int = MIN_POINTS,
     min_radius: float = MIN_RADIUS_MILES,
     max_radius: float = MAX_RADIUS_MILES,
 ) -> tuple[list[list[str]], list[str], float]:
-    """Group access nodes into clusters, returning (clusters, sparse_ids, radius).
+    """Group access vertices into clusters, returning (clusters, sparse_ids, radius).
 
-    ``clusters`` is a list of access-node id lists (each a dense group worth its
-    own aggregation heads); ``sparse_ids`` are lone nodes that belong to no
+    ``clusters`` is a list of access-vertex id lists (each a dense group worth its
+    own aggregation heads); ``sparse_ids`` are lone vertices that belong to no
     cluster and must reuse an existing facility; ``radius`` is the derived
     neighborhood distance, reused downstream to decide which PoPs are local
     enough to be a cluster's head.
     """
-    if len(access_nodes) < min_points:
-        return [], [node.id for node in access_nodes], min_radius
-    matrix = pairwise_miles(access_nodes)
+    if len(access_vertices) < min_points:
+        return [], [vertex.id for vertex in access_vertices], min_radius
+    matrix = pairwise_miles(access_vertices)
     radius = derive_radius(matrix, min_points, min_radius, max_radius)
     labels = dbscan_labels(matrix, radius, min_points)
     clusters: dict[int, list[str]] = {}
     sparse: list[str] = []
-    for node, label in zip(access_nodes, labels):
+    for vertex, label in zip(access_vertices, labels):
         if label == -1:
-            sparse.append(node.id)
+            sparse.append(vertex.id)
         else:
-            clusters.setdefault(label, []).append(node.id)
+            clusters.setdefault(label, []).append(vertex.id)
     ordered = [clusters[key] for key in sorted(clusters)]
     return ordered, sparse, radius
