@@ -74,8 +74,12 @@ def test_cores_form_full_mesh(design: dict[str, Any]) -> None:
 
 
 def test_core_backbone_respects_degree_cap(design: dict[str, Any]) -> None:
-    """Each core links to at most three other cores, and the backbone stays resilient."""
+    """Each core links to at most three other cores on the backbone."""
     assert design["validation"]["core_backbone_max_degree"] <= 3
+
+
+def test_core_backbone_is_two_edge_connected(design: dict[str, Any]) -> None:
+    """The thinned backbone still survives the loss of any single core-to-core link."""
     assert design["validation"]["core_backbone_two_edge_connected"] is True
 
 
