@@ -8,7 +8,51 @@ from typing import Any
 import pytest
 
 import fixtures
-from wan_designer.service import available_wan_maps, design_for_wan_map
+from wan_designer.model import DesignPaths
+from wan_designer.service import available_wan_maps, design_for_wan_map, run_design
+
+
+def test_run_design_without_augmentation(tmp_path: Path) -> None:
+    """Run design without augmentation."""
+    vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
+    paths = DesignPaths(vertex_files, edges, None, tmp_path)
+    artifacts = run_design(paths, fixtures.ring_params(), False)
+    assert artifacts.validation["connected"] is True
+
+
+def test_run_design_with_augmentation(tmp_path: Path) -> None:
+    """Run design augments physical resilience when requested."""
+    vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
+    paths = DesignPaths(vertex_files, edges, None, tmp_path)
+    artifacts = run_design(paths, fixtures.ring_params(), True)
+    assert artifacts.validation["connected"] is True
+
+
+def test_run_design_stitches_regional_edges(tmp_path: Path) -> None:
+    """Run design loads regional edge files against the carrier PoP set."""
+    vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
+    dcn = tmp_path / "dcn.csv"
+    dcn.write_text(
+        "name,latitude,longitude,kind,shown_in_map,description\n"
+        "R1,42.0,-100.0,ROADM,Not shown in map,\n",
+        encoding="utf-8",
+    )
+    redges = tmp_path / "redges.csv"
+    redges.write_text("source,target\nR1,P0\n", encoding="utf-8")
+    paths = DesignPaths(vertex_files + (("DCN", dcn),), edges, None, tmp_path, (redges,))
+    artifacts = run_design(paths, fixtures.ring_params(), False)
+    assert any(vertex.name == "R1" for vertex in artifacts.vertices)
+
+
+def test_run_design_rejects_empty_vertices(tmp_path: Path) -> None:
+    """Run design rejects vertex files with no rows."""
+    empty = tmp_path / "empty.csv"
+    empty.write_text(
+        "name,latitude,longitude,kind,shown_in_map,description\n", encoding="utf-8"
+    )
+    paths = DesignPaths((("Lumen", empty),), tmp_path / "e.csv", None, tmp_path)
+    with pytest.raises(ValueError):
+        run_design(paths, fixtures.ring_params(), False)
 
 
 def test_available_wan_maps_defaults_label_to_stem(tmp_path: Path) -> None:

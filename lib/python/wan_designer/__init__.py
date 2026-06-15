@@ -1,13 +1,13 @@
 """Three-tier WAN graph designer package.
 
-Re-exports the public API used by the CLI entry point and the test suite.
+Re-exports the public API used by the REST service and the test suite.
 """
 
 from __future__ import annotations
 
 from wan_designer.model import (
     AccessEdge,
-    CliPaths,
+    DesignPaths,
     Design,
     DesignArtifacts,
     DesignInputs,
@@ -45,12 +45,11 @@ from wan_designer.validation import (
 )
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.config import AppConfig, load_config
-from wan_designer.cli import main
 
 __all__ = [
     "AccessEdge",
     "AppConfig",
-    "CliPaths",
+    "DesignPaths",
     "Design",
     "DesignArtifacts",
     "DesignInputs",
@@ -76,7 +75,6 @@ __all__ = [
     "load_carrier_edges",
     "load_config",
     "load_vertices",
-    "main",
     "vertex_disjoint_paths_to_cores",
     "optimize_three_tier_design",
     "reconstruct_path",

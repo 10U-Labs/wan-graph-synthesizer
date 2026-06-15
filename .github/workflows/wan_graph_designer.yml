@@ -4,7 +4,7 @@ concurrency:
   group: design-${{ github.head_ref || github.ref_name }}
 jobs:
   e2e-test:
-    needs: generate-graph
+    needs: integration-test
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -16,33 +16,12 @@ jobs:
           path: ~/.cache/pip
           restore-keys: |
             pip-design-test-
-      - name: Download design outputs
-        uses: actions/download-artifact@v8
-        with:
-          name: network-design
-          path: outputs/
       - name: Install tools
-        run: pip install pytest
+        run: pip install fastapi httpx2 pytest pyyaml
       - name: Run e2e tests
         run: >-
           PYTHONPATH=.:lib/python:src python3 -m pytest
           test/e2e/ --verbose --pythonwarnings=error
-  generate-graph:
-    needs: integration-test
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install tools
-        run: pip install pyyaml
-      - name: Generate the network design (fails on an invalid design)
-        run: PYTHONPATH=lib/python python3 src/design_network.py
-      - if: always()
-        name: Upload design outputs
-        uses: actions/upload-artifact@v7
-        with:
-          name: network-design
-          path: outputs/
-    timeout-minutes: 30
   integration-test:
     needs: unit-test
     runs-on: ubuntu-24.04
@@ -114,7 +93,7 @@ jobs:
       - name: Run pylint on source
         run: >-
           PYTHONPATH=.:lib/python:src python3 -m pylint
-          lib/python/wan_designer/ src/api/ src/design_network.py src/serve.py
+          lib/python/wan_designer/ src/api/ src/serve.py
           --fail-on=C,R,W --fail-under=10.0
       - name: Run pylint on tests
         run: >-

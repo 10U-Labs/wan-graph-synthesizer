@@ -47,42 +47,37 @@ The resilience rules the design enforces:
 
 ## Output
 
-The output is a webpage that displays the WAN graph. The rendered graph
-contains only vertices and edges, using Graphviz as the layout and
-rendering engine.
+The output is a self-hosted web app: an interactive Leaflet map that
+redraws as you pick a tenant view. There is no manual export step.
 
-## Carrier three-tier WAN design script
-
-Use `src/design_network.py` to compute a three-tier WAN design
-from the vertex and edge CSVs in `data/`:
-
-```bash
-PYTHONPATH=lib/python python3 src/design_network.py
-```
+## Inputs
 
 Vertices live in `data/vertices/`, one CSV per tenant (`lumen.csv`,
 `dcn.csv`, `f_35.csv`, `aws.csv`, ...), each row with columns
 `name,latitude,longitude,kind,shown_in_map,description`. The tenant is the
 file, and the `kind` column classifies each vertex (`PoP`/`ROADM` carrier
 PoPs versus `Military installation`, `provider region`, `UARC`, and
-`Corporate office` access vertices). `etc/joint.yml` lists every tenant
-file; `etc/f_35.yml` is an F-35-only variant that omits AFLCMC and AFNWC/NI.
-The script selects up to three Carrier core PoPs, selects aggregation PoPs
+`Corporate office` access vertices). The edge files in `data/edges/` are
+transcribed from the carriers' published network maps.
+
+Each WAN map is a config in `etc/`: `joint.yml` lists every tenant file;
+`f_35.yml` is an F-35-only variant that omits AFLCMC and AFNWC/NI. The
+config also carries every design choice — core count, forced cores and
+aggregations, exclusions, and resilience augmentation — so tuning a design
+means editing the YAML, never source.
+
+The design selects up to three Carrier core PoPs, selects aggregation PoPs
 as needed, dual-homes every access vertex to two aggregation PoPs, routes
 every aggregation to two cores over vertex-disjoint paths on the physical
-Carrier graph, and meshes the cores. The run fails if any aggregation
-cannot reach two cores disjointly or the cores are not a full mesh.
-
-The edge files in `data/edges/` are transcribed from the carriers'
-published network maps. Results are written to
-`outputs/` as JSON, CSV, KML, and Graphviz DOT files.
+Carrier graph, and meshes the cores. A design that cannot reach two cores
+disjointly, or whose cores are not a full mesh, is reported as invalid by
+the `validation` endpoint.
 
 ## Web app
 
-Instead of regenerating the KML and re-uploading it to a map, run the
-self-hosted web app and pick a tenant view in the browser. It serves a
-REST API and a Leaflet map from one process; designs are computed on
-demand from the configs in `etc/` (Joint, F-35) and cached in memory:
+Run the self-hosted web app and pick a tenant view in the browser. It
+serves a REST API and a Leaflet map from one process; designs are computed
+on demand from the configs in `etc/` (Joint, F-35) and cached in memory:
 
 ```bash
 pip install -r requirements.txt
@@ -107,19 +102,9 @@ dependency is the OpenStreetMap *tile* server (`TILE_URL` in
 `src/www/app.js`); point it at a self-hosted tile server to run fully
 offline.
 
-Tune the core tier:
-
-```bash
-PYTHONPATH=lib/python python3 src/design_network.py \
-  --core-count 3 \
-  --min-core-separation-miles 750
-```
-
-Inspect the raw tier assignment without extra resilience augmentation:
-
-```bash
-PYTHONPATH=lib/python python3 src/design_network.py --no-resilience-augmentation
-```
+To tune a design — the core count, forced cores or aggregations,
+exclusions, or resilience augmentation — edit the WAN map's config in
+`etc/` and reload the page; the design recomputes on the next request.
 
 ## Testing
 

@@ -163,8 +163,8 @@ class ValidationReport(TypedDict):
     core_pairs_disconnected: list[dict[str, str]]
 
 @dataclass(frozen=True)
-class CliPaths:
-    """All file paths resolved from the command line.
+class DesignPaths:
+    """All file paths a WAN map's design is computed from.
 
     ``vertex_files`` pairs each tenant with its per-tenant vertices CSV; the
     tenant is carried here because the CSVs no longer hold a ``tenant`` column.

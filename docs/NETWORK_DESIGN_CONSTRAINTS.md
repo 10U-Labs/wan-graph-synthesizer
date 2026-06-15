@@ -66,19 +66,18 @@ A design is invalid unless all of the following hold.
 ## Operator role pins
 
 Beyond the algorithm, the operator may pin tier roles by PoP name. The
-pins are CLI flags on the designer — and are baked, as explicit flags
-rather than hidden constants, into `src/design_network.py` for the
-canonical design:
+pins are keys under the `design:` block of a WAN map's config in `etc/`
+(`joint.yml`, `f_35.yml`) — explicit data rather than hidden constants:
 
-- `--force-core NAME` makes a PoP a core. It is fixed into every candidate
-  core set the search considers; the search still adds any further cores
-  by strength.
-- `--force-aggregation NAME` makes a PoP an aggregation. It is always
-  selected, like a Sentinel base, but carries only the demand it actually
-  homes, not the 165-site base demand.
-- `--exclude NAME` bars a PoP from every selected role: never a core, an
-  aggregation, or an access home. It may still carry pass-through backbone
-  fiber as a transit PoP.
+- `forced_cores: [NAME, ...]` makes each PoP a core. It is fixed into every
+  candidate core set the search considers; the search still adds any
+  further cores by strength.
+- `forced_aggregations: [NAME, ...]` makes each PoP an aggregation. It is
+  always selected, like a Sentinel base, but carries only the demand it
+  actually homes, not the 165-site base demand.
+- `excluded: [NAME, ...]` bars each PoP from every selected role: never a
+  core, an aggregation, or an access home. It may still carry pass-through
+  backbone fiber as a transit PoP.
 - A PoP pinned as both a core and an aggregation is co-located: it is
   split into a `CORE` vertex (kept under the PoP's own name) and a
   co-located `AGGR` vertex, per hard constraint 8.

@@ -15,7 +15,7 @@ from typing import Any
 
 import yaml
 
-from wan_designer.model import CliPaths, DesignParams, Tuning
+from wan_designer.model import DesignPaths, DesignParams, Tuning
 
 DEFAULT_CONFIG_PATH = Path("etc/joint.yml")
 DEFAULT_VERTICES = {
@@ -38,7 +38,7 @@ DEFAULT_OUTPUT_DIR = "outputs"
 class AppConfig:
     """A fully resolved configuration: file paths, design params, augment flag."""
 
-    paths: CliPaths
+    paths: DesignPaths
     params: DesignParams
     resilience_augmentation: bool
     label: str = ""
@@ -75,10 +75,10 @@ def _vertex_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
     return tuple(sorted((tenant, Path(path)) for tenant, path in value.items()))
 
 
-def _paths(data: dict[str, Any], inputs: dict[str, Any]) -> CliPaths:
-    """Resolve the file-path configuration into a :class:`CliPaths`."""
+def _paths(data: dict[str, Any], inputs: dict[str, Any]) -> DesignPaths:
+    """Resolve the file-path configuration into a :class:`DesignPaths`."""
     regional_edges = _str_list(inputs, "regional_edges", DEFAULT_REGIONAL_EDGES)
-    return CliPaths(
+    return DesignPaths(
         vertex_files=_vertex_files(inputs),
         edge_path=Path(str(inputs.get("carrier_edges", DEFAULT_CARRIER_EDGES))),
         mapbook_pdf=_optional_path(inputs.get("mapbook_pdf", "")),
