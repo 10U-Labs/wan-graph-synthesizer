@@ -167,12 +167,12 @@ def test_population_placements_anchor_without_a_pop_is_greenfield() -> None:
 
 def test_population_placements_skips_a_state_without_counties() -> None:
     """A state absent from the county reference produces no placement."""
-    assert population_placements([], set(), {}, CO_MUNIS, {"CO"}) == []
+    assert not population_placements([], set(), {}, CO_MUNIS, {"CO"})
 
 
 def test_population_placements_skips_a_county_without_municipalities() -> None:
     """A top county with no municipalities in the reference produces no placement."""
-    assert population_placements([], set(), CO_COUNTIES, [], {"CO"}) == []
+    assert not population_placements([], set(), CO_COUNTIES, [], {"CO"})
 
 
 def test_population_placements_single_county_uses_a_second_city() -> None:
