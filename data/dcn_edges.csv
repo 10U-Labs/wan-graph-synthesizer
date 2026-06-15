@@ -1,17 +1,17 @@
 source,target,type,note
 Williston,Ray,backbone,zoom-verified
 Ray,Stanley,backbone,zoom-verified
-Stanley,Minot,backbone,zoom-verified
+Stanley,"Minot, ND",backbone,zoom-verified
 Williston,Alexander,backbone,zoom-verified
 Alexander,Parshall,backbone,zoom-verified
 Parshall,Max,backbone,zoom-verified
-Max,Minot,backbone,zoom-verified
+Max,"Minot, ND",backbone,zoom-verified
 Max,Bismarck,backbone,zoom-verified
 Beach,Dickinson,backbone,zoom-verified
 Dickinson,Bismarck,backbone,zoom-verified
 Bismarck,Steele,backbone,zoom-verified
 Steele,Jamestown,backbone,zoom-verified
-Minot,Rugby,backbone,zoom-verified
+"Minot, ND",Rugby,backbone,zoom-verified
 Rugby,Devils Lake,backbone,zoom-verified
 Devils Lake,Grand Forks,backbone,zoom-verified
 Devils Lake,Carrington,backbone,zoom-verified

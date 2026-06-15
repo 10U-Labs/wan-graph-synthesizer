@@ -2,7 +2,7 @@ name,lat,lon,network
 Williston,48.147,-103.618,dcn
 Ray,48.341,-103.166,dcn
 Stanley,48.317,-102.388,dcn
-Minot,48.232,-101.296,dcn
+"Minot, ND",48.232,-101.296,dcn
 Alexander,47.838,-103.642,dcn
 Parshall,47.952,-102.135,dcn
 Max,47.815,-101.298,dcn
@@ -21,7 +21,7 @@ Buffalo,46.917,-97.547,dcn
 Fargo,46.877,-96.789,dcn
 Grand Forks,47.925,-97.032,dcn
 Kalispell,48.196,-114.314,vision_net
-Great Falls,47.507,-111.300,vision_net
+"Great Falls, MT",47.507,-111.300,vision_net
 Helena,46.589,-112.039,vision_net
 Havre,48.550,-109.684,vision_net
 Bozeman,45.677,-111.043,vision_net

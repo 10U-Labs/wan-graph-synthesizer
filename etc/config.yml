@@ -12,25 +12,25 @@ design:
   # PoPs pinned into the aggregation tier. Richmond is pinned (not Norfolk, a
   # single-homed ROADM leaf) so southeast-Virginia demand homes into a PoP that
   # can dual-home to two cores. The Sentinel ICBM wings home onto their serving
-  # PoPs: Minot (Dakota Carrier Network) for Minot AFB, Great Falls (VisionNet)
-  # for Malmstrom AFB, and Cheyenne for F.E. Warren AFB -- these regional-carrier
-  # PoPs replace the old modeled per-base demand weighting. Boston is dual-homed
-  # via Cambridge and Stamford (mapbook page 7).
+  # PoPs: Minot, ND (Dakota Carrier Network) for Minot AFB, Great Falls, MT
+  # (VisionNet) for Malmstrom AFB, and Cheyenne for F.E. Warren AFB -- these
+  # regional-carrier PoPs replace the old modeled per-base demand weighting.
+  # Boston is dual-homed via Cambridge and Stamford (mapbook page 7).
   forced_aggregations:
     - Boston, MA
     - Cheyenne, WY
-    - Great Falls
-    - Minot
+    - Great Falls, MT
+    - Los Angeles, CA
+    - Minot, ND
     - New York, NY
     - Portland, OR
     - Richmond, VA
-    - San Luis Obispo, CA
-  # PoPs pinned into the core tier. Atlanta anchors the southeast, Philadelphia
-  # the northeast, and McLean the national-capital region.
+  # PoPs pinned into the core tier. Atlanta anchors the southeast, Dallas the
+  # south-central, and McLean the national-capital region.
   forced_cores:
     - Atlanta, GA
+    - Dallas, TX
     - McLean, VA
-    - Philadelphia, PA
   # Add extra physical Carrier edges to reduce articulation or degree risk.
   resilience_augmentation: true
 inputs:
@@ -48,11 +48,11 @@ inputs:
 output_dir: outputs
 tuning:
   # Ceiling (miles) on the data-derived DBSCAN cluster radius.
-  cluster_max_radius_miles: 250.0
+  cluster_max_radius_miles: 45.0
   # A cluster needs at least this many close access nodes to seed an aggregation.
   cluster_min_points: 2
   # Floor (miles) on the data-derived DBSCAN cluster radius.
-  cluster_min_radius_miles: 50.0
+  cluster_min_radius_miles: 0.0
   # Compass sectors used to score a core's link spread.
   compass_octants: 8
   # Peak bytes one enumerated core set costs (sizes the search to free RAM).
