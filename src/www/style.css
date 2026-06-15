@@ -15,9 +15,21 @@ body {
   font-size: 0.95rem;
 }
 
-#bar select {
-  font-size: 0.95rem;
-  padding: 0.15rem 0.3rem;
+#tenants {
+  display: flex;
+  gap: 0.4rem;
+}
+
+#tenants a {
+  color: #b0bec5;
+  text-decoration: none;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.2rem;
+}
+
+#tenants a.active {
+  background: #3b4754;
+  color: #fff;
 }
 
 #status {

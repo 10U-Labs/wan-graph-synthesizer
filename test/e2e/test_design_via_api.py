@@ -30,6 +30,13 @@ def fixture_design() -> dict[str, Any]:
     return {"vertices": vertices, "path_uses": edges["path_uses"], "validation": validation}
 
 
+@pytest.fixture(name="f35_design", scope="module")
+def fixture_f35_design() -> dict[str, Any]:
+    """Assemble the F-35 design's vertices from the live API endpoints."""
+    client = TestClient(build_app(REPO_ROOT / "etc", REPO_ROOT / "src" / "www"))
+    return {"vertices": client.get("/api/wan-maps/f_35/vertices").json()}
+
+
 def core_names(design: dict[str, Any]) -> set[str]:
     """Test helper: build core names."""
     return {vertex["name"] for vertex in design["vertices"] if vertex["tier_role"] == "core"}
@@ -83,3 +90,13 @@ def test_every_aggregation_reaches_two_distinct_cores(design: dict[str, Any]) ->
 def test_goodyear_is_not_an_aggregation(design: dict[str, Any]) -> None:
     """A single-homed leaf such as Goodyear is never selected as an aggregation."""
     assert "Goodyear, AZ" not in aggregation_names(design)
+
+
+def test_f35_mclean_is_an_aggregation(f35_design: dict[str, Any]) -> None:
+    """F-35 pins McLean as an aggregation point."""
+    assert "McLean, VA" in aggregation_names(f35_design)
+
+
+def test_f35_mclean_is_not_a_core(f35_design: dict[str, Any]) -> None:
+    """F-35 does not force McLean into the core tier."""
+    assert "McLean, VA" not in core_names(f35_design)
