@@ -21,7 +21,7 @@ from wan_designer.output import (
 
 def _region(name: str) -> Vertex:
     """Build a CSP-data-center region vertex with the given name."""
-    return Vertex(id=name, name=name, tenant="AWS", kind="CSP data center", lat=0.0, lon=0.0)
+    return Vertex(id=name, name=name, tenant="AWS", kind="CSP data center", coords=(0.0, 0.0))
 
 
 def _secret_region(name: str) -> Vertex:

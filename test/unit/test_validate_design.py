@@ -21,7 +21,7 @@ def make_pop(vertex_id: str) -> Vertex:
     """Test helper: build make pop."""
     return Vertex(
         id=vertex_id, name=vertex_id, tenant="Lumen",
-        kind="PoP", lat=0.0, lon=0.0,
+        kind="PoP", coords=(0.0, 0.0),
     )
 
 

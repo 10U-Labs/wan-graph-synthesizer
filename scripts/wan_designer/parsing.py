@@ -42,8 +42,7 @@ def load_vertices(path: Path) -> list[Vertex]:
                     name=name,
                     tenant=row["tenant"].strip(),
                     kind=row["kind"].strip(),
-                    lat=float(row["latitude"]),
-                    lon=float(row["longitude"]),
+                    coords=(float(row["latitude"]), float(row["longitude"])),
                     description=row.get("description", "").strip(),
                     shown_in_map=row.get("shown_in_map", "").strip() != "Not shown in map",
                 )
