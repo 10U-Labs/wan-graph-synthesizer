@@ -48,7 +48,7 @@ inputs:
 output_dir: outputs
 tuning:
   # Ceiling (miles) on the data-derived DBSCAN cluster radius.
-  cluster_max_radius_miles: 45.0
+  cluster_max_radius_miles: 250.0
   # A cluster needs at least this many close access nodes to seed an aggregation.
   cluster_min_points: 2
   # Floor (miles) on the data-derived DBSCAN cluster radius.
