@@ -178,9 +178,9 @@ def select_core_backbone_pairs(
     def degree(node: str) -> int:
         return sum(1 for pair in selected if node in pair)
 
+    # Each mesh pair is visited once, longest first; drop it only when an endpoint
+    # is over the cap and the backbone survives without it.
     for pair in sorted(weight, key=lambda item: (-weight[item], item)):
-        if pair not in selected:
-            continue
         if degree(pair[0]) <= degree_cap and degree(pair[1]) <= degree_cap:
             continue
         if is_two_edge_connected(ids, selected - {pair}):
