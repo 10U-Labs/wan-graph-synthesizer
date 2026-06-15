@@ -3,8 +3,9 @@
 
 The operator role pins for the canonical design are expressed as explicit CLI
 flags (not hidden constants): Salt Lake City is a co-located core+aggregation
-facility, Ashburn, Herndon, Los Angeles, San Luis Obispo, Phoenix, New York,
-and Newark are aggregations, and Ogden is barred from every selected role.
+facility, Atlanta anchors the southeast as a core, Ashburn, Herndon, Los
+Angeles, San Luis Obispo, Phoenix, New York, and Newark are aggregations, and
+Ogden is barred from every selected role.
 
 The two Long Island demand intents (Brookhaven and Shirley, NY) are not Lumen
 PoPs in the mapbook, so they are mapped to the two nearest existing PoPs:
@@ -17,6 +18,7 @@ from wan_designer.cli import main
 
 FORCED_DESIGN_ARGS = [
     "--force-core", "Salt Lake City, UT", "--force-aggregation", "Salt Lake City, UT",
+    "--force-core", "Atlanta, GA",
     "--force-aggregation", "Ashburn, VA",
     "--force-aggregation", "Herndon, VA",
     "--force-aggregation", "Los Angeles, CA",
