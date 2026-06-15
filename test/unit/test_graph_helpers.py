@@ -7,7 +7,6 @@ import math
 import pytest
 
 from wan_designer import (
-    classify_category,
     connected_components,
     articulation_points,
     dijkstra,
@@ -15,14 +14,14 @@ from wan_designer import (
     haversine_miles,
     reconstruct_path,
     slugify,
-    Node,
+    Vertex,
 )
 from wan_designer.graphs import path_edge_keys
 
 
-def make_node(node_id: str, lat: float, lon: float) -> Node:
-    """Test helper: build make node."""
-    return Node(id=node_id, name=node_id, category="c", kind="carrier_pop", lat=lat, lon=lon)
+def make_vertex(vertex_id: str, lat: float, lon: float) -> Vertex:
+    """Test helper: build make vertex."""
+    return Vertex(id=vertex_id, name=vertex_id, tenant="Lumen", kind="PoP", lat=lat, lon=lon)
 
 
 def test_slugify_replaces_punctuation() -> None:
@@ -32,32 +31,7 @@ def test_slugify_replaces_punctuation() -> None:
 
 def test_slugify_empty_falls_back() -> None:
     """Slugify empty falls back."""
-    assert slugify("!!!") == "node"
-
-
-def test_classify_category_carrier_pop() -> None:
-    """Classify category carrier pop."""
-    assert classify_category("Carrier 400G PoPs") == "carrier_pop"
-
-
-def test_classify_category_sentinel() -> None:
-    """Classify category sentinel."""
-    assert classify_category("Sentinel Program Locations") == "sentinel"
-
-
-def test_classify_category_csp_secret() -> None:
-    """Classify category csp secret."""
-    assert classify_category("Secret Regions - Cloud Service Providers") == "csp_secret"
-
-
-def test_classify_category_cui_region() -> None:
-    """Classify category cui region."""
-    assert classify_category("CUI Regions") == "cui_region"
-
-
-def test_classify_category_top_secret_region() -> None:
-    """Top Secret outranks the bare 'secret' match and is its own kind."""
-    assert classify_category("Top Secret Regions") == "ts_region"
+    assert slugify("!!!") == "vertex"
 
 
 def test_edge_key_orders_pair() -> None:
@@ -73,15 +47,15 @@ def test_edge_key_rejects_self_loop() -> None:
 
 def test_haversine_zero_distance() -> None:
     """Haversine zero distance."""
-    node = make_node("x", 40.0, -100.0)
-    assert haversine_miles(node, node) == pytest.approx(0.0)
+    vertex = make_vertex("x", 40.0, -100.0)
+    assert haversine_miles(vertex, vertex) == pytest.approx(0.0)
 
 
 def test_haversine_known_distance() -> None:
     # New York to Los Angeles is roughly 2450 miles.
     """Haversine known distance."""
-    new_york = make_node("ny", 40.7128, -74.006)
-    los_angeles = make_node("la", 34.0522, -118.2437)
+    new_york = make_vertex("ny", 40.7128, -74.006)
+    los_angeles = make_vertex("la", 34.0522, -118.2437)
     assert haversine_miles(new_york, los_angeles) == pytest.approx(2450.0, abs=30.0)
 
 
@@ -127,16 +101,6 @@ def test_unreachable_target_has_infinite_distance() -> None:
     assert distances.get("c", math.inf) == math.inf
 
 
-def test_classify_category_f35() -> None:
-    """Classify category f35."""
-    assert classify_category("F-35 CONUS Installations") == "f35"
-
-
-def test_classify_category_falls_back_to_slug() -> None:
-    """Classify category falls back to slug."""
-    assert classify_category("Mystery Folder") == "mystery_folder"
-
-
 def test_dijkstra_relaxes_past_a_stale_heap_entry() -> None:
     """Dijkstra relaxes past a stale heap entry."""
     adjacency = {
@@ -163,8 +127,8 @@ def test_reconstruct_path_broken_chain_returns_empty() -> None:
     assert not reconstruct_path("a", "c", {"c": "b"})
 
 
-def test_path_edge_keys_for_a_three_node_path() -> None:
-    """Path edge keys for a three node path."""
+def test_path_edge_keys_for_a_three_vertex_path() -> None:
+    """Path edge keys for a three vertex path."""
     assert path_edge_keys(("a", "b", "c")) == {edge_key("a", "b"), edge_key("b", "c")}
 
 

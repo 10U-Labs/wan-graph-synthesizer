@@ -1,7 +1,7 @@
 """Unit tests for the design validation checks.
 
 The two requirements under test: every aggregation must reach two distinct cores
-over node-disjoint paths, and the core tier must form a connected full mesh.
+over vertex-disjoint paths, and the core tier must form a connected full mesh.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 from wan_designer import (
     Design,
     DesignMetrics,
-    Node,
+    Vertex,
     aggregations_without_core_redundancy,
     disconnected_core_pairs,
     edge_key,
@@ -17,11 +17,11 @@ from wan_designer import (
 )
 
 
-def make_pop(node_id: str) -> Node:
+def make_pop(vertex_id: str) -> Vertex:
     """Test helper: build make pop."""
-    return Node(
-        id=node_id, name=node_id, category="Carrier 400G PoPs",
-        kind="carrier_pop", lat=0.0, lon=0.0,
+    return Vertex(
+        id=vertex_id, name=vertex_id, tenant="Lumen",
+        kind="PoP", lat=0.0, lon=0.0,
     )
 
 
@@ -51,7 +51,7 @@ GOOD = build_design(
     physical_pairs=[("A", "X"), ("X", "C1"), ("A", "Y"), ("Y", "C2"), ("C1", "C2")],
 )
 
-# Aggregation A reaches both cores only through the single transit node Z.
+# Aggregation A reaches both cores only through the single transit vertex Z.
 BOTTLENECK = build_design(
     core_ids=("C1", "C2"),
     aggregation_ids=("A",),
@@ -67,19 +67,19 @@ BROKEN_MESH = build_design(
     physical_pairs=[("C1", "C2"), ("C3", "Q")],
 )
 
-GOOD_NODES = [make_pop(name) for name in ("A", "X", "Y", "C1", "C2")]
-BOTTLENECK_NODES = [make_pop(name) for name in ("A", "Z", "C1", "C2")]
-BROKEN_MESH_NODES = [make_pop(name) for name in ("C1", "C2", "C3", "Q")]
+GOOD_VERTICES = [make_pop(name) for name in ("A", "X", "Y", "C1", "C2")]
+BOTTLENECK_VERTICES = [make_pop(name) for name in ("A", "Z", "C1", "C2")]
+BROKEN_MESH_VERTICES = [make_pop(name) for name in ("C1", "C2", "C3", "Q")]
 
 
 def test_good_design_is_dual_homed() -> None:
     """Good design is dual homed."""
-    assert validate_design(GOOD_NODES, GOOD)["aggregations_dual_homed_to_cores"] is True
+    assert validate_design(GOOD_VERTICES, GOOD)["aggregations_dual_homed_to_cores"] is True
 
 
 def test_good_design_has_full_mesh() -> None:
     """Good design has full mesh."""
-    assert validate_design(GOOD_NODES, GOOD)["cores_full_mesh"] is True
+    assert validate_design(GOOD_VERTICES, GOOD)["cores_full_mesh"] is True
 
 
 def test_good_design_has_no_missing_redundancy() -> None:
@@ -89,7 +89,7 @@ def test_good_design_has_no_missing_redundancy() -> None:
 
 def test_bottleneck_is_not_dual_homed() -> None:
     """Bottleneck is not dual homed."""
-    report = validate_design(BOTTLENECK_NODES, BOTTLENECK)
+    report = validate_design(BOTTLENECK_VERTICES, BOTTLENECK)
     assert report["aggregations_dual_homed_to_cores"] is False
 
 
@@ -100,7 +100,7 @@ def test_bottleneck_names_the_failing_aggregation() -> None:
 
 def test_broken_mesh_is_not_full_mesh() -> None:
     """Broken mesh is not full mesh."""
-    report = validate_design(BROKEN_MESH_NODES, BROKEN_MESH)
+    report = validate_design(BROKEN_MESH_VERTICES, BROKEN_MESH)
     assert report["cores_full_mesh"] is False
 
 

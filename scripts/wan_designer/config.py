@@ -18,11 +18,9 @@ import yaml
 from wan_designer.model import CliPaths, DesignParams, Tuning
 
 DEFAULT_CONFIG_PATH = Path("etc/config.yml")
-DEFAULT_MAPBOOK = "data/mapbook_nodes.csv"
-DEFAULT_CARRIER_EDGES = "data/carrier_edges.csv"
-DEFAULT_POP_ROLES = "data/carrier_pop_roles.csv"
-DEFAULT_REGIONAL_NODES = "data/regional_nodes.csv"
-DEFAULT_REGIONAL_EDGES = ["data/dcn_edges.csv", "data/vision_net_edges.csv"]
+DEFAULT_VERTICES = "data/vertices.csv"
+DEFAULT_CARRIER_EDGES = "data/edges/carrier_edges.csv"
+DEFAULT_REGIONAL_EDGES = ["data/edges/dcn_edges.csv", "data/edges/vision_net_edges.csv"]
 DEFAULT_OUTPUT_DIR = "outputs"
 
 
@@ -60,12 +58,10 @@ def _paths(data: dict[str, Any], inputs: dict[str, Any]) -> CliPaths:
     """Resolve the file-path configuration into a :class:`CliPaths`."""
     regional_edges = _str_list(inputs, "regional_edges", DEFAULT_REGIONAL_EDGES)
     return CliPaths(
-        input_path=Path(str(inputs.get("mapbook", DEFAULT_MAPBOOK))),
+        vertices_path=Path(str(inputs.get("vertices", DEFAULT_VERTICES))),
         edge_path=Path(str(inputs.get("carrier_edges", DEFAULT_CARRIER_EDGES))),
-        role_path=_optional_path(inputs.get("pop_roles", DEFAULT_POP_ROLES)),
         mapbook_pdf=_optional_path(inputs.get("mapbook_pdf", "")),
         output_dir=Path(str(data.get("output_dir", DEFAULT_OUTPUT_DIR))),
-        regional_node_path=_optional_path(inputs.get("regional_nodes", DEFAULT_REGIONAL_NODES)),
         regional_edge_paths=tuple(Path(item) for item in regional_edges),
     )
 

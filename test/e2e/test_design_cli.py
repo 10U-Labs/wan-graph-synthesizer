@@ -27,12 +27,12 @@ def fixture_design() -> dict[str, Any]:
 
 def core_names(design: dict[str, Any]) -> set[str]:
     """Test helper: build core names."""
-    return {node["name"] for node in design["nodes"] if node["tier_role"] == "core"}
+    return {vertex["name"] for vertex in design["vertices"] if vertex["tier_role"] == "core"}
 
 
 def aggregation_names(design: dict[str, Any]) -> set[str]:
     """Test helper: build aggregation names."""
-    return {node["name"] for node in design["nodes"] if node["tier_role"] == "aggregation"}
+    return {vertex["name"] for vertex in design["vertices"] if vertex["tier_role"] == "aggregation"}
 
 
 def core_targets_by_aggregation(design: dict[str, Any]) -> dict[str, set[str]]:
@@ -59,13 +59,13 @@ def test_cores_form_full_mesh(design: dict[str, Any]) -> None:
     assert design["validation"]["cores_full_mesh"] is True
 
 
-def test_access_nodes_are_dual_homed(design: dict[str, Any]) -> None:
-    """Access nodes are dual homed."""
-    assert design["validation"]["access_nodes_with_two_aggregation_links"] is True
+def test_access_vertices_are_dual_homed(design: dict[str, Any]) -> None:
+    """Access vertices are dual homed."""
+    assert design["validation"]["access_vertices_with_two_aggregation_links"] is True
 
 
-def test_core_tier_has_at_least_three_nodes(design: dict[str, Any]) -> None:
-    """Core tier has at least the minimum three nodes."""
+def test_core_tier_has_at_least_three_vertices(design: dict[str, Any]) -> None:
+    """Core tier has at least the minimum three vertices."""
     assert len(core_names(design)) >= 3
 
 

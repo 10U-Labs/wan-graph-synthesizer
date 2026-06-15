@@ -1,7 +1,7 @@
 """Integration test: the optimizer over the synthetic ring graph.
 
 A six-PoP ring is 2-connected, so every aggregation reaches two cores over
-node-disjoint paths; a degree-one spur confirms such PoPs are never aggregations.
+vertex-disjoint paths; a degree-one spur confirms such PoPs are never aggregations.
 """
 
 from __future__ import annotations
@@ -53,6 +53,6 @@ def test_cores_form_full_mesh() -> None:
     assert ARTIFACTS.validation["cores_full_mesh"] is True
 
 
-def test_access_nodes_dual_homed() -> None:
-    """Access nodes dual homed."""
-    assert ARTIFACTS.validation["access_nodes_with_two_aggregation_links"] is True
+def test_access_vertices_dual_homed() -> None:
+    """Access vertices dual homed."""
+    assert ARTIFACTS.validation["access_vertices_with_two_aggregation_links"] is True

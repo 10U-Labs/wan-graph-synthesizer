@@ -2,7 +2,7 @@
 
 WAN Graph Designer is a web application for designing wide area network
 layouts as mathematical graphs. In this context, a graph is limited to
-nodes and edges: nodes represent network locations, and edges represent
+vertices and edges: vertices represent network locations, and edges represent
 allowed connections between those locations.
 
 The application accepts structured inputs and renders the resulting WAN
@@ -10,19 +10,19 @@ graph as a webpage. Graphviz is used as the graph rendering engine.
 
 ## Inputs
 
-- **Sites** (required) — network locations represented as graph nodes.
+- **Sites** (required) — network locations represented as graph vertices.
 - **Aggregation points** (optional) — intermediate locations that
   collect traffic from sites.
 - **Core sites** (optional) — central locations that connect to
   aggregation points and to each other.
-- **Edges** (optional) — explicit connections between supported node
+- **Edges** (optional) — explicit connections between supported vertex
   types.
 
 Sites, aggregation points, and core sites each include:
 
 - **Location** — a town, city, county, or military base.
 - **U.S. state** — the state where the location exists.
-- **Bandwidth** — the bandwidth required or available at the node.
+- **Bandwidth** — the bandwidth required or available at the vertex.
 
 ## Edges and design rules
 
@@ -38,40 +38,42 @@ The resilience rules the design enforces:
 
 - Every site dual-homes to two distinct aggregation points.
 - Every aggregation point reaches two distinct core sites over two
-  node-disjoint paths, so no single PoP or link failure can sever it
+  vertex-disjoint paths, so no single PoP or link failure can sever it
   from the core tier.
 - The core sites form a full mesh: every core connects to every other
   core.
 - A PoP needs at least two physical links to be eligible as an
-  aggregation or core node; degree-one spurs cannot be dual-homed.
+  aggregation or core vertex; degree-one spurs cannot be dual-homed.
 
 ## Output
 
 The output is a webpage that displays the WAN graph. The rendered graph
-contains only nodes and edges, using Graphviz as the layout and
+contains only vertices and edges, using Graphviz as the layout and
 rendering engine.
 
 ## Carrier three-tier WAN design script
 
 Use `scripts/design_network.py` to compute a three-tier WAN design
-from the mapbook node and edge CSVs in `data/`:
+from the vertex and edge CSVs in `data/`:
 
 ```bash
 python3 scripts/design_network.py
 ```
 
-The placemark nodes live in `data/mapbook_nodes.csv` (exported from the
-source KMZ, which is still accepted if passed as input). The script reads
-F-35, Sentinel, CSP Secret region, and Carrier 400G PoP nodes from it.
-F-35, Sentinel, and CSP Secret locations are access nodes.
+All vertices live in `data/vertices.csv`, one row per vertex with columns
+`name,latitude,longitude,tenant,kind,shown_in_map,description`. The `kind`
+column classifies each vertex (`PoP`/`ROADM` carrier PoPs versus
+`Military installation`, `CSP data center`, `UARC`, and `Corporate office`
+access vertices) and `tenant` records its operator or program (Lumen, DCN,
+VisionNet, F-35, AFNWC/NI, AFLCMC, AWS, OCI, Azure).
 The script selects up to three Carrier core PoPs, selects aggregation PoPs
-as needed, dual-homes every access node to two aggregation PoPs, routes
-every aggregation to two cores over node-disjoint paths on the physical
+as needed, dual-homes every access vertex to two aggregation PoPs, routes
+every aggregation to two cores over vertex-disjoint paths on the physical
 Carrier graph, and meshes the cores. The run fails if any aggregation
 cannot reach two cores disjointly or the cores are not a full mesh.
 
-The edge list in `data/carrier_edges.csv` is transcribed from the carrier's
-publicly published network map. Results are written to
+The edge files in `data/edges/` are transcribed from the carriers'
+published network maps. Results are written to
 `outputs/` as JSON, CSV, KML, and Graphviz DOT files.
 
 Tune the core tier:

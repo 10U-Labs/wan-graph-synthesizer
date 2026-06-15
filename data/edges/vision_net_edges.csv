@@ -12,9 +12,9 @@ Billings,Havre,backbone,confirmed
 Bozeman,Helena,backbone,confirmed
 Bozeman,Havre,backbone,confirmed
 Miles City,Havre,backbone,confirmed
-Kalispell,"Missoula, MT",interconnect-lumen,confirmed (Missoula is a Lumen PoP and a VN node)
+Kalispell,"Missoula, MT",interconnect-lumen,confirmed (Missoula is a Lumen PoP and a VN vertex)
 "Great Falls, MT","Missoula, MT",interconnect-lumen,confirmed
 Havre,"Missoula, MT",interconnect-lumen,confirmed
 Helena,"Missoula, MT",interconnect-lumen,confirmed
-Havre,Williston,interconnect-dcn,confirmed (Williston is a DCN node)
+Havre,Williston,interconnect-dcn,confirmed (Williston is a DCN vertex)
 Miles City,Williston,interconnect-dcn,confirmed

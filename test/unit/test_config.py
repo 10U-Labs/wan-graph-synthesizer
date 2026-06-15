@@ -30,9 +30,9 @@ def test_default_has_no_forced_cores() -> None:
     assert len(default_config().params.forced_core_names) == 0
 
 
-def test_default_mapbook_path() -> None:
-    """The default config points at the project mapbook node CSV."""
-    assert default_config().paths.input_path == Path("data/mapbook_nodes.csv")
+def test_default_vertices_path() -> None:
+    """The default config points at the merged vertices CSV."""
+    assert default_config().paths.vertices_path == Path("data/vertices.csv")
 
 
 def test_default_output_dir() -> None:
@@ -45,16 +45,11 @@ def test_default_mapbook_pdf_is_none() -> None:
     assert default_config().paths.mapbook_pdf is None
 
 
-def test_default_role_path() -> None:
-    """The default config points at the PoP roles CSV."""
-    assert default_config().paths.role_path == Path("data/carrier_pop_roles.csv")
-
-
 def test_default_regional_edges() -> None:
     """The default config lists both regional carrier edge files."""
     assert default_config().paths.regional_edge_paths == (
-        Path("data/dcn_edges.csv"),
-        Path("data/vision_net_edges.csv"),
+        Path("data/edges/dcn_edges.csv"),
+        Path("data/edges/vision_net_edges.csv"),
     )
 
 
@@ -85,9 +80,14 @@ def test_reads_output_dir() -> None:
     assert _config({"output_dir": "out2"}).paths.output_dir == Path("out2")
 
 
-def test_empty_pop_roles_disables_the_path() -> None:
-    """An empty pop_roles string disables the roles file."""
-    assert _config({"inputs": {"pop_roles": ""}}).paths.role_path is None
+def test_reads_vertices_path_override() -> None:
+    """A vertices input value is read into the paths."""
+    assert _config({"inputs": {"vertices": "v.csv"}}).paths.vertices_path == Path("v.csv")
+
+
+def test_reads_mapbook_pdf_path() -> None:
+    """A non-empty mapbook_pdf input is wrapped as a path."""
+    assert _config({"inputs": {"mapbook_pdf": "m.pdf"}}).paths.mapbook_pdf == Path("m.pdf")
 
 
 def test_reads_resilience_augmentation_off() -> None:

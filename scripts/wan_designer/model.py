@@ -14,16 +14,26 @@ KML_NS = {"k": "http://www.opengis.net/kml/2.2"}
 EARTH_RADIUS_MILES = 3958.7613
 
 @dataclass(frozen=True)
-class Node:
-    """A geographic placemark: an access site or a Carrier PoP."""
+class Vertex:
+    """A geographic vertex: an access site, a cloud region, or a carrier PoP.
+
+    ``tenant`` is the operator or program the vertex belongs to (e.g. ``Lumen``,
+    ``F-35``, ``AWS``, ``DCN``); ``kind`` is the facility type (``PoP``,
+    ``ROADM``, ``Military installation``, ``CSP data center``, ``UARC``,
+    ``Corporate office``). Carrier PoPs are the vertices whose ``kind`` is in
+    :data:`CARRIER_KINDS`; everything else is an access/demand vertex.
+    """
 
     id: str
     name: str
-    category: str
+    tenant: str
     kind: str
     lat: float
     lon: float
     description: str = ""
+    # Whether the vertex appears on the source mapbook layer (carrier PoPs are
+    # backbone infrastructure and are not shown; installations and regions are).
+    shown_in_map: bool = True
 
 @dataclass(frozen=True)
 class PhysicalEdge:
@@ -37,7 +47,7 @@ class PhysicalEdge:
 
 @dataclass(frozen=True)
 class AccessEdge:
-    """A logical link from an access node to a chosen aggregation PoP."""
+    """A logical link from an access vertex to a chosen aggregation PoP."""
 
     source: str
     target: str
@@ -83,7 +93,7 @@ class Tuning:
     two in step.
     """
 
-    cluster_min_points: int = 2  # access nodes needed to seed a new aggregation
+    cluster_min_points: int = 2  # access vertices needed to seed a new aggregation
     cluster_min_radius_miles: float = 50.0  # floor on the derived cluster radius
     cluster_max_radius_miles: float = 250.0  # ceiling on the derived cluster radius
     compass_octants: int = 8  # compass sectors used to score a core's link spread
@@ -103,12 +113,12 @@ class DesignParams:
 
 @dataclass(frozen=True)
 class RoleOverrides:
-    """Operator role pins resolved from PoP names to concrete node ids.
+    """Operator role pins resolved from PoP names to concrete vertex ids.
 
     ``forced_core_ids`` and ``forced_aggregation_ids`` are the ids fixed into
     the core and aggregation tiers; a PoP pinned as both is co-located and has
-    already been split into a distinct ``CORE`` node (kept here) and ``AGGR``
-    node (whose id is what lands in ``forced_aggregation_ids``). ``excluded_ids``
+    already been split into a distinct ``CORE`` vertex (kept here) and ``AGGR``
+    vertex (whose id is what lands in ``forced_aggregation_ids``). ``excluded_ids``
     are barred from being a core, an aggregation, or an access home.
     """
 
@@ -118,10 +128,10 @@ class RoleOverrides:
 
 @dataclass(frozen=True)
 class DesignInputs:
-    """Pre-computed node, edge, and shortest-path context shared across cores."""
+    """Pre-computed vertex, edge, and shortest-path context shared across cores."""
 
-    access_nodes: list[Node]
-    carrier_pops: list[Node]
+    access_vertices: list[Vertex]
+    carrier_pops: list[Vertex]
     physical_edges: dict[tuple[str, str], PhysicalEdge]
     eligible_aggregation_ids: set[str]
     adjacency: dict[str, list[tuple[str, float]]]
@@ -134,10 +144,10 @@ class ValidationReport(TypedDict):
     connected: bool
     component_count: int
     min_distinct_neighbor_degree: int
-    degree_deficient_nodes: list[dict[str, object]]
+    degree_deficient_vertices: list[dict[str, object]]
     biconnected_no_articulation_points: bool
     articulation_points: list[dict[str, str]]
-    access_nodes_with_two_aggregation_links: bool
+    access_vertices_with_two_aggregation_links: bool
     aggregations_dual_homed_to_cores: bool
     aggregations_missing_core_redundancy: list[dict[str, str]]
     cores_full_mesh: bool
@@ -147,27 +157,25 @@ class ValidationReport(TypedDict):
 class CliPaths:
     """All file paths resolved from the command line."""
 
-    input_path: Path
+    vertices_path: Path
     edge_path: Path
-    role_path: Path | None
     mapbook_pdf: Path | None
     output_dir: Path
-    regional_node_path: Path | None = None
     regional_edge_paths: tuple[Path, ...] = ()
 
 @dataclass(frozen=True)
 class SourceFiles:
     """Input file paths recorded in the JSON output for provenance."""
 
-    input_path: Path
+    vertices_path: Path
     edge_path: Path
     mapbook_pdf: Path | None
 
 @dataclass(frozen=True)
 class DesignArtifacts:
-    """A completed design bundled with the nodes and edges it was built from."""
+    """A completed design bundled with the vertices and edges it was built from."""
 
-    nodes: list[Node]
+    vertices: list[Vertex]
     physical_edges: dict[tuple[str, str], PhysicalEdge]
     design: Design
     validation: ValidationReport
@@ -177,26 +185,20 @@ def slugify(value: str) -> str:
     value = value.lower().strip()
     value = re.sub(r"[^a-z0-9]+", "_", value)
     value = re.sub(r"_+", "_", value).strip("_")
-    return value or "node"
+    return value or "vertex"
 
-def classify_category(category: str) -> str:
-    """Map a folder/category label to a canonical node kind."""
-    normalized = category.lower()
-    if "carrier" in normalized and "pop" in normalized:
-        return "carrier_pop"
-    # First matching group wins; "top secret" precedes "secret" so it is not
-    # swallowed by the broader secret match.
-    keyword_kinds = (
-        (("sentinel",), "sentinel"),
-        (("cui",), "cui_region"),
-        (("top secret",), "ts_region"),
-        (("secret", "cloud service"), "csp_secret"),
-        (("f-35", "f35"), "f35"),
-    )
-    for keywords, kind in keyword_kinds:
-        if any(keyword in normalized for keyword in keywords):
-            return kind
-    return slugify(category)
+KIND_POP = "PoP"
+KIND_ROADM = "ROADM"
+# Vertex kinds that make a vertex a routable carrier PoP on the backbone graph.
+CARRIER_KINDS = frozenset({KIND_POP, KIND_ROADM})
+
+def is_carrier_pop(vertex: Vertex) -> bool:
+    """Whether a vertex is a carrier PoP (a routable backbone node)."""
+    return vertex.kind in CARRIER_KINDS
+
+def carrier_role(vertex: Vertex) -> str:
+    """The optimizer role of a carrier PoP: transit-only ROADMs are ``roadm``."""
+    return "roadm" if vertex.kind == KIND_ROADM else "aggregator"
 
 def edge_key(left: str, right: str) -> tuple[str, str]:
     """Return the two PoP ids as an order-independent edge key."""
@@ -204,8 +206,8 @@ def edge_key(left: str, right: str) -> tuple[str, str]:
         raise ValueError(f"Self-loop is not a valid Carrier edge: {left}")
     return (left, right) if left < right else (right, left)
 
-def haversine_miles(a: Node, b: Node) -> float:
-    """Great-circle distance between two nodes in miles."""
+def haversine_miles(a: Vertex, b: Vertex) -> float:
+    """Great-circle distance between two vertices in miles."""
     lat1 = math.radians(a.lat)
     lat2 = math.radians(b.lat)
     delta_lat = math.radians(b.lat - a.lat)

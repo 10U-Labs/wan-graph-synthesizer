@@ -7,16 +7,17 @@ import itertools
 from wan_designer.model import (
     Design,
     DesignMetrics,
-    Node,
+    Vertex,
     PhysicalEdge,
     ValidationReport,
     edge_key,
+    is_carrier_pop,
 )
 from wan_designer.graphs import (
     articulation_points,
     connected_components,
     dijkstra,
-    node_disjoint_paths_to_cores,
+    vertex_disjoint_paths_to_cores,
 )
 
 
@@ -26,21 +27,21 @@ def design_edge_set(design: Design) -> set[tuple[str, str]]:
     edges.update(edge_key(edge.source, edge.target) for edge in design.access_edges)
     return edges
 
-def included_node_ids(design: Design) -> set[str]:
-    """Every node id that participates in the design."""
+def included_vertex_ids(design: Design) -> set[str]:
+    """Every vertex id that participates in the design."""
     ids = set(design.core_ids) | set(design.aggregation_ids) | set(design.transit_ids)
-    ids.update(node_id for edge in design.physical_edge_keys for node_id in edge)
+    ids.update(vertex_id for edge in design.physical_edge_keys for vertex_id in edge)
     ids.update(edge.source for edge in design.access_edges)
     ids.update(edge.target for edge in design.access_edges)
     return ids
 
-def design_badness(nodes: list[Node], design: Design) -> tuple[int, int, int]:
+def design_badness(vertices: list[Vertex], design: Design) -> tuple[int, int, int]:
     """Disconnection, articulation, and degree-deficit counts as a sort key."""
-    validation = validate_design(nodes, design)
+    validation = validate_design(vertices, design)
     return (
         0 if validation["connected"] else validation["component_count"],
         len(validation["articulation_points"]),
-        len(validation["degree_deficient_nodes"]),
+        len(validation["degree_deficient_vertices"]),
     )
 
 def with_updated_physical_edges(
@@ -48,7 +49,7 @@ def with_updated_physical_edges(
     physical_edge_keys: set[tuple[str, str]],
 ) -> Design:
     """Copy a design with a new physical edge set and refreshed transit tier."""
-    carrier_on_physical = {node_id for edge in physical_edge_keys for node_id in edge}
+    carrier_on_physical = {vertex_id for edge in physical_edge_keys for vertex_id in edge}
     transit_ids = tuple(
         sorted(carrier_on_physical - set(design.core_ids) - set(design.aggregation_ids))
     )
@@ -77,7 +78,7 @@ def refresh_physical_costs(
     return design
 
 def best_edge_to_add(
-    nodes: list[Node],
+    vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     current: Design,
     current_badness: tuple[int, int, int],
@@ -92,7 +93,7 @@ def best_edge_to_add(
         candidate = with_updated_physical_edges(
             current, current.physical_edge_keys | {key}
         )
-        candidate_badness = design_badness(nodes, candidate)
+        candidate_badness = design_badness(vertices, candidate)
         if candidate_badness >= current_badness:
             continue
         gain = tuple(
@@ -106,17 +107,17 @@ def best_edge_to_add(
     return best_key, best_badness
 
 def augment_physical_resilience(
-    nodes: list[Node],
+    vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     design: Design,
 ) -> Design:
     """Greedily add physical edges to remove cut vertices and degree deficits."""
     current = with_updated_physical_edges(design, set(design.physical_edge_keys))
-    current_badness = design_badness(nodes, current)
+    current_badness = design_badness(vertices, current)
 
     while current_badness != (0, 0, 0):
         best_key, best_badness = best_edge_to_add(
-            nodes, physical_edges, current, current_badness
+            vertices, physical_edges, current, current_badness
         )
         if best_key is None:
             break
@@ -136,11 +137,11 @@ def selected_physical_adjacency(design: Design) -> dict[str, list[tuple[str, flo
     return adjacency
 
 def aggregations_without_core_redundancy(design: Design) -> list[str]:
-    """Aggregations lacking two node-disjoint paths to two distinct cores."""
+    """Aggregations lacking two vertex-disjoint paths to two distinct cores."""
     adjacency = selected_physical_adjacency(design)
     missing: list[str] = []
     for aggregation_id in design.aggregation_ids:
-        _distance, paths = node_disjoint_paths_to_cores(
+        _distance, paths = vertex_disjoint_paths_to_cores(
             adjacency, aggregation_id, design.core_ids, 2
         )
         if len(paths) < 2:
@@ -163,25 +164,25 @@ def disconnected_core_pairs(design: Design) -> list[tuple[str, str]]:
 def neighbor_degrees(
     ids: set[str], edges: set[tuple[str, str]]
 ) -> dict[str, int]:
-    """Distinct-neighbor degree of every included node in the design graph."""
-    neighbors: dict[str, set[str]] = {node_id: set() for node_id in ids}
+    """Distinct-neighbor degree of every included vertex in the design graph."""
+    neighbors: dict[str, set[str]] = {vertex_id: set() for vertex_id in ids}
     for left, right in edges:
         if left in ids and right in ids:
             neighbors[left].add(right)
             neighbors[right].add(left)
-    return {node_id: len(value) for node_id, value in neighbors.items()}
+    return {vertex_id: len(value) for vertex_id, value in neighbors.items()}
 
 def access_attachment_counts(design: Design) -> dict[str, int]:
-    """Number of aggregation links attached to each access node."""
+    """Number of aggregation links attached to each access vertex."""
     counts: dict[str, int] = {}
     for edge in design.access_edges:
         counts[edge.source] = counts.get(edge.source, 0) + 1
     return counts
 
-def validate_design(nodes: list[Node], design: Design) -> ValidationReport:
+def validate_design(vertices: list[Vertex], design: Design) -> ValidationReport:
     """Check a design against every hard structural requirement."""
-    nodes_by_id = {node.id: node for node in nodes}
-    ids = included_node_ids(design)
+    vertices_by_id = {vertex.id: vertex for vertex in vertices}
+    ids = included_vertex_ids(design)
     edges = design_edge_set(design)
     components = connected_components(ids, edges)
     degrees = neighbor_degrees(ids, edges)
@@ -194,39 +195,39 @@ def validate_design(nodes: list[Node], design: Design) -> ValidationReport:
         "connected": len(components) == 1,
         "component_count": len(components),
         "min_distinct_neighbor_degree": min(degrees.values()) if degrees else 0,
-        "degree_deficient_nodes": [
-            {"id": node_id, "name": nodes_by_id[node_id].name, "degree": degree}
-            for node_id, degree in sorted(degrees.items())
+        "degree_deficient_vertices": [
+            {"id": vertex_id, "name": vertices_by_id[vertex_id].name, "degree": degree}
+            for vertex_id, degree in sorted(degrees.items())
             if degree < 2
         ],
         "biconnected_no_articulation_points": len(components) == 1 and not articulations,
         "articulation_points": [
-            {"id": node_id, "name": nodes_by_id[node_id].name}
-            for node_id in sorted(articulations)
+            {"id": vertex_id, "name": vertices_by_id[vertex_id].name}
+            for vertex_id in sorted(articulations)
         ],
-        "access_nodes_with_two_aggregation_links": all(
+        "access_vertices_with_two_aggregation_links": all(
             count == 2 for count in attachments.values()
         ),
         "aggregations_dual_homed_to_cores": not missing_core_redundancy,
         "aggregations_missing_core_redundancy": [
-            {"id": node_id, "name": nodes_by_id[node_id].name}
-            for node_id in missing_core_redundancy
+            {"id": vertex_id, "name": vertices_by_id[vertex_id].name}
+            for vertex_id in missing_core_redundancy
         ],
         "cores_full_mesh": not core_pairs,
         "core_pairs_disconnected": [
-            {"source": nodes_by_id[left].name, "target": nodes_by_id[right].name}
+            {"source": vertices_by_id[left].name, "target": vertices_by_id[right].name}
             for left, right in core_pairs
         ],
     }
 
-def node_role(node_id: str, design: Design, node: Node) -> str:
-    """Return the tier role (access/core/aggregation/transit/unused) of a node."""
-    if node.kind != "carrier_pop":
+def vertex_role(vertex_id: str, design: Design, vertex: Vertex) -> str:
+    """Return the tier role (access/core/aggregation/transit/unused) of a vertex."""
+    if not is_carrier_pop(vertex):
         return "access"
-    if node_id in design.core_ids:
+    if vertex_id in design.core_ids:
         return "core"
-    if node_id in design.aggregation_ids:
+    if vertex_id in design.aggregation_ids:
         return "aggregation"
-    if node_id in design.transit_ids:
+    if vertex_id in design.transit_ids:
         return "transit"
     return "unused"

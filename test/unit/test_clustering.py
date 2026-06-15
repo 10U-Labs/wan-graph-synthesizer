@@ -1,4 +1,4 @@
-"""Unit tests for density clustering of access nodes."""
+"""Unit tests for density clustering of access vertices."""
 
 from __future__ import annotations
 
@@ -8,14 +8,14 @@ import fixtures
 from wan_designer.clustering import (
     MAX_RADIUS_MILES,
     MIN_RADIUS_MILES,
-    cluster_access_nodes,
+    cluster_access_vertices,
     dbscan_labels,
     derive_radius,
     knee_value,
     pairwise_miles,
 )
 
-access = fixtures.access_node
+access = fixtures.access_vertex
 
 
 def line_matrix(positions: list[float]) -> list[list[float]]:
@@ -85,23 +85,23 @@ def test_dbscan_labels_absorbs_a_border_point() -> None:
     assert labels[3] == labels[0]
 
 
-def test_cluster_access_nodes_returns_no_clusters_when_too_few() -> None:
+def test_cluster_access_vertices_returns_no_clusters_when_too_few() -> None:
     """Fewer than the minimum points yields no clusters at all."""
-    clusters, _sparse, _radius = cluster_access_nodes([access("a")])
+    clusters, _sparse, _radius = cluster_access_vertices([access("a")])
     assert clusters == []
 
 
-def test_cluster_access_nodes_groups_a_dense_metro() -> None:
-    """Four tightly co-located access nodes form a single cluster."""
-    nodes = [access(name, 40.0, -100.0 + offset) for name, offset in
+def test_cluster_access_vertices_groups_a_dense_metro() -> None:
+    """Four tightly co-located access vertices form a single cluster."""
+    vertices = [access(name, 40.0, -100.0 + offset) for name, offset in
              (("a", 0.0), ("b", 0.05), ("c", 0.1), ("d", 0.15))]
-    clusters, _sparse, _radius = cluster_access_nodes(nodes)
+    clusters, _sparse, _radius = cluster_access_vertices(vertices)
     assert len(clusters) == 1
 
 
-def test_cluster_access_nodes_leaves_a_far_node_sparse() -> None:
-    """A node far from a dense metro is left sparse, not forced into the cluster."""
-    nodes = [access("a", 40.0, -100.0), access("b", 40.0, -100.05),
+def test_cluster_access_vertices_leaves_a_far_vertex_sparse() -> None:
+    """A vertex far from a dense metro is left sparse, not forced into the cluster."""
+    vertices = [access("a", 40.0, -100.0), access("b", 40.0, -100.05),
              access("c", 40.0, -100.1), access("far", 25.0, -80.0)]
-    _clusters, sparse, _radius = cluster_access_nodes(nodes)
+    _clusters, sparse, _radius = cluster_access_vertices(vertices)
     assert sparse == ["far"]
