@@ -82,8 +82,8 @@ canonical design:
   split into a `CORE` node (kept under the PoP's own name) and a
   co-located `AGGR` node, per hard constraint 8.
 
-The canonical design pins Salt Lake City and Ashburn as co-located
-core+aggregation facilities; Atlanta as a core; Herndon, Portland, San
+The canonical design pins Ashburn as a co-located core+aggregation
+facility; Atlanta as a core; Salt Lake City, Herndon, Portland, San
 Luis Obispo, Phoenix, New York, and Newark as aggregations; and excludes
 Ogden. Two Long Island demand intents are not Lumen PoPs in
 the mapbook, so they are mapped to the nearest existing PoPs: Brookhaven

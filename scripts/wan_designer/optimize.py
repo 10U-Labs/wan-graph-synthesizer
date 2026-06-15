@@ -3,12 +3,11 @@
 Cores are chosen for strength, not mileage (the source mapbook has no
 distances): each core's strength is its degree plus compass spread plus path
 straightness, and for a given core count the strongest feasible set wins, with
-total last-mile only breaking ties. Salt Lake City is required as a core to
-anchor the mountain-west, where the three Sentinel wings concentrate their
-demand. The number of cores is not fixed at the minimum: the search sweeps core
-counts upward and keeps adding a core while doing so meaningfully shortens how
-far demand sits from its cores (in hops, weighted by the sites behind each
-aggregation), stopping once extra cores stop helping.
+total last-mile only breaking ties. The number of cores is not fixed at the
+minimum: the search sweeps core counts upward and keeps adding a core while
+doing so meaningfully shortens how far demand sits from its cores (in hops,
+weighted by the sites behind each aggregation), stopping once extra cores stop
+helping.
 
 The three Sentinel bases are forced into the aggregation tier at their
 co-located PoPs; access sites with no aggregation within the last-mile cap are
@@ -57,12 +56,6 @@ COMPASS_OCTANTS = 8
 
 # The Sentinel ICBM wings, forced into the aggregation tier at their PoPs.
 SENTINEL_BASE_NAMES = ("Malmstrom AFB", "Minot AFB", "F.E. Warren AFB")
-
-# PoPs required as cores regardless of raw strength, to anchor a region whose
-# demand justifies a core. Salt Lake City anchors the mountain-west, where the
-# three Sentinel wings concentrate 165 sites each behind Minot, Great Falls,
-# and Cheyenne.
-REQUIRED_CORE_NAMES = ("Salt Lake City, UT",)
 
 # Modeled demand behind each Sentinel base, used to weight how heavily a base's
 # distance to its cores counts when deciding how many cores the design needs.
@@ -564,8 +557,8 @@ def best_design_at_size(
 ) -> Design | None:
     """Strongest feasible design using exactly ``size`` cores, or None.
 
-    The required cores (e.g. Salt Lake City) are fixed into every candidate set;
-    the rest are chosen by strength (the spec forbids mileage as a design cost),
+    Any operator-forced cores are fixed into every candidate set; the rest are
+    chosen by strength (the spec forbids mileage as a design cost),
     with total last-mile only breaking ties among equally strong sets. Core sets
     are tried strongest-first and scored cheaply (feasibility plus access homing,
     no routed paths). Because strength is non-increasing down that order, the
@@ -724,14 +717,6 @@ def sentinel_split(
     access_nodes = [node for node in all_access if node.id not in absorbed]
     return forced, access_nodes
 
-def required_core_ids(carrier_pops: list[Node], eligible_ids: set[str]) -> frozenset[str]:
-    """Ids of the PoPs that must be cores (e.g. Salt Lake City), when eligible."""
-    return frozenset(
-        pop.id
-        for pop in carrier_pops
-        if pop.name in REQUIRED_CORE_NAMES and pop.id in eligible_ids
-    )
-
 def build_search_plan(
     inputs: DesignInputs,
     eligible_ids: set[str],
@@ -741,9 +726,8 @@ def build_search_plan(
 ) -> _SearchPlan:
     """Compute node strengths, access-node clusters, and core candidates.
 
-    Required cores combine the named anchor (Salt Lake City) with any
-    operator-forced cores; forced aggregations (Sentinel bases, co-located
-    ``AGGR`` nodes, Herndon) are never free core candidates.
+    Required cores are the operator-forced cores; forced aggregations (Sentinel
+    bases, co-located ``AGGR`` nodes, Herndon) are never free core candidates.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
@@ -755,9 +739,7 @@ def build_search_plan(
     core_candidates = sorted(
         eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
     )
-    required = required_core_ids(inputs.carrier_pops, eligible_ids) | (
-        forced_core_ids & eligible_ids
-    )
+    required = forced_core_ids & eligible_ids
     return _SearchPlan(
         core_candidates, forced, strength_by_id, clusters=clusters,
         required_cores=frozenset(required), sentinel_ids=sentinel_ids,

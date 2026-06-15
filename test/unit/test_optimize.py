@@ -41,7 +41,6 @@ from wan_designer.optimize import (
     node_straightness,
     optimize_three_tier_design,
     reject_override_conflicts,
-    required_core_ids,
     resolve_pinned_ids,
     search_best_design,
     unit_adjacency,
@@ -401,19 +400,6 @@ def test_core_combination_count_zero_when_size_below_required() -> None:
     """The count is zero when more cores are required than the size allows."""
     plan = _required_plan(["a", "b"], {"a", "b"})
     assert core_combination_count(plan, 1) == 0
-
-
-def test_required_core_ids_picks_the_eligible_named_pop() -> None:
-    """Salt Lake City is required as a core when it is an eligible PoP."""
-    pops = [pop("Salt Lake City, UT"), pop("other")]
-    assert required_core_ids(pops, {"Salt Lake City, UT", "other"}) == frozenset(
-        {"Salt Lake City, UT"}
-    )
-
-
-def test_required_core_ids_skips_an_ineligible_named_pop() -> None:
-    """A required city that is not an eligible PoP is not forced as a core."""
-    assert required_core_ids([pop("Salt Lake City, UT")], {"other"}) == frozenset()
 
 
 def test_coverage_score_weights_a_base_by_its_sites() -> None:
