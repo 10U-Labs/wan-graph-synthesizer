@@ -13,10 +13,14 @@ design:
   # PoPs: Minot, ND (Dakota Carrier Network) for Minot AFB, Great Falls, MT
   # (VisionNet) for Malmstrom AFB, and Cheyenne for F.E. Warren AFB -- these
   # regional-carrier PoPs replace the old modeled per-base demand weighting.
-  # Boston is dual-homed via Cambridge and Stamford (mapbook page 7).
+  # Boston is dual-homed via Cambridge and Stamford (mapbook page 7). Atlanta
+  # and Dallas are also pinned as cores below; naming them here co-locates an
+  # aggregation stack beside each core in the same facility.
   forced_aggregations:
+    - Atlanta, GA
     - Boston, MA
     - Cheyenne, WY
+    - Dallas, TX
     - Great Falls, MT
     - Los Angeles, CA
     - Minot, ND
@@ -24,11 +28,14 @@ design:
     - Portland, OR
     - Richmond, VA
   # PoPs pinned into the core tier. Atlanta anchors the southeast, Dallas the
-  # south-central, and McLean the national-capital region.
+  # south-central, McLean the national-capital region, and Denver and
+  # Sacramento the west.
   forced_cores:
     - Atlanta, GA
     - Dallas, TX
+    - Denver, CO
     - McLean, VA
+    - Sacramento, CA
   # Minimum number of core PoPs. The search adds more cores only when feasibility
   # requires it; it never drops below this floor.
   min_core_count: 3

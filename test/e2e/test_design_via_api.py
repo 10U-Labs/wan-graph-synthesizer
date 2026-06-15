@@ -16,25 +16,26 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.app import build_app
+from wan_designer.config import load_config
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+CONFIG_DIR = REPO_ROOT / "etc"
+CONFIG_IDS = sorted(path.stem for path in CONFIG_DIR.glob("*.yml"))
+
+
+@pytest.fixture(name="client", scope="module")
+def fixture_client() -> TestClient:
+    """Build an in-process client over the real etc/ WAN maps."""
+    return TestClient(build_app(CONFIG_DIR, REPO_ROOT / "src" / "www"))
 
 
 @pytest.fixture(name="design", scope="module")
-def fixture_design() -> dict[str, Any]:
+def fixture_design(client: TestClient) -> dict[str, Any]:
     """Assemble the Joint design from the live API endpoints."""
-    client = TestClient(build_app(REPO_ROOT / "etc", REPO_ROOT / "src" / "www"))
     vertices = client.get("/api/wan-maps/joint/vertices").json()
     edges = client.get("/api/wan-maps/joint/edges").json()
     validation = client.get("/api/wan-maps/joint/validation").json()
     return {"vertices": vertices, "path_uses": edges["path_uses"], "validation": validation}
-
-
-@pytest.fixture(name="f35_design", scope="module")
-def fixture_f35_design() -> dict[str, Any]:
-    """Assemble the F-35 design's vertices from the live API endpoints."""
-    client = TestClient(build_app(REPO_ROOT / "etc", REPO_ROOT / "src" / "www"))
-    return {"vertices": client.get("/api/wan-maps/f_35/vertices").json()}
 
 
 def core_names(design: dict[str, Any]) -> set[str]:
@@ -92,6 +93,9 @@ def test_goodyear_is_not_an_aggregation(design: dict[str, Any]) -> None:
     assert "Goodyear, AZ" not in aggregation_names(design)
 
 
-def test_f35_forces_denver_sacramento_and_mclean_cores(f35_design: dict[str, Any]) -> None:
-    """F-35 pins Denver, Sacramento, and McLean into the core tier."""
-    assert {"Denver, CO", "Sacramento, CA", "McLean, VA"} <= core_names(f35_design)
+@pytest.mark.parametrize("config_id", CONFIG_IDS)
+def test_forced_cores_are_honored(config_id: str, client: TestClient) -> None:
+    """Every core pinned in a config file is realized as a core in its design."""
+    forced = set(load_config(CONFIG_DIR / f"{config_id}.yml").params.forced_core_names)
+    served = {"vertices": client.get(f"/api/wan-maps/{config_id}/vertices").json()}
+    assert forced <= core_names(served)
