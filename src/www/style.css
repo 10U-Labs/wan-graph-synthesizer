@@ -32,19 +32,6 @@ body {
   color: #fff;
 }
 
-#status {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-}
-
-#status.invalid {
-  color: #ff8a80;
-}
-
-#status.valid {
-  color: #b9f6ca;
-}
-
 #map {
   height: calc(100% - 2.6rem);
   width: 100%;
