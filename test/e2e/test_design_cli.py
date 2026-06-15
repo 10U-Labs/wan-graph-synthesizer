@@ -69,20 +69,10 @@ def test_core_tier_has_at_least_three_nodes(design: dict[str, Any]) -> None:
     assert len(core_names(design)) >= 3
 
 
-def test_mclean_is_a_forced_core(design: dict[str, Any]) -> None:
-    """McLean is pinned into the core tier."""
-    assert "McLean, VA" in core_names(design)
-
-
 def test_every_aggregation_reaches_two_distinct_cores(design: dict[str, Any]) -> None:
     """Every aggregation reaches two distinct cores."""
     targets = core_targets_by_aggregation(design)
     assert all(len(targets[name]) == 2 for name in aggregation_names(design))
-
-
-def test_boston_is_a_forced_aggregation(design: dict[str, Any]) -> None:
-    """Boston, dual-homed via Cambridge and Stamford, is pinned as an aggregation."""
-    assert "Boston, MA" in aggregation_names(design)
 
 
 def test_goodyear_is_not_an_aggregation(design: dict[str, Any]) -> None:

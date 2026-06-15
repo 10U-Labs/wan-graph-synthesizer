@@ -214,18 +214,27 @@ def ring_artifacts() -> DesignArtifacts:
     return DesignArtifacts(nodes, edges, design, validate_design(nodes, design))
 
 
-def forced_aggregation_artifacts(name: str) -> DesignArtifacts:
-    """Run the optimizer over the ring with one PoP forced onto the aggregation tier.
+def _forced_artifacts(params: DesignParams) -> DesignArtifacts:
+    """Run the ring optimizer with operator pins resolved through the CLI's path.
 
-    Resolves the operator pin through ``apply_role_overrides`` -- the same path the
-    CLI's ``run_design`` takes -- so the artifacts reflect a genuinely honored
-    force-aggregation request rather than an emergent cluster head.
+    Resolving via ``apply_role_overrides`` -- the same step ``run_design`` takes --
+    means the artifacts reflect genuinely honored force-core/force-aggregation
+    requests rather than emergent selections.
     """
     nodes, edges, roles = _ring_inputs()
-    params = DesignParams(core_count=2, forced_aggregation_names=(name,))
     nodes, edges, overrides = apply_role_overrides(nodes, edges, params)
     design = optimize_three_tier_design(nodes, edges, roles, params, overrides)
     return DesignArtifacts(nodes, edges, design, validate_design(nodes, design))
+
+
+def forced_aggregation_artifacts(name: str) -> DesignArtifacts:
+    """Ring artifacts with one PoP forced onto the aggregation tier."""
+    return _forced_artifacts(DesignParams(core_count=2, forced_aggregation_names=(name,)))
+
+
+def forced_core_artifacts(name: str) -> DesignArtifacts:
+    """Ring artifacts with one PoP forced onto the core tier."""
+    return _forced_artifacts(DesignParams(core_count=2, forced_core_names=(name,)))
 
 
 def sample_sources() -> SourceFiles:
