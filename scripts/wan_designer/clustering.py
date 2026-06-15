@@ -13,12 +13,13 @@ from __future__ import annotations
 
 from wan_designer.model import Node, haversine_miles
 
-# A cluster needs at least this many close access nodes (the DBSCAN minPts, N).
-MIN_POINTS = 3
-
-# Clamp the derived radius to a metro-to-regional band. The floor keeps a single
-# dense metro from fragmenting; the ceiling keeps a distant PoP (e.g. Boise, ~276
-# mi from the Utah sites) from ever counting as that cluster's local head.
+# Default algorithm dials, mirrored by the matching ``DesignParams`` fields so a
+# direct caller (and the test suite) need not pass them; ``etc/config.yml`` drives
+# the real run. A cluster needs at least this many close access nodes (DBSCAN
+# minPts, N). The radius is clamped to a metro-to-regional band: the floor keeps a
+# single dense metro from fragmenting; the ceiling keeps a distant PoP (e.g. Boise,
+# ~276 mi from the Utah sites) from ever counting as that cluster's local head.
+MIN_POINTS = 2
 MIN_RADIUS_MILES = 50.0
 MAX_RADIUS_MILES = 250.0
 
@@ -34,7 +35,7 @@ def pairwise_miles(nodes: list[Node]) -> list[list[float]]:
     return matrix
 
 
-def knee_value(sorted_values: list[float]) -> float:
+def knee_value(sorted_values: list[float], fallback: float = MIN_RADIUS_MILES) -> float:
     """The value at the elbow of an ascending curve (max distance from its chord).
 
     Standard kneedle-style detection: the point of the sorted k-distance curve
@@ -43,7 +44,7 @@ def knee_value(sorted_values: list[float]) -> float:
     """
     count = len(sorted_values)
     if count < 3:
-        return sorted_values[-1] if sorted_values else MIN_RADIUS_MILES
+        return sorted_values[-1] if sorted_values else fallback
     first, last = sorted_values[0], sorted_values[-1]
     span = last - first
     if span <= 0.0:
@@ -58,21 +59,26 @@ def knee_value(sorted_values: list[float]) -> float:
     return sorted_values[best_index]
 
 
-def derive_radius(matrix: list[list[float]], min_points: int = MIN_POINTS) -> float:
+def derive_radius(
+    matrix: list[list[float]],
+    min_points: int = MIN_POINTS,
+    min_radius: float = MIN_RADIUS_MILES,
+    max_radius: float = MAX_RADIUS_MILES,
+) -> float:
     """Derive the DBSCAN radius from the k-distance elbow (k = ``min_points``)."""
     count = len(matrix)
     if count <= min_points:
-        return MIN_RADIUS_MILES
+        return min_radius
     k_distances: list[float] = []
     for row in matrix:
         others = sorted(distance for distance in row if distance > 0.0)
         if len(others) >= min_points:
             k_distances.append(others[min_points - 1])
     if not k_distances:
-        return MIN_RADIUS_MILES
+        return min_radius
     k_distances.sort()
-    radius = knee_value(k_distances)
-    return max(MIN_RADIUS_MILES, min(MAX_RADIUS_MILES, radius))
+    radius = knee_value(k_distances, min_radius)
+    return max(min_radius, min(max_radius, radius))
 
 
 def dbscan_labels(
@@ -108,7 +114,10 @@ def dbscan_labels(
 
 
 def cluster_access_nodes(
-    access_nodes: list[Node], min_points: int = MIN_POINTS
+    access_nodes: list[Node],
+    min_points: int = MIN_POINTS,
+    min_radius: float = MIN_RADIUS_MILES,
+    max_radius: float = MAX_RADIUS_MILES,
 ) -> tuple[list[list[str]], list[str], float]:
     """Group access nodes into clusters, returning (clusters, sparse_ids, radius).
 
@@ -119,9 +128,9 @@ def cluster_access_nodes(
     enough to be a cluster's head.
     """
     if len(access_nodes) < min_points:
-        return [], [node.id for node in access_nodes], MIN_RADIUS_MILES
+        return [], [node.id for node in access_nodes], min_radius
     matrix = pairwise_miles(access_nodes)
-    radius = derive_radius(matrix, min_points)
+    radius = derive_radius(matrix, min_points, min_radius, max_radius)
     labels = dbscan_labels(matrix, radius, min_points)
     clusters: dict[int, list[str]] = {}
     sparse: list[str] = []

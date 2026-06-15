@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pyyaml
       - name: Generate the network design (fails on an invalid design)
         run: PYTHONPATH=scripts python3 scripts/design_network.py
       - if: always()
@@ -55,7 +57,7 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Install tools
-        run: pip install pytest
+        run: pip install pytest pyyaml
       - name: Run integration tests
         run: >-
           PYTHONPATH=.:scripts python3 -m pytest
@@ -78,7 +80,7 @@ jobs:
             assert-no-inline-directives \
             assert-no-linter-config-files \
             assert-one-assert-per-pytest \
-            mypy pylint pytest yamllint
+            mypy pylint pytest pyyaml types-PyYAML yamllint
           npm install -g jscpd
       - name: Lint YAML
         run: |
@@ -91,7 +93,7 @@ jobs:
           yamllint --strict \
             --config-data \
             "{extends: default, rules: {$RULES}}" \
-            .github/workflows/wan_graph_designer.yml
+            .github/workflows/wan_graph_designer.yml etc/config.yml
       - name: Assert no inline directives
         run: >-
           assert-no-inline-directives
@@ -149,7 +151,7 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Install tools
-        run: pip install pytest pytest-cov
+        run: pip install pytest pytest-cov pyyaml
       - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:scripts python3 -m pytest
@@ -164,6 +166,7 @@ on:
     paths:
       - .github/workflows/wan_graph_designer.yml
       - data/**
+      - etc/**
       - f35_sentinel_provider regions_carrier_400g.kmz
       - scripts/**
       - test/**
@@ -172,6 +175,7 @@ on:
     paths:
       - .github/workflows/wan_graph_designer.yml
       - data/**
+      - etc/**
       - f35_sentinel_provider regions_carrier_400g.kmz
       - scripts/**
       - test/**

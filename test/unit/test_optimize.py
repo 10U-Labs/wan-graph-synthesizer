@@ -7,12 +7,9 @@ import pytest
 import fixtures
 from wan_designer.model import (
     AccessEdge,
-    Design,
     DesignInputs,
-    DesignMetrics,
     DesignParams,
     Node,
-    PathUse,
     PhysicalEdge,
     RoleOverrides,
     edge_key,
@@ -33,7 +30,6 @@ from wan_designer.optimize import (
     core_combinations,
     core_mesh_paths,
     cores_mesh,
-    coverage_score,
     dual_homes_to_pair,
     enumeration_limit,
     feasible_aggregation_ids,
@@ -80,7 +76,6 @@ def _plan(
     forced: set[str] | None = None,
     strength: dict[str, float] | None = None,
     clusters: list[list[str]] | None = None,
-    sentinel: set[str] | None = None,
 ) -> _SearchPlan:
     """Build a search plan for direct optimizer tests."""
     return _SearchPlan(
@@ -88,7 +83,6 @@ def _plan(
         frozenset(forced or set()),
         strength or {},
         clusters=clusters or [],
-        sentinel_ids=frozenset(sentinel or set()),
     )
 
 
@@ -141,29 +135,18 @@ def test_optimizes_ring_to_a_feasible_design() -> None:
     assert len(design.core_ids) >= 2
 
 
-def test_core_count_is_honored_as_a_minimum() -> None:
-    """Core count is a minimum: a larger floor yields at least that many cores."""
+def test_core_count_is_honored_exactly() -> None:
+    """Core count is exact: the design uses precisely that many cores."""
     design = optimize_three_tier_design(
         fixtures.ring_nodes(), fixtures.ring_physical_edges(), {}, DesignParams(core_count=3)
     )
-    assert len(design.core_ids) >= 3
+    assert len(design.core_ids) == 3
 
 
 def test_no_feasible_design_is_rejected() -> None:
     """No feasible design is rejected when access cannot reach two aggregations."""
     with pytest.raises(ValueError):
         optimize_three_tier_design(TRIANGLE_NODES, TRIANGLE, {}, DesignParams(core_count=2))
-
-
-def test_forces_a_sentinel_base_as_an_aggregation() -> None:
-    """A Sentinel base's nearest PoP is forced into the aggregation tier."""
-    base = access("Minot AFB", 41.0, -99.9)
-    nodes = fixtures.ring_nodes() + [base]
-    design = optimize_three_tier_design(
-        nodes, fixtures.ring_physical_edges(), {}, DesignParams(core_count=2)
-    )
-    forced = nearest_pop_id(base, [n for n in nodes if n.kind == "carrier_pop"])
-    assert forced in design.aggregation_ids
 
 
 def test_not_enough_core_candidates_is_rejected() -> None:
@@ -173,11 +156,12 @@ def test_not_enough_core_candidates_is_rejected() -> None:
         pop("a", 0.0, 0.0),
         pop("b", 0.0, 1.0),
         pop("c", 0.0, 2.0),
-        access("Minot AFB", 0.0, 0.0),
-        access("Malmstrom AFB", 0.0, 1.0),
+        access("s1", 0.0, 0.0),
+        access("s2", 0.0, 1.0),
     ]
+    overrides = RoleOverrides(forced_aggregation_ids=frozenset({"a", "b"}))
     with pytest.raises(ValueError):
-        optimize_three_tier_design(nodes, edges, {}, DesignParams(core_count=2))
+        optimize_three_tier_design(nodes, edges, {}, DesignParams(core_count=2), overrides)
 
 
 def test_aggregation_core_paths_infeasible_through_bottleneck() -> None:
@@ -402,24 +386,14 @@ def test_core_combination_count_zero_when_size_below_required() -> None:
     assert core_combination_count(plan, 1) == 0
 
 
-def test_coverage_score_weights_a_base_by_its_sites() -> None:
-    """A base's 165 sites pull far harder on the score than a single access link."""
-    paths = [
-        PathUse("aggregation_to_core", "base", "c1", ("base", "x", "c1"), 0.0),
-        PathUse("aggregation_to_core", "agg", "c1", ("agg", "c1"), 0.0),
-    ]
-    design = Design(("c1",), (), (), [], set(), paths, DesignMetrics(0.0, 0.0, 0.0))
-    plan = _plan([], sentinel={"base"})
-    assert coverage_score(design, plan) == 165 * 2 + 1 * 1
-
-
 def test_enumeration_limit_grows_with_available_memory() -> None:
     """The core sets the search may enumerate scale with the machine's free RAM."""
-    assert enumeration_limit(32 * 10**9) > enumeration_limit(16 * 10**9)
+    params = DesignParams()
+    assert enumeration_limit(32 * 10**9, params) > enumeration_limit(16 * 10**9, params)
 
 
-def test_search_stops_when_the_core_space_is_too_large() -> None:
-    """The sweep stops rather than enumerate more core sets than RAM can hold."""
+def test_search_refuses_a_core_space_too_large_for_memory() -> None:
+    """The search refuses to enumerate more core sets than RAM can hold."""
     inputs = _inputs_from_edges([], {}, set(), [])
     plan = _plan([f"c{index}" for index in range(40)])
     with pytest.raises(ValueError):

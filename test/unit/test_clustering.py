@@ -46,7 +46,7 @@ def test_knee_value(values: list[float], expected: float) -> None:
 @pytest.mark.parametrize(
     "matrix",
     [
-        line_matrix([0.0, 1.0, 2.0]),  # count == min_points: too few to derive
+        line_matrix([0.0, 1.0]),  # count <= min_points: too few to derive
         line_matrix([0.0, 0.0, 0.0, 0.0]),  # all coincident: no k-distances
     ],
 )
@@ -81,13 +81,13 @@ def test_dbscan_labels_groups_dense_points_together() -> None:
 
 def test_dbscan_labels_absorbs_a_border_point() -> None:
     """A non-core point within reach of a core joins that core's cluster."""
-    labels = dbscan_labels(line_matrix([0.0, 1.0, 2.0, 4.0]), radius=2.5)
+    labels = dbscan_labels(line_matrix([0.0, 1.0, 2.0, 4.0]), radius=2.5, min_points=3)
     assert labels[3] == labels[0]
 
 
 def test_cluster_access_nodes_returns_no_clusters_when_too_few() -> None:
     """Fewer than the minimum points yields no clusters at all."""
-    clusters, _sparse, _radius = cluster_access_nodes([access("a"), access("b")])
+    clusters, _sparse, _radius = cluster_access_nodes([access("a")])
     assert clusters == []
 
 

@@ -2,16 +2,11 @@
 
 Cores are chosen for strength, not mileage (the source mapbook has no
 distances): each core's strength is its degree plus compass spread plus path
-straightness, and for a given core count the strongest feasible set wins, with
-total last-mile only breaking ties. The number of cores is not fixed at the
-minimum: the search sweeps core counts upward and keeps adding a core while
-doing so meaningfully shortens how far demand sits from its cores (in hops,
-weighted by the sites behind each aggregation), stopping once extra cores stop
-helping.
+straightness, and the strongest feasible set of the configured ``core_count``
+wins, with total last-mile only breaking ties.
 
-The three Sentinel bases are forced into the aggregation tier at their
-co-located PoPs; access sites with no aggregation within the last-mile cap are
-exempt from the cap and home to their nearest two regardless.
+Access sites with no aggregation within the last-mile cap are exempt from the cap
+and home to their nearest two regardless.
 
 On top of the algorithm, the operator may pin roles by PoP name (``RoleOverrides``,
 resolved by ``apply_role_overrides``): force a PoP to be a core, force it to be an
@@ -51,24 +46,6 @@ from wan_designer.graphs import (
     reconstruct_path,
 )
 from wan_designer.clustering import cluster_access_nodes
-
-COMPASS_OCTANTS = 8
-
-# The Sentinel ICBM wings, forced into the aggregation tier at their PoPs.
-SENTINEL_BASE_NAMES = ("Malmstrom AFB", "Minot AFB", "F.E. Warren AFB")
-
-# Modeled demand behind each Sentinel base, used to weight how heavily a base's
-# distance to its cores counts when deciding how many cores the design needs.
-SENTINEL_SITE_COUNT = 165
-
-# Peak bytes one enumerated-and-sorted core set costs (the tuple, its list slot,
-# and the transient the sort holds). Used to size the search to the machine's
-# actual memory instead of a hand-picked cap.
-CORE_SET_PEAK_BYTES = 160
-
-# Share of the machine's RAM the core enumeration may use at its peak. The rest
-# is headroom for the operating system and the rest of the program.
-ENUM_MEMORY_FRACTION = 0.6
 
 logger = logging.getLogger(__name__)
 
@@ -130,12 +107,13 @@ def core_strength(
     inputs: DesignInputs,
     pop_by_id: dict[str, Node],
     max_degree: int,
+    compass_octants: int,
 ) -> float:
     """Score a PoP's strength: reach plus spread plus straightness (~0..3)."""
     degree = len(inputs.adjacency[pop_id])
     spread = len(link_octants(pop_id, inputs.adjacency, pop_by_id))
     straight = node_straightness(pop_id, pop_by_id, inputs.all_predecessors[pop_id])
-    return degree / max_degree + spread / COMPASS_OCTANTS + straight
+    return degree / max_degree + spread / compass_octants + straight
 
 def path_geometry_miles(
     path: tuple[str, ...],
@@ -518,7 +496,6 @@ class _SearchPlan:
     clusters: list[list[str]] = field(default_factory=list)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
     required_cores: frozenset[str] = field(default_factory=frozenset)
-    sentinel_ids: frozenset[str] = field(default_factory=frozenset)
 
 def nearest_pop_id(access: Node, carrier_pops: list[Node]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
@@ -593,93 +570,44 @@ def best_design_at_size(
         return None
     return build_design_for_cores(best_core_set, inputs, plan)
 
-def aggregation_demand(design: Design, plan: _SearchPlan) -> dict[str, int]:
-    """Sites behind each aggregation: its homed access count, or 165 for a base.
-
-    Only the Sentinel bases carry the modeled 165-site demand; an operator-forced
-    aggregation (Herndon, a co-located ``AGGR``) is weighted by the access sites it
-    actually homes, like any ordinary aggregation.
-    """
-    demand: dict[str, int] = {}
-    for edge in design.access_edges:
-        demand[edge.target] = demand.get(edge.target, 0) + 1
-    for aggregation_id in plan.sentinel_ids:
-        demand[aggregation_id] = SENTINEL_SITE_COUNT
-    return demand
-
-def coverage_score(design: Design, plan: _SearchPlan) -> float:
-    """Total traffic-distance to the cores: lower means demand sits nearer a core.
-
-    Each aggregation's two routed paths to its cores are counted in hops and
-    weighted by the sites behind it, so a base's 165 sites pull far harder than a
-    single access link. Hops avoid mileage, which the spec forbids as a cost.
-    """
-    demand = aggregation_demand(design, plan)
-    total = 0.0
-    for use in design.path_uses:
-        if use.purpose == "aggregation_to_core":
-            total += demand.get(use.source, 1) * (len(use.path) - 1)
-    return total
-
 def total_memory_bytes() -> int:
     """Physical RAM installed on this machine, in bytes (portable across OSes)."""
     return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
 
-def enumeration_limit(memory_bytes: int) -> int:
+def enumeration_limit(memory_bytes: int, params: DesignParams) -> int:
     """How many core sets fit in the share of RAM the enumeration may use."""
-    return int(memory_bytes * ENUM_MEMORY_FRACTION / CORE_SET_PEAK_BYTES)
+    return int(
+        memory_bytes * params.tuning.enum_memory_fraction / params.tuning.core_set_peak_bytes
+    )
 
 def search_best_design(
     inputs: DesignInputs,
     params: DesignParams,
     plan: _SearchPlan,
 ) -> Design:
-    """Find the best design across core counts, not just the fewest that work.
+    """Build the strongest feasible design using exactly ``core_count`` cores.
 
-    For each core count from ``core_count`` upward the strongest feasible design
-    is built and scored by how near demand sits to its cores. A larger count is
-    adopted only when it cuts that traffic-distance by at least
-    ``core_coverage_improvement``; once a couple of larger counts fail to clear
-    that bar (or enumerating that many core sets would not fit in the machine's
-    free RAM) the sweep stops. Every count tried is logged for review.
+    The core count is fixed by the operator: the strongest feasible set of that
+    size wins, with total last-mile only breaking ties. Enumerating that many
+    core sets must fit in the share of RAM the search may use, or the design is
+    refused rather than risk exhausting memory.
     """
-    limit = enumeration_limit(total_memory_bytes())
+    limit = enumeration_limit(total_memory_bytes(), params)
+    sets = core_combination_count(plan, params.core_count)
     logger.info(
-        "Optimizing %d access sites; cores >= %d, %d required; up to %d core sets per size",
-        len(inputs.access_nodes), params.core_count, len(plan.required_cores), limit,
+        "Optimizing %d access sites; %d cores, %d required; %d core sets (limit %d)",
+        len(inputs.access_nodes), params.core_count, len(plan.required_cores), sets, limit,
     )
-    best: Design | None = None
-    best_coverage = math.inf
-    stale = 0
-    for size in range(params.core_count, len(plan.core_candidates) + 1):
-        sets = core_combination_count(plan, size)
-        if sets > limit:
-            logger.info(
-                "  %d cores: %d core sets (~%.1f GB) exceed the RAM budget; stopping",
-                size, sets, sets * CORE_SET_PEAK_BYTES / 1e9,
-            )
-            break
-        design = best_design_at_size(inputs, plan, size)
-        if design is None:
-            continue
-        coverage = coverage_score(design, plan)
-        improvement = (best_coverage - coverage) / best_coverage if best else 1.0
-        logger.info(
-            "  %d cores -> traffic-to-core %.0f hop-sites (%.1f%% better): %s",
-            size, coverage, 100.0 * improvement,
-            ", ".join(design.core_ids),
+    if sets > limit:
+        raise ValueError(
+            f"Enumerating {sets} core sets of size {params.core_count} "
+            f"exceeds the RAM budget of {limit}"
         )
-        if best is None or improvement >= params.core_coverage_improvement:
-            best, best_coverage, stale = design, coverage, 0
-            continue
-        stale += 1
-        if stale >= 2:
-            logger.info("  adding cores past this no longer helps; stopping the sweep")
-            break
-    if best is None:
-        raise ValueError(f"No feasible design with {params.core_count} or more cores")
-    logger.info("Selected a %d-core design", len(best.core_ids))
-    return best
+    design = best_design_at_size(inputs, plan, params.core_count)
+    if design is None:
+        raise ValueError(f"No feasible design with {params.core_count} cores")
+    logger.info("Selected a %d-core design", len(design.core_ids))
+    return design
 
 @dataclass(frozen=True)
 class _GraphContext:
@@ -703,46 +631,37 @@ def graph_context(
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
     return _GraphContext(carrier_pops, all_access, adjacency, all_distances, all_predecessors)
 
-def sentinel_split(
-    all_access: list[Node], carrier_pops: list[Node]
-) -> tuple[frozenset[str], list[Node]]:
-    """Force each Sentinel base into the aggregation tier at its co-located PoP.
-
-    Returns the forced aggregation ids and the remaining (homed) access
-    nodes; the base demand sites are absorbed into their forced PoPs.
-    """
-    base_access = [node for node in all_access if node.name in SENTINEL_BASE_NAMES]
-    forced = frozenset(nearest_pop_id(node, carrier_pops) for node in base_access)
-    absorbed = frozenset(node.id for node in base_access)
-    access_nodes = [node for node in all_access if node.id not in absorbed]
-    return forced, access_nodes
-
 def build_search_plan(
     inputs: DesignInputs,
     eligible_ids: set[str],
     forced: frozenset[str],
-    sentinel_ids: frozenset[str],
     forced_core_ids: frozenset[str],
+    params: DesignParams,
 ) -> _SearchPlan:
     """Compute node strengths, access-node clusters, and core candidates.
 
-    Required cores are the operator-forced cores; forced aggregations (Sentinel
-    bases, co-located ``AGGR`` nodes, Herndon) are never free core candidates.
+    Required cores are the operator-forced cores; forced aggregations (co-located
+    ``AGGR`` nodes and any operator-pinned PoP) are never free core candidates.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
     strength_by_id = {
-        pop_id: core_strength(pop_id, inputs, pop_by_id, max_degree)
+        pop_id: core_strength(pop_id, inputs, pop_by_id, max_degree, params.tuning.compass_octants)
         for pop_id in eligible_ids
     }
-    clusters, _sparse, _radius = cluster_access_nodes(inputs.access_nodes)
+    clusters, _sparse, _radius = cluster_access_nodes(
+        inputs.access_nodes,
+        params.tuning.cluster_min_points,
+        params.tuning.cluster_min_radius_miles,
+        params.tuning.cluster_max_radius_miles,
+    )
     core_candidates = sorted(
         eligible_ids - forced, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
     )
     required = forced_core_ids & eligible_ids
     return _SearchPlan(
         core_candidates, forced, strength_by_id, clusters=clusters,
-        required_cores=frozenset(required), sentinel_ids=sentinel_ids,
+        required_cores=frozenset(required),
     )
 
 def pop_id_by_name(carrier_pops: list[Node]) -> dict[str, str]:
@@ -869,11 +788,10 @@ def optimize_three_tier_design(
     """
     overrides = overrides if overrides is not None else RoleOverrides()
     if params.core_count < 2:
-        raise ValueError("core_count (the minimum number of cores) must be at least 2")
+        raise ValueError("core_count (the number of cores) must be at least 2")
 
     context = graph_context(nodes, physical_edges)
-    sentinel_ids, access_nodes = sentinel_split(context.all_access, context.carrier_pops)
-    forced = sentinel_ids | overrides.forced_aggregation_ids
+    forced = overrides.forced_aggregation_ids
     eligible_ids = compute_eligible_ids(
         context.carrier_pops, roles, context.adjacency, params.allow_roadm_aggregation
     )
@@ -882,7 +800,7 @@ def optimize_three_tier_design(
         raise ValueError("Not enough eligible Carrier aggregation/core PoPs")
 
     inputs = DesignInputs(
-        access_nodes=access_nodes,
+        access_nodes=context.all_access,
         carrier_pops=context.carrier_pops,
         physical_edges=physical_edges,
         eligible_aggregation_ids=eligible_ids,
@@ -891,7 +809,7 @@ def optimize_three_tier_design(
         all_predecessors=context.all_predecessors,
     )
     plan = build_search_plan(
-        inputs, eligible_ids, forced, sentinel_ids, overrides.forced_core_ids
+        inputs, eligible_ids, forced, overrides.forced_core_ids, params
     )
     if len(plan.core_candidates) < params.core_count:
         raise ValueError("Not enough reachable core candidates")

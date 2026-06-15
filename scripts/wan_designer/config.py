@@ -1,0 +1,126 @@
+"""Load the WAN designer configuration from a YAML file.
+
+Everything the operator tunes -- the input/output paths, the role pins and
+exclusions, the core count, and the algorithm dials -- lives in one YAML file
+(``etc/config.yml`` by default) instead of being baked into the source. Any key
+the file omits falls back to the matching built-in default, so a partial (even
+empty) file still yields a valid configuration.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from wan_designer.model import CliPaths, DesignParams, Tuning
+
+DEFAULT_CONFIG_PATH = Path("etc/config.yml")
+DEFAULT_MAPBOOK = "f35_sentinel_provider regions_carrier_400g.kmz"
+DEFAULT_CARRIER_EDGES = "data/carrier_edges.csv"
+DEFAULT_POP_ROLES = "data/carrier_pop_roles.csv"
+DEFAULT_REGIONAL_NODES = "data/regional_nodes.csv"
+DEFAULT_REGIONAL_EDGES = ["data/dcn_edges.csv", "data/vision_net_edges.csv"]
+DEFAULT_OUTPUT_DIR = "outputs"
+
+
+@dataclass(frozen=True)
+class AppConfig:
+    """A fully resolved configuration: file paths, design params, augment flag."""
+
+    paths: CliPaths
+    params: DesignParams
+    resilience_augmentation: bool
+
+
+def _mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
+    """Return a named sub-mapping, defaulting to empty and rejecting non-mappings."""
+    section = data.get(key, {})
+    if not isinstance(section, dict):
+        raise ValueError(f"config section '{key}' must be a mapping")
+    return section
+
+
+def _str_list(data: dict[str, Any], key: str, default: list[str]) -> tuple[str, ...]:
+    """Return a list-of-strings config value as a tuple, rejecting other shapes."""
+    value = data.get(key, default)
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError(f"config key '{key}' must be a list of strings")
+    return tuple(value)
+
+
+def _optional_path(value: Any) -> Path | None:
+    """Wrap a non-empty path string as a Path; an empty value disables it."""
+    return Path(str(value)) if value else None
+
+
+def _paths(data: dict[str, Any], inputs: dict[str, Any]) -> CliPaths:
+    """Resolve the file-path configuration into a :class:`CliPaths`."""
+    regional_edges = _str_list(inputs, "regional_edges", DEFAULT_REGIONAL_EDGES)
+    return CliPaths(
+        input_path=Path(str(inputs.get("mapbook", DEFAULT_MAPBOOK))),
+        edge_path=Path(str(inputs.get("carrier_edges", DEFAULT_CARRIER_EDGES))),
+        role_path=_optional_path(inputs.get("pop_roles", DEFAULT_POP_ROLES)),
+        mapbook_pdf=_optional_path(inputs.get("mapbook_pdf", "")),
+        output_dir=Path(str(data.get("output_dir", DEFAULT_OUTPUT_DIR))),
+        regional_node_path=_optional_path(inputs.get("regional_nodes", DEFAULT_REGIONAL_NODES)),
+        regional_edge_paths=tuple(Path(item) for item in regional_edges),
+    )
+
+
+def _tuning(tuning: dict[str, Any]) -> Tuning:
+    """Resolve the tuning configuration into a :class:`Tuning`."""
+    base = Tuning()
+    return Tuning(
+        cluster_min_points=tuning.get("cluster_min_points", base.cluster_min_points),
+        cluster_min_radius_miles=tuning.get(
+            "cluster_min_radius_miles", base.cluster_min_radius_miles
+        ),
+        cluster_max_radius_miles=tuning.get(
+            "cluster_max_radius_miles", base.cluster_max_radius_miles
+        ),
+        compass_octants=tuning.get("compass_octants", base.compass_octants),
+        enum_memory_fraction=tuning.get("enum_memory_fraction", base.enum_memory_fraction),
+        core_set_peak_bytes=tuning.get("core_set_peak_bytes", base.core_set_peak_bytes),
+    )
+
+
+def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
+    """Resolve the design and tuning configuration into :class:`DesignParams`."""
+    base = DesignParams()
+    return DesignParams(
+        core_count=design.get("core_count", base.core_count),
+        allow_roadm_aggregation=design.get(
+            "allow_roadm_aggregation", base.allow_roadm_aggregation
+        ),
+        forced_core_names=_str_list(design, "forced_cores", []),
+        forced_aggregation_names=_str_list(design, "forced_aggregations", []),
+        excluded_names=_str_list(design, "excluded", []),
+        tuning=_tuning(tuning),
+    )
+
+
+def config_from_data(data: dict[str, Any]) -> AppConfig:
+    """Resolve an already-parsed config mapping into a :class:`AppConfig`."""
+    design = _mapping(data, "design")
+    return AppConfig(
+        paths=_paths(data, _mapping(data, "inputs")),
+        params=_params(design, _mapping(data, "tuning")),
+        resilience_augmentation=design.get("resilience_augmentation", True),
+    )
+
+
+def default_config() -> AppConfig:
+    """The built-in configuration used when no config file is supplied."""
+    return config_from_data({})
+
+
+def load_config(path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
+    """Parse the YAML config at ``path`` into a resolved :class:`AppConfig`."""
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ValueError(f"invalid YAML in {path}: {exc}") from exc
+    return config_from_data(raw if isinstance(raw, dict) else {})

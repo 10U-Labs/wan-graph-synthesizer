@@ -1,31 +1,18 @@
 #!/usr/bin/env python3
-"""Entry point for the three-tier WAN designer CLI.
+"""Entry point for the three-tier WAN designer's canonical design.
 
-The operator role pins for the canonical design are expressed as explicit CLI
-flags (not hidden constants): Atlanta anchors the southeast and Philadelphia
-anchors the northeast as cores, and McLean, Portland, San Luis Obispo, New York,
-and Richmond are aggregations. Richmond is pinned (rather than Norfolk, a
-single-homed ROADM leaf) so the southeast-Virginia demand homes into a PoP that
-can dual-home to two cores.
-
-The two Long Island demand intents (Brookhaven and Shirley, NY) are not Lumen
-PoPs in the mapbook, so they are mapped to the two nearest existing PoPs:
-Brookhaven to New York, NY and Shirley to Newark, NJ.
+All operator choices -- the input files, the role pins (forced cores and
+aggregations), the exclusions, and the algorithm dials -- live in
+``etc/config.yml`` rather than in this file, so changing the design no longer
+means editing source. This script just runs the designer against that config;
+the CLI flags in ``wan_designer.cli`` still override it for ad-hoc runs.
 """
 
 from __future__ import annotations
 
 from wan_designer.cli import main
 
-FORCED_DESIGN_ARGS = [
-    "--force-core", "Atlanta, GA",
-    "--force-core", "Philadelphia, PA",
-    "--force-aggregation", "McLean, VA",
-    "--force-aggregation", "Portland, OR",
-    "--force-aggregation", "San Luis Obispo, CA",
-    "--force-aggregation", "New York, NY",
-    "--force-aggregation", "Richmond, VA",
-]
+CONFIG_ARGS = ["--config", "etc/config.yml"]
 
 if __name__ == "__main__":
-    raise SystemExit(main(FORCED_DESIGN_ARGS))
+    raise SystemExit(main(CONFIG_ARGS))

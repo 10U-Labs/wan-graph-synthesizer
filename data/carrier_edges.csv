@@ -92,6 +92,7 @@ source,target,source_page,note
 "Buffalo, NY","Albany, NY",northeast/overview,visible route
 "Albany, NY","Cambridge, MA",northeast/overview,visible route
 "Cambridge, MA","Boston, MA",northeast/overview,visible route
+"Boston, MA","Stamford, CT",northeast/overview,visible route
 "Albany, NY","Stamford, CT",northeast/overview,visible route
 "Stamford, CT","New York, NY",northeast/overview,visible route
 "New York, NY","Newark, NJ",northeast/overview,visible route

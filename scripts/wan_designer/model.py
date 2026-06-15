@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
 
@@ -74,15 +74,32 @@ class Design:
     metrics: DesignMetrics
 
 @dataclass(frozen=True)
-class DesignParams:
-    """Tuning knobs for the three-tier optimization."""
+class Tuning:
+    """Algorithm dials for the optimizer.
 
-    core_count: int = 3  # minimum number of cores; more are added if worthwhile
+    These defaults are the single source of truth; ``etc/config.yml`` overrides
+    them. The clustering defaults are mirrored as function-argument defaults in
+    ``clustering.py`` (which ``model`` cannot import without a cycle), so keep the
+    two in step.
+    """
+
+    cluster_min_points: int = 2  # access nodes needed to seed a new aggregation
+    cluster_min_radius_miles: float = 50.0  # floor on the derived cluster radius
+    cluster_max_radius_miles: float = 250.0  # ceiling on the derived cluster radius
+    compass_octants: int = 8  # compass sectors used to score a core's link spread
+    enum_memory_fraction: float = 0.6  # share of RAM the core enumeration may use
+    core_set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
+
+@dataclass(frozen=True)
+class DesignParams:
+    """Operator choices plus the algorithm :class:`Tuning` for the optimization."""
+
+    core_count: int = 3  # exact number of cores in the design
     allow_roadm_aggregation: bool = False
-    core_coverage_improvement: float = 0.10  # min traffic-to-core cut to add a core
     forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
     forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations
     excluded_names: tuple[str, ...] = ()  # PoPs barred from every selected role
+    tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)
 class RoleOverrides:

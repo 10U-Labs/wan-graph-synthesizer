@@ -1,0 +1,131 @@
+"""Unit tests for loading the YAML configuration."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from wan_designer.config import (
+    AppConfig,
+    config_from_data,
+    default_config,
+    load_config,
+)
+
+
+def _config(data: dict[str, Any]) -> AppConfig:
+    """Resolve a single in-memory config mapping for one test case."""
+    return config_from_data(data)
+
+
+def test_default_core_count() -> None:
+    """The default config supplies the built-in core count."""
+    assert default_config().params.core_count == 3
+
+
+def test_default_has_no_forced_cores() -> None:
+    """The default config pins no cores."""
+    assert default_config().params.forced_core_names == ()
+
+
+def test_default_mapbook_path() -> None:
+    """The default config points at the project KMZ mapbook."""
+    assert default_config().paths.input_path == Path(
+        "f35_sentinel_provider regions_carrier_400g.kmz"
+    )
+
+
+def test_default_output_dir() -> None:
+    """The default config writes outputs to the outputs directory."""
+    assert default_config().paths.output_dir == Path("outputs")
+
+
+def test_default_mapbook_pdf_is_none() -> None:
+    """The default config has no source PDF path."""
+    assert default_config().paths.mapbook_pdf is None
+
+
+def test_default_role_path() -> None:
+    """The default config points at the PoP roles CSV."""
+    assert default_config().paths.role_path == Path("data/carrier_pop_roles.csv")
+
+
+def test_default_regional_edges() -> None:
+    """The default config lists both regional carrier edge files."""
+    assert default_config().paths.regional_edge_paths == (
+        Path("data/dcn_edges.csv"),
+        Path("data/vision_net_edges.csv"),
+    )
+
+
+def test_default_resilience_augmentation_on() -> None:
+    """Resilience augmentation defaults on."""
+    assert default_config().resilience_augmentation is True
+
+
+def test_reads_core_count() -> None:
+    """A core_count value is read from the design section."""
+    assert _config({"design": {"core_count": 5}}).params.core_count == 5
+
+
+def test_reads_forced_cores() -> None:
+    """A forced_cores list is read into the design params."""
+    assert _config({"design": {"forced_cores": ["Atlanta, GA"]}}).params.forced_core_names == (
+        "Atlanta, GA",
+    )
+
+
+def test_reads_tuning_min_points() -> None:
+    """A tuning cluster_min_points value is read into the design params."""
+    assert _config({"tuning": {"cluster_min_points": 4}}).params.tuning.cluster_min_points == 4
+
+
+def test_reads_output_dir() -> None:
+    """A top-level output_dir value is read into the paths."""
+    assert _config({"output_dir": "out2"}).paths.output_dir == Path("out2")
+
+
+def test_empty_pop_roles_disables_the_path() -> None:
+    """An empty pop_roles string disables the roles file."""
+    assert _config({"inputs": {"pop_roles": ""}}).paths.role_path is None
+
+
+def test_reads_resilience_augmentation_off() -> None:
+    """Resilience augmentation can be turned off in the design section."""
+    assert _config({"design": {"resilience_augmentation": False}}).resilience_augmentation is False
+
+
+def test_section_must_be_a_mapping() -> None:
+    """A non-mapping section is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": "not a mapping"})
+
+
+def test_forced_cores_must_be_a_list() -> None:
+    """A non-list forced_cores value is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"forced_cores": "Atlanta, GA"}})
+
+
+def test_load_config_reads_a_file(tmp_path: Path) -> None:
+    """load_config parses the design params from a YAML file."""
+    path = tmp_path / "c.yml"
+    path.write_text("design:\n  core_count: 7\n", encoding="utf-8")
+    assert load_config(path).params.core_count == 7
+
+
+def test_load_config_empty_file_uses_defaults(tmp_path: Path) -> None:
+    """An empty config file falls back entirely to the defaults."""
+    path = tmp_path / "empty.yml"
+    path.write_text("", encoding="utf-8")
+    assert load_config(path).params.core_count == 3
+
+
+def test_load_config_rejects_malformed_yaml(tmp_path: Path) -> None:
+    """Malformed YAML is reported as a ValueError."""
+    path = tmp_path / "bad.yml"
+    path.write_text("design: [unclosed\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(path)

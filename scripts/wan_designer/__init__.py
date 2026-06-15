@@ -17,6 +17,7 @@ from wan_designer.model import (
     PathUse,
     PhysicalEdge,
     SourceFiles,
+    Tuning,
     ValidationReport,
     classify_category,
     edge_key,
@@ -45,10 +46,12 @@ from wan_designer.validation import (
     validate_design,
 )
 from wan_designer.optimize import optimize_three_tier_design
+from wan_designer.config import AppConfig, load_config
 from wan_designer.cli import main
 
 __all__ = [
     "AccessEdge",
+    "AppConfig",
     "CliPaths",
     "Design",
     "DesignArtifacts",
@@ -59,6 +62,7 @@ __all__ = [
     "PathUse",
     "PhysicalEdge",
     "SourceFiles",
+    "Tuning",
     "ValidationReport",
     "aggregations_without_core_redundancy",
     "articulation_points",
@@ -71,6 +75,7 @@ __all__ = [
     "edge_key",
     "haversine_miles",
     "load_carrier_edges",
+    "load_config",
     "load_nodes",
     "load_pop_roles",
     "load_regional_networks",

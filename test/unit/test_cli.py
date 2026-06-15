@@ -9,13 +9,15 @@ import pytest
 import fixtures
 from wan_designer.cli import (
     build_parser,
-    cli_paths,
     exit_code_for,
+    load_app_config,
     main,
-    params_from_args,
+    resolve_paths,
+    resolve_params,
     run_design,
 )
-from wan_designer.model import CliPaths, ValidationReport
+from wan_designer.config import default_config
+from wan_designer.model import CliPaths, DesignParams, ValidationReport
 
 
 def report(
@@ -41,40 +43,110 @@ def report(
     }
 
 
-def test_build_parser_default_core_count() -> None:
-    """Build parser default core count."""
-    assert build_parser().parse_args([]).core_count == 3
+def _params(argv: list[str]) -> DesignParams:
+    """Resolve design params from argv against the built-in default config."""
+    return resolve_params(default_config(), build_parser().parse_args(argv))
 
 
-def test_cli_paths_blank_mapbook_becomes_none() -> None:
-    """Cli paths blank mapbook becomes none."""
-    paths = cli_paths(build_parser().parse_args([]))
-    assert paths.mapbook_pdf is None
+def _paths(argv: list[str]) -> CliPaths:
+    """Resolve file paths from argv against the built-in default config."""
+    return resolve_paths(default_config(), build_parser().parse_args(argv))
 
 
-def test_cli_paths_blank_roles_becomes_none() -> None:
-    """Cli paths blank roles becomes none."""
-    paths = cli_paths(build_parser().parse_args(["--pop-roles", ""]))
-    assert paths.role_path is None
+def test_build_parser_default_core_count_is_unset() -> None:
+    """With no flag the parser leaves core count unset so the config can supply it."""
+    assert build_parser().parse_args([]).core_count is None
 
 
-def test_params_from_args_reads_core_count() -> None:
-    """Params from args reads core count."""
-    args = build_parser().parse_args(["--core-count", "2"])
-    assert params_from_args(args).core_count == 2
+def test_resolve_params_default_core_count() -> None:
+    """The default config supplies the core count when no flag is given."""
+    assert _params([]).core_count == 3
+
+
+def test_resolve_params_core_count_override() -> None:
+    """A core-count flag overrides the config value."""
+    assert _params(["--core-count", "2"]).core_count == 2
+
+
+def test_resolve_params_force_core_override() -> None:
+    """A force-core flag replaces the config's forced cores."""
+    assert _params(["--force-core", "Denver, CO"]).forced_core_names == ("Denver, CO",)
+
+
+def test_resolve_params_force_aggregation_override() -> None:
+    """A force-aggregation flag replaces the config's forced aggregations."""
+    assert _params(["--force-aggregation", "Herndon"]).forced_aggregation_names == ("Herndon",)
+
+
+def test_resolve_params_exclude_override() -> None:
+    """An exclude flag replaces the config's exclusions."""
+    assert _params(["--exclude", "Ogden"]).excluded_names == ("Ogden",)
+
+
+def test_resolve_params_allow_roadm_flag() -> None:
+    """The allow-roadm flag turns the option on over the config default."""
+    assert _params(["--allow-roadm-aggregation"]).allow_roadm_aggregation is True
+
+
+def test_resolve_paths_blank_mapbook_pdf_is_none() -> None:
+    """The default config's empty mapbook PDF resolves to no path."""
+    assert _paths([]).mapbook_pdf is None
+
+
+def test_resolve_paths_blank_roles_becomes_none() -> None:
+    """An explicit empty pop-roles flag disables the roles file."""
+    assert _paths(["--pop-roles", ""]).role_path is None
+
+
+def test_resolve_paths_keeps_default_roles() -> None:
+    """With no flag the config's pop-roles path is kept."""
+    assert _paths([]).role_path == Path("data/carrier_pop_roles.csv")
+
+
+def test_resolve_paths_pop_roles_override() -> None:
+    """A non-empty pop-roles flag overrides the config path."""
+    assert _paths(["--pop-roles", "roles.csv"]).role_path == Path("roles.csv")
+
+
+def test_resolve_paths_input_override() -> None:
+    """A positional input overrides the config's mapbook."""
+    assert _paths(["some.kml"]).input_path == Path("some.kml")
+
+
+def test_resolve_paths_keeps_default_input() -> None:
+    """With no positional the config's mapbook path is kept."""
+    assert _paths([]).input_path == Path("f35_sentinel_provider regions_carrier_400g.kmz")
+
+
+def test_resolve_paths_regional_edges_override() -> None:
+    """A regional-edges flag replaces the config's regional edge files."""
+    edges = _paths(["--regional-edges", "a.csv", "b.csv"]).regional_edge_paths
+    assert edges == (Path("a.csv"), Path("b.csv"))
+
+
+def test_resolve_paths_keeps_default_regional_edges() -> None:
+    """With no flag the config's regional edge files are kept."""
+    edges = _paths([]).regional_edge_paths
+    assert edges == (Path("data/dcn_edges.csv"), Path("data/vision_net_edges.csv"))
+
+
+def test_load_app_config_without_flag_is_default() -> None:
+    """Omitting --config yields the built-in default configuration."""
+    assert load_app_config(build_parser().parse_args([])) == default_config()
+
+
+def test_load_app_config_reads_named_file(tmp_path: Path) -> None:
+    """A --config flag loads and resolves the named YAML file."""
+    cfg = tmp_path / "c.yml"
+    cfg.write_text("design:\n  core_count: 5\n", encoding="utf-8")
+    loaded = load_app_config(build_parser().parse_args(["--config", str(cfg)]))
+    assert loaded.params.core_count == 5
 
 
 def test_build_parser_collects_repeated_force_core() -> None:
     """The force-core flag accumulates each PoP name it is given."""
     args = build_parser().parse_args(["--force-core", "Ashburn, VA", "--force-core", "El Paso, TX"])
     assert args.force_core == ["Ashburn, VA", "El Paso, TX"]
-
-
-def test_params_from_args_reads_role_pins() -> None:
-    """Params from args carries the forced-aggregation and excluded PoP names."""
-    args = build_parser().parse_args(["--force-aggregation", "Herndon", "--exclude", "Ogden"])
-    pins = params_from_args(args)
-    assert pins.forced_aggregation_names == ("Herndon",) and pins.excluded_names == ("Ogden",)
 
 
 def test_exit_code_zero_when_all_pass() -> None:
@@ -134,6 +206,15 @@ def test_main_succeeds_on_solvable_inputs(tmp_path: Path) -> None:
 def test_main_returns_one_on_missing_input(tmp_path: Path) -> None:
     """Main returns one on missing input."""
     assert main([str(tmp_path / "nope.kml")]) == 1
+
+
+def test_main_honors_config_file(tmp_path: Path) -> None:
+    """Main reads the design parameters from a --config file."""
+    kml, edges = fixtures.write_solvable_inputs(tmp_path)
+    cfg = tmp_path / "config.yml"
+    cfg.write_text("design:\n  core_count: 2\n", encoding="utf-8")
+    args = fixtures.design_args(kml, edges, tmp_path / "out", extra=["--config", str(cfg)])
+    assert main(args) == 0
 
 
 def test_run_design_rejects_empty_document(tmp_path: Path) -> None:

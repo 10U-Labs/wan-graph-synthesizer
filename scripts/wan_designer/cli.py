@@ -9,6 +9,7 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from wan_designer.config import AppConfig, default_config, load_config
 from wan_designer.model import (
     CliPaths,
     DesignArtifacts,
@@ -42,46 +43,51 @@ def build_parser() -> argparse.ArgumentParser:
         )
     )
     parser.add_argument(
+        "--config",
+        default=None,
+        help="YAML config file (e.g. etc/config.yml). Provides defaults; flags override it.",
+    )
+    parser.add_argument(
         "input",
         nargs="?",
-        default="f35_sentinel_provider regions_carrier_400g.kmz",
-        help="Input KMZ or KML file. Defaults to the project KMZ.",
+        default=None,
+        help="Input KMZ or KML file. Overrides the config's mapbook.",
     )
     parser.add_argument(
         "--carrier-edges",
-        default="data/carrier_edges.csv",
+        default=None,
         help="CSV of physical Carrier mapbook route edges.",
     )
     parser.add_argument(
         "--pop-roles",
-        default="data/carrier_pop_roles.csv",
-        help="Optional CSV of Carrier PoP roles from the mapbook legend.",
+        default=None,
+        help="Optional CSV of Carrier PoP roles; pass empty to disable.",
     )
     parser.add_argument(
         "--mapbook-pdf",
-        default="",
+        default=None,
         help="Optional source PDF path recorded in JSON output.",
     )
     parser.add_argument(
         "--output-dir",
-        default="outputs",
+        default=None,
         help="Directory for JSON, CSV, KML, and DOT outputs.",
     )
     parser.add_argument(
         "--core-count",
         type=int,
-        default=3,
-        help="Minimum number of core nodes; more are added if needed. Default is 3.",
+        default=None,
+        help="Exact number of core nodes. Overrides the config's core_count.",
     )
     parser.add_argument(
         "--regional-nodes",
-        default="data/regional_nodes.csv",
+        default=None,
         help="Regional carrier node coordinates; pass empty to disable regional carriers.",
     )
     parser.add_argument(
         "--regional-edges",
         nargs="*",
-        default=["data/dcn_edges.csv", "data/vision_net_edges.csv"],
+        default=None,
         help="Regional carrier edge files stitched into the Lumen graph.",
     )
     parser.add_argument(
@@ -118,26 +124,50 @@ def build_parser() -> argparse.ArgumentParser:
     )
     return parser
 
-def cli_paths(args: argparse.Namespace) -> CliPaths:
-    """Resolve command-line arguments into concrete file paths."""
+def load_app_config(args: argparse.Namespace) -> AppConfig:
+    """Load the base config named by ``--config``, or the built-in defaults."""
+    if args.config is not None:
+        return load_config(Path(args.config))
+    return default_config()
+
+def _path_or(value: str | None, fallback: Path) -> Path:
+    """A provided non-empty path string overrides the config; else keep config."""
+    return Path(value) if value else fallback
+
+def _optional_path_override(value: str | None, fallback: Path | None) -> Path | None:
+    """None keeps the config path; an empty string disables it; else override it."""
+    if value is None:
+        return fallback
+    return Path(value) if value else None
+
+def resolve_paths(config: AppConfig, args: argparse.Namespace) -> CliPaths:
+    """Overlay any path flags onto the config's file paths."""
+    base = config.paths
+    regional_edges = (
+        tuple(Path(path) for path in args.regional_edges)
+        if args.regional_edges is not None
+        else base.regional_edge_paths
+    )
     return CliPaths(
-        input_path=Path(args.input),
-        edge_path=Path(args.carrier_edges),
-        role_path=Path(args.pop_roles) if args.pop_roles else None,
-        mapbook_pdf=Path(args.mapbook_pdf) if args.mapbook_pdf else None,
-        output_dir=Path(args.output_dir),
-        regional_node_path=Path(args.regional_nodes) if args.regional_nodes else None,
-        regional_edge_paths=tuple(Path(path) for path in args.regional_edges),
+        input_path=_path_or(args.input, base.input_path),
+        edge_path=_path_or(args.carrier_edges, base.edge_path),
+        role_path=_optional_path_override(args.pop_roles, base.role_path),
+        mapbook_pdf=_optional_path_override(args.mapbook_pdf, base.mapbook_pdf),
+        output_dir=_path_or(args.output_dir, base.output_dir),
+        regional_node_path=_optional_path_override(args.regional_nodes, base.regional_node_path),
+        regional_edge_paths=regional_edges,
     )
 
-def params_from_args(args: argparse.Namespace) -> DesignParams:
-    """Build the design parameter bundle from parsed CLI arguments."""
+def resolve_params(config: AppConfig, args: argparse.Namespace) -> DesignParams:
+    """Overlay any design flags onto the config's design parameters."""
+    base = config.params
     return DesignParams(
-        core_count=args.core_count,
-        allow_roadm_aggregation=args.allow_roadm_aggregation,
-        forced_core_names=tuple(args.force_core),
-        forced_aggregation_names=tuple(args.force_aggregation),
-        excluded_names=tuple(args.exclude),
+        core_count=args.core_count if args.core_count is not None else base.core_count,
+        allow_roadm_aggregation=base.allow_roadm_aggregation or args.allow_roadm_aggregation,
+        forced_core_names=tuple(args.force_core) or base.forced_core_names,
+        forced_aggregation_names=tuple(args.force_aggregation) or base.forced_aggregation_names,
+        excluded_names=tuple(args.exclude) or base.excluded_names,
+        tuning=base.tuning,
     )
 
 def run_design(paths: CliPaths, params: DesignParams, augment: bool) -> DesignArtifacts:
@@ -225,14 +255,16 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO, format="%(asctime)s | %(message)s", datefmt="%H:%M:%S"
     )
     args = build_parser().parse_args(argv)
-    paths = cli_paths(args)
-    params = params_from_args(args)
-    mapbook = (
-        paths.mapbook_pdf if paths.mapbook_pdf and paths.mapbook_pdf.exists() else None
-    )
-    sources = SourceFiles(paths.input_path, paths.edge_path, mapbook)
     try:
-        artifacts = run_design(paths, params, not args.no_resilience_augmentation)
+        config = load_app_config(args)
+        paths = resolve_paths(config, args)
+        params = resolve_params(config, args)
+        augment = config.resilience_augmentation and not args.no_resilience_augmentation
+        artifacts = run_design(paths, params, augment)
+        mapbook = (
+            paths.mapbook_pdf if paths.mapbook_pdf and paths.mapbook_pdf.exists() else None
+        )
+        sources = SourceFiles(paths.input_path, paths.edge_path, mapbook)
         outputs = write_outputs(paths.output_dir, sources, artifacts)
     except (ValueError, OSError, ET.ParseError, zipfile.BadZipFile) as exc:
         print(f"error: {exc}", file=sys.stderr)
