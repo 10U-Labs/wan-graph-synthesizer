@@ -388,23 +388,19 @@ def assign_access(
     selected: set[str] = set(plan.forced_aggregation_ids)
     homes: dict[str, list[str]] = {}
 
-    # Pass 1: stand up each cluster's local aggregation heads.
+    # Pass 1: stand up each cluster's local aggregation heads. This places the
+    # facilities only -- where to build -- and never pins a member to them.
+    # Homing is left to pass 2 so a peripheral member of a sprawling cluster
+    # homes to whichever selected facility is actually nearest, not to a distant
+    # common head chosen for the cluster as a whole.
     for members in plan.clusters:
         member_nodes = [access_by_id[member] for member in members]
-        heads = cluster_local_heads(member_nodes, feasible_ids, selected, pop_by_id)
-        if not heads:
-            continue
-        selected.update(heads)
-        for member in members:
-            homes[member] = list(heads)
+        selected.update(cluster_local_heads(member_nodes, feasible_ids, selected, pop_by_id))
 
-    # Pass 2: complete every node to two homes, reusing existing facilities.
+    # Pass 2: home every node to its nearest two facilities, reusing the placed
+    # heads before opening any new build.
     for access in inputs.access_nodes:
-        if len(homes.get(access.id, [])) >= 2:
-            continue
-        completed = complete_homes(
-            access, homes.get(access.id, []), selected, feasible_ids, pop_by_id
-        )
+        completed = complete_homes(access, [], selected, feasible_ids, pop_by_id)
         homes[access.id] = completed
         selected.update(completed)
 
