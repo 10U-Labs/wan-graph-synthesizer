@@ -83,7 +83,7 @@ canonical design:
   co-located `AGGR` node, per hard constraint 8.
 
 The canonical design pins Atlanta and Philadelphia as cores; and McLean,
-Portland, San Luis Obispo, New York, and Norfolk as aggregations. Two
+Portland, San Luis Obispo, New York, and Richmond as aggregations. Two
 Long Island demand intents are not Lumen PoPs in
 the mapbook, so they are mapped to the nearest existing PoPs: Brookhaven
 to New York, NY and Shirley to Newark, NJ.
