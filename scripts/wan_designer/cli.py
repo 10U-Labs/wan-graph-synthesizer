@@ -51,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
         "input",
         nargs="?",
         default=None,
-        help="Input KMZ or KML file. Overrides the config's mapbook.",
+        help="Input mapbook node CSV (or KMZ/KML). Overrides the config's mapbook.",
     )
     parser.add_argument(
         "--carrier-edges",

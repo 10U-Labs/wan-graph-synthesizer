@@ -54,14 +54,15 @@ rendering engine.
 ## Carrier three-tier WAN design script
 
 Use `scripts/design_network.py` to compute a three-tier WAN design
-from the included KMZ and the Carrier mapbook-derived edge list:
+from the mapbook node and edge CSVs in `data/`:
 
 ```bash
 python3 scripts/design_network.py
 ```
 
-The script parses F-35, Sentinel, provider provider regions, and Carrier 400G PoP
-placemarks. F-35, Sentinel, and provider provider locations are access nodes.
+The placemark nodes live in `data/mapbook_nodes.csv` (exported from the
+source KMZ, which is still accepted if passed as input). The script reads
+F-35, Sentinel, provider provider regions, and Carrier 400G PoP nodes from it. F-35, Sentinel, and provider provider locations are access nodes.
 The script selects up to three Carrier core PoPs, selects aggregation PoPs
 as needed, dual-homes every access node to two aggregation PoPs, routes
 every aggregation to two cores over node-disjoint paths on the physical

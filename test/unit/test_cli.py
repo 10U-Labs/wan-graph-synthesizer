@@ -115,7 +115,7 @@ def test_resolve_paths_input_override() -> None:
 
 def test_resolve_paths_keeps_default_input() -> None:
     """With no positional the config's mapbook path is kept."""
-    assert _paths([]).input_path == Path("f35_sentinel_provider regions_carrier_400g.kmz")
+    assert _paths([]).input_path == Path("data/mapbook_nodes.csv")
 
 
 def test_resolve_paths_regional_edges_override() -> None:

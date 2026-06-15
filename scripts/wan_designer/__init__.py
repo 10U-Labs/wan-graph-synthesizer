@@ -27,6 +27,7 @@ from wan_designer.model import (
 from wan_designer.parsing import (
     build_adjacency,
     load_carrier_edges,
+    load_node_csv,
     load_nodes,
     load_pop_roles,
     load_regional_networks,
@@ -76,6 +77,7 @@ __all__ = [
     "haversine_miles",
     "load_carrier_edges",
     "load_config",
+    "load_node_csv",
     "load_nodes",
     "load_pop_roles",
     "load_regional_networks",

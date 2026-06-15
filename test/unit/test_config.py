@@ -31,10 +31,8 @@ def test_default_has_no_forced_cores() -> None:
 
 
 def test_default_mapbook_path() -> None:
-    """The default config points at the project KMZ mapbook."""
-    assert default_config().paths.input_path == Path(
-        "f35_sentinel_provider regions_carrier_400g.kmz"
-    )
+    """The default config points at the project mapbook node CSV."""
+    assert default_config().paths.input_path == Path("data/mapbook_nodes.csv")
 
 
 def test_default_output_dir() -> None:

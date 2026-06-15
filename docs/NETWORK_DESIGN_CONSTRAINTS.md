@@ -16,9 +16,9 @@ It is transcribed into two files:
 - `data/carrier_pop_roles.csv` — each PoP's role: `aggregator` or
   `roadm`.
 
-Demand sites come from the input KMZ. It contains the F-35
-installations, the Sentinel program locations, and the cloud provider
-Regions.
+Demand sites come from `data/mapbook_nodes.csv` (exported from the
+source KMZ). It contains the F-35 installations, the Sentinel program
+locations, and the cloud provider regions, alongside the Carrier 400G PoPs.
 
 ### The mapbook has no distances
 

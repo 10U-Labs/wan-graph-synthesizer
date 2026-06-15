@@ -35,7 +35,9 @@ design:
   resilience_augmentation: true
 inputs:
   carrier_edges: data/carrier_edges.csv
-  mapbook: f35_sentinel_provider regions_carrier_400g.kmz
+  # Mapbook placemark nodes (carrier PoPs and access sites) as a CSV exported
+  # from the source KMZ. A .kmz/.kml path is also accepted here.
+  mapbook: data/mapbook_nodes.csv
   # Optional source PDF path recorded in the JSON output for provenance.
   mapbook_pdf: ""
   # Optional CSV of Carrier PoP roles; set to "" to disable.

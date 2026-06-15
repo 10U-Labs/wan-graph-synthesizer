@@ -43,14 +43,19 @@ def clean_description(raw_text: str | None) -> str:
     lines = [line.strip() for line in text.splitlines()]
     return "\n".join(line for line in lines if line)
 
-def parse_point_placemark(placemark: ET.Element, category: str, used_ids: set[str]) -> Node | None:
-    """Parse one point placemark into a Node, or None if it has no point."""
-    coordinates = placemark.find(".//k:Point/k:coordinates", KML_NS)
-    if coordinates is None or not coordinates.text or not coordinates.text.strip():
-        return None
+def build_node(
+    name: str,
+    category: str,
+    coords: tuple[float, float],
+    description: str,
+    used_ids: set[str],
+) -> Node:
+    """Build a Node with a category-derived kind and an id unique within a load.
 
-    lon_text, lat_text, *_ = coordinates.text.strip().split(",")
-    name = placemark.findtext("k:name", default="Unnamed", namespaces=KML_NS).strip()
+    Shared by the KML and CSV node loaders so both derive ids and kinds
+    identically; ``coords`` is ``(lat, lon)`` and ``used_ids`` is mutated to
+    reserve each id as it is handed out.
+    """
     kind = classify_category(category)
     base_id = f"{kind}_{slugify(name)}"
     node_id = base_id
@@ -60,20 +65,70 @@ def parse_point_placemark(placemark: ET.Element, category: str, used_ids: set[st
         suffix += 1
     used_ids.add(node_id)
 
+    lat, lon = coords
     return Node(
         id=node_id,
         name=name,
         category=category,
         kind=kind,
-        lat=float(lat_text),
-        lon=float(lon_text),
+        lat=lat,
+        lon=lon,
+        description=description,
+    )
+
+def parse_point_placemark(placemark: ET.Element, category: str, used_ids: set[str]) -> Node | None:
+    """Parse one point placemark into a Node, or None if it has no point."""
+    coordinates = placemark.find(".//k:Point/k:coordinates", KML_NS)
+    if coordinates is None or not coordinates.text or not coordinates.text.strip():
+        return None
+
+    lon_text, lat_text, *_ = coordinates.text.strip().split(",")
+    return build_node(
+        name=placemark.findtext("k:name", default="Unnamed", namespaces=KML_NS).strip(),
+        category=category,
+        coords=(float(lat_text), float(lon_text)),
         description=clean_description(
             placemark.findtext("k:description", default="", namespaces=KML_NS)
         ),
+        used_ids=used_ids,
     )
 
 def load_nodes(input_path: Path) -> list[Node]:
-    """Load every point placemark from the KMZ/KML as a list of nodes."""
+    """Load the placemark nodes from a CSV, KMZ, or KML mapbook file.
+
+    A ``.csv`` mapbook is the canonical node source (see :func:`load_node_csv`);
+    ``.kmz``/``.kml`` files are parsed from their point placemarks.
+    """
+    if input_path.suffix.lower() == ".csv":
+        return load_node_csv(input_path)
+    return load_kml_nodes(input_path)
+
+def load_node_csv(path: Path) -> list[Node]:
+    """Load mapbook nodes from a CSV exported from the KMZ placemarks.
+
+    Each row is ``name,category,lat,lon,description``. The ``category`` drives
+    the node kind (carrier PoP, F-35, Sentinel, region, ...) exactly as the KML
+    folder label does, so the CSV and KMZ paths yield identical node sets.
+    """
+    if not path.exists():
+        raise ValueError(f"Mapbook node file does not exist: {path}")
+    nodes: list[Node] = []
+    used_ids: set[str] = set()
+    with path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            nodes.append(
+                build_node(
+                    name=row["name"].strip(),
+                    category=row["category"].strip(),
+                    coords=(float(row["lat"]), float(row["lon"])),
+                    description=row.get("description", "").strip(),
+                    used_ids=used_ids,
+                )
+            )
+    return nodes
+
+def load_kml_nodes(input_path: Path) -> list[Node]:
+    """Load every point placemark from a KMZ/KML file as a list of nodes."""
     root = read_kml_root(input_path)
     document = root.find("k:Document", KML_NS)
     if document is None:

@@ -13,12 +13,33 @@ from wan_designer.parsing import (
     build_adjacency,
     clean_description,
     load_carrier_edges,
+    load_node_csv,
     load_nodes,
     load_pop_roles,
     load_regional_networks,
     load_regional_nodes,
     read_kml_root,
 )
+
+NODES_CSV = (
+    "name,category,lat,lon,description\n"
+    '"Denver, CO",Carrier 400G PoPs,39.7392,-104.9903,"State: Colorado\nCarrier 400G PoP"\n'
+    '"Kansas City, MO",Carrier 400G PoPs,39.0997,-94.5786,\n'
+    "Buckley,F-35 CONUS Installations,39.7,-104.75,\n"
+)
+
+DUP_NODES_CSV = (
+    "name,category,lat,lon,description\n"
+    "Twin,Carrier 400G PoPs,39,-90,\n"
+    "Twin,Carrier 400G PoPs,38,-91,\n"
+)
+
+
+def nodes_csv_file(tmp_path: Path, text: str = NODES_CSV) -> Path:
+    """Write a mapbook node CSV to a temp file and return its path."""
+    path = tmp_path / "mapbook_nodes.csv"
+    path.write_text(text, encoding="utf-8")
+    return path
 
 REGIONAL_CSV = (
     "name,lat,lon,network\n"
@@ -134,6 +155,36 @@ def test_load_nodes_requires_document(tmp_path: Path) -> None:
     """Load nodes requires document."""
     with pytest.raises(ValueError):
         load_nodes(kml_file(tmp_path, NO_DOCUMENT_KML))
+
+
+def test_load_node_csv_reads_all_rows(tmp_path: Path) -> None:
+    """Load node csv reads all rows."""
+    assert len(load_node_csv(nodes_csv_file(tmp_path))) == 3
+
+
+def test_load_node_csv_classifies_carrier_pops(tmp_path: Path) -> None:
+    """Load node csv classifies carrier pops."""
+    assert carrier_names(load_node_csv(nodes_csv_file(tmp_path))) == {
+        "Denver, CO",
+        "Kansas City, MO",
+    }
+
+
+def test_load_node_csv_deduplicates_ids(tmp_path: Path) -> None:
+    """Load node csv deduplicates ids."""
+    nodes = load_node_csv(nodes_csv_file(tmp_path, DUP_NODES_CSV))
+    assert len({node.id for node in nodes}) == 2
+
+
+def test_load_node_csv_requires_existing_file(tmp_path: Path) -> None:
+    """Load node csv requires existing file."""
+    with pytest.raises(ValueError):
+        load_node_csv(tmp_path / "missing.csv")
+
+
+def test_load_nodes_dispatches_csv_by_suffix(tmp_path: Path) -> None:
+    """Load nodes routes a .csv mapbook through the CSV loader."""
+    assert len(load_nodes(nodes_csv_file(tmp_path))) == 3
 
 
 def test_load_pop_roles_defaults_to_aggregator() -> None:

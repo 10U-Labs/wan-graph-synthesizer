@@ -18,7 +18,7 @@ import yaml
 from wan_designer.model import CliPaths, DesignParams, Tuning
 
 DEFAULT_CONFIG_PATH = Path("etc/config.yml")
-DEFAULT_MAPBOOK = "f35_sentinel_provider regions_carrier_400g.kmz"
+DEFAULT_MAPBOOK = "data/mapbook_nodes.csv"
 DEFAULT_CARRIER_EDGES = "data/carrier_edges.csv"
 DEFAULT_POP_ROLES = "data/carrier_pop_roles.csv"
 DEFAULT_REGIONAL_NODES = "data/regional_nodes.csv"
