@@ -5,6 +5,9 @@
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIB = "© OpenStreetMap contributors";
 
+// The map shown on first load, before the operator picks a tenant.
+const DEFAULT_MAP_ID = "joint";
+
 // Vertex color and radius. CSP data centers are colored by kind; every other
 // drawn vertex is colored by its tier role. Transit/unused carrier PoPs are
 // not drawn.
@@ -16,8 +19,13 @@ const ROLE_STYLE = {
   access: { color: "#1565c0", radius: 4 },
 };
 
-// Every link is drawn in one neutral color, regardless of edge type.
-const LINK_COLOR = "#607d8b";
+// Each link tier matches its vertices' color and grows thicker up the tiers:
+// access links are thinnest, aggregation links thicker, backbones thickest.
+const EDGE_STYLE = {
+  access: { color: ROLE_STYLE.access.color, weight: 1.5 },
+  aggregation: { color: ROLE_STYLE.aggregation.color, weight: 3 },
+  backbone: { color: ROLE_STYLE.core.color, weight: 4.5 },
+};
 
 const map = L.map("map").setView([39.5, -98.35], 4);
 L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(map);
@@ -73,30 +81,24 @@ function drawVertices(vertices) {
   return byId;
 }
 
-// Draw one set of edges as same-colored links, each with a hover tooltip.
-function drawEdges(edges, byId, label) {
+// Draw one set of edges in the given tier style, each with a hover tooltip.
+function drawEdges(edges, byId, style, label) {
   for (const edge of edges) {
     const source = byId[edge.source_id];
     const target = byId[edge.target_id];
     if (source && target) {
       add(L.polyline([source.coords, target.coords], {
-        color: LINK_COLOR,
-        weight: 1.5,
-        opacity: 0.7,
+        color: style.color,
+        weight: style.weight,
+        opacity: 0.8,
       }).bindTooltip(edgeLabel(label, source, target), { sticky: true }));
     }
   }
 }
 
-function setStatus(validation, summary) {
-  const ok = validation.connected &&
-    validation.aggregations_dual_homed_to_cores &&
-    validation.cores_full_mesh;
-  const status = document.getElementById("status");
-  status.className = ok ? "valid" : "invalid";
-  status.textContent = (ok ? "✓ valid" : "✗ invalid") +
-    ` — ${summary.core_count} cores, ${summary.aggregation_count} aggregations, ` +
-    `${summary.access_vertex_count} access`;
+// Split the routed core/aggregation paths by purpose for distinct styling.
+function pathsByPurpose(pathUses, purpose) {
+  return pathUses.filter((use) => use.purpose === purpose);
 }
 
 async function getJSON(path) {
@@ -109,17 +111,18 @@ async function getJSON(path) {
 
 async function render(mapId) {
   clear();
-  const [vertices, edges, validation, summary] = await Promise.all([
+  const [vertices, edges] = await Promise.all([
     getJSON(`/api/wan-maps/${mapId}/vertices`),
     getJSON(`/api/wan-maps/${mapId}/edges`),
-    getJSON(`/api/wan-maps/${mapId}/validation`),
-    getJSON(`/api/wan-maps/${mapId}/summary`),
   ]);
 
   const byId = drawVertices(vertices);
-  drawEdges(edges.access_edges, byId, "Access link");
-  drawEdges(edges.path_uses, byId, "Backbone route");
-  setStatus(validation, summary);
+  drawEdges(pathsByPurpose(edges.path_uses, "core_mesh"), byId, EDGE_STYLE.backbone, "Backbone");
+  drawEdges(
+    pathsByPurpose(edges.path_uses, "aggregation_to_core"),
+    byId, EDGE_STYLE.aggregation, "Aggregation link",
+  );
+  drawEdges(edges.access_edges, byId, EDGE_STYLE.access, "Access link");
 
   const points = vertices.map((vertex) => vertex.coords);
   if (points.length) {
@@ -138,7 +141,7 @@ function select(link, mapId) {
 async function init() {
   const tenants = document.getElementById("tenants");
   const wanMaps = await getJSON("/api/wan-maps");
-  for (const wanMap of wanMaps) {
+  const entries = wanMaps.map((wanMap) => {
     const link = document.createElement("a");
     link.href = "#";
     link.textContent = wanMap.label;
@@ -147,13 +150,14 @@ async function init() {
       select(link, wanMap.id);
     });
     tenants.appendChild(link);
-  }
-  const first = tenants.querySelector("a");
-  if (first) {
-    await select(first, wanMaps[0].id);
+    return { link, wanMap };
+  });
+  const start = entries.find((entry) => entry.wanMap.id === DEFAULT_MAP_ID) || entries[0];
+  if (start) {
+    await select(start.link, start.wanMap.id);
   }
 }
 
 init().catch((error) => {
-  document.getElementById("status").textContent = `Error: ${error.message}`;
+  console.error(error);
 });

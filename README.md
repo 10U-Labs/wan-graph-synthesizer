@@ -86,10 +86,12 @@ start bootstraps an isolated `.venv` for you:
 ./serve stop
 ```
 
-Then open `http://localhost:8000` and click **Joint** or **F-35** in the
-header; the map redraws with the cores (red), aggregations (purple), CSP
-data centers (orange), and other access vertices (blue), plus same-colored
-links and a validation banner. Hover any vertex or link for its details.
+Then open `http://localhost:8000`; the **Joint** map loads by default, and
+clicking **Joint** or **F-35** in the header redraws the map with the cores
+(red), aggregations (purple), CSP data centers (orange), and other access
+vertices (blue). Links are colored and weighted by tier: thin blue access
+links, thicker purple aggregation links, and thick red backbones between
+cores. Hover any vertex or link for its details.
 
 The REST surface is a set of atomic resources (WAN map `id` = `joint`
 or `f_35`):
