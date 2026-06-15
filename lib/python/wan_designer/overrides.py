@@ -1,0 +1,199 @@
+"""Resolve operator role pins and population anchors into search role overrides.
+
+The optimizer's search consumes a :class:`~wan_designer.model.RoleOverrides`
+describing which PoPs are forced cores, which aggregations must be seated, which
+are excluded, and how the core and aggregation tiers are restricted. This module
+builds that object from two independent sources -- the operator's force-pins
+(resolved by name) and the realized population anchors -- and stands up the
+co-located ``AGGR`` twin for any operator PoP pinned as both a core and an
+aggregation. It runs before the search and never calls back into it.
+"""
+
+from __future__ import annotations
+
+from wan_designer.model import (
+    DesignParams,
+    PhysicalEdge,
+    RoleOverrides,
+    StateAggregationSpec,
+    Vertex,
+    edge_key,
+    is_carrier_pop,
+)
+from wan_designer.population import RealizedAnchors
+
+
+def pop_id_by_name(carrier_pops: list[Vertex]) -> dict[str, str]:
+    """Map each Carrier PoP's display name to its vertex id for pin resolution."""
+    return {pop.name: pop.id for pop in carrier_pops}
+
+def resolve_pinned_ids(
+    names: tuple[str, ...], name_to_id: dict[str, str], label: str
+) -> set[str]:
+    """Resolve operator-supplied PoP names to ids, rejecting any unknown name."""
+    resolved: set[str] = set()
+    for name in names:
+        if name not in name_to_id:
+            raise ValueError(f"--{label} PoP not found in the Carrier graph: {name}")
+        resolved.add(name_to_id[name])
+    return resolved
+
+def reject_override_conflicts(
+    forced_core: set[str], forced_aggregation: set[str], excluded: set[str]
+) -> None:
+    """Reject an excluded PoP that is also pinned as a core or aggregation."""
+    clash = excluded & (forced_core | forced_aggregation)
+    if clash:
+        raise ValueError(f"PoPs cannot be both excluded and forced: {sorted(clash)}")
+
+def colocated_twin(core: Vertex) -> Vertex:
+    """Build the co-located ``AGGR`` vertex that shares a core's coordinates."""
+    return Vertex(
+        id=f"aggr_{core.id}",
+        name=f"AGGR {core.name}",
+        tenant=core.tenant,
+        kind=core.kind,
+        coords=core.coords,
+        info=core.info,
+        shown_in_map=core.shown_in_map,
+    )
+
+def colocation_edges(
+    core_id: str, twin_id: str, physical_edges: dict[tuple[str, str], PhysicalEdge]
+) -> dict[tuple[str, str], PhysicalEdge]:
+    """Edges standing up a co-located ``AGGR`` stack beside its core.
+
+    A zero-mile in-facility cross-connect joins the two distinct hardware stacks,
+    and every one of the core's fiber handoffs is duplicated onto the aggregation
+    so it reaches a remote core without traversing its own co-located core.
+    """
+    facility = edge_key(core_id, twin_id)
+    new_edges: dict[tuple[str, str], PhysicalEdge] = {
+        facility: PhysicalEdge(
+            source=facility[0], target=facility[1], distance_miles=0.0,
+            note="in-facility core/aggregation cross-connect",
+        )
+    }
+    for (left, right), edge in physical_edges.items():
+        neighbor = right if left == core_id else left if right == core_id else None
+        if neighbor is None:
+            continue
+        handoff = edge_key(twin_id, neighbor)
+        new_edges[handoff] = PhysicalEdge(
+            source=handoff[0], target=handoff[1], distance_miles=edge.distance_miles,
+            source_page=edge.source_page, note="co-located aggregation fiber handoff",
+        )
+    return new_edges
+
+def split_colocated(
+    vertices: list[Vertex],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    colocated_ids: set[str],
+) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
+    """Split each co-located PoP into its core vertex and a co-located ``AGGR`` twin."""
+    vertex_by_id = {vertex.id: vertex for vertex in vertices}
+    augmented_vertices = list(vertices)
+    augmented_edges = dict(physical_edges)
+    twin_by_core: dict[str, str] = {}
+    for core_id in sorted(colocated_ids):
+        twin = colocated_twin(vertex_by_id[core_id])
+        twin_by_core[core_id] = twin.id
+        augmented_vertices.append(twin)
+        augmented_edges.update(colocation_edges(core_id, twin.id, physical_edges))
+    return augmented_vertices, augmented_edges, twin_by_core
+
+def _filtered_specs(
+    specs: tuple[StateAggregationSpec, ...], excluded: set[str]
+) -> tuple[StateAggregationSpec, ...]:
+    """Drop specs whose core city is excluded and null out any excluded slot id."""
+    return tuple(
+        StateAggregationSpec(
+            spec.state,
+            spec.core_id,
+            None if spec.in_metro_second_id in excluded else spec.in_metro_second_id,
+            None if spec.second_metro_id in excluded else spec.second_metro_id,
+        )
+        for spec in specs
+        if spec.core_id not in excluded
+    )
+
+
+def _anchor_candidates(
+    anchors: RealizedAnchors | None,
+    forced_core: set[str],
+    excluded: set[str],
+    operator_forced: set[str],
+) -> tuple[
+    frozenset[str] | None, frozenset[str] | None, tuple[StateAggregationSpec, ...]
+]:
+    """The population core/aggregation candidate restrictions and the kept specs.
+
+    Cores are restricted to each state's metro1.city1 (plus operator cores); the
+    aggregation tier to every city a state could seat (plus operator pins). Without
+    anchors both tiers are left unrestricted (``None``).
+    """
+    if anchors is None:
+        return None, None, ()
+    core_side = forced_core | (set(anchors.core_anchor_ids) - excluded)
+    aggregation_candidates = (set(anchors.aggregation_candidate_ids) - excluded) | operator_forced
+    return (
+        frozenset(core_side),
+        frozenset(aggregation_candidates),
+        _filtered_specs(anchors.aggregation_specs, excluded),
+    )
+
+
+def _resolve_operator_pins(
+    vertices: list[Vertex],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    params: DesignParams,
+) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], set[str], set[str], set[str]]:
+    """Resolve operator pins and split any operator co-location.
+
+    Returns the (possibly augmented) graph plus the forced-core, operator-forced
+    aggregation, and excluded id sets. A PoP pinned as both a core and an
+    aggregation is split into a ``CORE`` vertex and a ``AGGR`` twin, and it is the
+    twin's id that lands in the operator-forced aggregations.
+    """
+    name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
+    forced_core = resolve_pinned_ids(params.forced_core_names, name_to_id, "force-core")
+    forced_aggregation = resolve_pinned_ids(
+        params.forced_aggregation_names, name_to_id, "force-aggregation"
+    )
+    excluded = resolve_pinned_ids(params.excluded_names, name_to_id, "exclude")
+    reject_override_conflicts(forced_core, forced_aggregation, excluded)
+    colocated = forced_core & forced_aggregation
+    vertices, physical_edges, twin_by_core = split_colocated(vertices, physical_edges, colocated)
+    operator_forced = (forced_aggregation - colocated) | set(twin_by_core.values())
+    return vertices, physical_edges, forced_core, operator_forced, excluded
+
+
+def apply_role_overrides(
+    vertices: list[Vertex],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    params: DesignParams,
+    anchors: RealizedAnchors | None = None,
+) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
+    """Resolve operator pins and population anchors into the search's role overrides.
+
+    Operator forced cores stay required, each state's metro1.city1 becomes a core
+    *candidate*, and the aggregation tier is restricted to every city a state could
+    seat. Only an operator co-location is split into a ``CORE``/``AGGR`` pair;
+    population anchors are never co-located -- the per-state ``aggregation_specs``
+    let the search seat a cored state's first aggregation at its metro's second city.
+    """
+    vertices, physical_edges, forced_core, operator_forced, excluded = _resolve_operator_pins(
+        vertices, physical_edges, params
+    )
+    core_candidate_ids, aggregation_candidate_ids, specs = _anchor_candidates(
+        anchors, forced_core, excluded, operator_forced
+    )
+    overrides = RoleOverrides(
+        forced_core_ids=frozenset(forced_core),
+        forced_aggregation_ids=frozenset(operator_forced),
+        excluded_ids=frozenset(excluded),
+        core_candidate_ids=core_candidate_ids,
+        aggregation_candidate_ids=aggregation_candidate_ids,
+        aggregation_specs=specs,
+    )
+    return vertices, physical_edges, overrides

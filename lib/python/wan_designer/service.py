@@ -24,7 +24,8 @@ from wan_designer.model import (
     carrier_role,
     is_carrier_pop,
 )
-from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
+from wan_designer.optimize import optimize_three_tier_design
+from wan_designer.overrides import apply_role_overrides
 from wan_designer.output import design_payload
 from wan_designer.parsing import load_carrier_edges, load_vertices
 from wan_designer.population import (

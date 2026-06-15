@@ -57,6 +57,11 @@ def placement(
     return StatePlacement(core.state, core, in_metro_second, second_metro, required)
 
 
+def muni_name(chosen: Anchor | None) -> str | None:
+    """The chosen city's name, or None when the aggregation slot is empty."""
+    return chosen.municipality if chosen is not None else None
+
+
 # Colorado's Denver metro (Denver > Aurora) outranks its Boulder metro by official
 # CBSA population; the synthetic CBSA codes and metro populations are fixture data.
 DENVER = muni("Denver", "CO", "Denver", 700_000)
@@ -219,13 +224,13 @@ def test_population_placements_cores_on_top_metro_top_city() -> None:
 def test_population_placements_in_metro_second_is_the_metros_second_city() -> None:
     """The cored first aggregation is the second city of the most-populous metro."""
     placements = population_placements([], set(), CO_METROS, CO_MUNIS, {"CO"})
-    assert placements[0].in_metro_second.municipality == "Aurora"
+    assert muni_name(placements[0].in_metro_second) == "Aurora"
 
 
 def test_population_placements_second_metro_is_the_next_metros_top_city() -> None:
     """The second aggregation is the top city of the second-most-populous metro."""
     placements = population_placements([], set(), CO_METROS, CO_MUNIS, {"CO"})
-    assert placements[0].second_metro.municipality == "Boulder"
+    assert muni_name(placements[0].second_metro) == "Boulder"
 
 
 def test_population_placements_requires_aggregations_for_access_state() -> None:
@@ -329,8 +334,11 @@ def test_realize_anchors_thin_state_spec_has_none_slots() -> None:
     """A thin access state seats only its core city and leaves the slots empty."""
     seated = realize_anchors([placement(DENVER_ANCHOR, None, None, True)], [P1, P2], {})
     spec = seated.aggregation_specs[0]
-    assert (spec.in_metro_second_id, spec.second_metro_id) == (None, None)
-    assert seated.aggregation_candidate_ids == frozenset({spec.core_id})
+    assert (spec.in_metro_second_id, spec.second_metro_id, seated.aggregation_candidate_ids) == (
+        None,
+        None,
+        frozenset({spec.core_id}),
+    )
 
 
 def test_realize_anchors_seats_a_shared_city_once() -> None:
@@ -339,8 +347,8 @@ def test_realize_anchors_seats_a_shared_city_once() -> None:
         [placement(DENVER_ANCHOR, AURORA_ANCHOR, AURORA_ANCHOR, True)], [P1, P2], {}
     )
     spec = seated.aggregation_specs[0]
-    assert spec.in_metro_second_id == spec.second_metro_id
-    assert len(seated.vertices) == 4  # P1, P2, greenfield Denver, greenfield Aurora
+    # P1, P2, greenfield Denver, greenfield Aurora -- Aurora seated once across both slots.
+    assert (spec.in_metro_second_id == spec.second_metro_id, len(seated.vertices)) == (True, 4)
 
 
 def test_realize_anchors_avoids_a_colliding_vertex_id() -> None:

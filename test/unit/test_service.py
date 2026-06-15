@@ -48,9 +48,11 @@ def test_run_design_aggregates_a_cored_metro_on_its_second_city(tmp_path: Path) 
         fixtures.write_population_inputs(tmp_path), DesignParams(min_core_count=2), False
     ).design
     denver, aurora, boulder = slugify("Denver, CO"), slugify("Aurora, CO"), slugify("Boulder, CO")
-    assert {denver, slugify("Wichita, KS")} == set(design.core_ids)
-    assert {aurora, boulder} <= set(design.aggregation_ids)
-    assert denver not in design.aggregation_ids
+    assert (
+        set(design.core_ids),
+        {aurora, boulder} <= set(design.aggregation_ids),
+        denver in design.aggregation_ids,
+    ) == ({denver, slugify("Wichita, KS")}, True, False)
 
 
 def test_run_design_scopes_population_to_named_states(tmp_path: Path) -> None:

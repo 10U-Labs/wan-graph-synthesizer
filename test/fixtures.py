@@ -25,7 +25,8 @@ from wan_designer.model import (
     is_carrier_pop,
     slugify,
 )
-from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
+from wan_designer.optimize import optimize_three_tier_design
+from wan_designer.overrides import apply_role_overrides
 from wan_designer.service import run_design
 from wan_designer.validation import validate_design
 

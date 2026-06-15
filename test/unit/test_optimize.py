@@ -23,13 +23,11 @@ from wan_designer.model import (
 from wan_designer.optimize import (
     aggregation_core_paths,
     all_pairs_shortest,
-    apply_role_overrides,
     assign_access,
     best_design_at_size,
     build_design_for_cores,
     cluster_diameter,
     cluster_local_heads,
-    colocation_edges,
     complete_homes,
     core_combination_count,
     core_combinations,
@@ -43,12 +41,17 @@ from wan_designer.optimize import (
     nearest_pop_id,
     vertex_straightness,
     optimize_three_tier_design,
-    reject_override_conflicts,
-    resolve_pinned_ids,
     search_best_design,
     unit_adjacency,
+    _AggregationPlan,
     _restrict_candidates,
     _SearchPlan,
+)
+from wan_designer.overrides import (
+    apply_role_overrides,
+    colocation_edges,
+    reject_override_conflicts,
+    resolve_pinned_ids,
 )
 from wan_designer.population import RealizedAnchors
 
@@ -90,9 +93,8 @@ def _plan(
     """Build a search plan for direct optimizer tests."""
     return _SearchPlan(
         candidates,
-        frozenset(forced or set()),
+        _AggregationPlan(frozenset(forced or set()), tuple(specs)),
         strength or {},
-        aggregation_specs=tuple(specs),
         clusters=clusters or [],
     )
 
@@ -100,7 +102,7 @@ def _plan(
 def _required_plan(candidates: list[str], required: set[str]) -> _SearchPlan:
     """Build a search plan with required cores, for core-combination tests."""
     return _SearchPlan(
-        candidates, frozenset(), {}, required_cores=frozenset(required)
+        candidates, _AggregationPlan(), {}, required_cores=frozenset(required)
     )
 
 
@@ -637,9 +639,11 @@ def test_apply_role_overrides_does_not_split_a_population_anchor() -> None:
     _v, _e, overrides = apply_role_overrides(
         [pop("a"), pop("z")], physical({("a", "z"): 1.0}), DesignParams(), _anchors({"a"}, (spec,))
     )
-    assert "aggr_a" not in overrides.forced_aggregation_ids
-    assert "a" in (overrides.core_candidate_ids or frozenset())
-    assert overrides.aggregation_specs == (spec,)
+    assert (
+        "aggr_a" in overrides.forced_aggregation_ids,
+        overrides.core_candidate_ids,
+        overrides.aggregation_specs,
+    ) == (False, frozenset({"a"}), (spec,))
 
 
 def test_apply_role_overrides_unions_aggregation_candidates() -> None:
@@ -701,5 +705,5 @@ def test_assign_access_seeds_the_resolved_first_aggregation() -> None:
     ids = ["core_city", "metro2", "second_city", "c1", "c2"]
     inputs = _inputs_from_edges(ids, edges, {"core_city", "metro2", "second_city"}, [access("s")])
     spec = StateAggregationSpec("CO", "core_city", "second_city", "metro2")
-    _edges, selected = assign_access(("c1", "c2"), inputs, _plan([], specs=(spec,)))
+    _edges, selected = assign_access(("c1", "c2"), inputs, _plan([], specs=(spec,))) or ([], set())
     assert {"core_city", "metro2"} <= selected

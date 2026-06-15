@@ -49,7 +49,6 @@ from wan_designer.graphs import (
     reconstruct_path,
 )
 from wan_designer.clustering import cluster_access_vertices
-from wan_designer.population import RealizedAnchors
 
 logger = logging.getLogger(__name__)
 
@@ -383,9 +382,9 @@ def effective_forced_aggregations(
     collapses any duplicate or ``None``-empty slots, so a thin state that names the
     same city twice simply seats it once.
     """
-    seated: set[str] = set(plan.operator_forced_aggregation_ids)
+    seated: set[str] = set(plan.aggregations.operator_forced)
     core_set = set(core_ids)
-    for spec in plan.aggregation_specs:
+    for spec in plan.aggregations.specs:
         if spec.second_metro_id is not None:
             seated.add(spec.second_metro_id)
         if spec.core_id in core_set:
@@ -568,6 +567,27 @@ def validate_pop_graph(
         raise ValueError(f"Carrier PoPs missing from physical edge graph: {names}")
 
 @dataclass(frozen=True)
+class _AggregationPlan:
+    """The aggregations a design must seat: operator pins plus per-state population.
+
+    ``operator_forced`` are the operator's pinned aggregations, always seated.
+    ``specs`` carries each access state's population slots; which of them is seated
+    is resolved per candidate core set by :func:`effective_forced_aggregations`.
+    """
+
+    operator_forced: frozenset[str] = frozenset()
+    specs: tuple[StateAggregationSpec, ...] = ()
+
+    def never_core_ids(self) -> frozenset[str]:
+        """Aggregation ids that can never be cores: operator pins and the non-city1 slots."""
+        return frozenset(
+            self.operator_forced
+            | {spec.in_metro_second_id for spec in self.specs if spec.in_metro_second_id}
+            | {spec.second_metro_id for spec in self.specs if spec.second_metro_id}
+        )
+
+
+@dataclass(frozen=True)
 class _SearchPlan:
     """Pre-computed context shared across every candidate core set.
 
@@ -575,17 +595,12 @@ class _SearchPlan:
     is core-independent); each cluster's heads are then chosen relative to its
     own extent. ``feasibility_cache`` memoizes per-pair vertex-disjoint
     reachability so the search avoids re-running max-flows for every core set.
-
-    ``operator_forced_aggregation_ids`` are the operator's pinned aggregations,
-    always seated. ``aggregation_specs`` carries each access state's population
-    slots; the seated population aggregations are resolved per candidate core set
-    by :func:`effective_forced_aggregations`, not fixed here.
+    ``aggregations`` carries the operator pins and per-state population specs.
     """
 
     core_candidates: list[str]
-    operator_forced_aggregation_ids: frozenset[str]
+    aggregations: _AggregationPlan
     strength_by_id: dict[str, float]
-    aggregation_specs: tuple[StateAggregationSpec, ...] = ()
     clusters: list[list[str]] = field(default_factory=list)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
     required_cores: frozenset[str] = field(default_factory=frozenset)
@@ -734,19 +749,17 @@ def graph_context(
 def build_search_plan(
     inputs: DesignInputs,
     eligible_ids: set[str],
-    operator_forced: frozenset[str],
-    aggregation_specs: tuple[StateAggregationSpec, ...],
-    never_core_ids: frozenset[str],
+    aggregations: _AggregationPlan,
     forced_core_ids: frozenset[str],
     params: DesignParams,
 ) -> _SearchPlan:
     """Compute vertex strengths, access-vertex clusters, and core candidates.
 
-    Required cores are the operator-forced cores. ``never_core_ids`` are the ids
-    that can never be cores -- operator-pinned aggregations and the population
-    second-metro and in-metro-second cities -- and are excluded from the free core
-    candidates. A population state's metro1.city1 stays a candidate even though it
-    is also a conditional aggregation, so it can be chosen as that state's core.
+    Required cores are the operator-forced cores. The aggregations that can never
+    be cores -- operator pins and the population second-metro and in-metro-second
+    cities -- are excluded from the free core candidates, but a population state's
+    metro1.city1 stays a candidate even though it is also a conditional
+    aggregation, so it can be chosen as that state's core.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
@@ -761,162 +774,14 @@ def build_search_plan(
         params.tuning.cluster_max_radius_miles,
     )
     core_candidates = sorted(
-        eligible_ids - never_core_ids, key=lambda pop_id: (-strength_by_id[pop_id], pop_id)
+        eligible_ids - aggregations.never_core_ids(),
+        key=lambda pop_id: (-strength_by_id[pop_id], pop_id),
     )
-    required = forced_core_ids & eligible_ids
     return _SearchPlan(
-        core_candidates, operator_forced, strength_by_id,
-        aggregation_specs=aggregation_specs, clusters=clusters,
-        required_cores=frozenset(required),
+        core_candidates, aggregations, strength_by_id, clusters=clusters,
+        required_cores=frozenset(forced_core_ids & eligible_ids),
         core_backbone_degree_cap=params.tuning.core_backbone_degree_cap,
     )
-
-def pop_id_by_name(carrier_pops: list[Vertex]) -> dict[str, str]:
-    """Map each Carrier PoP's display name to its vertex id for pin resolution."""
-    return {pop.name: pop.id for pop in carrier_pops}
-
-def resolve_pinned_ids(
-    names: tuple[str, ...], name_to_id: dict[str, str], label: str
-) -> set[str]:
-    """Resolve operator-supplied PoP names to ids, rejecting any unknown name."""
-    resolved: set[str] = set()
-    for name in names:
-        if name not in name_to_id:
-            raise ValueError(f"--{label} PoP not found in the Carrier graph: {name}")
-        resolved.add(name_to_id[name])
-    return resolved
-
-def reject_override_conflicts(
-    forced_core: set[str], forced_aggregation: set[str], excluded: set[str]
-) -> None:
-    """Reject an excluded PoP that is also pinned as a core or aggregation."""
-    clash = excluded & (forced_core | forced_aggregation)
-    if clash:
-        raise ValueError(f"PoPs cannot be both excluded and forced: {sorted(clash)}")
-
-def colocated_twin(core: Vertex) -> Vertex:
-    """Build the co-located ``AGGR`` vertex that shares a core's coordinates."""
-    return Vertex(
-        id=f"aggr_{core.id}",
-        name=f"AGGR {core.name}",
-        tenant=core.tenant,
-        kind=core.kind,
-        coords=core.coords,
-        info=core.info,
-        shown_in_map=core.shown_in_map,
-    )
-
-def colocation_edges(
-    core_id: str, twin_id: str, physical_edges: dict[tuple[str, str], PhysicalEdge]
-) -> dict[tuple[str, str], PhysicalEdge]:
-    """Edges standing up a co-located ``AGGR`` stack beside its core.
-
-    A zero-mile in-facility cross-connect joins the two distinct hardware stacks,
-    and every one of the core's fiber handoffs is duplicated onto the aggregation
-    so it reaches a remote core without traversing its own co-located core.
-    """
-    facility = edge_key(core_id, twin_id)
-    new_edges: dict[tuple[str, str], PhysicalEdge] = {
-        facility: PhysicalEdge(
-            source=facility[0], target=facility[1], distance_miles=0.0,
-            note="in-facility core/aggregation cross-connect",
-        )
-    }
-    for (left, right), edge in physical_edges.items():
-        neighbor = right if left == core_id else left if right == core_id else None
-        if neighbor is None:
-            continue
-        handoff = edge_key(twin_id, neighbor)
-        new_edges[handoff] = PhysicalEdge(
-            source=handoff[0], target=handoff[1], distance_miles=edge.distance_miles,
-            source_page=edge.source_page, note="co-located aggregation fiber handoff",
-        )
-    return new_edges
-
-def split_colocated(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-    colocated_ids: set[str],
-) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
-    """Split each co-located PoP into its core vertex and a co-located ``AGGR`` twin."""
-    vertex_by_id = {vertex.id: vertex for vertex in vertices}
-    augmented_vertices = list(vertices)
-    augmented_edges = dict(physical_edges)
-    twin_by_core: dict[str, str] = {}
-    for core_id in sorted(colocated_ids):
-        twin = colocated_twin(vertex_by_id[core_id])
-        twin_by_core[core_id] = twin.id
-        augmented_vertices.append(twin)
-        augmented_edges.update(colocation_edges(core_id, twin.id, physical_edges))
-    return augmented_vertices, augmented_edges, twin_by_core
-
-def _filtered_specs(
-    specs: tuple[StateAggregationSpec, ...], excluded: set[str]
-) -> tuple[StateAggregationSpec, ...]:
-    """Drop specs whose core city is excluded and null out any excluded slot id."""
-    return tuple(
-        StateAggregationSpec(
-            spec.state,
-            spec.core_id,
-            None if spec.in_metro_second_id in excluded else spec.in_metro_second_id,
-            None if spec.second_metro_id in excluded else spec.second_metro_id,
-        )
-        for spec in specs
-        if spec.core_id not in excluded
-    )
-
-
-def apply_role_overrides(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-    params: DesignParams,
-    anchors: RealizedAnchors | None = None,
-) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
-    """Resolve operator pins and population anchors into the search's role overrides.
-
-    Operator force-pins (resolved from ``params``) and population anchors (already
-    realized into ``vertices``/``physical_edges``) both feed the returned
-    ``RoleOverrides``: operator forced cores stay required, each state's metro1.city1
-    becomes a core *candidate*, and the aggregation tier is restricted to every city
-    a state could seat. Only an *operator* PoP pinned as both a core and an
-    aggregation is co-located -- split into a ``CORE`` vertex and a ``AGGR`` twin
-    whose id enters ``forced_aggregation_ids``. Population anchors are never
-    co-located; the per-state ``aggregation_specs`` let the search seat a cored
-    state's first aggregation at its metro's second city instead.
-    """
-    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
-    name_to_id = pop_id_by_name(carrier_pops)
-    forced_core = resolve_pinned_ids(params.forced_core_names, name_to_id, "force-core")
-    forced_aggregation = resolve_pinned_ids(
-        params.forced_aggregation_names, name_to_id, "force-aggregation"
-    )
-    excluded = resolve_pinned_ids(params.excluded_names, name_to_id, "exclude")
-    reject_override_conflicts(forced_core, forced_aggregation, excluded)
-    colocated = forced_core & forced_aggregation
-    vertices, physical_edges, twin_by_core = split_colocated(vertices, physical_edges, colocated)
-    operator_forced_aggregation_ids = (forced_aggregation - colocated) | set(twin_by_core.values())
-    core_anchor = anchors.core_anchor_ids if anchors is not None else frozenset()
-    core_side = forced_core | (set(core_anchor) - excluded)
-    if anchors is not None:
-        specs = _filtered_specs(anchors.aggregation_specs, excluded)
-        aggregation_candidates = (
-            set(anchors.aggregation_candidate_ids) - excluded
-        ) | operator_forced_aggregation_ids
-        core_candidate_ids: frozenset[str] | None = frozenset(core_side)
-        aggregation_candidate_ids: frozenset[str] | None = frozenset(aggregation_candidates)
-    else:
-        specs = ()
-        core_candidate_ids = None
-        aggregation_candidate_ids = None
-    overrides = RoleOverrides(
-        forced_core_ids=frozenset(forced_core),
-        forced_aggregation_ids=frozenset(operator_forced_aggregation_ids),
-        excluded_ids=frozenset(excluded),
-        core_candidate_ids=core_candidate_ids,
-        aggregation_candidate_ids=aggregation_candidate_ids,
-        aggregation_specs=specs,
-    )
-    return vertices, physical_edges, overrides
 
 def optimize_three_tier_design(
     vertices: list[Vertex],
@@ -937,14 +802,9 @@ def optimize_three_tier_design(
 
     context = graph_context(vertices, physical_edges)
     operator_forced = overrides.forced_aggregation_ids
-    specs = overrides.aggregation_specs
-    # Population second-metro and in-metro-second cities can never be cores; with
-    # the operator pins they are barred from the free core candidates.
-    never_core_ids = frozenset(
-        operator_forced
-        | {spec.in_metro_second_id for spec in specs if spec.in_metro_second_id is not None}
-        | {spec.second_metro_id for spec in specs if spec.second_metro_id is not None}
-    )
+    aggregations = _AggregationPlan(operator_forced, overrides.aggregation_specs)
+    # Every city a population state could seat must stay eligible, since the search
+    # resolves the seated aggregation per core set.
     population_aggregations = overrides.aggregation_candidate_ids or frozenset()
     eligible_ids = compute_eligible_ids(
         context.carrier_pops, roles, context.adjacency, params.allow_roadm_aggregation
@@ -971,8 +831,7 @@ def optimize_three_tier_design(
         all_predecessors=context.all_predecessors,
     )
     plan = build_search_plan(
-        inputs, core_eligible, operator_forced, specs, never_core_ids,
-        overrides.forced_core_ids, params,
+        inputs, core_eligible, aggregations, overrides.forced_core_ids, params
     )
     if len(plan.core_candidates) < params.min_core_count:
         raise ValueError("Not enough reachable core candidates")
