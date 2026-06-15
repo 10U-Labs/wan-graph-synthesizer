@@ -15,8 +15,9 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from api.app import build_app
 from wan_designer.config import load_config
+
+from api.app import build_app
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFIG_DIR = REPO_ROOT / "etc"
