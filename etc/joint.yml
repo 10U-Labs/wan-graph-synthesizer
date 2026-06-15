@@ -54,6 +54,8 @@ inputs:
     Lumen: data/vertices/lumen.csv
     provider: data/vertices/providers/providers.csv
     VisionNet: data/vertices/vision_net.csv
+# Display label surfaced by the REST API's /api/wan-maps endpoint.
+label: Joint
 output_dir: outputs
 tuning:
   # Ceiling (miles) on the data-derived DBSCAN cluster radius.

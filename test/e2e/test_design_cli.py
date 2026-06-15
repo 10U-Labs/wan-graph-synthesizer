@@ -1,6 +1,6 @@
 """End-to-end checks that validate the design the pipeline generated.
 
-The pipeline's design job runs ``scripts/design_network.py`` (which gates
+The pipeline's design job runs ``src/design_network.py`` (which gates
 on a valid design) and uploads ``outputs/`` as an artifact; these tests
 assert the structural guarantees of the design it produced.
 """

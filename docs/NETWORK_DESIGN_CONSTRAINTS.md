@@ -67,7 +67,7 @@ A design is invalid unless all of the following hold.
 
 Beyond the algorithm, the operator may pin tier roles by PoP name. The
 pins are CLI flags on the designer — and are baked, as explicit flags
-rather than hidden constants, into `scripts/design_network.py` for the
+rather than hidden constants, into `src/design_network.py` for the
 canonical design:
 
 - `--force-core NAME` makes a PoP a core. It is fixed into every candidate

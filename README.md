@@ -53,11 +53,11 @@ rendering engine.
 
 ## Carrier three-tier WAN design script
 
-Use `scripts/design_network.py` to compute a three-tier WAN design
+Use `src/design_network.py` to compute a three-tier WAN design
 from the vertex and edge CSVs in `data/`:
 
 ```bash
-python3 scripts/design_network.py
+PYTHONPATH=lib/python python3 src/design_network.py
 ```
 
 Vertices live in `data/vertices/`, one CSV per tenant (`lumen.csv`,
@@ -77,10 +77,40 @@ The edge files in `data/edges/` are transcribed from the carriers'
 published network maps. Results are written to
 `outputs/` as JSON, CSV, KML, and Graphviz DOT files.
 
+## Web app
+
+Instead of regenerating the KML and re-uploading it to a map, run the
+self-hosted web app and pick a tenant view in the browser. It serves a
+REST API and a Leaflet map from one process; designs are computed on
+demand from the configs in `etc/` (Joint, F-35) and cached in memory:
+
+```bash
+pip install -r requirements.txt
+PYTHONPATH=lib/python:src python3 src/serve.py
+```
+
+Then open `http://localhost:8000` and choose **Joint** or **F-35** from
+the dropdown; the map redraws with the cores, aggregations, access
+vertices, and edges as toggleable layers, plus a validation banner.
+
+The REST surface is a set of atomic resources (WAN map `id` = `joint`
+or `f_35`):
+
+- `GET /api/wan-maps` — selectable WAN maps (`id`, `label`)
+- `GET /api/wan-maps/{id}/vertices` — vertices with tier role and coordinates
+- `GET /api/wan-maps/{id}/edges` — access, physical, and routed edges
+- `GET /api/wan-maps/{id}/validation` — the structural validation report
+- `GET /api/wan-maps/{id}/summary` — tier counts, mileage, chosen cores
+
+Everything is free and open-source and runs locally. The one external
+dependency is the OpenStreetMap *tile* server (`TILE_URL` in
+`src/www/app.js`); point it at a self-hosted tile server to run fully
+offline.
+
 Tune the core tier:
 
 ```bash
-python3 scripts/design_network.py \
+PYTHONPATH=lib/python python3 src/design_network.py \
   --core-count 3 \
   --min-core-separation-miles 750
 ```
@@ -88,7 +118,7 @@ python3 scripts/design_network.py \
 Inspect the raw tier assignment without extra resilience augmentation:
 
 ```bash
-python3 scripts/design_network.py --no-resilience-augmentation
+PYTHONPATH=lib/python python3 src/design_network.py --no-resilience-augmentation
 ```
 
 ## Testing
@@ -96,7 +126,7 @@ python3 scripts/design_network.py --no-resilience-augmentation
 Tests follow the standard pyramid under `test/`:
 
 ```bash
-PYTHONPATH=scripts python3 -m pytest test/unit
-PYTHONPATH=scripts python3 -m pytest test/integration
-PYTHONPATH=scripts python3 -m pytest test/e2e
+PYTHONPATH=lib/python:src python3 -m pytest test/unit
+PYTHONPATH=lib/python:src python3 -m pytest test/integration
+PYTHONPATH=lib/python:src python3 -m pytest test/e2e
 ```

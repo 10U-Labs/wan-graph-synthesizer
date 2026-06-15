@@ -6,6 +6,7 @@ import csv
 import json
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any
 from xml.etree import ElementTree as ET
 
 from wan_designer.model import (
@@ -24,18 +25,18 @@ def sorted_physical_edges(design: Design) -> list[tuple[str, str]]:
     """Return the design's physical edge keys in sorted order."""
     return sorted(design.physical_edge_keys)
 
-def write_json(
-    output_path: Path,
-    sources: SourceFiles,
-    artifacts: DesignArtifacts,
-) -> None:
-    """Write the full design, vertices, edges, and validation report as JSON."""
+def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str, Any]:
+    """Build the full design, vertices, edges, and validation report as a dict.
+
+    This is the single serialization used both for the JSON file output and for
+    the REST API, so a frontend consumes exactly what the file records.
+    """
     vertices = artifacts.vertices
     physical_edges = artifacts.physical_edges
     design = artifacts.design
     validation = artifacts.validation
     vertices_by_id = {vertex.id: vertex for vertex in vertices}
-    payload = {
+    return {
         "vertices_files": [str(path) for path in sources.vertex_files],
         "physical_edge_file": str(sources.edge_path),
         "mapbook_pdf": str(sources.mapbook_pdf) if sources.mapbook_pdf else None,
@@ -109,6 +110,14 @@ def write_json(
             for path_use in design.path_uses
         ],
     }
+
+def write_json(
+    output_path: Path,
+    sources: SourceFiles,
+    artifacts: DesignArtifacts,
+) -> None:
+    """Write the full design payload as indented JSON."""
+    payload = design_payload(sources, artifacts)
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 CSV_FIELDNAMES = [

@@ -10,6 +10,9 @@ import csv
 import io
 from pathlib import Path
 
+from fastapi.testclient import TestClient
+
+from api.app import build_app
 from wan_designer.model import (
     DesignArtifacts,
     DesignParams,
@@ -225,3 +228,12 @@ def forced_core_artifacts(name: str) -> DesignArtifacts:
 def sample_sources() -> SourceFiles:
     """Provenance paths for output rendering tests."""
     return SourceFiles((Path("vertices/lumen.csv"),), Path("edges.csv"), None)
+
+
+def api_client(directory: Path) -> TestClient:
+    """Build a TestClient over the app: a solvable 'joint' config plus a static UI."""
+    write_solvable_config(directory, core_count=2)
+    static_dir = directory / "www"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text("<html>ok</html>", encoding="utf-8")
+    return TestClient(build_app(directory, static_dir))

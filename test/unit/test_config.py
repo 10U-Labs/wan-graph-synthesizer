@@ -58,6 +58,16 @@ def test_default_resilience_augmentation_on() -> None:
     assert default_config().resilience_augmentation is True
 
 
+def test_default_label_is_empty() -> None:
+    """The default config carries no display label."""
+    assert default_config().label == ""
+
+
+def test_reads_label() -> None:
+    """A top-level label is read into the config for the API to surface."""
+    assert _config({"label": "Joint"}).label == "Joint"
+
+
 def test_reads_core_count() -> None:
     """A core_count value is read from the design section."""
     assert _config({"design": {"core_count": 5}}).params.core_count == 5

@@ -41,6 +41,7 @@ class AppConfig:
     paths: CliPaths
     params: DesignParams
     resilience_augmentation: bool
+    label: str = ""
 
 
 def _mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
@@ -125,6 +126,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
         paths=_paths(data, _mapping(data, "inputs")),
         params=_params(design, _mapping(data, "tuning")),
         resilience_augmentation=design.get("resilience_augmentation", True),
+        label=str(data.get("label", "")),
     )
 
 

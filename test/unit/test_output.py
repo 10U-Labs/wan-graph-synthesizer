@@ -8,6 +8,7 @@ from pathlib import Path
 import fixtures
 from wan_designer.model import Vertex
 from wan_designer.output import (
+    design_payload,
     dot_escape,
     kml_layer_for_vertex,
     sorted_physical_edges,
@@ -43,6 +44,11 @@ def test_write_json_is_valid_json(tmp_path: Path) -> None:
     path = tmp_path / "d.json"
     write_json(path, SOURCES, ARTIFACTS)
     assert "summary" in json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_design_payload_includes_vertices() -> None:
+    """design_payload returns the vertices slice the API serves."""
+    assert "vertices" in design_payload(SOURCES, ARTIFACTS)
 
 
 def test_write_csv_has_header(tmp_path: Path) -> None:

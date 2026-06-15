@@ -25,7 +25,7 @@ jobs:
         run: pip install pytest
       - name: Run e2e tests
         run: >-
-          PYTHONPATH=.:scripts python3 -m pytest
+          PYTHONPATH=.:lib/python:src python3 -m pytest
           test/e2e/ --verbose --pythonwarnings=error
   generate-graph:
     needs: integration-test
@@ -35,7 +35,7 @@ jobs:
       - name: Install tools
         run: pip install pyyaml
       - name: Generate the network design (fails on an invalid design)
-        run: PYTHONPATH=scripts python3 scripts/design_network.py
+        run: PYTHONPATH=lib/python python3 src/design_network.py
       - if: always()
         name: Upload design outputs
         uses: actions/upload-artifact@v7
@@ -57,10 +57,10 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Install tools
-        run: pip install pytest pyyaml
+        run: pip install fastapi httpx pytest pyyaml
       - name: Run integration tests
         run: >-
-          PYTHONPATH=.:scripts python3 -m pytest
+          PYTHONPATH=.:lib/python:src python3 -m pytest
           test/integration/ --verbose --pythonwarnings=error
   static-analysis:
     runs-on: ubuntu-24.04
@@ -80,7 +80,7 @@ jobs:
             assert-no-inline-directives \
             assert-no-linter-config-files \
             assert-one-assert-per-pytest \
-            mypy pylint pytest pyyaml types-PyYAML yamllint
+            fastapi httpx mypy pylint pytest pyyaml types-PyYAML uvicorn yamllint
           npm install -g jscpd
       - name: Lint YAML
         run: |
@@ -99,7 +99,7 @@ jobs:
           assert-no-inline-directives
           --tools pylint,mypy,yamllint
           --verbose
-          ${{ github.workspace }}/scripts ${{ github.workspace }}/test
+          ${{ github.workspace }}/lib/python ${{ github.workspace }}/src ${{ github.workspace }}/test
       - name: Assert no linter config files
         run: >-
           assert-no-linter-config-files
@@ -113,26 +113,26 @@ jobs:
           ${{ github.workspace }}/test
       - name: Run pylint on source
         run: >-
-          PYTHONPATH=.:scripts python3 -m pylint
-          scripts/wan_designer/ scripts/design_network.py
+          PYTHONPATH=.:lib/python:src python3 -m pylint
+          lib/python/wan_designer/ src/api/ src/design_network.py src/serve.py
           --fail-on=C,R,W --fail-under=10.0
       - name: Run pylint on tests
         run: >-
-          PYTHONPATH=.:scripts:test python3 -m pylint --recursive=y
+          PYTHONPATH=.:lib/python:src:test python3 -m pylint --recursive=y
           test/
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on source
         run: >-
-          MYPYPATH=scripts python3 -m mypy --strict
-          --explicit-package-bases scripts/
+          MYPYPATH=lib/python:src python3 -m mypy --strict
+          --explicit-package-bases lib/python/ src/
       - name: Run mypy on tests
         run: >-
-          MYPYPATH=scripts:test python3 -m mypy --strict
+          MYPYPATH=lib/python:src:test python3 -m mypy --strict
           --explicit-package-bases test/
       - name: Detect copy-paste in source
         run: >-
-          jscpd --pattern "scripts/**/*.py" --threshold 0
-          --reporters console scripts/
+          jscpd --pattern "**/*.py" --threshold 0
+          --reporters console lib/python/ src/
       - name: Detect copy-paste in tests
         run: >-
           jscpd --pattern "test/**/*.py" --threshold 0
@@ -151,12 +151,13 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Install tools
-        run: pip install pytest pytest-cov pyyaml
+        run: pip install fastapi httpx pytest pytest-cov pyyaml
       - name: Run unit tests with a 100% coverage gate
         run: >-
-          PYTHONPATH=.:scripts python3 -m pytest
+          PYTHONPATH=.:lib/python:src python3 -m pytest
           test/unit/ --verbose --pythonwarnings=error
           --cov=wan_designer
+          --cov=api
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
@@ -167,7 +168,9 @@ on:
       - .github/workflows/wan_graph_designer.yml
       - data/**
       - etc/**
-      - scripts/**
+      - lib/**
+      - requirements.txt
+      - src/**
       - test/**
   push:
     branches: [main]
@@ -175,6 +178,8 @@ on:
       - .github/workflows/wan_graph_designer.yml
       - data/**
       - etc/**
-      - scripts/**
+      - lib/**
+      - requirements.txt
+      - src/**
       - test/**
   workflow_dispatch:
