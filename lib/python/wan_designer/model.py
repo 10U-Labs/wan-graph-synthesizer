@@ -134,6 +134,8 @@ class DesignParams:
     forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
     forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations
     excluded_names: tuple[str, ...] = ()  # PoPs barred from every selected role
+    population_selection: bool = True  # anchor cores/aggregations to populous cities
+    population_states: tuple[str, ...] = ()  # states the anchoring covers; empty means all
     tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)
@@ -145,11 +147,18 @@ class RoleOverrides:
     already been split into a distinct ``CORE`` vertex (kept here) and ``AGGR``
     vertex (whose id is what lands in ``forced_aggregation_ids``). ``excluded_ids``
     are barred from being a core, an aggregation, or an access home.
+
+    ``core_candidate_ids`` and ``aggregation_candidate_ids`` restrict which PoPs
+    the search may pick for each tier (population anchoring narrows cores to the
+    populous-city candidates and aggregations to the required cities); ``None``
+    leaves a tier unrestricted, as it is for a purely operator-driven design.
     """
 
     forced_core_ids: frozenset[str] = frozenset()
     forced_aggregation_ids: frozenset[str] = frozenset()
     excluded_ids: frozenset[str] = frozenset()
+    core_candidate_ids: frozenset[str] | None = None
+    aggregation_candidate_ids: frozenset[str] | None = None
 
 @dataclass(frozen=True)
 class DesignInputs:
@@ -193,6 +202,8 @@ class DesignPaths:
     mapbook_pdf: Path | None
     output_dir: Path
     regional_edge_paths: tuple[Path, ...] = ()
+    county_populations: Path | None = None
+    municipality_populations: Path | None = None
 
 @dataclass(frozen=True)
 class SourceFiles:

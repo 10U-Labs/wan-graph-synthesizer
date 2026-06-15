@@ -48,6 +48,7 @@ from wan_designer.graphs import (
     reconstruct_path,
 )
 from wan_designer.clustering import cluster_access_vertices
+from wan_designer.population import RealizedAnchors
 
 logger = logging.getLogger(__name__)
 
@@ -501,6 +502,20 @@ def compute_eligible_ids(
         and len(adjacency.get(pop.id, [])) >= 2
     }
 
+def _restrict_candidates(
+    eligible: set[str], allowed: frozenset[str] | None, keep: frozenset[str]
+) -> set[str]:
+    """Narrow eligible PoPs to ``allowed`` (population anchors), keeping required ids.
+
+    ``allowed`` is ``None`` for a tier the population rule does not constrain, which
+    leaves the eligible set untouched; otherwise only the anchored candidates plus
+    the always-required ``keep`` ids survive.
+    """
+    if allowed is None:
+        return eligible
+    return eligible & (allowed | keep)
+
+
 def all_pairs_shortest(
     carrier_pops: list[Vertex],
     adjacency: dict[str, list[tuple[str, float]]],
@@ -798,17 +813,29 @@ def split_colocated(
         augmented_edges.update(colocation_edges(core_id, twin.id, physical_edges))
     return augmented_vertices, augmented_edges, twin_by_core
 
+def _candidate_restriction(
+    anchors: RealizedAnchors | None, ids: set[str]
+) -> frozenset[str] | None:
+    """A tier's candidate set under anchoring, or ``None`` to leave it unrestricted."""
+    return frozenset(ids) if anchors is not None else None
+
+
 def apply_role_overrides(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
+    anchors: RealizedAnchors | None = None,
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
-    """Resolve operator role pins and split any co-located PoP into two vertices.
+    """Resolve operator pins and population anchors, splitting any co-located PoP.
 
-    Returns the (possibly augmented) vertices and physical edges plus the resolved
-    ``RoleOverrides``. A PoP pinned as both a core and an aggregation becomes a
-    ``CORE`` vertex (kept under its own id) and a co-located ``AGGR`` twin, and it is
-    the twin's id that enters ``forced_aggregation_ids``.
+    Operator force-pins (resolved from ``params``) and population anchors (already
+    realized into ``vertices``/``physical_edges``) both feed the returned
+    ``RoleOverrides``: operator forced cores stay required, each state's City A
+    becomes a core *candidate*, and the required aggregations (operator pins plus
+    every access state's two cities) are seated. A city that is at once a core and
+    an aggregation -- an operator co-location, or a City A that is also a required
+    aggregation -- is split into a ``CORE`` vertex and a co-located ``AGGR`` twin,
+    and it is the twin's id that enters ``forced_aggregation_ids``.
     """
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     name_to_id = pop_id_by_name(carrier_pops)
@@ -818,13 +845,19 @@ def apply_role_overrides(
     )
     excluded = resolve_pinned_ids(params.excluded_names, name_to_id, "exclude")
     reject_override_conflicts(forced_core, forced_aggregation, excluded)
-    colocated = forced_core & forced_aggregation
+    core_anchor_ids = anchors.core_anchor_ids if anchors is not None else frozenset()
+    required_anchor_ids = anchors.required_aggregation_ids if anchors is not None else frozenset()
+    core_side = forced_core | (set(core_anchor_ids) - excluded)
+    required_aggregation = forced_aggregation | (set(required_anchor_ids) - excluded)
+    colocated = core_side & required_aggregation
     vertices, physical_edges, twin_by_core = split_colocated(vertices, physical_edges, colocated)
-    forced_aggregation_ids = (forced_aggregation - colocated) | set(twin_by_core.values())
+    forced_aggregation_ids = (required_aggregation - colocated) | set(twin_by_core.values())
     overrides = RoleOverrides(
         forced_core_ids=frozenset(forced_core),
         forced_aggregation_ids=frozenset(forced_aggregation_ids),
         excluded_ids=frozenset(excluded),
+        core_candidate_ids=_candidate_restriction(anchors, core_side),
+        aggregation_candidate_ids=_candidate_restriction(anchors, forced_aggregation_ids),
     )
     return vertices, physical_edges, overrides
 
@@ -854,17 +887,23 @@ def optimize_three_tier_design(
     if len(eligible_ids) < max(2, params.min_core_count):
         raise ValueError("Not enough eligible Carrier aggregation/core PoPs")
 
+    aggregation_eligible = _restrict_candidates(
+        eligible_ids, overrides.aggregation_candidate_ids, forced
+    )
+    core_eligible = _restrict_candidates(
+        eligible_ids, overrides.core_candidate_ids, overrides.forced_core_ids
+    )
     inputs = DesignInputs(
         access_vertices=context.all_access,
         carrier_pops=context.carrier_pops,
         physical_edges=physical_edges,
-        eligible_aggregation_ids=eligible_ids,
+        eligible_aggregation_ids=aggregation_eligible,
         adjacency=context.adjacency,
         all_distances=context.all_distances,
         all_predecessors=context.all_predecessors,
     )
     plan = build_search_plan(
-        inputs, eligible_ids, forced, overrides.forced_core_ids, params
+        inputs, core_eligible, forced, overrides.forced_core_ids, params
     )
     if len(plan.core_candidates) < params.min_core_count:
         raise ValueError("Not enough reachable core candidates")

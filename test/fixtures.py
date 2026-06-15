@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -15,6 +16,7 @@ from fastapi.testclient import TestClient
 from wan_designer.model import (
     DesignArtifacts,
     DesignParams,
+    DesignPaths,
     Vertex,
     PhysicalEdge,
     SourceFiles,
@@ -24,11 +26,21 @@ from wan_designer.model import (
     slugify,
 )
 from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
+from wan_designer.service import run_design
 from wan_designer.validation import validate_design
 
 from api.app import build_app
 
 VERTEX_HEADER = ["name", "latitude", "longitude", "kind", "shown_in_map", "description"]
+
+
+def _write_csv(path: Path, header: list[str], rows: Iterable[Sequence[object]]) -> None:
+    """Write a header row and data rows to ``path`` as CSV."""
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(header)
+    writer.writerows(rows)
+    path.write_text(buffer.getvalue(), encoding="utf-8")
 
 # A four-vertex sample keyed by tenant: two Lumen carrier PoPs plus two F-35
 # installations. Rows are (name, lat, lon, kind, shown_in_map, description).
@@ -53,11 +65,7 @@ def write_vertex_files(
     files: list[tuple[str, Path]] = []
     for tenant, rows in tenant_rows.items():
         path = directory / f"{slugify(tenant)}.csv"
-        buffer = io.StringIO()
-        writer = csv.writer(buffer)
-        writer.writerow(VERTEX_HEADER)
-        writer.writerows(rows)
-        path.write_text(buffer.getvalue(), encoding="utf-8")
+        _write_csv(path, VERTEX_HEADER, rows)
         files.append((tenant, path))
     return tuple(sorted(files))
 
@@ -224,6 +232,58 @@ def forced_aggregation_artifacts(name: str) -> DesignArtifacts:
 def forced_core_artifacts(name: str) -> DesignArtifacts:
     """Ring artifacts with one PoP forced onto the core tier."""
     return _forced_artifacts(DesignParams(min_core_count=2, forced_core_names=(name,)))
+
+
+# A two-state population scenario: Colorado (Denver county > Boulder county, with
+# an access node) and Kansas (Sedgwick county). Denver is CO's City A, so it is a
+# core candidate and -- because CO holds an access node -- a required aggregation,
+# co-locating into a core plus an AGGR twin; Boulder is CO's City B; Wichita is
+# KS's City A. The triangle of physical links keeps the design feasible.
+POPULATION_VERTEX_HEADER = VERTEX_HEADER + ["municipality", "state"]
+POPULATION_VERTEX_ROWS = (
+    ("Denver, CO", 39.74, -104.99, "PoP", "Not shown in map", "", "Denver", "CO"),
+    ("Boulder, CO", 40.01, -105.27, "PoP", "Not shown in map", "", "Boulder", "CO"),
+    ("Wichita, KS", 37.69, -97.34, "PoP", "Not shown in map", "", "Wichita", "KS"),
+    ("Fort Logan", 39.65, -105.0, "Military installation", "Shown in map", "", "Denver", "CO"),
+)
+POPULATION_EDGE_PAIRS = (
+    ("Denver, CO", "Wichita, KS"),
+    ("Denver, CO", "Boulder, CO"),
+    ("Boulder, CO", "Wichita, KS"),
+)
+POPULATION_COUNTIES_CSV = (
+    "state,county,population\n"
+    "CO,Denver County,700000\n"
+    "CO,Boulder County,300000\n"
+    "KS,Sedgwick County,500000\n"
+)
+POPULATION_MUNICIPALITIES_CSV = (
+    "state,municipality,county,population,latitude,longitude\n"
+    "CO,Denver,Denver County,700000,39.74,-104.99\n"
+    "CO,Boulder,Boulder County,100000,40.01,-105.27\n"
+    "KS,Wichita,Sedgwick County,390000,37.69,-97.34\n"
+)
+
+
+def write_population_inputs(directory: Path) -> DesignPaths:
+    """Write the population scenario's vertices, edges, and Census reference CSVs."""
+    vertex_path = directory / "pop_vertices.csv"
+    _write_csv(vertex_path, POPULATION_VERTEX_HEADER, POPULATION_VERTEX_ROWS)
+    edge_path = directory / "pop_edges.csv"
+    edge_rows = "\n".join(f"{left},{right},500" for left, right in POPULATION_EDGE_PAIRS)
+    edge_path.write_text(f"source,target,distance_miles\n{edge_rows}\n", encoding="utf-8")
+    county_path = directory / "pop_counties.csv"
+    county_path.write_text(POPULATION_COUNTIES_CSV, encoding="utf-8")
+    municipality_path = directory / "pop_municipalities.csv"
+    municipality_path.write_text(POPULATION_MUNICIPALITIES_CSV, encoding="utf-8")
+    return DesignPaths(
+        (("Lumen", vertex_path),), edge_path, None, directory, (), county_path, municipality_path
+    )
+
+
+def population_artifacts(directory: Path) -> DesignArtifacts:
+    """Run a population-anchored design over the synthetic two-state scenario."""
+    return run_design(write_population_inputs(directory), DesignParams(min_core_count=2), False)
 
 
 def sample_sources() -> SourceFiles:

@@ -219,12 +219,18 @@ def population_placements(
 
 @dataclass(frozen=True)
 class RealizedAnchors:
-    """Population anchors realized into the graph as concrete vertices and edges."""
+    """Population anchors realized into the graph as concrete vertices and edges.
+
+    ``core_anchor_ids`` are every in-scope state's City A -- the only place a core
+    may sit there, offered to the optimizer as candidates (never forced).
+    ``required_aggregation_ids`` are the City A and City B nodes of access-bearing
+    states, which must be seated. A City A that is in both sets is co-located: the
+    optimizer splits it into a core candidate and an aggregation twin downstream.
+    """
 
     vertices: list[Vertex]
     physical_edges: dict[tuple[str, str], PhysicalEdge]
     core_anchor_ids: frozenset[str]
-    aggregation_anchor_ids: frozenset[str]
     required_aggregation_ids: frozenset[str]
 
 
@@ -326,19 +332,15 @@ def realize_anchors(
     """Seat every placement's anchors into the graph and collect their role ids."""
     realization = _begin_realization(vertices, physical_edges)
     core_ids: set[str] = set()
-    agg_ids: set[str] = set()
     required_ids: set[str] = set()
     for placement in placements:
         core_ids.add(_resolve_anchor(realization, placement.core))
-        for anchor in placement.aggregations:
-            anchor_id = _resolve_anchor(realization, anchor)
-            agg_ids.add(anchor_id)
-            if placement.requires_aggregations:
-                required_ids.add(anchor_id)
+        if placement.requires_aggregations:
+            for anchor in placement.aggregations:
+                required_ids.add(_resolve_anchor(realization, anchor))
     return RealizedAnchors(
         realization.vertices,
         realization.physical_edges,
         frozenset(core_ids),
-        frozenset(agg_ids),
         frozenset(required_ids),
     )

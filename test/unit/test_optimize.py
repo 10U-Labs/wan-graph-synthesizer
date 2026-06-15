@@ -45,8 +45,10 @@ from wan_designer.optimize import (
     resolve_pinned_ids,
     search_best_design,
     unit_adjacency,
+    _restrict_candidates,
     _SearchPlan,
 )
+from wan_designer.population import RealizedAnchors
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
@@ -585,3 +587,46 @@ def test_optimize_honors_a_forced_core_override() -> None:
         DesignParams(min_core_count=2), RoleOverrides(forced_core_ids=frozenset({"P3"})),
     )
     assert "P3" in design.core_ids
+
+
+def _anchors(core: set[str], required: set[str]) -> RealizedAnchors:
+    """A realized-anchors stub carrying only the id sets apply_role_overrides reads."""
+    return RealizedAnchors([], {}, frozenset(core), frozenset(required))
+
+
+def test_restrict_candidates_unrestricted_when_allowed_is_none() -> None:
+    """A None allow-set leaves the eligible PoPs untouched."""
+    assert _restrict_candidates({"a", "b"}, None, frozenset()) == {"a", "b"}
+
+
+def test_restrict_candidates_narrows_to_allowed_plus_required() -> None:
+    """A restriction keeps only the allowed candidates and the required ids."""
+    assert _restrict_candidates({"a", "b", "c"}, frozenset({"a"}), frozenset({"b"})) == {"a", "b"}
+
+
+def test_apply_role_overrides_makes_a_city_a_core_candidate() -> None:
+    """A population core anchor becomes a candidate, never a forced core."""
+    _v, _e, overrides = apply_role_overrides(
+        [pop("a"), pop("z")], physical({("a", "z"): 1.0}), DesignParams(), _anchors({"a"}, set())
+    )
+    assert (overrides.core_candidate_ids, overrides.forced_core_ids) == (
+        frozenset({"a"}),
+        frozenset(),
+    )
+
+
+def test_apply_role_overrides_splits_a_co_located_anchor() -> None:
+    """A City A that is also a required aggregation splits into a co-located twin."""
+    _v, _e, overrides = apply_role_overrides(
+        [pop("a"), pop("z")], physical({("a", "z"): 1.0}), DesignParams(), _anchors({"a"}, {"a"})
+    )
+    assert "aggr_a" in overrides.forced_aggregation_ids
+
+
+def test_apply_role_overrides_drops_an_excluded_anchor() -> None:
+    """An operator exclusion removes a city from the population core candidates."""
+    params = DesignParams(excluded_names=("a",))
+    _v, _e, overrides = apply_role_overrides(
+        [pop("a"), pop("z")], physical({("a", "z"): 1.0}), params, _anchors({"a"}, set())
+    )
+    assert overrides.core_candidate_ids == frozenset()

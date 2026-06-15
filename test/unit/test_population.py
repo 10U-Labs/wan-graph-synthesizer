@@ -228,16 +228,19 @@ def test_realize_anchors_procures_links_for_a_greenfield_node() -> None:
 def test_realize_anchors_seats_a_shared_city_once() -> None:
     """A city that is both core and aggregation is synthesized a single time."""
     seated = realize_anchors([placement(DENVER_ANCHOR, (DENVER_ANCHOR,), True)], [P1, P2], {})
-    assert (seated.core_anchor_ids == seated.aggregation_anchor_ids, len(seated.vertices)) == (
+    assert (seated.core_anchor_ids == seated.required_aggregation_ids, len(seated.vertices)) == (
         True,
         3,
     )
 
 
-def test_realize_anchors_marks_required_aggregations() -> None:
-    """An access state's aggregations are returned as required placements."""
-    seated = realize_anchors([placement(DENVER_ANCHOR, (DENVER_ANCHOR,), True)], [P1, P2], {})
-    assert seated.required_aggregation_ids == seated.aggregation_anchor_ids
+def test_realize_anchors_requires_both_aggregation_cities() -> None:
+    """An access state seats both its City A and City B as required aggregations."""
+    boulder_anchor = anchor("Boulder", "CO", 40.0, -105.2)
+    seated = realize_anchors(
+        [placement(DENVER_ANCHOR, (DENVER_ANCHOR, boulder_anchor), True)], [P1, P2], {}
+    )
+    assert len(seated.required_aggregation_ids) == 2
 
 
 def test_realize_anchors_leaves_optional_aggregations_unrequired() -> None:

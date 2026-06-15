@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 import fixtures
-from wan_designer.model import DesignPaths
+from wan_designer.model import DesignParams, DesignPaths
 from wan_designer.service import available_wan_maps, design_for_wan_map, run_design
 
 
@@ -25,6 +25,21 @@ def test_run_design_with_augmentation(tmp_path: Path) -> None:
     vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
     paths = DesignPaths(vertex_files, edges, None, tmp_path)
     artifacts = run_design(paths, fixtures.ring_params(), True)
+    assert artifacts.validation["connected"] is True
+
+
+def test_run_design_anchors_to_population(tmp_path: Path) -> None:
+    """Population selection over the two-state scenario yields a connected design."""
+    artifacts = run_design(
+        fixtures.write_population_inputs(tmp_path), DesignParams(min_core_count=2), False
+    )
+    assert artifacts.validation["connected"] is True
+
+
+def test_run_design_scopes_population_to_named_states(tmp_path: Path) -> None:
+    """A population_states scope still produces a connected design."""
+    params = DesignParams(min_core_count=2, population_states=("CO", "KS"))
+    artifacts = run_design(fixtures.write_population_inputs(tmp_path), params, False)
     assert artifacts.validation["connected"] is True
 
 
