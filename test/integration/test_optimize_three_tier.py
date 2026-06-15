@@ -9,6 +9,17 @@ from __future__ import annotations
 import fixtures
 
 ARTIFACTS = fixtures.ring_artifacts()
+FORCED = fixtures.forced_aggregation_artifacts("P3")
+
+
+def test_forced_pop_is_placed_in_the_aggregation_tier() -> None:
+    """A PoP named on the force-aggregation list is honored as an aggregation."""
+    assert "P3" in FORCED.design.aggregation_ids
+
+
+def test_forced_aggregation_is_not_also_made_a_core() -> None:
+    """Forcing a PoP onto the aggregation tier never lands it in the core tier."""
+    assert "P3" not in FORCED.design.core_ids
 
 
 def test_honors_the_core_count_minimum() -> None:

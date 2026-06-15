@@ -16,7 +16,7 @@ from wan_designer.model import (
     SourceFiles,
     edge_key,
 )
-from wan_designer.optimize import optimize_three_tier_design
+from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
 from wan_designer.validation import validate_design
 
 SAMPLE_KML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -199,12 +199,32 @@ def ring_params() -> DesignParams:
     return DesignParams(core_count=2)
 
 
-def ring_artifacts() -> DesignArtifacts:
-    """Run the optimizer over the in-memory ring and bundle the artifacts."""
+def _ring_inputs() -> tuple[list[Node], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
+    """The ring nodes, physical edges, and default all-aggregator carrier roles."""
     nodes = ring_nodes()
     edges = ring_physical_edges()
     roles = {node.id: "aggregator" for node in nodes if node.kind == "carrier_pop"}
+    return nodes, edges, roles
+
+
+def ring_artifacts() -> DesignArtifacts:
+    """Run the optimizer over the in-memory ring and bundle the artifacts."""
+    nodes, edges, roles = _ring_inputs()
     design = optimize_three_tier_design(nodes, edges, roles, ring_params())
+    return DesignArtifacts(nodes, edges, design, validate_design(nodes, design))
+
+
+def forced_aggregation_artifacts(name: str) -> DesignArtifacts:
+    """Run the optimizer over the ring with one PoP forced onto the aggregation tier.
+
+    Resolves the operator pin through ``apply_role_overrides`` -- the same path the
+    CLI's ``run_design`` takes -- so the artifacts reflect a genuinely honored
+    force-aggregation request rather than an emergent cluster head.
+    """
+    nodes, edges, roles = _ring_inputs()
+    params = DesignParams(core_count=2, forced_aggregation_names=(name,))
+    nodes, edges, overrides = apply_role_overrides(nodes, edges, params)
+    design = optimize_three_tier_design(nodes, edges, roles, params, overrides)
     return DesignArtifacts(nodes, edges, design, validate_design(nodes, design))
 
 
