@@ -41,6 +41,7 @@ from wan_designer.model import (
     is_carrier_pop,
 )
 from wan_designer.graphs import (
+    connected_components,
     dijkstra,
     vertex_disjoint_paths_to_cores,
     path_edge_keys,
@@ -148,18 +149,66 @@ def aggregation_core_paths(
     ]
     return total, uses
 
+def select_core_backbone_pairs(
+    core_ids: tuple[str, ...],
+    all_distances: dict[str, dict[str, float]],
+    degree_cap: int | None = None,
+) -> list[tuple[str, str]] | None:
+    """Choose which core pairs get a logical backbone link.
+
+    Without a cap this is the full mesh -- every pair. With ``degree_cap`` set, the
+    result is a minimum-mileage subgraph of the mesh in which no core has more than
+    ``degree_cap`` backbone neighbors while staying 2-edge-connected, so the cores
+    remain mutually reachable after any single backbone link fails. The longest
+    links are dropped first -- but only when an endpoint is over the cap and the
+    backbone survives the removal. Returns ``None`` if some core pair is unreachable
+    over the carrier graph (the cores do not full-mesh).
+    """
+    ids = set(core_ids)
+    weight: dict[tuple[str, str], float] = {}
+    for left, right in itertools.combinations(core_ids, 2):
+        distance = all_distances[left].get(right, math.inf)
+        if not math.isfinite(distance):
+            return None
+        weight[edge_key(left, right)] = distance
+    selected = set(weight)
+    if degree_cap is None:
+        return sorted(selected)
+
+    def degree(node: str) -> int:
+        return sum(1 for pair in selected if node in pair)
+
+    def two_edge_connected(edges: set[tuple[str, str]]) -> bool:
+        if len(connected_components(ids, edges)) != 1:
+            return False
+        return all(len(connected_components(ids, edges - {pair})) == 1 for pair in edges)
+
+    for pair in sorted(weight, key=lambda item: (-weight[item], item)):
+        if pair not in selected:
+            continue
+        if degree(pair[0]) <= degree_cap and degree(pair[1]) <= degree_cap:
+            continue
+        if two_edge_connected(selected - {pair}):
+            selected.discard(pair)
+    return sorted(selected)
+
 def core_mesh_paths(
     core_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
     all_predecessors: dict[str, dict[str, str]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
+    degree_cap: int | None = None,
 ) -> list[PathUse]:
-    """Route a shortest path between every pair of cores (the full mesh)."""
+    """Route a shortest path over the selected core-to-core backbone links.
+
+    The backbone is a full mesh unless ``degree_cap`` bounds each core's neighbor
+    count (see :func:`select_core_backbone_pairs`).
+    """
+    pairs = select_core_backbone_pairs(core_ids, all_distances, degree_cap)
+    if pairs is None:
+        return []
     uses: list[PathUse] = []
-    for left, right in itertools.combinations(core_ids, 2):
-        distance = all_distances[left].get(right, math.inf)
-        if not math.isfinite(distance):
-            return []
+    for left, right in pairs:
         path = reconstruct_path(left, right, all_predecessors[left])
         uses.append(
             PathUse("core_mesh", left, right, path, path_geometry_miles(path, physical_edges))
@@ -407,10 +456,12 @@ def routed_path_uses(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
     selected: set[str],
+    core_backbone_degree_cap: int | None = None,
 ) -> list[PathUse]:
     """Reconstruct the core-mesh and aggregation-to-core paths for a design."""
     path_uses = core_mesh_paths(
-        core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges
+        core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges,
+        core_backbone_degree_cap,
     )
     for aggregation_id in sorted(selected):
         _cost, uses = aggregation_core_paths(
@@ -433,7 +484,7 @@ def build_design_for_cores(
     if evaluation is None:
         return None
     access_edges, selected = evaluation
-    path_uses = routed_path_uses(core_ids, inputs, selected)
+    path_uses = routed_path_uses(core_ids, inputs, selected, plan.core_backbone_degree_cap)
     draft = _DesignDraft(access_edges, selected, path_uses)
     return finalize_design(core_ids, inputs, draft)
 
@@ -497,6 +548,7 @@ class _SearchPlan:
     clusters: list[list[str]] = field(default_factory=list)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
     required_cores: frozenset[str] = field(default_factory=frozenset)
+    core_backbone_degree_cap: int | None = None
 
 def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
@@ -669,6 +721,7 @@ def build_search_plan(
     return _SearchPlan(
         core_candidates, forced, strength_by_id, clusters=clusters,
         required_cores=frozenset(required),
+        core_backbone_degree_cap=params.tuning.core_backbone_degree_cap,
     )
 
 def pop_id_by_name(carrier_pops: list[Vertex]) -> dict[str, str]:

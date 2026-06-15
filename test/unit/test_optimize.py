@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
 import fixtures
+from wan_designer.graphs import connected_components
 from wan_designer.model import (
     AccessEdge,
     DesignInputs,
@@ -30,6 +33,7 @@ from wan_designer.optimize import (
     core_combinations,
     core_mesh_paths,
     cores_mesh,
+    select_core_backbone_pairs,
     dual_homes_to_pair,
     enumeration_limit,
     feasible_aggregation_ids,
@@ -189,6 +193,91 @@ def test_core_mesh_paths_empty_when_cores_disconnected() -> None:
         [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
     )
     assert not core_mesh_paths(("a", "c"), distances, predecessors, edges)
+
+
+def _symmetric_distances(weights: dict[tuple[str, str], float]) -> dict[str, dict[str, float]]:
+    """Build a symmetric all-pairs distance table from undirected pair weights."""
+    nodes = {node for pair in weights for node in pair}
+    table: dict[str, dict[str, float]] = {node: {node: 0.0} for node in nodes}
+    for (left, right), weight in weights.items():
+        table[left][right] = weight
+        table[right][left] = weight
+    return table
+
+
+# Five fully-connected cores; (c1, c5) is the single longest backbone link.
+_FIVE_CORE_DISTANCES = _symmetric_distances({
+    ("c1", "c2"): 1.0, ("c1", "c3"): 2.0, ("c1", "c4"): 3.0, ("c1", "c5"): 10.0,
+    ("c2", "c3"): 4.0, ("c2", "c4"): 5.0, ("c2", "c5"): 6.0,
+    ("c3", "c4"): 7.0, ("c3", "c5"): 8.0,
+    ("c4", "c5"): 9.0,
+})
+_FIVE_CORES = ("c1", "c2", "c3", "c4", "c5")
+
+
+def _degrees(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> dict[str, int]:
+    """Backbone neighbor count of each core over the selected pairs."""
+    return {core: sum(1 for pair in pairs if core in pair) for core in core_ids}
+
+
+def _is_two_edge_connected(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> bool:
+    """True if the pairs connect every core and survive losing any one link."""
+    ids = set(core_ids)
+    edges = set(pairs)
+    if len(connected_components(ids, edges)) != 1:
+        return False
+    return all(len(connected_components(ids, edges - {pair})) == 1 for pair in edges)
+
+
+def test_core_backbone_caps_degree_and_drops_longest_links() -> None:
+    """With a cap of three, no core keeps four neighbors and the longest link goes."""
+    pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, 3)
+    assert pairs is not None
+    assert max(_degrees(_FIVE_CORES, pairs).values()) <= 3
+    assert _is_two_edge_connected(_FIVE_CORES, pairs)
+    assert edge_key("c1", "c5") not in pairs  # the single longest link is dropped
+
+
+def test_core_backbone_is_full_mesh_without_a_cap() -> None:
+    """A None cap leaves the full mesh: every core pair keeps a backbone link."""
+    pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, None)
+    assert pairs is not None
+    assert len(pairs) == 10  # C(5, 2)
+    assert max(_degrees(_FIVE_CORES, pairs).values()) == 4
+
+
+def test_core_backbone_unchanged_when_already_within_cap() -> None:
+    """Four cores at the cap of three are already a full mesh -- nothing is dropped."""
+    four = ("c1", "c2", "c3", "c4")
+    pairs = select_core_backbone_pairs(four, _FIVE_CORE_DISTANCES, 3)
+    assert pairs is not None
+    assert len(pairs) == 6  # C(4, 2): every degree is exactly three
+
+
+def test_core_backbone_none_when_a_core_pair_is_unreachable() -> None:
+    """An unreachable core pair yields no backbone selection."""
+    distances = _symmetric_distances({("c1", "c2"): 1.0})
+    distances["c1"]["c3"] = math.inf
+    distances["c2"]["c3"] = math.inf
+    distances["c3"] = {"c3": 0.0, "c1": math.inf, "c2": math.inf}
+    assert select_core_backbone_pairs(("c1", "c2", "c3"), distances, 3) is None
+
+
+def test_core_mesh_paths_respect_the_degree_cap() -> None:
+    """Routing honors the cap: a five-core mesh emits fewer than ten backbone links."""
+    edges = physical({
+        ("c1", "c2"): 1.0, ("c1", "c3"): 1.0, ("c1", "c4"): 1.0, ("c1", "c5"): 1.0,
+        ("c2", "c3"): 1.0, ("c2", "c4"): 1.0, ("c2", "c5"): 1.0,
+        ("c3", "c4"): 1.0, ("c3", "c5"): 1.0, ("c4", "c5"): 1.0,
+    })
+    adjacency = unit_adjacency(edges)
+    distances, predecessors = all_pairs_shortest([pop(c) for c in _FIVE_CORES], adjacency)
+    capped = core_mesh_paths(_FIVE_CORES, distances, predecessors, edges, 3)
+    uncapped = core_mesh_paths(_FIVE_CORES, distances, predecessors, edges, None)
+    assert len(uncapped) == 10
+    assert len(capped) < 10
+    pairs = [edge_key(use.source, use.target) for use in capped]
+    assert max(_degrees(_FIVE_CORES, pairs).values()) <= 3
 
 
 def test_vertex_straightness_is_zero_without_reachable_vertices() -> None:

@@ -161,6 +161,24 @@ def disconnected_core_pairs(design: Design) -> list[tuple[str, str]]:
             disconnected.append((left, right))
     return disconnected
 
+def core_backbone_pairs(design: Design) -> set[tuple[str, str]]:
+    """The logical core-to-core backbone links, one per ``core_mesh`` path use."""
+    return {
+        edge_key(use.source, use.target)
+        for use in design.path_uses
+        if use.purpose == "core_mesh"
+    }
+
+def core_backbone_two_edge_connected(design: Design) -> bool:
+    """True if the core backbone connects every core and survives any single link loss."""
+    ids = set(design.core_ids)
+    if len(ids) < 2:
+        return True
+    pairs = core_backbone_pairs(design)
+    if len(connected_components(ids, pairs)) != 1:
+        return False
+    return all(len(connected_components(ids, pairs - {pair})) == 1 for pair in pairs)
+
 def neighbor_degrees(
     ids: set[str], edges: set[tuple[str, str]]
 ) -> dict[str, int]:
@@ -190,6 +208,7 @@ def validate_design(vertices: list[Vertex], design: Design) -> ValidationReport:
     attachments = access_attachment_counts(design)
     missing_core_redundancy = aggregations_without_core_redundancy(design)
     core_pairs = disconnected_core_pairs(design)
+    backbone_degrees = neighbor_degrees(set(design.core_ids), core_backbone_pairs(design))
 
     return {
         "connected": len(components) == 1,
@@ -218,6 +237,8 @@ def validate_design(vertices: list[Vertex], design: Design) -> ValidationReport:
             {"source": vertices_by_id[left].name, "target": vertices_by_id[right].name}
             for left, right in core_pairs
         ],
+        "core_backbone_max_degree": max(backbone_degrees.values(), default=0),
+        "core_backbone_two_edge_connected": core_backbone_two_edge_connected(design),
     }
 
 def vertex_role(vertex_id: str, design: Design, vertex: Vertex) -> str:

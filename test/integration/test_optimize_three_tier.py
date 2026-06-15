@@ -53,6 +53,11 @@ def test_cores_form_full_mesh() -> None:
     assert ARTIFACTS.validation["cores_full_mesh"] is True
 
 
+def test_core_backbone_respects_degree_cap() -> None:
+    """No core links to more than the default of three other cores on the backbone."""
+    assert ARTIFACTS.validation["core_backbone_max_degree"] <= 3
+
+
 def test_access_vertices_dual_homed() -> None:
     """Access vertices dual homed."""
     assert ARTIFACTS.validation["access_vertices_with_two_aggregation_links"] is True

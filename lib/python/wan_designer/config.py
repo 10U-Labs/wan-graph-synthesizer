@@ -99,6 +99,9 @@ def _tuning(tuning: dict[str, Any]) -> Tuning:
             "cluster_max_radius_miles", base.cluster_max_radius_miles
         ),
         compass_octants=tuning.get("compass_octants", base.compass_octants),
+        core_backbone_degree_cap=tuning.get(
+            "core_backbone_degree_cap", base.core_backbone_degree_cap
+        ),
         enum_memory_fraction=tuning.get("enum_memory_fraction", base.enum_memory_fraction),
         core_set_peak_bytes=tuning.get("core_set_peak_bytes", base.core_set_peak_bytes),
     )

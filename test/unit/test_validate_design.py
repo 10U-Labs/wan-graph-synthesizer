@@ -9,6 +9,7 @@ from __future__ import annotations
 from wan_designer import (
     Design,
     DesignMetrics,
+    PathUse,
     Vertex,
     aggregations_without_core_redundancy,
     disconnected_core_pairs,
@@ -108,3 +109,47 @@ def test_broken_mesh_reports_disconnected_pairs() -> None:
     """Broken mesh reports disconnected pairs."""
     pairs = disconnected_core_pairs(BROKEN_MESH)
     assert ("C1", "C3") in pairs and ("C2", "C3") in pairs
+
+
+def _backbone_design(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> Design:
+    """A design whose only routes are the given core-to-core backbone links."""
+    return Design(
+        core_ids=core_ids,
+        aggregation_ids=(),
+        transit_ids=(),
+        access_edges=[],
+        physical_edge_keys={edge_key(left, right) for left, right in pairs},
+        path_uses=[
+            PathUse("core_mesh", left, right, (left, right), 1.0) for left, right in pairs
+        ],
+        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+    )
+
+
+# Five cores wired so no core exceeds three backbone links, and the graph stays
+# 2-edge-connected (every link sits on a cycle).
+CAPPED_CORES = ("C1", "C2", "C3", "C4", "C5")
+CAPPED_BACKBONE = _backbone_design(
+    CAPPED_CORES,
+    [("C1", "C2"), ("C1", "C3"), ("C1", "C4"), ("C2", "C4"), ("C2", "C5"), ("C3", "C5")],
+)
+CAPPED_VERTICES = [make_pop(name) for name in CAPPED_CORES]
+
+
+def test_capped_backbone_reports_max_degree_within_cap() -> None:
+    """The report's max backbone degree reflects the degree-capped wiring."""
+    report = validate_design(CAPPED_VERTICES, CAPPED_BACKBONE)
+    assert report["core_backbone_max_degree"] == 3
+
+
+def test_capped_backbone_is_two_edge_connected() -> None:
+    """A degree-capped backbone that survives any single link loss is reported resilient."""
+    report = validate_design(CAPPED_VERTICES, CAPPED_BACKBONE)
+    assert report["core_backbone_two_edge_connected"] is True
+
+
+def test_bridged_backbone_is_not_two_edge_connected() -> None:
+    """A backbone with a bridge (a chain) is flagged as not 2-edge-connected."""
+    chain = _backbone_design(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
+    report = validate_design([make_pop(n) for n in ("C1", "C2", "C3")], chain)
+    assert report["core_backbone_two_edge_connected"] is False

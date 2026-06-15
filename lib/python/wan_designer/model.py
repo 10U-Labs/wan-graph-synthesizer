@@ -106,6 +106,7 @@ class Tuning:
     cluster_min_radius_miles: float = 50.0  # floor on the derived cluster radius
     cluster_max_radius_miles: float = 250.0  # ceiling on the derived cluster radius
     compass_octants: int = 8  # compass sectors used to score a core's link spread
+    core_backbone_degree_cap: int = 3  # max core-to-core backbone links per core
     enum_memory_fraction: float = 0.6  # share of RAM the core enumeration may use
     core_set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
 
@@ -161,6 +162,8 @@ class ValidationReport(TypedDict):
     aggregations_missing_core_redundancy: list[dict[str, str]]
     cores_full_mesh: bool
     core_pairs_disconnected: list[dict[str, str]]
+    core_backbone_max_degree: int
+    core_backbone_two_edge_connected: bool
 
 @dataclass(frozen=True)
 class DesignPaths:
