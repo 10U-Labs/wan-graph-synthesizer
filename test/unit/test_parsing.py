@@ -40,6 +40,25 @@ def test_load_vertices_parses_shown_in_map(tmp_path: Path) -> None:
     assert (by_name["Denver, CO"].shown_in_map, by_name["Buckley"].shown_in_map) == (False, True)
 
 
+def test_load_vertices_reads_municipality_and_state(tmp_path: Path) -> None:
+    """The municipality and state columns load onto each vertex."""
+    path = tmp_path / "f35.csv"
+    path.write_text(
+        "name,latitude,longitude,kind,shown_in_map,description,municipality,state\n"
+        "Dannelly Field,32.3,-86.4,Military installation,Shown in map,,Montgomery,AL\n",
+        encoding="utf-8",
+    )
+    vertex = load_vertices([("F-35", path)])[0]
+    assert (vertex.municipality, vertex.state) == ("Montgomery", "AL")
+
+
+def test_load_vertices_defaults_missing_location_columns(tmp_path: Path) -> None:
+    """Files without the location columns parse with empty municipality/state."""
+    vertex_files = fixtures.write_sample_inputs(tmp_path)[0]
+    vertex = load_vertices(list(vertex_files))[0]
+    assert (vertex.municipality, vertex.state) == ("", "")
+
+
 def test_load_vertices_deduplicates_ids_across_files(tmp_path: Path) -> None:
     """The same name in two tenant files yields two distinct ids."""
     row = [("Twin", 39.0, -90.0, "PoP", "Not shown in map", "")]

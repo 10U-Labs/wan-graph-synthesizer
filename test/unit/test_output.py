@@ -14,6 +14,12 @@ def test_design_payload_includes_vertices() -> None:
     assert "vertices" in design_payload(SOURCES, ARTIFACTS)
 
 
+def test_design_payload_vertices_carry_location() -> None:
+    """Each serialized vertex exposes municipality and state for the tooltip."""
+    vertices = design_payload(SOURCES, ARTIFACTS)["vertices"]
+    assert all("municipality" in vertex and "state" in vertex for vertex in vertices)
+
+
 def test_sorted_physical_edges_is_sorted() -> None:
     """Sorted physical edges is sorted."""
     edges = sorted_physical_edges(ARTIFACTS.design)

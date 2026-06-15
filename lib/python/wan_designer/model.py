@@ -30,6 +30,10 @@ class Vertex:
     kind: str
     coords: tuple[float, float]  # (latitude, longitude)
     description: str = ""
+    # Serving municipality and 2-letter U.S. state for display (e.g. "Montgomery",
+    # "AL"); carrier PoPs derive these from their "City, ST" name.
+    municipality: str = ""
+    state: str = ""
     # Whether the vertex appears on the source mapbook layer (carrier PoPs are
     # backbone infrastructure and are not shown; installations and regions are).
     shown_in_map: bool = True

@@ -18,8 +18,10 @@ def load_vertices(vertex_files: list[tuple[str, Path]]) -> list[Vertex]:
     """Load vertices from one CSV per tenant.
 
     Each ``(tenant, path)`` pair names a CSV whose rows are
-    ``name,latitude,longitude,kind,shown_in_map,description`` -- the ``tenant``
-    is supplied by the caller because the CSVs carry no tenant column. ``kind``
+    ``name,latitude,longitude,kind,shown_in_map,description,municipality,state``
+    -- the ``tenant`` is supplied by the caller because the CSVs carry no tenant
+    column; ``municipality`` and ``state`` are the serving city and 2-letter state
+    for display. ``kind``
     classifies the vertex (``PoP``/``ROADM`` carrier PoPs versus access and
     cloud-region vertices). Ids are slugged from the name and de-duplicated
     across all files, so the same name may appear under more than one tenant.
@@ -47,6 +49,8 @@ def load_vertices(vertex_files: list[tuple[str, Path]]) -> list[Vertex]:
                         kind=row["kind"].strip(),
                         coords=(float(row["latitude"]), float(row["longitude"])),
                         description=row.get("description", "").strip(),
+                        municipality=row.get("municipality", "").strip(),
+                        state=row.get("state", "").strip(),
                         shown_in_map=row.get("shown_in_map", "").strip() != "Not shown in map",
                     )
                 )

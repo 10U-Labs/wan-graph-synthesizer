@@ -39,9 +39,12 @@ function styleFor(vertex) {
   return ROLE_STYLE[vertex.tier_role] || null;
 }
 
+// Tooltip: the vertex name, its municipality/state beneath, then the tenant.
 function vertexLabel(vertex) {
-  return `<strong>${vertex.name}</strong><br>${vertex.tier_role} · ${vertex.kind}` +
-    `<br>${vertex.tenant}`;
+  const located = vertex.municipality && vertex.state
+    ? `<br>${vertex.municipality}, ${vertex.state}`
+    : "";
+  return `<strong>${vertex.name}</strong>${located}<br>Tenant: ${vertex.tenant}`;
 }
 
 function edgeLabel(label, source, target) {
