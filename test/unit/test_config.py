@@ -32,7 +32,7 @@ def test_default_has_no_forced_cores() -> None:
 
 def test_default_vertices_path() -> None:
     """The default config points at the merged vertices CSV."""
-    assert default_config().paths.vertices_path == Path("data/vertices.csv")
+    assert default_config().paths.vertices_path == Path("data/vertices/joint.csv")
 
 
 def test_default_output_dir() -> None:

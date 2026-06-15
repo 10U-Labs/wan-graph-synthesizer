@@ -18,7 +18,7 @@ import yaml
 from wan_designer.model import CliPaths, DesignParams, Tuning
 
 DEFAULT_CONFIG_PATH = Path("etc/config.yml")
-DEFAULT_VERTICES = "data/vertices.csv"
+DEFAULT_VERTICES = "data/vertices/joint.csv"
 DEFAULT_CARRIER_EDGES = "data/edges/carrier_edges.csv"
 DEFAULT_REGIONAL_EDGES = ["data/edges/dcn_edges.csv", "data/edges/vision_net_edges.csv"]
 DEFAULT_OUTPUT_DIR = "outputs"

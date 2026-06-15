@@ -110,7 +110,7 @@ def test_resolve_paths_input_override() -> None:
 
 def test_resolve_paths_keeps_default_input() -> None:
     """With no positional the config's vertices path is kept."""
-    assert _paths([]).vertices_path == Path("data/vertices.csv")
+    assert _paths([]).vertices_path == Path("data/vertices/joint.csv")
 
 
 def test_resolve_paths_regional_edges_override() -> None:

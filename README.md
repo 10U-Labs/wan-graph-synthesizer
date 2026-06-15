@@ -60,7 +60,7 @@ from the vertex and edge CSVs in `data/`:
 python3 scripts/design_network.py
 ```
 
-All vertices live in `data/vertices.csv`, one row per vertex with columns
+All vertices live in `data/vertices/joint.csv`, one row per vertex with columns
 `name,latitude,longitude,tenant,kind,shown_in_map,description`. The `kind`
 column classifies each vertex (`PoP`/`ROADM` carrier PoPs versus
 `Military installation`, `provider region`, `UARC`, and `Corporate office`

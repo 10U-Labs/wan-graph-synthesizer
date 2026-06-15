@@ -43,7 +43,7 @@ inputs:
     - data/edges/dcn_edges.csv
     - data/edges/vision_net_edges.csv
   # All vertices (carrier PoPs, access sites, cloud regions) with tenant + kind.
-  vertices: data/vertices.csv
+  vertices: data/vertices/joint.csv
 output_dir: outputs
 tuning:
   # Ceiling (miles) on the data-derived DBSCAN cluster radius.

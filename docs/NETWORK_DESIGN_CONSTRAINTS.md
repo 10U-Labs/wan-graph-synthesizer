@@ -13,7 +13,7 @@ mapbook is authoritative for how PoPs connect to each other.
 It is transcribed into the edge files under `data/edges/`, which list
 which PoPs are directly connected.
 
-Every vertex lives in `data/vertices.csv`. A carrier PoP's `kind` is its
+Every vertex lives in `data/vertices/joint.csv`. A carrier PoP's `kind` is its
 role on the backbone: `PoP` (aggregation-capable) or `ROADM` (transit
 only). The same file holds the demand sites -- the F-35 installations,
 the Sentinel program locations, the additional CONUS installations, and
