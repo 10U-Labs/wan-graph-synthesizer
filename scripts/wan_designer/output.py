@@ -159,23 +159,39 @@ def write_csv(output_path: Path, artifacts: DesignArtifacts) -> None:
 # pre-colored paddle icons rather than tinting a white icon with IconStyle
 # <color>, because many viewers (Google My Maps, QGIS, web) ignore that tint and
 # render every tier identically. Slugs map to mapfiles/kml/paddle/<slug>-blank.png:
-# blue access, purple aggregation, red core, orange provider regions.
+# blue access, purple aggregation, red core, orange provider regions, green provider
+# regions, yellow provider regions.
 LAYER_SPECS: tuple[tuple[str, str, str, str], ...] = (
     ("access", "Access Nodes", "blu", "0.85"),
     ("aggregation", "Aggregation Points", "purple", "0.9"),
     ("core", "Core Nodes", "red", "1.1"),
     ("provider region", "provider region", "orange", "0.95"),
     ("provider region", "provider region", "orange", "0.95"),
+    ("provider region", "provider region", "grn", "0.95"),
+    ("provider region", "provider region", "grn", "0.95"),
+    ("ts_east", "provider region", "ylw", "0.95"),
+    ("ts_west", "provider region", "ylw", "0.95"),
 )
 
+# Classified-region node kinds split into an (east, west) pair of output layers
+# by an "east"/"west" hint in the placemark name; a region with neither hint is
+# omitted from the map.
+REGION_LAYERS: dict[str, tuple[str, str]] = {
+    "provider": ("provider region", "provider region"),
+    "provider regions": ("provider region", "provider region"),
+    "provider_region": ("ts_east", "ts_west"),
+}
+
 def kml_layer_for_node(node: Node, role: str) -> str | None:
-    """Map a node to one of the five output layers, or None to omit it."""
-    if node.kind == "provider":
+    """Map a node to one of the output layers, or None to omit it."""
+    east_west = REGION_LAYERS.get(node.kind)
+    if east_west is not None:
+        east, west = east_west
         lowered = node.name.lower()
         if "east" in lowered:
-            return "provider region"
+            return east
         if "west" in lowered:
-            return "provider region"
+            return west
         return None
     if role in ("access", "aggregation", "core"):
         return role

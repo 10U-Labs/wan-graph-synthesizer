@@ -19,16 +19,14 @@ from wan_designer.output import (
 )
 
 
+def _region(name: str, kind: str) -> Node:
+    """Build a classified-region access node of the given kind and name."""
+    return Node(id=name, name=name, category=name, kind=kind, lat=0.0, lon=0.0)
+
+
 def _provider regions(name: str) -> Node:
     """Build a cloud provider regions access node with the given name."""
-    return Node(
-        id=name,
-        name=name,
-        category="provider regions - providers",
-        kind="provider",
-        lat=0.0,
-        lon=0.0,
-    )
+    return _region(name, "provider")
 
 ARTIFACTS = fixtures.ring_artifacts()
 SOURCES = fixtures.sample_sources()
@@ -61,7 +59,7 @@ def test_write_kml_has_document_name(tmp_path: Path) -> None:
     assert "Three-Tier Carrier WAN Design" in path.read_text(encoding="utf-8")
 
 
-def test_write_kml_emits_the_five_tier_layers(tmp_path: Path) -> None:
+def test_write_kml_emits_every_tier_layer(tmp_path: Path) -> None:
     """Write kml emits one folder per tier layer."""
     path = tmp_path / "d.kml"
     write_kml(path, ARTIFACTS)
@@ -70,6 +68,10 @@ def test_write_kml_emits_the_five_tier_layers(tmp_path: Path) -> None:
         "Access Nodes",
         "Aggregation Points",
         "Core Nodes",
+        "provider region",
+        "provider region",
+        "provider region",
+        "provider region",
         "provider region",
         "provider region",
     ):
@@ -89,6 +91,18 @@ def test_kml_layer_for_node_routes_provider region() -> None:
 def test_kml_layer_for_node_omits_directionless_secret() -> None:
     """A provider regions without an regions hint is omitted."""
     assert kml_layer_for_node(_provider regions("provider Central Region"), "access") is None
+
+
+def test_kml_layer_for_node_routes_provider regions() -> None:
+    """provider regions split regions into their own layers."""
+    assert kml_layer_for_node(_region("provider region", "provider regions"), "access") == "provider region"
+    assert kml_layer_for_node(_region("provider region", "provider regions"), "access") == "provider region"
+
+
+def test_kml_layer_for_node_routes_provider regions() -> None:
+    """provider regions split regions into their own layers."""
+    assert kml_layer_for_node(_region("provider region", "provider_region"), "access") == "ts_east"
+    assert kml_layer_for_node(_region("provider region", "provider_region"), "access") == "ts_west"
 
 
 def test_kml_layer_for_node_uses_tier_role_for_carrier_pops() -> None:

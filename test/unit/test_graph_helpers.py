@@ -50,6 +50,16 @@ def test_classify_category_provider() -> None:
     assert classify_category("provider regions - providers") == "provider"
 
 
+def test_classify_category_provider regions() -> None:
+    """Classify category provider regions."""
+    assert classify_category("provider regions") == "provider regions"
+
+
+def test_classify_category_provider regions() -> None:
+    """provider outranks the bare 'provider' match and is its own kind."""
+    assert classify_category("provider regions") == "provider_region"
+
+
 def test_edge_key_orders_pair() -> None:
     """Edge key orders pair."""
     assert edge_key("b", "a") == ("a", "b")
