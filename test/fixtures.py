@@ -99,20 +99,21 @@ def write_sample_inputs(directory: Path) -> tuple[Path, Path]:
     return vertices_path, edges_path
 
 
-def _vertex_row(name: str, lat: float, lon: float, tenant: str, kind: str, shown: str) -> str:
+def _vertex_row(name: str, coords: tuple[float, float], tenant: str, kind: str, shown: str) -> str:
     """Render one vertices-CSV row."""
+    lat, lon = coords
     return f"{name},{lat},{lon},{tenant},{kind},{shown},"
 
 
 def solvable_vertices_csv() -> str:
     """Render a vertices CSV whose ring graph the optimizer can actually solve."""
     pops = "\n".join(
-        _vertex_row(n, lat, lon, "Lumen", "PoP", "Not shown in map")
-        for n, (lat, lon) in {**RING_COORDS, **SPUR_COORDS}.items()
+        _vertex_row(n, coords, "Lumen", "PoP", "Not shown in map")
+        for n, coords in {**RING_COORDS, **SPUR_COORDS}.items()
     )
     access = "\n".join(
-        _vertex_row(n, lat, lon, "F-35", "Military installation", "Shown in map")
-        for n, (lat, lon) in ACCESS_COORDS.items()
+        _vertex_row(n, coords, "F-35", "Military installation", "Shown in map")
+        for n, coords in ACCESS_COORDS.items()
     )
     header = "name,latitude,longitude,tenant,kind,shown_in_map,description\n"
     return f"{header}{pops}\n{access}\n"
