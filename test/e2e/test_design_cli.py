@@ -69,9 +69,9 @@ def test_core_tier_has_at_least_three_nodes(design: dict[str, Any]) -> None:
     assert len(core_names(design)) >= 3
 
 
-def test_salt_lake_city_is_a_forced_aggregation(design: dict[str, Any]) -> None:
-    """Salt Lake City is pinned into the aggregation tier, not forced as a core."""
-    assert "Salt Lake City, UT" in aggregation_names(design)
+def test_los_angeles_is_a_forced_aggregation(design: dict[str, Any]) -> None:
+    """Los Angeles is pinned into the aggregation tier, not forced as a core."""
+    assert "Los Angeles, CA" in aggregation_names(design)
 
 
 def test_mclean_is_a_forced_core(design: dict[str, Any]) -> None:
