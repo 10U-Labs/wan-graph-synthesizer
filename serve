@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Start or stop the self-hosted WAN Graph Designer web app.
+#
+# Usage:
+#   ./serve start    # bootstrap deps (first run only) and serve on :8000
+#   ./serve stop     # stop the running server
+#
+# The first start creates an isolated .venv and installs the runtime
+# dependencies into it, so there is nothing to install by hand. Later
+# starts reuse that .venv and come up instantly.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV="$REPO_ROOT/.venv"
+PIDFILE="$REPO_ROOT/.serve.pid"
+LOGFILE="$REPO_ROOT/.serve.log"
+URL="http://localhost:8000"
+
+running() {
+  [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null
+}
+
+ensure_venv() {
+  if [ ! -x "$VENV/bin/python" ]; then
+    echo "First run: creating .venv and installing dependencies..."
+    python3 -m venv "$VENV"
+    "$VENV/bin/pip" install --quiet --upgrade pip
+    "$VENV/bin/pip" install --quiet -r "$REPO_ROOT/requirements.txt"
+  fi
+}
+
+start() {
+  if running; then
+    echo "Already running (PID $(cat "$PIDFILE")). Open $URL"
+    return 0
+  fi
+  ensure_venv
+  cd "$REPO_ROOT"
+  PYTHONPATH=lib/python:src "$VENV/bin/python" src/serve.py >"$LOGFILE" 2>&1 &
+  echo "$!" >"$PIDFILE"
+  echo "Started (PID $!). Open $URL  (logs: .serve.log)"
+}
+
+stop() {
+  if running; then
+    kill "$(cat "$PIDFILE")"
+    echo "Stopped (PID $(cat "$PIDFILE"))."
+  else
+    echo "Not running."
+  fi
+  rm -f "$PIDFILE"
+}
+
+case "${1:-}" in
+  start) start ;;
+  stop) stop ;;
+  *)
+    echo "Usage: $0 {start|stop}" >&2
+    exit 2
+    ;;
+esac

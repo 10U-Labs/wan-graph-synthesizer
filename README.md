@@ -77,11 +77,13 @@ the `validation` endpoint.
 
 Run the self-hosted web app and pick a tenant view in the browser. It
 serves a REST API and a Leaflet map from one process; designs are computed
-on demand from the configs in `etc/` (Joint, F-35) and cached in memory:
+on demand from the configs in `etc/` (Joint, F-35) and cached in memory.
+Start and stop it with one script — nothing to install by hand, the first
+start bootstraps an isolated `.venv` for you:
 
 ```bash
-pip install -r requirements.txt
-PYTHONPATH=lib/python:src python3 src/serve.py
+./serve start
+./serve stop
 ```
 
 Then open `http://localhost:8000` and choose **Joint** or **F-35** from

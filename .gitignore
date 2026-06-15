@@ -5,3 +5,6 @@ __pycache__/
 .jscpd/
 .coverage
 outputs/
+.venv/
+.serve.pid
+.serve.log
