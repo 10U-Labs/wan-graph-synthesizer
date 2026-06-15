@@ -27,7 +27,7 @@ def test_default_core_count() -> None:
 
 def test_default_has_no_forced_cores() -> None:
     """The default config pins no cores."""
-    assert default_config().params.forced_core_names == ()
+    assert len(default_config().params.forced_core_names) == 0
 
 
 def test_default_mapbook_path() -> None:
