@@ -25,7 +25,7 @@ design:
   # requires it; it never drops below this floor.
   min_core_count: 3
   # Anchor cores and aggregations to the most-populous cities of each state's
-  # most-populous counties (Census reference data under inputs).
+  # most-populous metropolitan areas (Census CBSA reference data under inputs).
   population_selection: true
   # States the population rule covers; empty means every state with a carrier PoP.
   population_states: []
@@ -34,8 +34,8 @@ design:
 inputs:
   # Physical Lumen backbone edges between carrier PoPs.
   carrier_edges: data/edges/lumen.csv
-  # Census county populations driving population anchoring.
-  county_populations: data/reference/counties.csv
+  # Census county-to-CBSA crosswalk (with metro populations) driving metro anchoring.
+  county_metros: data/reference/county_metros.csv
   # Optional source PDF path recorded in the JSON output for provenance.
   mapbook_pdf: ""
   # Census municipality populations and coordinates driving population anchoring.

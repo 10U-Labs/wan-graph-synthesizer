@@ -84,7 +84,7 @@ def _paths(data: dict[str, Any], inputs: dict[str, Any]) -> DesignPaths:
         mapbook_pdf=_optional_path(inputs.get("mapbook_pdf", "")),
         output_dir=Path(str(data.get("output_dir", DEFAULT_OUTPUT_DIR))),
         regional_edge_paths=tuple(Path(item) for item in regional_edges),
-        county_populations=_optional_path(inputs.get("county_populations", "")),
+        county_metros=_optional_path(inputs.get("county_metros", "")),
         municipality_populations=_optional_path(inputs.get("municipality_populations", "")),
     )
 

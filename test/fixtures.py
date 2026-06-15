@@ -234,14 +234,18 @@ def forced_core_artifacts(name: str) -> DesignArtifacts:
     return _forced_artifacts(DesignParams(min_core_count=2, forced_core_names=(name,)))
 
 
-# A two-state population scenario: Colorado (Denver county > Boulder county, with
-# an access node) and Kansas (Sedgwick county). Denver is CO's City A, so it is a
-# core candidate and -- because CO holds an access node -- a required aggregation,
-# co-locating into a core plus an AGGR twin; Boulder is CO's City B; Wichita is
-# KS's City A. The triangle of physical links keeps the design feasible.
+# A two-state metro population scenario. Colorado has two metros: the Denver metro
+# (Denver county > Arapahoe county, holding cities Denver then Aurora) outranks the
+# Boulder metro (Boulder); Colorado also holds an access node, so it is the cored
+# access state. Kansas has one metro (Wichita). Denver and Wichita are their states'
+# metro1.city1 core candidates; with both seated as cores, Colorado's first
+# aggregation lands on its metro's second city (Aurora) rather than co-locating on
+# Denver, and Boulder is its second-metro aggregation. The physical links keep
+# every aggregation dual-homed to both cores.
 POPULATION_VERTEX_HEADER = VERTEX_HEADER + ["municipality", "state"]
 POPULATION_VERTEX_ROWS = (
     ("Denver, CO", 39.74, -104.99, "PoP", "Not shown in map", "", "Denver", "CO"),
+    ("Aurora, CO", 39.73, -104.83, "PoP", "Not shown in map", "", "Aurora", "CO"),
     ("Boulder, CO", 40.01, -105.27, "PoP", "Not shown in map", "", "Boulder", "CO"),
     ("Wichita, KS", 37.69, -97.34, "PoP", "Not shown in map", "", "Wichita", "KS"),
     ("Fort Logan", 39.65, -105.0, "Military installation", "Shown in map", "", "Denver", "CO"),
@@ -250,16 +254,22 @@ POPULATION_EDGE_PAIRS = (
     ("Denver, CO", "Wichita, KS"),
     ("Denver, CO", "Boulder, CO"),
     ("Boulder, CO", "Wichita, KS"),
+    ("Denver, CO", "Aurora, CO"),
+    ("Aurora, CO", "Wichita, KS"),
 )
-POPULATION_COUNTIES_CSV = (
-    "state,county,population\n"
-    "CO,Denver County,700000\n"
-    "CO,Boulder County,300000\n"
-    "KS,Sedgwick County,500000\n"
+# Census CBSA crosswalk: Arapahoe joins Denver to its metro; Boulder is its own
+# metro; metro populations make the Denver metro outrank the Boulder metro.
+POPULATION_COUNTY_METROS_CSV = (
+    "state,county,cbsa_code,cbsa_title,cbsa_population\n"
+    "CO,Denver County,100,Denver Metro,3000000\n"
+    "CO,Arapahoe County,100,Denver Metro,3000000\n"
+    "CO,Boulder County,200,Boulder Metro,300000\n"
+    "KS,Sedgwick County,300,Wichita Metro,640000\n"
 )
 POPULATION_MUNICIPALITIES_CSV = (
     "state,municipality,county,population,latitude,longitude\n"
     "CO,Denver,Denver County,700000,39.74,-104.99\n"
+    "CO,Aurora,Arapahoe County,380000,39.73,-104.83\n"
     "CO,Boulder,Boulder County,100000,40.01,-105.27\n"
     "KS,Wichita,Sedgwick County,390000,37.69,-97.34\n"
 )
@@ -272,12 +282,12 @@ def write_population_inputs(directory: Path) -> DesignPaths:
     edge_path = directory / "pop_edges.csv"
     edge_rows = [(left, right, 500) for left, right in POPULATION_EDGE_PAIRS]
     _write_csv(edge_path, ["source", "target", "distance_miles"], edge_rows)
-    county_path = directory / "pop_counties.csv"
-    county_path.write_text(POPULATION_COUNTIES_CSV, encoding="utf-8")
+    metro_path = directory / "pop_county_metros.csv"
+    metro_path.write_text(POPULATION_COUNTY_METROS_CSV, encoding="utf-8")
     municipality_path = directory / "pop_municipalities.csv"
     municipality_path.write_text(POPULATION_MUNICIPALITIES_CSV, encoding="utf-8")
     return DesignPaths(
-        (("Lumen", vertex_path),), edge_path, None, directory, (), county_path, municipality_path
+        (("Lumen", vertex_path),), edge_path, None, directory, (), metro_path, municipality_path
     )
 
 

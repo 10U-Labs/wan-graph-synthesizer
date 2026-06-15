@@ -31,7 +31,7 @@ from wan_designer.population import (
     RealizedAnchors,
     access_states,
     carrier_states,
-    load_county_populations,
+    load_county_metros,
     load_municipalities,
     population_placements,
     realize_anchors,
@@ -42,20 +42,20 @@ logger = logging.getLogger(__name__)
 
 
 def _resolve_population_anchors(
-    county_path: Path,
+    metro_path: Path,
     municipality_path: Path,
     params: DesignParams,
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> RealizedAnchors:
-    """Resolve and realize the population anchors for the in-scope states."""
+    """Resolve and realize the metro population anchors for the in-scope states."""
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     access_vertices = [vertex for vertex in vertices if not is_carrier_pop(vertex)]
     scope = set(params.population.states) or carrier_states(carrier_pops)
     placements = population_placements(
         carrier_pops,
         access_states(access_vertices, carrier_pops),
-        load_county_populations(county_path),
+        load_county_metros(metro_path),
         load_municipalities(municipality_path),
         scope,
     )
@@ -73,10 +73,10 @@ def run_design(paths: DesignPaths, params: DesignParams, augment: bool) -> Desig
         physical_edges.update(load_carrier_edges(edge_path, carrier_pops))
     roles = {pop.id: carrier_role(pop) for pop in carrier_pops}
     anchors: RealizedAnchors | None = None
-    county_path, municipality_path = paths.county_populations, paths.municipality_populations
-    if params.population.enabled and county_path is not None and municipality_path is not None:
+    metro_path, municipality_path = paths.county_metros, paths.municipality_populations
+    if params.population.enabled and metro_path is not None and municipality_path is not None:
         anchors = _resolve_population_anchors(
-            county_path, municipality_path, params, vertices, physical_edges
+            metro_path, municipality_path, params, vertices, physical_edges
         )
         vertices, physical_edges = anchors.vertices, anchors.physical_edges
     vertices, physical_edges, overrides = apply_role_overrides(

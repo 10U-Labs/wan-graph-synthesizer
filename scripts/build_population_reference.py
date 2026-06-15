@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Build the population reference CSVs from public Census flat files.
+"""Build the municipality reference CSV from public Census flat files.
 
-Run once to (re)generate ``data/reference/counties.csv`` and
-``data/reference/municipalities.csv``; the committed CSVs are the artifact the
-designer reads at runtime (this script never runs in CI). Three public Census
-sources are joined:
+Run once to (re)generate ``data/reference/municipalities.csv``; the committed CSV
+is the artifact the designer reads at runtime (this script never runs in CI).
+County names come from the county totals file purely to label each place's
+county (the county-to-metro crosswalk lives in ``build_metro_reference.py``).
+Three public Census sources are joined:
 
 * county totals -- ``co-est2023-alldata.csv`` (SUMLEV 050)
 * place totals + place->county parts -- ``sub-est2023.csv`` (SUMLEV 162 and 157)
@@ -62,19 +63,14 @@ def _rows(raw: bytes) -> list[dict[str, str]]:
     return list(csv.DictReader(io.StringIO(raw.decode("latin-1"))))
 
 
-def build_counties(raw: bytes) -> tuple[list[tuple[str, str, str]], dict[tuple[str, str], str]]:
-    """County rows ``(usps, county, population)`` and a ``(state, county)->name`` index."""
-    rows: list[tuple[str, str, str]] = []
+def county_names(raw: bytes) -> dict[tuple[str, str], str]:
+    """A ``(state_fips, county_fips) -> CTYNAME`` index for labeling places (SUMLEV 050)."""
     name_by_fips: dict[tuple[str, str], str] = {}
     for row in _rows(raw):
-        if row["SUMLEV"] != "050":
-            continue
-        usps = FIPS_TO_USPS.get(row["STATE"])
-        if usps is None:
+        if row["SUMLEV"] != "050" or FIPS_TO_USPS.get(row["STATE"]) is None:
             continue
         name_by_fips[(row["STATE"], row["COUNTY"])] = row["CTYNAME"]
-        rows.append((usps, row["CTYNAME"], row[POP_FIELD]))
-    return rows, name_by_fips
+    return name_by_fips
 
 
 def _primary_county(subest: list[dict[str, str]]) -> dict[tuple[str, str], str]:
@@ -138,17 +134,16 @@ def _write(path: Path, header: list[str], rows: list[tuple[str, ...]]) -> None:
 
 
 def main() -> None:
-    """Download the Census sources, join them, and write the reference CSVs."""
+    """Download the Census sources, join them, and write the municipality CSV."""
     REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
-    county_rows, county_names = build_counties(_fetch(COUNTY_URL))
-    municipality_rows = build_municipalities(_fetch(SUBEST_URL), _fetch(GAZ_URL), county_names)
-    _write(REFERENCE_DIR / "counties.csv", ["state", "county", "population"], county_rows)
+    names_by_fips = county_names(_fetch(COUNTY_URL))
+    municipality_rows = build_municipalities(_fetch(SUBEST_URL), _fetch(GAZ_URL), names_by_fips)
     _write(
         REFERENCE_DIR / "municipalities.csv",
         ["state", "municipality", "county", "population", "latitude", "longitude"],
         municipality_rows,
     )
-    print(f"counties: {len(county_rows)} rows; municipalities: {len(municipality_rows)} rows")
+    print(f"municipalities: {len(municipality_rows)} rows")
 
 
 if __name__ == "__main__":
