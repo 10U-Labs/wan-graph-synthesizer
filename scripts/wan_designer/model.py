@@ -169,6 +169,10 @@ def classify_category(category: str) -> str:
         return "carrier_pop"
     if "sentinel" in normalized:
         return "sentinel"
+    if "cui" in normalized:
+        return "cui_region"
+    if "top secret" in normalized:
+        return "ts_region"
     if "secret" in normalized or "cloud service" in normalized:
         return "csp_secret"
     if "f-35" in normalized or "f35" in normalized:

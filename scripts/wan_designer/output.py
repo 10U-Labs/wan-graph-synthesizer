@@ -159,23 +159,39 @@ def write_csv(output_path: Path, artifacts: DesignArtifacts) -> None:
 # pre-colored paddle icons rather than tinting a white icon with IconStyle
 # <color>, because many viewers (Google My Maps, QGIS, web) ignore that tint and
 # render every tier identically. Slugs map to mapfiles/kml/paddle/<slug>-blank.png:
-# blue access, purple aggregation, red core, orange secret regions.
+# blue access, purple aggregation, red core, orange secret regions, green CUI
+# regions, yellow Top Secret regions.
 LAYER_SPECS: tuple[tuple[str, str, str, str], ...] = (
     ("access", "Access Nodes", "blu", "0.85"),
     ("aggregation", "Aggregation Points", "purple", "0.9"),
     ("core", "Core Nodes", "red", "1.1"),
     ("secret_east", "Secret East Regions", "orange", "0.95"),
     ("secret_west", "Secret West Regions", "orange", "0.95"),
+    ("cui_east", "CUI East Regions", "grn", "0.95"),
+    ("cui_west", "CUI West Regions", "grn", "0.95"),
+    ("ts_east", "Top Secret East Regions", "ylw", "0.95"),
+    ("ts_west", "Top Secret West Regions", "ylw", "0.95"),
 )
 
+# Classified-region node kinds split into an (east, west) pair of output layers
+# by an "east"/"west" hint in the placemark name; a region with neither hint is
+# omitted from the map.
+REGION_LAYERS: dict[str, tuple[str, str]] = {
+    "csp_secret": ("secret_east", "secret_west"),
+    "cui_region": ("cui_east", "cui_west"),
+    "ts_region": ("ts_east", "ts_west"),
+}
+
 def kml_layer_for_node(node: Node, role: str) -> str | None:
-    """Map a node to one of the five output layers, or None to omit it."""
-    if node.kind == "csp_secret":
+    """Map a node to one of the output layers, or None to omit it."""
+    east_west = REGION_LAYERS.get(node.kind)
+    if east_west is not None:
+        east, west = east_west
         lowered = node.name.lower()
         if "east" in lowered:
-            return "secret_east"
+            return east
         if "west" in lowered:
-            return "secret_west"
+            return west
         return None
     if role in ("access", "aggregation", "core"):
         return role

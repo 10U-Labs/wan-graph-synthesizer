@@ -19,16 +19,14 @@ from wan_designer.output import (
 )
 
 
+def _region(name: str, kind: str) -> Node:
+    """Build a classified-region access node of the given kind and name."""
+    return Node(id=name, name=name, category=name, kind=kind, lat=0.0, lon=0.0)
+
+
 def _secret_region(name: str) -> Node:
     """Build a cloud secret-region access node with the given name."""
-    return Node(
-        id=name,
-        name=name,
-        category="Secret Regions - Cloud Service Providers",
-        kind="csp_secret",
-        lat=0.0,
-        lon=0.0,
-    )
+    return _region(name, "csp_secret")
 
 ARTIFACTS = fixtures.ring_artifacts()
 SOURCES = fixtures.sample_sources()
@@ -61,7 +59,7 @@ def test_write_kml_has_document_name(tmp_path: Path) -> None:
     assert "Three-Tier Carrier WAN Design" in path.read_text(encoding="utf-8")
 
 
-def test_write_kml_emits_the_five_tier_layers(tmp_path: Path) -> None:
+def test_write_kml_emits_every_tier_layer(tmp_path: Path) -> None:
     """Write kml emits one folder per tier layer."""
     path = tmp_path / "d.kml"
     write_kml(path, ARTIFACTS)
@@ -72,6 +70,10 @@ def test_write_kml_emits_the_five_tier_layers(tmp_path: Path) -> None:
         "Core Nodes",
         "Secret East Regions",
         "Secret West Regions",
+        "CUI East Regions",
+        "CUI West Regions",
+        "Top Secret East Regions",
+        "Top Secret West Regions",
     ):
         assert f"<name>{name}</name>" in text
 
@@ -89,6 +91,18 @@ def test_kml_layer_for_node_routes_secret_west_region() -> None:
 def test_kml_layer_for_node_omits_directionless_secret() -> None:
     """A secret region without an east/west hint is omitted."""
     assert kml_layer_for_node(_secret_region("Secret Central Region"), "access") is None
+
+
+def test_kml_layer_for_node_routes_cui_regions() -> None:
+    """CUI regions split east/west into their own layers."""
+    assert kml_layer_for_node(_region("CUI East Region", "cui_region"), "access") == "cui_east"
+    assert kml_layer_for_node(_region("CUI West Region", "cui_region"), "access") == "cui_west"
+
+
+def test_kml_layer_for_node_routes_top_secret_regions() -> None:
+    """Top Secret regions split east/west into their own layers."""
+    assert kml_layer_for_node(_region("Top Secret East Region", "ts_region"), "access") == "ts_east"
+    assert kml_layer_for_node(_region("Top Secret West Region", "ts_region"), "access") == "ts_west"
 
 
 def test_kml_layer_for_node_uses_tier_role_for_carrier_pops() -> None:

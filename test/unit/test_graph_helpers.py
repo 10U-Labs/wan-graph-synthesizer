@@ -50,6 +50,16 @@ def test_classify_category_csp_secret() -> None:
     assert classify_category("Secret Regions - Cloud Service Providers") == "csp_secret"
 
 
+def test_classify_category_cui_region() -> None:
+    """Classify category cui region."""
+    assert classify_category("CUI Regions") == "cui_region"
+
+
+def test_classify_category_top_secret_region() -> None:
+    """Top Secret outranks the bare 'secret' match and is its own kind."""
+    assert classify_category("Top Secret Regions") == "ts_region"
+
+
 def test_edge_key_orders_pair() -> None:
     """Edge key orders pair."""
     assert edge_key("b", "a") == ("a", "b")
