@@ -13,6 +13,7 @@ from wan_designer.model import (
     DesignInputs,
     DesignParams,
     Vertex,
+    PathUse,
     PhysicalEdge,
     RoleOverrides,
     edge_key,
@@ -271,7 +272,7 @@ _UNIT_MESH_EDGES = physical({
 })
 
 
-def _five_core_mesh_paths(degree_cap: int | None) -> list:
+def _five_core_mesh_paths(degree_cap: int | None) -> list[PathUse]:
     """Route the five-core backbone over a unit-weight full-mesh graph."""
     adjacency = unit_adjacency(_UNIT_MESH_EDGES)
     distances, predecessors = all_pairs_shortest([pop(c) for c in _FIVE_CORES], adjacency)
