@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 import fixtures
-from wan_designer.model import DesignParams, DesignPaths
+from wan_designer.model import DesignParams, DesignPaths, PopulationPolicy
 from wan_designer.service import available_wan_maps, design_for_wan_map, run_design
 
 
@@ -38,7 +38,7 @@ def test_run_design_anchors_to_population(tmp_path: Path) -> None:
 
 def test_run_design_scopes_population_to_named_states(tmp_path: Path) -> None:
     """A population_states scope still produces a connected design."""
-    params = DesignParams(min_core_count=2, population_states=("CO", "KS"))
+    params = DesignParams(min_core_count=2, population=PopulationPolicy(states=("CO", "KS")))
     artifacts = run_design(fixtures.write_population_inputs(tmp_path), params, False)
     assert artifacts.validation["connected"] is True
 

@@ -129,17 +129,17 @@ def test_forced_cores_must_be_a_list() -> None:
 
 def test_default_population_selection_on() -> None:
     """Population anchoring defaults on."""
-    assert default_config().params.population_selection is True
+    assert default_config().params.population.enabled is True
 
 
 def test_reads_population_selection_off() -> None:
     """Population anchoring can be turned off in the design section."""
-    assert _config({"design": {"population_selection": False}}).params.population_selection is False
+    assert _config({"design": {"population_selection": False}}).params.population.enabled is False
 
 
 def test_reads_population_states() -> None:
     """A population_states list is read into the design params."""
-    assert _config({"design": {"population_states": ["CO"]}}).params.population_states == ("CO",)
+    assert _config({"design": {"population_states": ["CO"]}}).params.population.states == ("CO",)
 
 
 def test_default_county_populations_is_none() -> None:
