@@ -126,6 +126,18 @@ class Tuning:
     core_set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
 
 @dataclass(frozen=True)
+class PopulationPolicy:
+    """How population anchoring constrains core and aggregation placement.
+
+    When ``enabled`` the optimizer anchors cores to each state's most-populous
+    county city and seats every access-bearing state's two cities as required
+    aggregations. ``states`` scopes the rule; empty means every state with a PoP.
+    """
+
+    enabled: bool = True
+    states: tuple[str, ...] = ()
+
+@dataclass(frozen=True)
 class DesignParams:
     """Operator choices plus the algorithm :class:`Tuning` for the optimization."""
 
@@ -134,8 +146,7 @@ class DesignParams:
     forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
     forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations
     excluded_names: tuple[str, ...] = ()  # PoPs barred from every selected role
-    population_selection: bool = True  # anchor cores/aggregations to populous cities
-    population_states: tuple[str, ...] = ()  # states the anchoring covers; empty means all
+    population: PopulationPolicy = field(default_factory=PopulationPolicy)
     tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)

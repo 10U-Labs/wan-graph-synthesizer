@@ -820,6 +820,20 @@ def _candidate_restriction(
     return frozenset(ids) if anchors is not None else None
 
 
+def _role_sides(
+    anchors: RealizedAnchors | None,
+    forced_core: set[str],
+    forced_aggregation: set[str],
+    excluded: set[str],
+) -> tuple[set[str], set[str]]:
+    """Merge operator pins with population anchors into core and aggregation sides."""
+    core_anchor = anchors.core_anchor_ids if anchors is not None else frozenset()
+    required_anchor = anchors.required_aggregation_ids if anchors is not None else frozenset()
+    core_side = forced_core | (set(core_anchor) - excluded)
+    aggregation_side = forced_aggregation | (set(required_anchor) - excluded)
+    return core_side, aggregation_side
+
+
 def apply_role_overrides(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
@@ -845,10 +859,9 @@ def apply_role_overrides(
     )
     excluded = resolve_pinned_ids(params.excluded_names, name_to_id, "exclude")
     reject_override_conflicts(forced_core, forced_aggregation, excluded)
-    core_anchor_ids = anchors.core_anchor_ids if anchors is not None else frozenset()
-    required_anchor_ids = anchors.required_aggregation_ids if anchors is not None else frozenset()
-    core_side = forced_core | (set(core_anchor_ids) - excluded)
-    required_aggregation = forced_aggregation | (set(required_anchor_ids) - excluded)
+    core_side, required_aggregation = _role_sides(
+        anchors, forced_core, forced_aggregation, excluded
+    )
     colocated = core_side & required_aggregation
     vertices, physical_edges, twin_by_core = split_colocated(vertices, physical_edges, colocated)
     forced_aggregation_ids = (required_aggregation - colocated) | set(twin_by_core.values())

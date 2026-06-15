@@ -15,7 +15,7 @@ from typing import Any
 
 import yaml
 
-from wan_designer.model import DesignPaths, DesignParams, Tuning
+from wan_designer.model import DesignPaths, DesignParams, PopulationPolicy, Tuning
 
 DEFAULT_CONFIG_PATH = Path("etc/joint.yml")
 DEFAULT_VERTICES = {
@@ -120,8 +120,10 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
         forced_core_names=_str_list(design, "forced_cores", []),
         forced_aggregation_names=_str_list(design, "forced_aggregations", []),
         excluded_names=_str_list(design, "excluded", []),
-        population_selection=design.get("population_selection", base.population_selection),
-        population_states=_str_list(design, "population_states", []),
+        population=PopulationPolicy(
+            enabled=design.get("population_selection", base.population.enabled),
+            states=_str_list(design, "population_states", []),
+        ),
         tuning=_tuning(tuning),
     )
 
