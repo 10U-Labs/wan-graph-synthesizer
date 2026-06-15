@@ -167,16 +167,18 @@ def classify_category(category: str) -> str:
     normalized = category.lower()
     if "carrier" in normalized and "pop" in normalized:
         return "carrier_pop"
-    if "sentinel" in normalized:
-        return "sentinel"
-    if "provider" in normalized:
-        return "provider regions"
-    if "provider" in normalized:
-        return "provider_region"
-    if "provider" in normalized or "cloud service" in normalized:
-        return "provider"
-    if "f-35" in normalized or "f35" in normalized:
-        return "f35"
+    # First matching group wins; "provider" precedes "provider" so it is not
+    # swallowed by the broader provider match.
+    keyword_kinds = (
+        (("sentinel",), "sentinel"),
+        (("provider",), "provider regions"),
+        (("provider",), "provider_region"),
+        (("provider", "cloud service"), "provider"),
+        (("f-35", "f35"), "f35"),
+    )
+    for keywords, kind in keyword_kinds:
+        if any(keyword in normalized for keyword in keywords):
+            return kind
     return slugify(category)
 
 def edge_key(left: str, right: str) -> tuple[str, str]:
