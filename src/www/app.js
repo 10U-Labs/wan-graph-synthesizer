@@ -14,8 +14,8 @@ const DEFAULT_MAP_ID = "joint";
 const provider_KIND = "provider region";
 const provider_STYLE = { color: "#ef6c00", radius: 5 };
 const ROLE_STYLE = {
-  core: { color: "#c62828", radius: 8 },
-  aggregation: { color: "#6a1b9a", radius: 6 },
+  core: { color: "#6a1b9a", radius: 8 },
+  aggregation: { color: "#8bc34a", radius: 6 },
   access: { color: "#1565c0", radius: 4 },
 };
 

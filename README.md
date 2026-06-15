@@ -88,10 +88,10 @@ start bootstraps an isolated `.venv` for you:
 
 Then open `http://localhost:8000`; the **Joint** map loads by default, and
 clicking **Joint** or **F-35** in the header redraws the map with the cores
-(red), aggregations (purple), provider regions (orange), and other access
-vertices (blue). Links are colored and weighted by tier: thin blue access
-links, thicker purple aggregation links, and thick red backbones between
-cores. Hover any vertex or link for its details.
+(purple), aggregations (light green), provider regions (orange), and other
+access vertices (blue). Links are colored and weighted by tier: thin blue
+access links, thicker light-green aggregation links, and thick purple
+backbones between cores. Hover any vertex or link for its details.
 
 The REST surface is a set of atomic resources (WAN map `id` = `joint`
 or `f_35`):
