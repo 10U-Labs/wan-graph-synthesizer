@@ -229,29 +229,39 @@ def _is_two_edge_connected(core_ids: tuple[str, ...], pairs: list[tuple[str, str
     return all(len(connected_components(ids, edges - {pair})) == 1 for pair in edges)
 
 
-def test_core_backbone_caps_degree_and_drops_longest_links() -> None:
-    """With a cap of three, no core keeps four neighbors and the longest link goes."""
+def _capped_backbone() -> list[tuple[str, str]]:
+    """The degree-3 backbone selected over the five-core mesh (asserted non-None)."""
     pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, 3)
     assert pairs is not None
-    assert max(_degrees(_FIVE_CORES, pairs).values()) <= 3
-    assert _is_two_edge_connected(_FIVE_CORES, pairs)
-    assert edge_key("c1", "c5") not in pairs  # the single longest link is dropped
+    return pairs
+
+
+def test_core_backbone_caps_degree_at_three() -> None:
+    """With a cap of three, no core keeps four backbone neighbors."""
+    assert max(_degrees(_FIVE_CORES, _capped_backbone()).values()) <= 3
+
+
+def test_core_backbone_stays_two_edge_connected() -> None:
+    """The capped backbone still survives the loss of any single link."""
+    assert _is_two_edge_connected(_FIVE_CORES, _capped_backbone())
+
+
+def test_core_backbone_drops_the_longest_link() -> None:
+    """The single longest core-to-core link is the first dropped under the cap."""
+    assert edge_key("c1", "c5") not in _capped_backbone()
 
 
 def test_core_backbone_is_full_mesh_without_a_cap() -> None:
     """A None cap leaves the full mesh: every core pair keeps a backbone link."""
     pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, None)
-    assert pairs is not None
-    assert len(pairs) == 10  # C(5, 2)
-    assert max(_degrees(_FIVE_CORES, pairs).values()) == 4
+    assert pairs is not None and len(pairs) == 10  # C(5, 2)
 
 
 def test_core_backbone_unchanged_when_already_within_cap() -> None:
     """Four cores at the cap of three are already a full mesh -- nothing is dropped."""
     four = ("c1", "c2", "c3", "c4")
     pairs = select_core_backbone_pairs(four, _FIVE_CORE_DISTANCES, 3)
-    assert pairs is not None
-    assert len(pairs) == 6  # C(4, 2): every degree is exactly three
+    assert pairs is not None and len(pairs) == 6  # C(4, 2): every degree is exactly three
 
 
 def test_core_backbone_none_when_a_core_pair_is_unreachable() -> None:
@@ -263,20 +273,28 @@ def test_core_backbone_none_when_a_core_pair_is_unreachable() -> None:
     assert select_core_backbone_pairs(("c1", "c2", "c3"), distances, 3) is None
 
 
-def test_core_mesh_paths_respect_the_degree_cap() -> None:
-    """Routing honors the cap: a five-core mesh emits fewer than ten backbone links."""
-    edges = physical({
-        ("c1", "c2"): 1.0, ("c1", "c3"): 1.0, ("c1", "c4"): 1.0, ("c1", "c5"): 1.0,
-        ("c2", "c3"): 1.0, ("c2", "c4"): 1.0, ("c2", "c5"): 1.0,
-        ("c3", "c4"): 1.0, ("c3", "c5"): 1.0, ("c4", "c5"): 1.0,
-    })
-    adjacency = unit_adjacency(edges)
+_UNIT_MESH_EDGES = physical({
+    ("c1", "c2"): 1.0, ("c1", "c3"): 1.0, ("c1", "c4"): 1.0, ("c1", "c5"): 1.0,
+    ("c2", "c3"): 1.0, ("c2", "c4"): 1.0, ("c2", "c5"): 1.0,
+    ("c3", "c4"): 1.0, ("c3", "c5"): 1.0, ("c4", "c5"): 1.0,
+})
+
+
+def _five_core_mesh_paths(degree_cap: int | None) -> list:
+    """Route the five-core backbone over a unit-weight full-mesh graph."""
+    adjacency = unit_adjacency(_UNIT_MESH_EDGES)
     distances, predecessors = all_pairs_shortest([pop(c) for c in _FIVE_CORES], adjacency)
-    capped = core_mesh_paths(_FIVE_CORES, distances, predecessors, edges, 3)
-    uncapped = core_mesh_paths(_FIVE_CORES, distances, predecessors, edges, None)
-    assert len(uncapped) == 10
-    assert len(capped) < 10
-    pairs = [edge_key(use.source, use.target) for use in capped]
+    return core_mesh_paths(_FIVE_CORES, distances, predecessors, _UNIT_MESH_EDGES, degree_cap)
+
+
+def test_core_mesh_paths_route_the_full_mesh_without_a_cap() -> None:
+    """Without a cap, routing emits one link per core pair (the full mesh)."""
+    assert len(_five_core_mesh_paths(None)) == 10
+
+
+def test_core_mesh_paths_route_within_the_degree_cap() -> None:
+    """Routing under the cap leaves no core with more than three backbone links."""
+    pairs = [edge_key(use.source, use.target) for use in _five_core_mesh_paths(3)]
     assert max(_degrees(_FIVE_CORES, pairs).values()) <= 3
 
 
