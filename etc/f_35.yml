@@ -1,6 +1,8 @@
 ---
-# Canonical three-tier WAN design configuration. Operator choices live here, not
-# in source: change the design by editing this file. CLI flags override these.
+# F-35-only WAN design: same topology and pins as joint.yml, but the demand is
+# F-35 installations only -- the AFLCMC and AFNWC/NI vertices are omitted while
+# every carrier (Lumen, DCN, VisionNet) and cloud region (AWS, OCI, Azure)
+# remains. Operator choices live here, not in source; CLI flags override these.
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 design:
   # Allow mapbook ROADM vertices to be selected as aggregation/core points.
@@ -11,17 +13,11 @@ design:
   excluded: []
   # PoPs pinned into the aggregation tier. Richmond is pinned (not Norfolk, a
   # single-homed ROADM leaf) so southeast-Virginia demand homes into a PoP that
-  # can dual-home to two cores. The Sentinel ICBM wings home onto their serving
-  # PoPs: Minot, ND (Dakota Carrier Network) for Minot AFB, Great Falls, MT
-  # (VisionNet) for Malmstrom AFB, and Cheyenne for F.E. Warren AFB -- these
-  # regional-carrier PoPs replace the old modeled per-base demand weighting.
-  # Boston is dual-homed via Cambridge and Stamford (mapbook page 7).
+  # can dual-home to two cores. Boston is dual-homed via Cambridge and Stamford
+  # (mapbook page 7).
   forced_aggregations:
     - Boston, MA
-    - Cheyenne, WY
-    - Great Falls, MT
     - Los Angeles, CA
-    - Minot, ND
     - New York, NY
     - Portland, OR
     - Richmond, VA
@@ -35,15 +31,22 @@ design:
   resilience_augmentation: true
 inputs:
   # Physical Lumen backbone edges between carrier PoPs.
-  carrier_edges: data/edges/carrier_edges.csv
+  carrier_edges: data/edges/lumen.csv
   # Optional source PDF path recorded in the JSON output for provenance.
   mapbook_pdf: ""
   # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
   regional_edges:
-    - data/edges/dcn_edges.csv
-    - data/edges/vision_net_edges.csv
-  # All vertices (carrier PoPs, access sites, cloud regions) with tenant + kind.
-  vertices: data/vertices/joint.csv
+    - data/edges/dcn.csv
+    - data/edges/vision_net.csv
+  # F-35 only: the AFLCMC and AFNWC/NI tenant files are intentionally omitted.
+  vertices:
+    AWS: data/vertices/aws.csv
+    Azure: data/vertices/azure.csv
+    DCN: data/vertices/dcn.csv
+    F-35: data/vertices/f_35.csv
+    Lumen: data/vertices/lumen.csv
+    OCI: data/vertices/oci.csv
+    VisionNet: data/vertices/vision_net.csv
 output_dir: outputs
 tuning:
   # Ceiling (miles) on the data-derived DBSCAN cluster radius.

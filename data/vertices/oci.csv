@@ -1,0 +1,9 @@
+name,latitude,longitude,kind,shown_in_map,description
+OCI Secret West Region,32.7555,-97.3308,CSP data center,Shown in map,"Layer: Secret regions for cloud service providers
+Provider: OCI
+Region: Secret West Region
+Location: Fort Worth, TX"
+OCI Secret East Region,39.0438,-77.4874,CSP data center,Shown in map,"Layer: Secret regions for cloud service providers
+Provider: OCI
+Region: Secret East Region
+Location: Ashburn, VA"

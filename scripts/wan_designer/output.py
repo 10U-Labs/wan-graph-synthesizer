@@ -36,7 +36,7 @@ def write_json(
     validation = artifacts.validation
     vertices_by_id = {vertex.id: vertex for vertex in vertices}
     payload = {
-        "vertices_file": str(sources.vertices_path),
+        "vertices_files": [str(path) for path in sources.vertex_files],
         "physical_edge_file": str(sources.edge_path),
         "mapbook_pdf": str(sources.mapbook_pdf) if sources.mapbook_pdf else None,
         "objective": (

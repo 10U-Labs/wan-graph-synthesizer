@@ -30,9 +30,9 @@ def test_default_has_no_forced_cores() -> None:
     assert len(default_config().params.forced_core_names) == 0
 
 
-def test_default_vertices_path() -> None:
-    """The default config points at the merged vertices CSV."""
-    assert default_config().paths.vertices_path == Path("data/vertices/joint.csv")
+def test_default_vertex_files() -> None:
+    """The default config maps each tenant to its per-tenant vertices CSV."""
+    assert ("Lumen", Path("data/vertices/lumen.csv")) in default_config().paths.vertex_files
 
 
 def test_default_output_dir() -> None:
@@ -48,8 +48,8 @@ def test_default_mapbook_pdf_is_none() -> None:
 def test_default_regional_edges() -> None:
     """The default config lists both regional carrier edge files."""
     assert default_config().paths.regional_edge_paths == (
-        Path("data/edges/dcn_edges.csv"),
-        Path("data/edges/vision_net_edges.csv"),
+        Path("data/edges/dcn.csv"),
+        Path("data/edges/vision_net.csv"),
     )
 
 
@@ -80,9 +80,19 @@ def test_reads_output_dir() -> None:
     assert _config({"output_dir": "out2"}).paths.output_dir == Path("out2")
 
 
-def test_reads_vertices_path_override() -> None:
-    """A vertices input value is read into the paths."""
-    assert _config({"inputs": {"vertices": "v.csv"}}).paths.vertices_path == Path("v.csv")
+def test_reads_vertices_mapping() -> None:
+    """A vertices tenant->path mapping is read into sorted (tenant, path) pairs."""
+    vertices = {"Lumen": "lumen.csv", "F-35": "f_35.csv"}
+    assert _config({"inputs": {"vertices": vertices}}).paths.vertex_files == (
+        ("F-35", Path("f_35.csv")),
+        ("Lumen", Path("lumen.csv")),
+    )
+
+
+def test_rejects_non_mapping_vertices() -> None:
+    """A non-mapping vertices value is rejected."""
+    with pytest.raises(ValueError):
+        _config({"inputs": {"vertices": "single.csv"}})
 
 
 def test_reads_mapbook_pdf_path() -> None:

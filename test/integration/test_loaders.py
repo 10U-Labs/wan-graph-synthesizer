@@ -12,13 +12,13 @@ from wan_designer import Vertex, is_carrier_pop, load_carrier_edges, load_vertic
 
 @pytest.fixture(name="vertices", scope="module")
 def fixture_vertices(tmp_path_factory: pytest.TempPathFactory) -> list[Vertex]:
-    """Fixture providing the vertices parsed from the sample CSV."""
-    vertices_csv, _edges = fixtures.write_sample_inputs(tmp_path_factory.mktemp("vertices"))
-    return load_vertices(vertices_csv)
+    """Fixture providing the vertices parsed from the per-tenant sample CSVs."""
+    vertex_files, _edges = fixtures.write_sample_inputs(tmp_path_factory.mktemp("vertices"))
+    return load_vertices(list(vertex_files))
 
 
 def test_loads_all_vertices(vertices: list[Vertex]) -> None:
-    """Loads every row of the vertices CSV."""
+    """Loads every row across the tenant CSVs."""
     assert len(vertices) == 4
 
 
@@ -30,5 +30,5 @@ def test_classifies_two_carrier_pops(vertices: list[Vertex]) -> None:
 def test_loads_edge_between_pops(vertices: list[Vertex], tmp_path: Path) -> None:
     """Loads edge between pops."""
     pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
-    _vertices_csv, edges_path = fixtures.write_sample_inputs(tmp_path)
+    _vertex_files, edges_path = fixtures.write_sample_inputs(tmp_path)
     assert len(load_carrier_edges(edges_path, pops)) == 1

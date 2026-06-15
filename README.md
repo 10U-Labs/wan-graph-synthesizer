@@ -60,12 +60,13 @@ from the vertex and edge CSVs in `data/`:
 python3 scripts/design_network.py
 ```
 
-All vertices live in `data/vertices/joint.csv`, one row per vertex with columns
-`name,latitude,longitude,tenant,kind,shown_in_map,description`. The `kind`
-column classifies each vertex (`PoP`/`ROADM` carrier PoPs versus
-`Military installation`, `CSP data center`, `UARC`, and `Corporate office`
-access vertices) and `tenant` records its operator or program (Lumen, DCN,
-VisionNet, F-35, AFNWC/NI, AFLCMC, AWS, OCI, Azure).
+Vertices live in `data/vertices/`, one CSV per tenant (`lumen.csv`,
+`dcn.csv`, `f_35.csv`, `aws.csv`, ...), each row with columns
+`name,latitude,longitude,kind,shown_in_map,description`. The tenant is the
+file, and the `kind` column classifies each vertex (`PoP`/`ROADM` carrier
+PoPs versus `Military installation`, `CSP data center`, `UARC`, and
+`Corporate office` access vertices). `etc/joint.yml` lists every tenant
+file; `etc/f_35.yml` is an F-35-only variant that omits AFLCMC and AFNWC/NI.
 The script selects up to three Carrier core PoPs, selects aggregation PoPs
 as needed, dual-homes every access vertex to two aggregation PoPs, routes
 every aggregation to two cores over vertex-disjoint paths on the physical

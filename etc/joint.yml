@@ -1,0 +1,70 @@
+---
+# Canonical three-tier WAN design configuration. Operator choices live here, not
+# in source: change the design by editing this file. CLI flags override these.
+# Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
+design:
+  # Allow mapbook ROADM vertices to be selected as aggregation/core points.
+  allow_roadm_aggregation: false
+  # Exact number of core PoPs in the design.
+  core_count: 3
+  # PoPs barred from every selected role.
+  excluded: []
+  # PoPs pinned into the aggregation tier. Richmond is pinned (not Norfolk, a
+  # single-homed ROADM leaf) so southeast-Virginia demand homes into a PoP that
+  # can dual-home to two cores. The Sentinel ICBM wings home onto their serving
+  # PoPs: Minot, ND (Dakota Carrier Network) for Minot AFB, Great Falls, MT
+  # (VisionNet) for Malmstrom AFB, and Cheyenne for F.E. Warren AFB -- these
+  # regional-carrier PoPs replace the old modeled per-base demand weighting.
+  # Boston is dual-homed via Cambridge and Stamford (mapbook page 7).
+  forced_aggregations:
+    - Boston, MA
+    - Cheyenne, WY
+    - Great Falls, MT
+    - Los Angeles, CA
+    - Minot, ND
+    - New York, NY
+    - Portland, OR
+    - Richmond, VA
+  # PoPs pinned into the core tier. Atlanta anchors the southeast, Dallas the
+  # south-central, and McLean the national-capital region.
+  forced_cores:
+    - Atlanta, GA
+    - Dallas, TX
+    - McLean, VA
+  # Add extra physical Carrier edges to reduce articulation or degree risk.
+  resilience_augmentation: true
+inputs:
+  # Physical Lumen backbone edges between carrier PoPs.
+  carrier_edges: data/edges/lumen.csv
+  # Optional source PDF path recorded in the JSON output for provenance.
+  mapbook_pdf: ""
+  # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
+  regional_edges:
+    - data/edges/dcn.csv
+    - data/edges/vision_net.csv
+  # Vertices split into one CSV per tenant; the tenant is the mapping key
+  # (the per-tenant CSVs carry no tenant column).
+  vertices:
+    AFLCMC: data/vertices/aflcmc.csv
+    AFNWC/NI: data/vertices/afnwc_ni.csv
+    AWS: data/vertices/aws.csv
+    Azure: data/vertices/azure.csv
+    DCN: data/vertices/dcn.csv
+    F-35: data/vertices/f_35.csv
+    Lumen: data/vertices/lumen.csv
+    OCI: data/vertices/oci.csv
+    VisionNet: data/vertices/vision_net.csv
+output_dir: outputs
+tuning:
+  # Ceiling (miles) on the data-derived DBSCAN cluster radius.
+  cluster_max_radius_miles: 250.0
+  # A cluster needs at least this many close access vertices to seed an aggregation.
+  cluster_min_points: 2
+  # Floor (miles) on the data-derived DBSCAN cluster radius.
+  cluster_min_radius_miles: 0.0
+  # Compass sectors used to score a core's link spread.
+  compass_octants: 8
+  # Peak bytes one enumerated core set costs (sizes the search to free RAM).
+  core_set_peak_bytes: 160
+  # Share of RAM the core enumeration may use at its peak.
+  enum_memory_fraction: 0.6

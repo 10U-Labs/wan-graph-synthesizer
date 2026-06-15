@@ -6,6 +6,8 @@ duplicating data (which copy-paste detection would otherwise flag).
 
 from __future__ import annotations
 
+import csv
+import io
 from pathlib import Path
 
 from wan_designer.model import (
@@ -17,21 +19,43 @@ from wan_designer.model import (
     carrier_role,
     edge_key,
     is_carrier_pop,
+    slugify,
 )
 from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
 from wan_designer.validation import validate_design
 
-# A four-vertex sample: two Lumen carrier PoPs plus two access sites, in the
-# merged vertices schema (name,latitude,longitude,tenant,kind,shown_in_map,description).
-SAMPLE_VERTICES_CSV = (
-    "name,latitude,longitude,tenant,kind,shown_in_map,description\n"
-    "Loose Site,39.0,-90.0,F-35,Military installation,Shown in map,\n"
-    '"Denver, CO",39.7392,-104.9903,Lumen,PoP,Not shown in map,a Lumen PoP\n'
-    '"Kansas City, MO",39.0997,-94.5786,Lumen,PoP,Not shown in map,\n'
-    "Buckley,39.7,-104.75,F-35,Military installation,Shown in map,\n"
-)
+VERTEX_HEADER = ["name", "latitude", "longitude", "kind", "shown_in_map", "description"]
+
+# A four-vertex sample keyed by tenant: two Lumen carrier PoPs plus two F-35
+# installations. Rows are (name, lat, lon, kind, shown_in_map, description).
+SAMPLE_TENANT_ROWS: dict[str, list[tuple[str, float, float, str, str, str]]] = {
+    "Lumen": [
+        ("Denver, CO", 39.7392, -104.9903, "PoP", "Not shown in map", "a Lumen PoP"),
+        ("Kansas City, MO", 39.0997, -94.5786, "PoP", "Not shown in map", ""),
+    ],
+    "F-35": [
+        ("Loose Site", 39.0, -90.0, "Military installation", "Shown in map", ""),
+        ("Buckley", 39.7, -104.75, "Military installation", "Shown in map", ""),
+    ],
+}
 
 SAMPLE_EDGES_CSV = 'source,target,source_page,note\n"Denver, CO","Kansas City, MO",p,r\n'
+
+
+def write_vertex_files(
+    directory: Path, tenant_rows: dict[str, list[tuple[str, float, float, str, str, str]]]
+) -> tuple[tuple[str, Path], ...]:
+    """Write one per-tenant vertices CSV per tenant; return sorted (tenant, path) pairs."""
+    files: list[tuple[str, Path]] = []
+    for tenant, rows in tenant_rows.items():
+        path = directory / f"{slugify(tenant)}.csv"
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(VERTEX_HEADER)
+        writer.writerows(rows)
+        path.write_text(buffer.getvalue(), encoding="utf-8")
+        files.append((tenant, path))
+    return tuple(sorted(files))
 
 RING_COORDS = {
     "P0": (40.0, -100.0),
@@ -90,33 +114,25 @@ def ring_physical_edges(distance: float = 100.0) -> dict[tuple[str, str], Physic
     return edges
 
 
-def write_sample_inputs(directory: Path) -> tuple[Path, Path]:
-    """Write the sample vertices and edge CSVs into a directory; return their paths."""
-    vertices_path = directory / "vertices.csv"
-    vertices_path.write_text(SAMPLE_VERTICES_CSV, encoding="utf-8")
+def write_sample_inputs(directory: Path) -> tuple[tuple[tuple[str, Path], ...], Path]:
+    """Write the per-tenant sample vertices and edge CSVs; return their paths."""
+    vertex_files = write_vertex_files(directory, SAMPLE_TENANT_ROWS)
     edges_path = directory / "edges.csv"
     edges_path.write_text(SAMPLE_EDGES_CSV, encoding="utf-8")
-    return vertices_path, edges_path
+    return vertex_files, edges_path
 
 
-def _vertex_row(name: str, coords: tuple[float, float], tenant: str, kind: str, shown: str) -> str:
-    """Render one vertices-CSV row."""
-    lat, lon = coords
-    return f"{name},{lat},{lon},{tenant},{kind},{shown},"
-
-
-def solvable_vertices_csv() -> str:
-    """Render a vertices CSV whose ring graph the optimizer can actually solve."""
-    pops = "\n".join(
-        _vertex_row(n, coords, "Lumen", "PoP", "Not shown in map")
-        for n, coords in {**RING_COORDS, **SPUR_COORDS}.items()
-    )
-    access = "\n".join(
-        _vertex_row(n, coords, "F-35", "Military installation", "Shown in map")
-        for n, coords in ACCESS_COORDS.items()
-    )
-    header = "name,latitude,longitude,tenant,kind,shown_in_map,description\n"
-    return f"{header}{pops}\n{access}\n"
+def solvable_tenant_rows() -> dict[str, list[tuple[str, float, float, str, str, str]]]:
+    """The ring's vertices keyed by tenant: Lumen PoPs and F-35 installations."""
+    pops = [
+        (n, lat, lon, "PoP", "Not shown in map", "")
+        for n, (lat, lon) in {**RING_COORDS, **SPUR_COORDS}.items()
+    ]
+    access = [
+        (n, lat, lon, "Military installation", "Shown in map", "")
+        for n, (lat, lon) in ACCESS_COORDS.items()
+    ]
+    return {"Lumen": pops, "F-35": access}
 
 
 def solvable_edges_csv() -> str:
@@ -125,13 +141,31 @@ def solvable_edges_csv() -> str:
     return f"source,target,distance_miles\n{rows}\n"
 
 
-def write_solvable_inputs(directory: Path) -> tuple[Path, Path]:
-    """Write a solvable vertices and edge CSV into a directory; return their paths."""
-    vertices_path = directory / "vertices.csv"
-    vertices_path.write_text(solvable_vertices_csv(), encoding="utf-8")
+def write_solvable_inputs(directory: Path) -> tuple[tuple[tuple[str, Path], ...], Path]:
+    """Write the solvable per-tenant vertices and edge CSVs; return their paths."""
+    vertex_files = write_vertex_files(directory, solvable_tenant_rows())
     edges_path = directory / "ring_edges.csv"
     edges_path.write_text(solvable_edges_csv(), encoding="utf-8")
-    return vertices_path, edges_path
+    return vertex_files, edges_path
+
+
+def write_solvable_config(directory: Path, core_count: int | None = None) -> Path:
+    """Write a config naming the solvable per-tenant vertices and edges; return its path."""
+    vertex_files, edges_path = write_solvable_inputs(directory)
+    lines = []
+    if core_count is not None:
+        lines += ["design:", f"  core_count: {core_count}"]
+    lines += [
+        "inputs:",
+        f"  carrier_edges: {edges_path}",
+        "  regional_edges: []",
+        "  vertices:",
+    ]
+    lines += [f"    {tenant}: {path}" for tenant, path in vertex_files]
+    lines.append(f"output_dir: {directory / 'out'}")
+    config_path = directory / "joint.yml"
+    config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return config_path
 
 
 def physical_edges_from(
@@ -143,26 +177,6 @@ def physical_edges_from(
         key = edge_key(left, right)
         edges[key] = PhysicalEdge(source=key[0], target=key[1], distance_miles=dist)
     return edges
-
-
-def design_args(
-    vertices: Path,
-    edges: Path,
-    output: Path,
-    extra: list[str] | None = None,
-) -> list[str]:
-    """Assemble argv for the design CLI."""
-    args = [
-        str(vertices),
-        "--carrier-edges",
-        str(edges),
-        "--output-dir",
-        str(output),
-        # No regional carriers in the ring fixture: pass an empty --regional-edges
-        # so the default config's regional edge files are not loaded.
-        "--regional-edges",
-    ]
-    return args + (extra or [])
 
 
 def ring_params() -> DesignParams:
@@ -210,4 +224,4 @@ def forced_core_artifacts(name: str) -> DesignArtifacts:
 
 def sample_sources() -> SourceFiles:
     """Provenance paths for output rendering tests."""
-    return SourceFiles(Path("vertices.csv"), Path("edges.csv"), None)
+    return SourceFiles((Path("vertices/lumen.csv"),), Path("edges.csv"), None)

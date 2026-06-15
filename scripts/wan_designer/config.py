@@ -2,7 +2,7 @@
 
 Everything the operator tunes -- the input/output paths, the role pins and
 exclusions, the core count, and the algorithm dials -- lives in one YAML file
-(``etc/config.yml`` by default) instead of being baked into the source. Any key
+(``etc/joint.yml`` by default) instead of being baked into the source. Any key
 the file omits falls back to the matching built-in default, so a partial (even
 empty) file still yields a valid configuration.
 """
@@ -17,10 +17,20 @@ import yaml
 
 from wan_designer.model import CliPaths, DesignParams, Tuning
 
-DEFAULT_CONFIG_PATH = Path("etc/config.yml")
-DEFAULT_VERTICES = "data/vertices/joint.csv"
-DEFAULT_CARRIER_EDGES = "data/edges/carrier_edges.csv"
-DEFAULT_REGIONAL_EDGES = ["data/edges/dcn_edges.csv", "data/edges/vision_net_edges.csv"]
+DEFAULT_CONFIG_PATH = Path("etc/joint.yml")
+DEFAULT_VERTICES = {
+    "AFLCMC": "data/vertices/aflcmc.csv",
+    "AFNWC/NI": "data/vertices/afnwc_ni.csv",
+    "AWS": "data/vertices/aws.csv",
+    "Azure": "data/vertices/azure.csv",
+    "DCN": "data/vertices/dcn.csv",
+    "F-35": "data/vertices/f_35.csv",
+    "Lumen": "data/vertices/lumen.csv",
+    "OCI": "data/vertices/oci.csv",
+    "VisionNet": "data/vertices/vision_net.csv",
+}
+DEFAULT_CARRIER_EDGES = "data/edges/lumen.csv"
+DEFAULT_REGIONAL_EDGES = ["data/edges/dcn.csv", "data/edges/vision_net.csv"]
 DEFAULT_OUTPUT_DIR = "outputs"
 
 
@@ -54,11 +64,21 @@ def _optional_path(value: Any) -> Path | None:
     return Path(str(value)) if value else None
 
 
+def _vertex_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
+    """Resolve the tenant -> vertices-CSV mapping into sorted (tenant, path) pairs."""
+    value = inputs.get("vertices", DEFAULT_VERTICES)
+    if not isinstance(value, dict) or not all(
+        isinstance(tenant, str) and isinstance(path, str) for tenant, path in value.items()
+    ):
+        raise ValueError("config key 'vertices' must be a mapping of tenant to path")
+    return tuple(sorted((tenant, Path(path)) for tenant, path in value.items()))
+
+
 def _paths(data: dict[str, Any], inputs: dict[str, Any]) -> CliPaths:
     """Resolve the file-path configuration into a :class:`CliPaths`."""
     regional_edges = _str_list(inputs, "regional_edges", DEFAULT_REGIONAL_EDGES)
     return CliPaths(
-        vertices_path=Path(str(inputs.get("vertices", DEFAULT_VERTICES))),
+        vertex_files=_vertex_files(inputs),
         edge_path=Path(str(inputs.get("carrier_edges", DEFAULT_CARRIER_EDGES))),
         mapbook_pdf=_optional_path(inputs.get("mapbook_pdf", "")),
         output_dir=Path(str(data.get("output_dir", DEFAULT_OUTPUT_DIR))),

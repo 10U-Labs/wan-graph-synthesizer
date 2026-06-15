@@ -41,14 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--config",
         default=None,
-        help="YAML config file (e.g. etc/config.yml). Provides defaults; flags override it.",
-    )
-    parser.add_argument(
-        "input",
-        nargs="?",
-        default=None,
-        help="Vertices CSV (name,latitude,longitude,tenant,kind,description). "
-        "Overrides the config's vertices file.",
+        help="YAML config file (e.g. etc/joint.yml). Provides defaults; flags override it.",
     )
     parser.add_argument(
         "--carrier-edges",
@@ -136,7 +129,7 @@ def resolve_paths(config: AppConfig, args: argparse.Namespace) -> CliPaths:
         else base.regional_edge_paths
     )
     return CliPaths(
-        vertices_path=_path_or(args.input, base.vertices_path),
+        vertex_files=base.vertex_files,
         edge_path=_path_or(args.carrier_edges, base.edge_path),
         mapbook_pdf=_optional_path_override(args.mapbook_pdf, base.mapbook_pdf),
         output_dir=_path_or(args.output_dir, base.output_dir),
@@ -157,9 +150,9 @@ def resolve_params(config: AppConfig, args: argparse.Namespace) -> DesignParams:
 
 def run_design(paths: CliPaths, params: DesignParams, augment: bool) -> DesignArtifacts:
     """Load inputs, optimize the design, and validate it."""
-    vertices = load_vertices(paths.vertices_path)
+    vertices = load_vertices(list(paths.vertex_files))
     if not vertices:
-        raise ValueError(f"No vertices found in {paths.vertices_path}")
+        raise ValueError("No vertices found in the configured vertex files")
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     physical_edges: dict[tuple[str, str], PhysicalEdge] = {}
     for edge_path in (paths.edge_path, *paths.regional_edge_paths):
@@ -184,7 +177,7 @@ def print_summary(
     design = artifacts.design
     validation = artifacts.validation
     vertices_by_id = {vertex.id: vertex for vertex in artifacts.vertices}
-    print(f"Loaded {len(artifacts.vertices)} vertices from {paths.vertices_path}")
+    print(f"Loaded {len(artifacts.vertices)} vertices from {len(paths.vertex_files)} tenant files")
     print(f"Loaded {len(artifacts.physical_edges)} physical Carrier edges from {paths.edge_path}")
     print(
         f"Selected {len(design.core_ids)} cores, {len(design.aggregation_ids)} "
@@ -244,7 +237,8 @@ def main(argv: list[str] | None = None) -> int:
         mapbook = (
             paths.mapbook_pdf if paths.mapbook_pdf and paths.mapbook_pdf.exists() else None
         )
-        sources = SourceFiles(paths.vertices_path, paths.edge_path, mapbook)
+        vertex_paths = tuple(path for _tenant, path in paths.vertex_files)
+        sources = SourceFiles(vertex_paths, paths.edge_path, mapbook)
         outputs = write_outputs(paths.output_dir, sources, artifacts)
     except (ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)

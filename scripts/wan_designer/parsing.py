@@ -14,39 +14,42 @@ from wan_designer.model import (
 )
 
 
-def load_vertices(path: Path) -> list[Vertex]:
-    """Load every vertex from the merged vertices CSV.
+def load_vertices(vertex_files: list[tuple[str, Path]]) -> list[Vertex]:
+    """Load vertices from one CSV per tenant.
 
-    Each row is ``name,latitude,longitude,tenant,kind,description``. ``kind``
-    classifies the vertex -- ``PoP``/``ROADM`` carrier PoPs versus access and
-    cloud-region vertices -- and ``tenant`` records its operator or program.
-    Ids are slugged from the name and de-duplicated within the load.
+    Each ``(tenant, path)`` pair names a CSV whose rows are
+    ``name,latitude,longitude,kind,shown_in_map,description`` -- the ``tenant``
+    is supplied by the caller because the CSVs carry no tenant column. ``kind``
+    classifies the vertex (``PoP``/``ROADM`` carrier PoPs versus access and
+    cloud-region vertices). Ids are slugged from the name and de-duplicated
+    across all files, so the same name may appear under more than one tenant.
     """
-    if not path.exists():
-        raise ValueError(f"Vertex file does not exist: {path}")
     vertices: list[Vertex] = []
     used_ids: set[str] = set()
-    with path.open(newline="", encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            name = row["name"].strip()
-            base_id = slugify(name)
-            vertex_id = base_id
-            suffix = 2
-            while vertex_id in used_ids:
-                vertex_id = f"{base_id}_{suffix}"
-                suffix += 1
-            used_ids.add(vertex_id)
-            vertices.append(
-                Vertex(
-                    id=vertex_id,
-                    name=name,
-                    tenant=row["tenant"].strip(),
-                    kind=row["kind"].strip(),
-                    coords=(float(row["latitude"]), float(row["longitude"])),
-                    description=row.get("description", "").strip(),
-                    shown_in_map=row.get("shown_in_map", "").strip() != "Not shown in map",
+    for tenant, path in vertex_files:
+        if not path.exists():
+            raise ValueError(f"Vertex file does not exist: {path}")
+        with path.open(newline="", encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                name = row["name"].strip()
+                base_id = slugify(name)
+                vertex_id = base_id
+                suffix = 2
+                while vertex_id in used_ids:
+                    vertex_id = f"{base_id}_{suffix}"
+                    suffix += 1
+                used_ids.add(vertex_id)
+                vertices.append(
+                    Vertex(
+                        id=vertex_id,
+                        name=name,
+                        tenant=tenant,
+                        kind=row["kind"].strip(),
+                        coords=(float(row["latitude"]), float(row["longitude"])),
+                        description=row.get("description", "").strip(),
+                        shown_in_map=row.get("shown_in_map", "").strip() != "Not shown in map",
+                    )
                 )
-            )
     return vertices
 
 def load_carrier_edges(

@@ -1,0 +1,17 @@
+name,latitude,longitude,kind,shown_in_map,description
+AWS Secret West Region,33.4484,-112.074,CSP data center,Shown in map,"Layer: Secret regions for cloud service providers
+Provider: AWS
+Region: Secret West Region
+Location: Phoenix, AZ"
+AWS Secret East Region,39.9612,-82.9988,CSP data center,Shown in map,"Layer: Secret regions for cloud service providers
+Provider: AWS
+Region: Secret East Region
+Location: Columbus, OH"
+CUI West Region,45.8396,-119.7006,CSP data center,Shown in map,"Region: CUI West Region
+Location: Boardman, OR"
+CUI East Region,39.9612,-82.9988,CSP data center,Shown in map,"Region: CUI East Region
+Location: Columbus, OH"
+Top Secret East Region,38.9696,-77.3861,CSP data center,Shown in map,"Region: Top Secret East Region
+Location: Herndon, VA"
+Top Secret West Region,39.7392,-104.9903,CSP data center,Shown in map,"Region: Top Secret West Region
+Location: Denver, CO"
