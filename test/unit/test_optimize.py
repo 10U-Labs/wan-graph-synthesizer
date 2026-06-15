@@ -684,6 +684,13 @@ def test_effective_forced_aggregations_tolerates_duplicate_slot_ids() -> None:
     assert result == {"shared"}
 
 
+def test_effective_forced_aggregations_cored_thin_state_seats_nothing() -> None:
+    """A cored state with both aggregation slots empty contributes no aggregation."""
+    spec = StateAggregationSpec("CO", "core", None, None)
+    result = effective_forced_aggregations(("core",), _plan([], specs=(spec,)))
+    assert result == set()
+
+
 def test_assign_access_seeds_the_resolved_first_aggregation() -> None:
     """assign_access force-seeds the core-set-resolved population aggregations."""
     edges = physical(
