@@ -142,15 +142,15 @@ def test_reads_population_states() -> None:
     assert _config({"design": {"population_states": ["CO"]}}).params.population.states == ("CO",)
 
 
-def test_default_county_populations_is_none() -> None:
-    """The default config has no county population reference path."""
-    assert default_config().paths.county_populations is None
+def test_default_county_metros_is_none() -> None:
+    """The default config has no county-to-metro crosswalk path."""
+    assert default_config().paths.county_metros is None
 
 
-def test_reads_county_populations_path() -> None:
-    """A county_populations input is wrapped as a path."""
-    data = {"inputs": {"county_populations": "data/reference/counties.csv"}}
-    assert _config(data).paths.county_populations == Path("data/reference/counties.csv")
+def test_reads_county_metros_path() -> None:
+    """A county_metros input is wrapped as a path."""
+    data = {"inputs": {"county_metros": "data/reference/county_metros.csv"}}
+    assert _config(data).paths.county_metros == Path("data/reference/county_metros.csv")
 
 
 def test_reads_municipality_populations_path() -> None:

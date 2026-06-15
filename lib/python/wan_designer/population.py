@@ -1,15 +1,21 @@
 """Population-anchored core and aggregation placement.
 
 The optimizer decides *which* states warrant a core and seats aggregations from
-access demand; this module fixes *where* those nodes land. Per state a core may
-only sit in the most-populous municipality of the most-populous county, and a
-state that holds an access node is given two aggregations -- the most-populous
-municipalities of its two most-populous counties. The chosen city need not host
-a carrier PoP: when none exists the node is synthesized as a greenfield PoP whose
-backbone links are tagged for procurement, so the design still meshes and routes.
+access demand; this module fixes *where* those nodes land, grouping a state's
+cities by **metropolitan area** (a Census-defined CBSA). Per state a core may
+only sit in the most-populous city of the most-populous metro. A state that holds
+an access node is given two aggregations whose cities depend on whether it seats a
+core: a cored state aggregates at its metro's *second* city and at the second
+metro's top city; an un-cored state aggregates at its top metro city and the
+second metro's top city. The chosen city need not host a carrier PoP: when none
+exists the node is synthesized as a greenfield PoP whose backbone links are tagged
+for procurement, so the design still meshes and routes.
 
-Population figures come from the Census reference CSVs under ``data/reference``;
-nothing here reads the network. Operator force-pins remain a separate concern.
+Metro membership and official metro populations come from a Census CBSA crosswalk;
+city populations and coordinates come from the municipality reference CSV (both
+under ``data/reference``). Nothing here reads the network, and a metro is never
+defined or sized by summing the municipalities we happen to hold -- its identity
+and population are the Census's. Operator force-pins remain a separate concern.
 """
 
 from __future__ import annotations
@@ -22,6 +28,7 @@ from pathlib import Path
 from wan_designer.model import (
     KIND_POP,
     PhysicalEdge,
+    StateAggregationSpec,
     Vertex,
     VertexInfo,
     edge_key,
@@ -76,15 +83,27 @@ class MunicipalityRow:
     coords: tuple[float, float]
 
 
-def load_county_populations(path: Path) -> dict[tuple[str, str], int]:
-    """Map ``(state, county_key)`` to county population from the reference CSV."""
-    populations: dict[tuple[str, str], int] = {}
+@dataclass(frozen=True)
+class MetroRef:
+    """The Census metro a county belongs to: its CBSA code and official population."""
+
+    cbsa_code: str
+    cbsa_population: int
+
+
+def load_county_metros(path: Path) -> dict[tuple[str, str], MetroRef]:
+    """Map ``(state, county_key)`` to its Census metro from the CBSA crosswalk CSV.
+
+    The crosswalk holds only Metropolitan Statistical Area rows; a county absent
+    from the map belongs to no metropolitan area. ``cbsa_population`` is the
+    official Census metro population, the same value for every county in a CBSA.
+    """
+    metros: dict[tuple[str, str], MetroRef] = {}
     with path.open(newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
-            populations[(row["state"].strip(), normalize_place(row["county"]))] = int(
-                row["population"]
-            )
-    return populations
+            key = (row["state"].strip(), normalize_place(row["county"]))
+            metros[key] = MetroRef(row["cbsa_code"].strip(), int(row["cbsa_population"]))
+    return metros
 
 
 def load_municipalities(path: Path) -> list[MunicipalityRow]:
@@ -116,11 +135,18 @@ class Anchor:
 
 @dataclass(frozen=True)
 class StatePlacement:
-    """A state's population picks: its core city and its one or two aggregations."""
+    """A state's metro population picks: its core city and two aggregation slots.
+
+    ``core`` is metro1.city1 (the only place a core may sit here). ``in_metro_second``
+    is metro1.city2 -- the first aggregation *iff* this state seats a core.
+    ``second_metro`` is metro2.city1 -- always the second aggregation. Either
+    aggregation slot may be ``None`` for a state too thin to fill it.
+    """
 
     state: str
     core: Anchor
-    aggregations: tuple[Anchor, ...]
+    in_metro_second: Anchor | None
+    second_metro: Anchor | None
     requires_aggregations: bool
 
 
@@ -146,36 +172,71 @@ def access_states(access_vertices: list[Vertex], carrier_pops: list[Vertex]) -> 
     return states
 
 
-def _ranked_counties(state: str, county_pops: dict[tuple[str, str], int]) -> list[str]:
-    """County keys in ``state``, most populous first; name breaks ties."""
-    counties = [(pop, key) for (st, key), pop in county_pops.items() if st == state]
-    return [key for _pop, key in sorted(counties, key=lambda item: (-item[0], item[1]))]
+@dataclass(frozen=True)
+class Metro:
+    """One metropolitan area within a state: its CBSA, population, and ranked cities.
 
-
-def _ranked_municipalities(
-    state: str, county_key: str, muni_rows: list[MunicipalityRow]
-) -> list[MunicipalityRow]:
-    """Municipalities of one county, most populous first; name breaks ties."""
-    members = [row for row in muni_rows if row.state == state and row.county_key == county_key]
-    return sorted(members, key=lambda row: (-row.population, normalize_place(row.municipality)))
-
-
-def _two_cities(
-    state: str, counties: list[str], muni_rows: list[MunicipalityRow]
-) -> list[MunicipalityRow]:
-    """City A and City B: top municipality of the state's two most-populous counties.
-
-    With a single populous county (or an empty second one), City B falls back to
-    that county's second-largest municipality, honoring the two-aggregation rule.
+    ``population`` is the official Census CBSA population (not a sum of ``cities``);
+    ``cities`` are this state's municipalities in the metro, most populous first.
     """
-    primary = _ranked_municipalities(state, counties[0], muni_rows)
-    if not primary:
-        return []
-    if len(counties) >= 2:
-        secondary = _ranked_municipalities(state, counties[1], muni_rows)
-        if secondary:
-            return [primary[0], secondary[0]]
-    return [primary[0], primary[1]] if len(primary) >= 2 else [primary[0]]
+
+    cbsa_code: str
+    population: int
+    cities: tuple[MunicipalityRow, ...]
+
+
+def _state_metros(
+    state: str,
+    county_metros: dict[tuple[str, str], MetroRef],
+    muni_rows: list[MunicipalityRow],
+) -> list[Metro]:
+    """Metros of ``state``, most populous first; CBSA code breaks population ties.
+
+    Each municipality joins the metro of its county (via the crosswalk);
+    municipalities whose county is in no metro are dropped. A metro is ranked by
+    its official Census population and its cities are ordered by municipality
+    population, name breaking ties.
+    """
+    members: dict[str, list[MunicipalityRow]] = {}
+    populations: dict[str, int] = {}
+    for row in muni_rows:
+        if row.state != state:
+            continue
+        metro = county_metros.get((state, row.county_key))
+        if metro is None:
+            continue
+        members.setdefault(metro.cbsa_code, []).append(row)
+        populations[metro.cbsa_code] = metro.cbsa_population
+    metros = [
+        Metro(
+            cbsa_code,
+            populations[cbsa_code],
+            tuple(
+                sorted(rows, key=lambda row: (-row.population, normalize_place(row.municipality)))
+            ),
+        )
+        for cbsa_code, rows in members.items()
+    ]
+    return sorted(metros, key=lambda metro: (-metro.population, metro.cbsa_code))
+
+
+def _metro_city_slots(
+    metros: list[Metro],
+) -> tuple[MunicipalityRow, MunicipalityRow | None, MunicipalityRow | None]:
+    """A state's three population slots: core city, in-metro second, second-metro.
+
+    ``core`` is metro1.city1. ``in_metro_second`` (the cored first aggregation) is
+    metro1.city2, falling back to metro2.city1 when metro1 has a single city; it
+    never falls back to the core city, so it can never collide with a seated core.
+    ``second_metro`` is metro2.city1, falling back to metro1.city2 when there is no
+    second metro. Either aggregation slot is ``None`` when no city fills it.
+    """
+    core = metros[0].cities[0]
+    metro1_second = metros[0].cities[1] if len(metros[0].cities) >= 2 else None
+    metro2_first = metros[1].cities[0] if len(metros) >= 2 else None
+    in_metro_second = metro1_second if metro1_second is not None else metro2_first
+    second_metro = metro2_first if metro2_first is not None else metro1_second
+    return core, in_metro_second, second_metro
 
 
 def _pop_id_by_place(carrier_pops: list[Vertex]) -> dict[tuple[str, str], str]:
@@ -196,23 +257,26 @@ def _anchor(row: MunicipalityRow, pop_index: dict[tuple[str, str], str]) -> Anch
 def population_placements(
     carrier_pops: list[Vertex],
     access: set[str],
-    county_pops: dict[tuple[str, str], int],
+    county_metros: dict[tuple[str, str], MetroRef],
     muni_rows: list[MunicipalityRow],
     states: set[str],
 ) -> list[StatePlacement]:
-    """Resolve each in-scope state's core city and aggregation cities."""
+    """Resolve each in-scope state's core city and aggregation cities by metro."""
     pop_index = _pop_id_by_place(carrier_pops)
     placements: list[StatePlacement] = []
     for state in sorted(states):
-        counties = _ranked_counties(state, county_pops)
-        if not counties:
+        metros = _state_metros(state, county_metros, muni_rows)
+        if not metros:
             continue
-        cities = _two_cities(state, counties, muni_rows)
-        if not cities:
-            continue
-        anchors = tuple(_anchor(row, pop_index) for row in cities)
+        core, in_metro_second, second_metro = _metro_city_slots(metros)
         placements.append(
-            StatePlacement(state, anchors[0], anchors, state in access)
+            StatePlacement(
+                state,
+                _anchor(core, pop_index),
+                _anchor(in_metro_second, pop_index) if in_metro_second is not None else None,
+                _anchor(second_metro, pop_index) if second_metro is not None else None,
+                state in access,
+            )
         )
     return placements
 
@@ -221,17 +285,20 @@ def population_placements(
 class RealizedAnchors:
     """Population anchors realized into the graph as concrete vertices and edges.
 
-    ``core_anchor_ids`` are every in-scope state's City A -- the only place a core
-    may sit there, offered to the optimizer as candidates (never forced).
-    ``required_aggregation_ids`` are the City A and City B nodes of access-bearing
-    states, which must be seated. A City A that is in both sets is co-located: the
-    optimizer splits it into a core candidate and an aggregation twin downstream.
+    ``core_anchor_ids`` are every in-scope state's metro1.city1 -- the only place a
+    core may sit there, offered to the optimizer as candidates (never forced).
+    ``aggregation_specs`` carries one :class:`StateAggregationSpec` per access state
+    so the search can resolve its first aggregation per candidate core set (city2
+    when the state seats a core, else city1). ``aggregation_candidate_ids`` is the
+    union of every city any access state could seat, used to restrict the
+    aggregation tier's candidate pool.
     """
 
     vertices: list[Vertex]
     physical_edges: dict[tuple[str, str], PhysicalEdge]
     core_anchor_ids: frozenset[str]
-    required_aggregation_ids: frozenset[str]
+    aggregation_specs: tuple[StateAggregationSpec, ...]
+    aggregation_candidate_ids: frozenset[str]
 
 
 def _anchor_key(anchor: Anchor) -> tuple[str, str]:
@@ -329,18 +396,43 @@ def realize_anchors(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> RealizedAnchors:
-    """Seat every placement's anchors into the graph and collect their role ids."""
+    """Seat every placement's anchors into the graph and collect their role ids.
+
+    Every in-scope state's core city becomes a core candidate. Each access state
+    additionally realizes its in-metro-second and second-metro cities and emits a
+    :class:`StateAggregationSpec`; a city shared across slots is seated once.
+    """
     realization = _begin_realization(vertices, physical_edges)
     core_ids: set[str] = set()
-    required_ids: set[str] = set()
+    specs: list[StateAggregationSpec] = []
+    candidate_ids: set[str] = set()
     for placement in placements:
-        core_ids.add(_resolve_anchor(realization, placement.core))
-        if placement.requires_aggregations:
-            for anchor in placement.aggregations:
-                required_ids.add(_resolve_anchor(realization, anchor))
+        core_id = _resolve_anchor(realization, placement.core)
+        core_ids.add(core_id)
+        if not placement.requires_aggregations:
+            continue
+        in_metro_second_id = (
+            _resolve_anchor(realization, placement.in_metro_second)
+            if placement.in_metro_second is not None
+            else None
+        )
+        second_metro_id = (
+            _resolve_anchor(realization, placement.second_metro)
+            if placement.second_metro is not None
+            else None
+        )
+        specs.append(
+            StateAggregationSpec(placement.state, core_id, in_metro_second_id, second_metro_id)
+        )
+        candidate_ids.update(
+            anchor_id
+            for anchor_id in (core_id, in_metro_second_id, second_metro_id)
+            if anchor_id is not None
+        )
     return RealizedAnchors(
         realization.vertices,
         realization.physical_edges,
         frozenset(core_ids),
-        frozenset(required_ids),
+        tuple(specs),
+        frozenset(candidate_ids),
     )
