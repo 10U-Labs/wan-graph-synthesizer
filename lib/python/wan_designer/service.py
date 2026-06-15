@@ -20,15 +20,46 @@ from wan_designer.model import (
     DesignParams,
     PhysicalEdge,
     SourceFiles,
+    Vertex,
     carrier_role,
     is_carrier_pop,
 )
 from wan_designer.optimize import apply_role_overrides, optimize_three_tier_design
 from wan_designer.output import design_payload
 from wan_designer.parsing import load_carrier_edges, load_vertices
+from wan_designer.population import (
+    RealizedAnchors,
+    access_states,
+    carrier_states,
+    load_county_populations,
+    load_municipalities,
+    population_placements,
+    realize_anchors,
+)
 from wan_designer.validation import augment_physical_resilience, validate_design
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_population_anchors(
+    county_path: Path,
+    municipality_path: Path,
+    params: DesignParams,
+    vertices: list[Vertex],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+) -> RealizedAnchors:
+    """Resolve and realize the population anchors for the in-scope states."""
+    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
+    access_vertices = [vertex for vertex in vertices if not is_carrier_pop(vertex)]
+    scope = set(params.population_states) or carrier_states(carrier_pops)
+    placements = population_placements(
+        carrier_pops,
+        access_states(access_vertices, carrier_pops),
+        load_county_populations(county_path),
+        load_municipalities(municipality_path),
+        scope,
+    )
+    return realize_anchors(placements, vertices, physical_edges)
 
 
 def run_design(paths: DesignPaths, params: DesignParams, augment: bool) -> DesignArtifacts:
@@ -41,7 +72,16 @@ def run_design(paths: DesignPaths, params: DesignParams, augment: bool) -> Desig
     for edge_path in (paths.edge_path, *paths.regional_edge_paths):
         physical_edges.update(load_carrier_edges(edge_path, carrier_pops))
     roles = {pop.id: carrier_role(pop) for pop in carrier_pops}
-    vertices, physical_edges, overrides = apply_role_overrides(vertices, physical_edges, params)
+    anchors: RealizedAnchors | None = None
+    county_path, municipality_path = paths.county_populations, paths.municipality_populations
+    if params.population_selection and county_path is not None and municipality_path is not None:
+        anchors = _resolve_population_anchors(
+            county_path, municipality_path, params, vertices, physical_edges
+        )
+        vertices, physical_edges = anchors.vertices, anchors.physical_edges
+    vertices, physical_edges, overrides = apply_role_overrides(
+        vertices, physical_edges, params, anchors
+    )
     logger.info(
         "Loaded %d vertices and %d physical edges; starting optimization",
         len(vertices), len(physical_edges),

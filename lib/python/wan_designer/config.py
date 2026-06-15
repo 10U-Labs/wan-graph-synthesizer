@@ -84,6 +84,8 @@ def _paths(data: dict[str, Any], inputs: dict[str, Any]) -> DesignPaths:
         mapbook_pdf=_optional_path(inputs.get("mapbook_pdf", "")),
         output_dir=Path(str(data.get("output_dir", DEFAULT_OUTPUT_DIR))),
         regional_edge_paths=tuple(Path(item) for item in regional_edges),
+        county_populations=_optional_path(inputs.get("county_populations", "")),
+        municipality_populations=_optional_path(inputs.get("municipality_populations", "")),
     )
 
 
@@ -118,6 +120,8 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
         forced_core_names=_str_list(design, "forced_cores", []),
         forced_aggregation_names=_str_list(design, "forced_aggregations", []),
         excluded_names=_str_list(design, "excluded", []),
+        population_selection=design.get("population_selection", base.population_selection),
+        population_states=_str_list(design, "population_states", []),
         tuning=_tuning(tuning),
     )
 

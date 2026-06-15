@@ -6,6 +6,8 @@ vertex-disjoint paths; a degree-one spur confirms such PoPs are never aggregatio
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import fixtures
 
 ARTIFACTS = fixtures.ring_artifacts()
@@ -61,3 +63,30 @@ def test_core_backbone_respects_degree_cap() -> None:
 def test_access_vertices_dual_homed() -> None:
     """Access vertices dual homed."""
     assert ARTIFACTS.validation["access_vertices_with_two_aggregation_links"] is True
+
+
+def _core_states(directory: Path) -> list[str]:
+    """States of the cores in a population-anchored design over the scenario."""
+    artifacts = fixtures.population_artifacts(directory)
+    return [v.info.state for v in artifacts.vertices if v.id in artifacts.design.core_ids]
+
+
+def test_population_design_seats_one_core_per_state(tmp_path: Path) -> None:
+    """Population anchoring never seats two cores in the same state."""
+    states = _core_states(tmp_path)
+    assert len(states) == len(set(states))
+
+
+def test_population_access_state_gets_two_aggregations(tmp_path: Path) -> None:
+    """An access-bearing state is given at least two aggregation points."""
+    artifacts = fixtures.population_artifacts(tmp_path)
+    seated = artifacts.design.aggregation_ids
+    colorado = [v for v in artifacts.vertices if v.id in seated and v.info.state == "CO"]
+    assert len(colorado) >= 2
+
+
+def test_population_city_a_co_locates_a_core_and_aggregation(tmp_path: Path) -> None:
+    """Denver, both CO's core city and an aggregation city, splits into a co-located twin."""
+    artifacts = fixtures.population_artifacts(tmp_path)
+    roles = (artifacts.design.core_ids, artifacts.design.aggregation_ids)
+    assert ("denver_co" in roles[0], "aggr_denver_co" in roles[1]) == (True, True)
