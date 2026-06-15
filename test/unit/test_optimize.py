@@ -633,8 +633,8 @@ def test_apply_role_overrides_makes_a_city_a_core_candidate() -> None:
     )
 
 
-def test_apply_role_overrides_does_not_split_a_population_anchor() -> None:
-    """A population core anchor that is also an aggregation is not co-located."""
+def test_apply_role_overrides_resolves_population_anchor_roles() -> None:
+    """A population anchor stays an un-split core candidate; aggregations cover every slot."""
     spec = StateAggregationSpec("CO", "a", "b", "c")
     _v, _e, overrides = apply_role_overrides(
         [pop("a"), pop("z")], physical({("a", "z"): 1.0}), DesignParams(), _anchors({"a"}, (spec,))
@@ -643,16 +643,8 @@ def test_apply_role_overrides_does_not_split_a_population_anchor() -> None:
         "aggr_a" in overrides.forced_aggregation_ids,
         overrides.core_candidate_ids,
         overrides.aggregation_specs,
-    ) == (False, frozenset({"a"}), (spec,))
-
-
-def test_apply_role_overrides_unions_aggregation_candidates() -> None:
-    """The aggregation candidates cover every city any access state could seat."""
-    spec = StateAggregationSpec("CO", "a", "b", "c")
-    _v, _e, overrides = apply_role_overrides(
-        [pop("a"), pop("z")], physical({("a", "z"): 1.0}), DesignParams(), _anchors({"a"}, (spec,))
-    )
-    assert overrides.aggregation_candidate_ids == frozenset({"a", "b", "c"})
+        overrides.aggregation_candidate_ids,
+    ) == (False, frozenset({"a"}), (spec,), frozenset({"a", "b", "c"}))
 
 
 def test_apply_role_overrides_drops_an_excluded_anchor() -> None:
