@@ -50,7 +50,7 @@ The resilience rules the design enforces:
 The output is a self-hosted web app: an interactive Leaflet map that
 redraws as you pick a tenant view. There is no manual export step.
 
-## Inputs
+## Data and WAN map configs
 
 Vertices live in `data/vertices/`, one CSV per tenant (`lumen.csv`,
 `dcn.csv`, `f_35.csv`, `aws.csv`, ...), each row with columns
