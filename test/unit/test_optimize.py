@@ -97,10 +97,10 @@ TRIANGLE = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
 TRIANGLE_VERTICES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
 
 
-def test_core_count_below_two_is_rejected() -> None:
-    """Core count below two is rejected."""
+def test_min_core_count_below_two_is_rejected() -> None:
+    """A minimum core count below two is rejected."""
     with pytest.raises(ValueError):
-        optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(core_count=1))
+        optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(min_core_count=1))
 
 
 def test_unknown_pop_ids_are_rejected() -> None:
@@ -135,10 +135,20 @@ def test_optimizes_ring_to_a_feasible_design() -> None:
     assert len(design.core_ids) >= 2
 
 
-def test_core_count_is_honored_exactly() -> None:
-    """Core count is exact: the design uses precisely that many cores."""
+def test_min_core_count_is_the_floor_when_feasible() -> None:
+    """A design feasible at the floor uses exactly the minimum cores, no more."""
     design = optimize_three_tier_design(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {}, DesignParams(core_count=3)
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {}, DesignParams(min_core_count=3)
+    )
+    assert len(design.core_ids) == 3
+
+
+def test_core_tier_grows_past_the_floor_to_seat_more_forced_cores() -> None:
+    """With more cores pinned than the floor, the tier grows to seat them all."""
+    design = optimize_three_tier_design(
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {},
+        DesignParams(min_core_count=2),
+        RoleOverrides(forced_core_ids=frozenset({"P1", "P3", "P5"})),
     )
     assert len(design.core_ids) == 3
 
@@ -146,7 +156,7 @@ def test_core_count_is_honored_exactly() -> None:
 def test_no_feasible_design_is_rejected() -> None:
     """No feasible design is rejected when access cannot reach two aggregations."""
     with pytest.raises(ValueError):
-        optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(core_count=2))
+        optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(min_core_count=2))
 
 
 def test_not_enough_core_candidates_is_rejected() -> None:
@@ -161,7 +171,7 @@ def test_not_enough_core_candidates_is_rejected() -> None:
     ]
     overrides = RoleOverrides(forced_aggregation_ids=frozenset({"a", "b"}))
     with pytest.raises(ValueError):
-        optimize_three_tier_design(vertices, edges, {}, DesignParams(core_count=2), overrides)
+        optimize_three_tier_design(vertices, edges, {}, DesignParams(min_core_count=2), overrides)
 
 
 def test_aggregation_core_paths_infeasible_through_bottleneck() -> None:
@@ -397,7 +407,7 @@ def test_search_refuses_a_core_space_too_large_for_memory() -> None:
     inputs = _inputs_from_edges([], {}, set(), [])
     plan = _plan([f"c{index}" for index in range(40)])
     with pytest.raises(ValueError):
-        search_best_design(inputs, DesignParams(core_count=20), plan)
+        search_best_design(inputs, DesignParams(min_core_count=20), plan)
 
 
 def test_build_design_returns_none_without_aggregations() -> None:
@@ -473,6 +483,6 @@ def test_optimize_honors_a_forced_core_override() -> None:
     """A forced-core override is fixed into the selected core tier."""
     design = optimize_three_tier_design(
         fixtures.ring_vertices(), fixtures.ring_physical_edges(), {},
-        DesignParams(core_count=2), RoleOverrides(forced_core_ids=frozenset({"P3"})),
+        DesignParams(min_core_count=2), RoleOverrides(forced_core_ids=frozenset({"P3"})),
     )
     assert "P3" in design.core_ids

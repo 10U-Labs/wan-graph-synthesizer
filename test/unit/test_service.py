@@ -69,14 +69,14 @@ def test_available_wan_maps_uses_declared_label(tmp_path: Path) -> None:
 
 def test_design_for_wan_map_returns_payload(tmp_path: Path) -> None:
     """Computing a known WAN map returns a payload carrying the vertices slice."""
-    fixtures.write_solvable_config(tmp_path, core_count=2)
+    fixtures.write_solvable_config(tmp_path, min_core_count=2)
     cache: dict[str, Any] = {}
     assert "vertices" in design_for_wan_map(tmp_path, "joint", cache)
 
 
 def test_design_for_wan_map_caches(tmp_path: Path) -> None:
     """A second request returns the cached payload object, not a recomputation."""
-    fixtures.write_solvable_config(tmp_path, core_count=2)
+    fixtures.write_solvable_config(tmp_path, min_core_count=2)
     cache: dict[str, Any] = {}
     first = design_for_wan_map(tmp_path, "joint", cache)
     assert design_for_wan_map(tmp_path, "joint", cache) is first

@@ -20,9 +20,9 @@ def _config(data: dict[str, Any]) -> AppConfig:
     return config_from_data(data)
 
 
-def test_default_core_count() -> None:
-    """The default config supplies the built-in core count."""
-    assert default_config().params.core_count == 3
+def test_default_min_core_count() -> None:
+    """The default config supplies the built-in minimum core count."""
+    assert default_config().params.min_core_count == 3
 
 
 def test_default_has_no_forced_cores() -> None:
@@ -68,9 +68,9 @@ def test_reads_label() -> None:
     assert _config({"label": "Joint"}).label == "Joint"
 
 
-def test_reads_core_count() -> None:
-    """A core_count value is read from the design section."""
-    assert _config({"design": {"core_count": 5}}).params.core_count == 5
+def test_reads_min_core_count() -> None:
+    """A min_core_count value is read from the design section."""
+    assert _config({"design": {"min_core_count": 5}}).params.min_core_count == 5
 
 
 def test_reads_forced_cores() -> None:
@@ -130,15 +130,15 @@ def test_forced_cores_must_be_a_list() -> None:
 def test_load_config_reads_a_file(tmp_path: Path) -> None:
     """load_config parses the design params from a YAML file."""
     path = tmp_path / "c.yml"
-    path.write_text("design:\n  core_count: 7\n", encoding="utf-8")
-    assert load_config(path).params.core_count == 7
+    path.write_text("design:\n  min_core_count: 7\n", encoding="utf-8")
+    assert load_config(path).params.min_core_count == 7
 
 
 def test_load_config_empty_file_uses_defaults(tmp_path: Path) -> None:
     """An empty config file falls back entirely to the defaults."""
     path = tmp_path / "empty.yml"
     path.write_text("", encoding="utf-8")
-    assert load_config(path).params.core_count == 3
+    assert load_config(path).params.min_core_count == 3
 
 
 def test_load_config_rejects_malformed_yaml(tmp_path: Path) -> None:

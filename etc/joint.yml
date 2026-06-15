@@ -5,8 +5,6 @@
 design:
   # Allow mapbook ROADM vertices to be selected as aggregation/core points.
   allow_roadm_aggregation: false
-  # Exact number of core PoPs in the design.
-  core_count: 3
   # PoPs barred from every selected role.
   excluded: []
   # PoPs pinned into the aggregation tier. Richmond is pinned (not Norfolk, a
@@ -31,6 +29,9 @@ design:
     - Atlanta, GA
     - Dallas, TX
     - McLean, VA
+  # Minimum number of core PoPs. The search adds more cores only when feasibility
+  # requires it; it never drops below this floor.
+  min_core_count: 3
   # Add extra physical Carrier edges to reduce articulation or degree risk.
   resilience_augmentation: true
 inputs:
