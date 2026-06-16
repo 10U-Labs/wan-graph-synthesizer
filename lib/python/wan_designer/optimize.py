@@ -3,7 +3,11 @@
 Cores are chosen for strength, not mileage (the source mapbook has no
 distances): each core's strength is its degree plus compass spread plus path
 straightness, and the strongest feasible set of at least the configured
-``min_core_count`` wins, with total last-mile only breaking ties.
+``min_core_count`` wins, with total last-mile only breaking ties. The tier then
+grows past that floor while any aggregation is farther than
+``core_coverage_target_miles`` from every core, each added core being the one that
+most shortens the aggregation-to-core haul -- so extra cores appear only where they
+bring demand closer, never as a mileage cost minimized over candidate sets.
 
 Access sites with no aggregation within the last-mile cap are exempt from the cap
 and home to their nearest two regardless.
@@ -709,22 +713,91 @@ def enumeration_limit(memory_bytes: int, params: DesignParams) -> int:
         memory_bytes * params.tuning.enum_memory_fraction / params.tuning.core_set_peak_bytes
     )
 
+COVERAGE_EPSILON_MILES = 1.0  # a new core must cut total aggregation haul by at least this
+
+
+def aggregation_haul_miles(
+    core_ids: tuple[str, ...],
+    aggregation_ids: tuple[str, ...] | set[str],
+    pop_by_id: dict[str, Vertex],
+) -> tuple[float, float]:
+    """The worst and total straight-line miles from aggregations to their nearest core.
+
+    The coverage signal the search drives down by adding cores: ``worst`` is the
+    long-haul an operator sees on the map; ``total`` lets one added core show progress
+    even while another still-distant aggregation dominates the worst.
+    """
+    cores = [pop_by_id[core_id] for core_id in core_ids]
+    distances = [
+        min(haversine_miles(pop_by_id[aggregation_id], core) for core in cores)
+        for aggregation_id in aggregation_ids
+    ]
+    return max(distances, default=0.0), sum(distances)
+
+
+def grow_cores_for_coverage(
+    base: Design,
+    inputs: DesignInputs,
+    plan: _SearchPlan,
+    target_miles: float,
+    pop_by_id: dict[str, Vertex],
+) -> Design:
+    """Add cores beyond the strength-chosen base until demand is close enough.
+
+    While some aggregation is farther than ``target_miles`` from every core, add the
+    one remaining candidate that most reduces the total aggregation-to-core haul,
+    rebuilding the design around it. Extra cores are thus coverage-driven: strength
+    still chooses the base tier, and the operator's coverage target is a constraint on
+    how far the tier may leave demand, not a mileage cost minimized over candidate
+    sets. Growth stops once every aggregation is within target, no remaining candidate
+    brings demand meaningfully closer, or the candidates are exhausted.
+    """
+    core_ids = base.core_ids
+    design = base
+    free = [pop_id for pop_id in plan.core_candidates if pop_id not in core_ids]
+    while free:
+        worst, total = aggregation_haul_miles(core_ids, design.aggregation_ids, pop_by_id)
+        if worst <= target_miles:
+            break
+        best_id, best_total = None, total - COVERAGE_EPSILON_MILES
+        for candidate_id in free:
+            candidate_cores = tuple(sorted((*core_ids, candidate_id)))
+            evaluation = evaluate_cores(candidate_cores, inputs, plan)
+            if evaluation is None:
+                continue
+            _access_edges, selected = evaluation
+            _worst, candidate_total = aggregation_haul_miles(candidate_cores, selected, pop_by_id)
+            if candidate_total < best_total:
+                best_id, best_total = candidate_id, candidate_total
+        if best_id is None:
+            break
+        core_ids = tuple(sorted((*core_ids, best_id)))
+        grown = build_design_for_cores(core_ids, inputs, plan)
+        if grown is None:
+            break
+        design = grown
+        free.remove(best_id)
+    return design
+
+
 def search_best_design(
     inputs: DesignInputs,
     params: DesignParams,
     plan: _SearchPlan,
 ) -> Design:
-    """Build the strongest feasible design using at least ``min_core_count`` cores.
+    """Build the strongest feasible design, then grow cores until demand is close.
 
-    The core count is a floor set by the operator, not an exact target: the
-    search tries that many cores first and keeps the strongest feasible set,
-    with total last-mile only breaking ties. If no feasible design exists at
-    that size it grows the core tier one PoP at a time until a feasible design
-    appears or the candidates are exhausted, so more cores are added only when
-    needed for feasibility. Enumerating each size must fit the share of RAM the
-    search may use, or the design is refused rather than risk exhausting memory.
+    The core count is a floor, not an exact target. The search first finds the
+    strongest feasible set at ``min_core_count`` (total last-mile only breaking ties),
+    growing the tier one PoP at a time only if no feasible design exists at a size. It
+    then adds cores past that floor while some aggregation is farther than
+    ``core_coverage_target_miles`` from every core, each added core being the candidate
+    that most shortens the aggregation-to-core haul -- so extra cores appear only where
+    they bring demand closer. Enumerating each size must fit the share of RAM the search
+    may use, or the design is refused rather than risk exhausting memory.
     """
     limit = enumeration_limit(total_memory_bytes(), params)
+    base: Design | None = None
     for size in range(params.min_core_count, len(plan.core_candidates) + 1):
         sets = core_combination_count(plan, size)
         if sets > limit:
@@ -738,11 +811,18 @@ def search_best_design(
             "Optimizing %d access sites; %d cores, %d required; %d core sets (limit %d)",
             len(inputs.access_vertices), size, len(plan.required_cores), sets, limit,
         )
-        design = best_design_at_size(inputs, plan, size)
-        if design is not None:
-            logger.info("Selected a %d-core design", len(design.core_ids))
-            return design
-    raise ValueError(f"No feasible design with at least {params.min_core_count} cores")
+        base = best_design_at_size(inputs, plan, size)
+        if base is not None:
+            logger.info("Feasible at %d cores; growing for coverage", len(base.core_ids))
+            break
+    if base is None:
+        raise ValueError(f"No feasible design with at least {params.min_core_count} cores")
+    pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
+    design = grow_cores_for_coverage(
+        base, inputs, plan, params.tuning.core_coverage_target_miles, pop_by_id
+    )
+    logger.info("Selected a %d-core design", len(design.core_ids))
+    return design
 
 @dataclass(frozen=True)
 class _GraphContext:
