@@ -27,22 +27,13 @@ design:
   # Minimum number of core PoPs. The search adds more cores only when feasibility
   # requires it; it never drops below this floor.
   min_core_count: 3
-  # Anchor cores and aggregations to the most-populous cities of each state's
-  # most-populous metropolitan areas (Census CBSA reference data under inputs).
-  population_selection: true
-  # States the population rule covers; empty means every state with a carrier PoP.
-  population_states: []
   # Add extra physical Carrier edges to reduce articulation or degree risk.
   resilience_augmentation: true
 inputs:
   # Physical Lumen backbone edges between carrier PoPs.
   carrier_edges: data/edges/lumen.csv
-  # Census county-to-CBSA crosswalk (with metro populations) driving metro anchoring.
-  county_metros: data/reference/county_metros.csv
   # Optional source PDF path recorded in the JSON output for provenance.
   mapbook_pdf: ""
-  # Census municipality populations and coordinates driving population anchoring.
-  municipality_populations: data/reference/municipalities.csv
   # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
   regional_edges:
     - data/edges/dcn.csv

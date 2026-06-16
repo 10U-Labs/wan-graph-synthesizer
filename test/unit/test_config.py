@@ -127,38 +127,6 @@ def test_forced_cores_must_be_a_list() -> None:
         _config({"design": {"forced_cores": "Atlanta, GA"}})
 
 
-def test_default_population_selection_on() -> None:
-    """Population anchoring defaults on."""
-    assert default_config().params.population.enabled is True
-
-
-def test_reads_population_selection_off() -> None:
-    """Population anchoring can be turned off in the design section."""
-    assert _config({"design": {"population_selection": False}}).params.population.enabled is False
-
-
-def test_reads_population_states() -> None:
-    """A population_states list is read into the design params."""
-    assert _config({"design": {"population_states": ["CO"]}}).params.population.states == ("CO",)
-
-
-def test_default_county_metros_is_none() -> None:
-    """The default config has no county-to-metro crosswalk path."""
-    assert default_config().paths.county_metros is None
-
-
-def test_reads_county_metros_path() -> None:
-    """A county_metros input is wrapped as a path."""
-    data = {"inputs": {"county_metros": "data/reference/county_metros.csv"}}
-    assert _config(data).paths.county_metros == Path("data/reference/county_metros.csv")
-
-
-def test_reads_municipality_populations_path() -> None:
-    """A municipality_populations input is wrapped as a path."""
-    data = {"inputs": {"municipality_populations": "data/reference/municipalities.csv"}}
-    assert _config(data).paths.municipality_populations == Path("data/reference/municipalities.csv")
-
-
 def test_load_config_reads_a_file(tmp_path: Path) -> None:
     """load_config parses the design params from a YAML file."""
     path = tmp_path / "c.yml"

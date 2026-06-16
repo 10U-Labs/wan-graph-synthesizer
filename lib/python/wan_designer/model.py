@@ -130,40 +130,6 @@ class Tuning:
     core_set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
 
 @dataclass(frozen=True)
-class PopulationPolicy:
-    """How population anchoring constrains core and aggregation placement.
-
-    When ``enabled`` the optimizer anchors each state's core to the most-populous
-    city of its most-populous metropolitan area (a Census CBSA) and seats every
-    access-bearing state's two aggregation cities. ``states`` scopes the rule;
-    empty means every state with a PoP.
-    """
-
-    enabled: bool = True
-    states: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class StateAggregationSpec:
-    """One access state's three population aggregation slots, resolved to ids.
-
-    The optimizer chooses the actual two aggregations once it knows whether this
-    state seats a core (at ``core_id`` -- its metro1.city1) in the candidate core
-    set being evaluated:
-
-    * core seated here -> ``in_metro_second_id`` (metro1.city2) and ``second_metro_id``
-    * no core here     -> ``core_id`` (metro1.city1) and ``second_metro_id``
-
-    A slot is ``None`` when the state is too thin to fill it (a one-metro or
-    one-city state); callers take the non-``None`` ids and dedupe.
-    """
-
-    state: str
-    core_id: str
-    in_metro_second_id: str | None
-    second_metro_id: str | None
-
-@dataclass(frozen=True)
 class DesignParams:
     """Operator choices plus the algorithm :class:`Tuning` for the optimization."""
 
@@ -172,7 +138,6 @@ class DesignParams:
     forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
     forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations
     excluded_names: tuple[str, ...] = ()  # PoPs barred from every selected role
-    population: PopulationPolicy = field(default_factory=PopulationPolicy)
     tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)
@@ -185,21 +150,15 @@ class RoleOverrides:
     vertex (whose id is what lands in ``forced_aggregation_ids``). ``excluded_ids``
     are barred from being a core, an aggregation, or an access home.
 
-    ``core_candidate_ids`` and ``aggregation_candidate_ids`` restrict which PoPs
-    the search may pick for each tier (population anchoring narrows cores to the
-    populous-city candidates and aggregations to every city a state could seat);
-    ``None`` leaves a tier unrestricted, as it is for a purely operator-driven
-    design. ``aggregation_specs`` carries each access state's three population
-    slots so the search can resolve its first aggregation per candidate core set
-    (see :class:`StateAggregationSpec`).
+    ``installation_facility_ids`` are the co-located twins synthesized for justified
+    installations; the search prefers each as the aggregation head for its nearby
+    demand and ranks it as a core candidate by strength like any other PoP.
     """
 
     forced_core_ids: frozenset[str] = frozenset()
     forced_aggregation_ids: frozenset[str] = frozenset()
     excluded_ids: frozenset[str] = frozenset()
-    core_candidate_ids: frozenset[str] | None = None
-    aggregation_candidate_ids: frozenset[str] | None = None
-    aggregation_specs: tuple[StateAggregationSpec, ...] = ()
+    installation_facility_ids: frozenset[str] = frozenset()
 
 @dataclass(frozen=True)
 class DesignInputs:
@@ -243,8 +202,6 @@ class DesignPaths:
     mapbook_pdf: Path | None
     output_dir: Path
     regional_edge_paths: tuple[Path, ...] = ()
-    county_metros: Path | None = None
-    municipality_populations: Path | None = None
 
 @dataclass(frozen=True)
 class SourceFiles:

@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 import fixtures
-from wan_designer.model import DesignParams, DesignPaths, PopulationPolicy, slugify
+from wan_designer.model import DesignParams, DesignPaths
 from wan_designer.service import available_wan_maps, design_for_wan_map, run_design
 
 
@@ -28,38 +28,20 @@ def test_run_design_with_augmentation(tmp_path: Path) -> None:
     assert artifacts.validation["connected"] is True
 
 
-def test_run_design_anchors_to_population(tmp_path: Path) -> None:
-    """Population selection over the two-state scenario yields a connected design."""
+def test_run_design_over_justified_installations_is_connected(tmp_path: Path) -> None:
+    """A design whose access nodes are justified installations validates as connected."""
     artifacts = run_design(
-        fixtures.write_population_inputs(tmp_path), DesignParams(min_core_count=2), False
+        fixtures.write_justified_solvable_inputs(tmp_path), DesignParams(min_core_count=2), False
     )
     assert artifacts.validation["connected"] is True
 
 
-def test_run_design_aggregates_a_cored_metro_on_its_second_city(tmp_path: Path) -> None:
-    """A state that seats a core aggregates on its metro's second city, not the core.
-
-    Denver and Wichita are their states' metro1.city1 core candidates; with two
-    cores both are seated, so Colorado's first aggregation lands on Aurora (its
-    metro's second city) and Boulder (the second metro) -- Denver is a core only,
-    never a co-located aggregation.
-    """
+def test_run_design_seats_a_justified_installation_as_aggregation(tmp_path: Path) -> None:
+    """A justified installation's facility twin is seated on the aggregation tier."""
     design = run_design(
-        fixtures.write_population_inputs(tmp_path), DesignParams(min_core_count=2), False
+        fixtures.write_justified_solvable_inputs(tmp_path), DesignParams(min_core_count=2), False
     ).design
-    denver, aurora, boulder = slugify("Denver, CO"), slugify("Aurora, CO"), slugify("Boulder, CO")
-    assert (
-        set(design.core_ids),
-        {aurora, boulder} <= set(design.aggregation_ids),
-        denver in design.aggregation_ids,
-    ) == ({denver, slugify("Wichita, KS")}, True, False)
-
-
-def test_run_design_scopes_population_to_named_states(tmp_path: Path) -> None:
-    """A population_states scope still produces a connected design."""
-    params = DesignParams(min_core_count=2, population=PopulationPolicy(states=("CO", "KS")))
-    artifacts = run_design(fixtures.write_population_inputs(tmp_path), params, False)
-    assert artifacts.validation["connected"] is True
+    assert any(agg.startswith("fac_") for agg in design.aggregation_ids)
 
 
 def test_run_design_stitches_regional_edges(tmp_path: Path) -> None:

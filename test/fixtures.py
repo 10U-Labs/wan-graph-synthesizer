@@ -20,6 +20,7 @@ from wan_designer.model import (
     DesignParams,
     DesignPaths,
     Vertex,
+    VertexInfo,
     PhysicalEdge,
     SourceFiles,
     carrier_role,
@@ -29,7 +30,6 @@ from wan_designer.model import (
 )
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.overrides import apply_role_overrides
-from wan_designer.service import run_design
 from wan_designer.validation import validate_design
 
 from api.app import build_app
@@ -128,6 +128,18 @@ def access_vertex(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
     """Build an access (F-35 installation) vertex."""
     return Vertex(
         id=vertex_id, name=vertex_id, tenant="F-35", kind="Military installation", coords=(lat, lon)
+    )
+
+
+def justified_installation(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
+    """Build an access installation operator-justified as an aggregation point."""
+    return Vertex(
+        id=vertex_id,
+        name=vertex_id,
+        tenant="F-35",
+        kind="Military installation",
+        coords=(lat, lon),
+        info=VertexInfo(justified_aggregation=True),
     )
 
 
@@ -282,66 +294,27 @@ def forced_core_artifacts(name: str) -> DesignArtifacts:
     return _forced_artifacts(DesignParams(min_core_count=2, forced_core_names=(name,)))
 
 
-# A two-state metro population scenario. Colorado has two metros: the Denver metro
-# (Denver county > Arapahoe county, holding cities Denver then Aurora) outranks the
-# Boulder metro (Boulder); Colorado also holds an access node, so it is the cored
-# access state. Kansas has one metro (Wichita). Denver and Wichita are their states'
-# metro1.city1 core candidates; with both seated as cores, Colorado's first
-# aggregation lands on its metro's second city (Aurora) rather than co-locating on
-# Denver, and Boulder is its second-metro aggregation. The physical links keep
-# every aggregation dual-homed to both cores.
-POPULATION_VERTEX_HEADER = VERTEX_HEADER + ["municipality", "state"]
-POPULATION_VERTEX_ROWS = (
-    ("Denver, CO", 39.74, -104.99, "PoP", "Not shown in map", "", "Denver", "CO"),
-    ("Aurora, CO", 39.73, -104.83, "PoP", "Not shown in map", "", "Aurora", "CO"),
-    ("Boulder, CO", 40.01, -105.27, "PoP", "Not shown in map", "", "Boulder", "CO"),
-    ("Wichita, KS", 37.69, -97.34, "PoP", "Not shown in map", "", "Wichita", "KS"),
-    ("Fort Logan", 39.65, -105.0, "Military installation", "Shown in map", "", "Denver", "CO"),
-)
-POPULATION_EDGE_PAIRS = (
-    ("Denver, CO", "Wichita, KS"),
-    ("Denver, CO", "Boulder, CO"),
-    ("Boulder, CO", "Wichita, KS"),
-    ("Denver, CO", "Aurora, CO"),
-    ("Aurora, CO", "Wichita, KS"),
-)
-# Census CBSA crosswalk: Arapahoe joins Denver to its metro; Boulder is its own
-# metro; metro populations make the Denver metro outrank the Boulder metro.
-POPULATION_COUNTY_METROS_CSV = (
-    "state,county,cbsa_code,cbsa_title,cbsa_population\n"
-    "CO,Denver County,100,Denver Metro,3000000\n"
-    "CO,Arapahoe County,100,Denver Metro,3000000\n"
-    "CO,Boulder County,200,Boulder Metro,300000\n"
-    "KS,Sedgwick County,300,Wichita Metro,640000\n"
-)
-POPULATION_MUNICIPALITIES_CSV = (
-    "state,municipality,county,population,latitude,longitude\n"
-    "CO,Denver,Denver County,700000,39.74,-104.99\n"
-    "CO,Aurora,Arapahoe County,380000,39.73,-104.83\n"
-    "CO,Boulder,Boulder County,100000,40.01,-105.27\n"
-    "KS,Wichita,Sedgwick County,390000,37.69,-97.34\n"
-)
+def write_justified_solvable_inputs(directory: Path) -> DesignPaths:
+    """Write the solvable ring with its access nodes justified as aggregation points.
 
-
-def write_population_inputs(directory: Path) -> DesignPaths:
-    """Write the population scenario's vertices, edges, and Census reference CSVs."""
-    vertex_path = directory / "pop_vertices.csv"
-    _write_csv(vertex_path, POPULATION_VERTEX_HEADER, POPULATION_VERTEX_ROWS)
-    edge_path = directory / "pop_edges.csv"
-    edge_rows = [(left, right, 500) for left, right in POPULATION_EDGE_PAIRS]
-    _write_csv(edge_path, ["source", "target", "distance_miles"], edge_rows)
-    metro_path = directory / "pop_county_metros.csv"
-    metro_path.write_text(POPULATION_COUNTY_METROS_CSV, encoding="utf-8")
-    municipality_path = directory / "pop_municipalities.csv"
-    municipality_path.write_text(POPULATION_MUNICIPALITIES_CSV, encoding="utf-8")
-    return DesignPaths(
-        (("Lumen", vertex_path),), edge_path, None, directory, (), metro_path, municipality_path
-    )
-
-
-def population_artifacts(directory: Path) -> DesignArtifacts:
-    """Run a population-anchored design over the synthetic two-state scenario."""
-    return run_design(write_population_inputs(directory), DesignParams(min_core_count=2), False)
+    Returns a :class:`DesignPaths` whose F-35 installations carry the justified
+    column, so :func:`run_design` synthesizes a facility twin for each.
+    """
+    pops = [
+        (name, lat, lon, "PoP", "Not shown in map", "")
+        for name, (lat, lon) in {**RING_COORDS, **SPUR_COORDS}.items()
+    ]
+    lumen_path = directory / "lumen.csv"
+    _write_csv(lumen_path, VERTEX_HEADER, pops)
+    access = [
+        (name, lat, lon, "Military installation", "Shown in map", "", "yes")
+        for name, (lat, lon) in ACCESS_COORDS.items()
+    ]
+    f35_path = directory / "f35.csv"
+    _write_csv(f35_path, [*VERTEX_HEADER, JUSTIFIED_COLUMN], access)
+    edges_path = directory / "ring_edges.csv"
+    edges_path.write_text(solvable_edges_csv(), encoding="utf-8")
+    return DesignPaths((("F-35", f35_path), ("Lumen", lumen_path)), edges_path, None, directory)
 
 
 def sample_sources() -> SourceFiles:

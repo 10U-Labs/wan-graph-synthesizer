@@ -15,12 +15,10 @@ from wan_designer.model import (
     DesignParams,
     PhysicalEdge,
     RoleOverrides,
-    StateAggregationSpec,
     Vertex,
     edge_key,
     is_carrier_pop,
 )
-from wan_designer.population import RealizedAnchors
 
 
 def pop_id_by_name(carrier_pops: list[Vertex]) -> dict[str, str]:
@@ -102,47 +100,6 @@ def split_colocated(
         augmented_edges.update(colocation_edges(core_id, twin.id, physical_edges))
     return augmented_vertices, augmented_edges, twin_by_core
 
-def _filtered_specs(
-    specs: tuple[StateAggregationSpec, ...], excluded: set[str]
-) -> tuple[StateAggregationSpec, ...]:
-    """Drop specs whose core city is excluded and null out any excluded slot id."""
-    return tuple(
-        StateAggregationSpec(
-            spec.state,
-            spec.core_id,
-            None if spec.in_metro_second_id in excluded else spec.in_metro_second_id,
-            None if spec.second_metro_id in excluded else spec.second_metro_id,
-        )
-        for spec in specs
-        if spec.core_id not in excluded
-    )
-
-
-def _anchor_candidates(
-    anchors: RealizedAnchors | None,
-    forced_core: set[str],
-    excluded: set[str],
-    operator_forced: set[str],
-) -> tuple[
-    frozenset[str] | None, frozenset[str] | None, tuple[StateAggregationSpec, ...]
-]:
-    """The population core/aggregation candidate restrictions and the kept specs.
-
-    Cores are restricted to each state's metro1.city1 (plus operator cores); the
-    aggregation tier to every city a state could seat (plus operator pins). Without
-    anchors both tiers are left unrestricted (``None``).
-    """
-    if anchors is None:
-        return None, None, ()
-    core_side = forced_core | (set(anchors.core_anchor_ids) - excluded)
-    aggregation_candidates = (set(anchors.aggregation_candidate_ids) - excluded) | operator_forced
-    return (
-        frozenset(core_side),
-        frozenset(aggregation_candidates),
-        _filtered_specs(anchors.aggregation_specs, excluded),
-    )
-
-
 def _resolve_operator_pins(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
@@ -172,28 +129,22 @@ def apply_role_overrides(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
-    anchors: RealizedAnchors | None = None,
+    installation_facilities: frozenset[str] = frozenset(),
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
-    """Resolve operator pins and population anchors into the search's role overrides.
+    """Resolve operator pins (and installation facilities) into the search's overrides.
 
-    Operator forced cores stay required, each state's metro1.city1 becomes a core
-    *candidate*, and the aggregation tier is restricted to every city a state could
-    seat. Only an operator co-location is split into a ``CORE``/``AGGR`` pair;
-    population anchors are never co-located -- the per-state ``aggregation_specs``
-    let the search seat a cored state's first aggregation at its metro's second city.
+    Operator forced cores stay required and an operator co-location is split into a
+    ``CORE``/``AGGR`` pair. ``installation_facilities`` -- the twins synthesized for
+    justified installations -- are carried through so the search prefers them as
+    aggregation heads and ranks them as core candidates by strength.
     """
     vertices, physical_edges, forced_core, operator_forced, excluded = _resolve_operator_pins(
         vertices, physical_edges, params
-    )
-    core_candidate_ids, aggregation_candidate_ids, specs = _anchor_candidates(
-        anchors, forced_core, excluded, operator_forced
     )
     overrides = RoleOverrides(
         forced_core_ids=frozenset(forced_core),
         forced_aggregation_ids=frozenset(operator_forced),
         excluded_ids=frozenset(excluded),
-        core_candidate_ids=core_candidate_ids,
-        aggregation_candidate_ids=aggregation_candidate_ids,
-        aggregation_specs=specs,
+        installation_facility_ids=installation_facilities,
     )
     return vertices, physical_edges, overrides

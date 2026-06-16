@@ -9,6 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import fixtures
+from wan_designer.model import DesignArtifacts, DesignParams
+from wan_designer.service import run_design
 
 ARTIFACTS = fixtures.ring_artifacts()
 FORCED = fixtures.forced_aggregation_artifacts("P3")
@@ -75,32 +77,25 @@ def test_access_vertices_dual_homed() -> None:
     assert ARTIFACTS.validation["access_vertices_with_two_aggregation_links"] is True
 
 
-def _core_states(directory: Path) -> list[str]:
-    """States of the cores in a population-anchored design over the scenario."""
-    artifacts = fixtures.population_artifacts(directory)
-    return [v.info.state for v in artifacts.vertices if v.id in artifacts.design.core_ids]
+def _justified_artifacts(directory: Path) -> DesignArtifacts:
+    """Optimize over the ring whose access nodes are justified installations."""
+    paths = fixtures.write_justified_solvable_inputs(directory)
+    return run_design(paths, DesignParams(min_core_count=2), False)
 
 
-def test_population_design_seats_one_core_per_state(tmp_path: Path) -> None:
-    """Population anchoring never seats two cores in the same state."""
-    states = _core_states(tmp_path)
-    assert len(states) == len(set(states))
+def test_justified_installation_is_seated_as_an_aggregation(tmp_path: Path) -> None:
+    """A justified installation's facility twin lands on the aggregation tier."""
+    design = _justified_artifacts(tmp_path).design
+    assert any(aggregation.startswith("fac_") for aggregation in design.aggregation_ids)
 
 
-def test_population_access_state_gets_two_aggregations(tmp_path: Path) -> None:
-    """An access-bearing state is given at least two aggregation points."""
-    artifacts = fixtures.population_artifacts(tmp_path)
-    seated = artifacts.design.aggregation_ids
-    colorado = [v for v in artifacts.vertices if v.id in seated and v.info.state == "CO"]
-    assert len(colorado) >= 2
+def test_justified_design_dual_homes_every_aggregation(tmp_path: Path) -> None:
+    """Every aggregation -- installation facilities included -- dual-homes to two cores."""
+    artifacts = _justified_artifacts(tmp_path)
+    assert artifacts.validation["aggregations_dual_homed_to_cores"] is True
 
 
-def test_population_cored_metro_aggregates_on_its_second_city(tmp_path: Path) -> None:
-    """Denver cores Colorado, so its aggregation is Aurora (the metro's 2nd city), not a twin."""
-    artifacts = fixtures.population_artifacts(tmp_path)
-    roles = (artifacts.design.core_ids, artifacts.design.aggregation_ids)
-    assert ("denver_co" in roles[0], "aurora_co" in roles[1], "aggr_denver_co" in roles[1]) == (
-        True,
-        True,
-        False,
-    )
+def test_justified_design_dual_homes_every_access_vertex(tmp_path: Path) -> None:
+    """Every access vertex still reaches two aggregation facilities."""
+    artifacts = _justified_artifacts(tmp_path)
+    assert artifacts.validation["access_vertices_with_two_aggregation_links"] is True

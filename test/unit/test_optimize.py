@@ -16,7 +16,6 @@ from wan_designer.model import (
     PathUse,
     PhysicalEdge,
     RoleOverrides,
-    StateAggregationSpec,
     Tuning,
     edge_key,
     haversine_miles,
@@ -47,7 +46,6 @@ from wan_designer.optimize import (
     search_best_design,
     unit_adjacency,
     _AggregationPlan,
-    _restrict_candidates,
     _SearchPlan,
 )
 from wan_designer.overrides import (
@@ -56,7 +54,6 @@ from wan_designer.overrides import (
     reject_override_conflicts,
     resolve_pinned_ids,
 )
-from wan_designer.population import RealizedAnchors
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
@@ -91,12 +88,12 @@ def _plan(
     forced: set[str] | None = None,
     strength: dict[str, float] | None = None,
     clusters: list[list[str]] | None = None,
-    specs: tuple[StateAggregationSpec, ...] = (),
+    facilities: set[str] | None = None,
 ) -> _SearchPlan:
     """Build a search plan for direct optimizer tests."""
     return _SearchPlan(
         candidates,
-        _AggregationPlan(frozenset(forced or set()), tuple(specs)),
+        _AggregationPlan(frozenset(forced or set()), frozenset(facilities or set())),
         strength or {},
         clusters=clusters or [],
     )
@@ -598,117 +595,24 @@ def test_optimize_honors_a_forced_core_override() -> None:
     assert "P3" in design.core_ids
 
 
-def _anchors(
-    core: set[str],
-    specs: tuple[StateAggregationSpec, ...] = (),
-    candidates: set[str] | None = None,
-) -> RealizedAnchors:
-    """A realized-anchors stub carrying the fields apply_role_overrides reads."""
-    spec_tuple = tuple(specs)
-    if candidates is None:
-        candidates = {
-            anchor_id
-            for spec in spec_tuple
-            for anchor_id in (spec.core_id, spec.in_metro_second_id, spec.second_metro_id)
-            if anchor_id is not None
-        }
-    return RealizedAnchors([], {}, frozenset(core), spec_tuple, frozenset(candidates))
+def test_effective_forced_aggregations_returns_operator_pins() -> None:
+    """The only hard-required aggregations are the operator's pins."""
+    assert effective_forced_aggregations(_plan([], forced={"op"})) == {"op"}
 
 
-def test_restrict_candidates_unrestricted_when_allowed_is_none() -> None:
-    """A None allow-set leaves the eligible PoPs untouched."""
-    assert _restrict_candidates({"a", "b"}, None, frozenset()) == {"a", "b"}
-
-
-def test_restrict_candidates_narrows_to_allowed_plus_required() -> None:
-    """A restriction keeps only the allowed candidates and the required ids."""
-    assert _restrict_candidates({"a", "b", "c"}, frozenset({"a"}), frozenset({"b"})) == {"a", "b"}
-
-
-def test_apply_role_overrides_makes_a_city_a_core_candidate() -> None:
-    """A population core anchor becomes a candidate, never a forced core."""
-    _v, _e, overrides = apply_role_overrides(
-        [pop("a"), pop("z")], physical({("a", "z"): 1.0}), DesignParams(), _anchors({"a"})
-    )
-    assert (overrides.core_candidate_ids, overrides.forced_core_ids) == (
-        frozenset({"a"}),
-        frozenset(),
-    )
-
-
-def test_apply_role_overrides_resolves_population_anchor_roles() -> None:
-    """A population anchor stays an un-split core candidate; aggregations cover every slot."""
-    spec = StateAggregationSpec("CO", "a", "b", "c")
-    _v, _e, overrides = apply_role_overrides(
-        [pop("a"), pop("z")], physical({("a", "z"): 1.0}), DesignParams(), _anchors({"a"}, (spec,))
-    )
-    assert (
-        "aggr_a" in overrides.forced_aggregation_ids,
-        overrides.core_candidate_ids,
-        overrides.aggregation_specs,
-        overrides.aggregation_candidate_ids,
-    ) == (False, frozenset({"a"}), (spec,), frozenset({"a", "b", "c"}))
-
-
-def test_apply_role_overrides_drops_an_excluded_anchor() -> None:
-    """An operator exclusion removes a city from the population core candidates."""
-    params = DesignParams(excluded_names=("a",))
-    _v, _e, overrides = apply_role_overrides(
-        [pop("a"), pop("z")], physical({("a", "z"): 1.0}), params, _anchors({"a"})
-    )
-    assert overrides.core_candidate_ids == frozenset()
-
-
-def test_effective_forced_aggregations_seats_second_city_when_core_is_seated() -> None:
-    """A state that seats a core aggregates at its metro's second city, not the core."""
-    spec = StateAggregationSpec("CO", "core", "second_city", "metro2")
-    result = effective_forced_aggregations(("core", "elsewhere"), _plan([], specs=(spec,)))
-    assert result == {"second_city", "metro2"}
-
-
-def test_effective_forced_aggregations_seats_core_city_when_uncored() -> None:
-    """A state with no core aggregates at its top metro city and the second metro."""
-    spec = StateAggregationSpec("CO", "core", "second_city", "metro2")
-    result = effective_forced_aggregations(("elsewhere",), _plan([], specs=(spec,)))
-    assert result == {"core", "metro2"}
-
-
-def test_effective_forced_aggregations_unions_operator_pins() -> None:
-    """Operator-forced aggregations are always seated alongside the population picks."""
-    spec = StateAggregationSpec("CO", "core", "second_city", "metro2")
-    result = effective_forced_aggregations(("elsewhere",), _plan([], forced={"op"}, specs=(spec,)))
-    assert "op" in result
-
-
-def test_effective_forced_aggregations_tolerates_duplicate_slot_ids() -> None:
-    """A thin state whose two slots name the same city seats it once, no error."""
-    spec = StateAggregationSpec("CO", "core", "shared", "shared")
-    result = effective_forced_aggregations(("core",), _plan([], specs=(spec,)))
-    assert result == {"shared"}
-
-
-def test_effective_forced_aggregations_cored_thin_state_seats_nothing() -> None:
-    """A cored state with both aggregation slots empty contributes no aggregation."""
-    spec = StateAggregationSpec("CO", "core", None, None)
-    result = effective_forced_aggregations(("core",), _plan([], specs=(spec,)))
-    assert result == set()
-
-
-def test_assign_access_seeds_the_resolved_first_aggregation() -> None:
-    """assign_access force-seeds the core-set-resolved population aggregations."""
+def test_assign_access_prefers_a_feasible_installation_facility() -> None:
+    """A justified installation's facility that can dual-home is seated as a head."""
     edges = physical(
         {
-            ("core_city", "c1"): 1.0, ("core_city", "c2"): 1.0,
-            ("metro2", "c1"): 1.0, ("metro2", "c2"): 1.0,
-            ("second_city", "c1"): 1.0, ("second_city", "c2"): 1.0,
-            ("c1", "c2"): 1.0,
+            ("fac", "c1"): 1.0, ("fac", "c2"): 1.0,
+            ("p", "c1"): 1.0, ("p", "c2"): 1.0, ("c1", "c2"): 1.0,
         }
     )
-    ids = ["core_city", "metro2", "second_city", "c1", "c2"]
-    inputs = _inputs_from_edges(ids, edges, {"core_city", "metro2", "second_city"}, [access("s")])
-    spec = StateAggregationSpec("CO", "core_city", "second_city", "metro2")
-    _edges, selected = assign_access(("c1", "c2"), inputs, _plan([], specs=(spec,))) or ([], set())
-    assert {"core_city", "metro2"} <= selected
+    inputs = _inputs_from_edges(["fac", "p", "c1", "c2"], edges, {"fac", "p"}, [access("s")])
+    _edges, selected = assign_access(
+        ("c1", "c2"), inputs, _plan([], facilities={"fac"})
+    ) or ([], set())
+    assert "fac" in selected
 
 
 def test_prune_unused_aggregations_drops_a_zero_access_anchor() -> None:
@@ -722,34 +626,6 @@ def test_prune_unused_aggregations_keeps_an_operator_pin_without_access() -> Non
     edges = [AccessEdge("a1", "used", 10.0)]
     result = prune_unused_aggregations({"used", "pinned"}, edges, frozenset({"pinned"}))
     assert result == {"used", "pinned"}
-
-
-def test_assign_access_drops_a_second_metro_anchor_demand_never_reaches() -> None:
-    """A population second-metro anchor far from all demand is not left in the tier.
-
-    Models Utah: the core city (SLC) and a near cluster head (Ogden) carry every
-    access node, while the higher-population second metro (Provo) sits to the south
-    with nothing homed to it -- so it is dropped rather than built for no demand.
-    """
-    edges = physical(
-        {
-            ("slc", "c1"): 1.0, ("slc", "c2"): 1.0,
-            ("ogden", "c1"): 1.0, ("ogden", "c2"): 1.0,
-            ("provo", "c1"): 1.0, ("provo", "c2"): 1.0,
-            ("c1", "c2"): 1.0,
-        }
-    )
-    coords = {
-        "slc": (40.76, -111.89), "ogden": (41.22, -111.97), "provo": (40.23, -111.66),
-        "c1": (39.0, -111.0), "c2": (42.0, -112.5),
-    }
-    ids = ["slc", "ogden", "provo", "c1", "c2"]
-    access_nodes = [access("acc1", 41.20, -111.95), access("acc2", 41.24, -111.99)]
-    inputs = _inputs_from_edges(ids, edges, {"slc", "ogden", "provo"}, access_nodes, coords)
-    spec = StateAggregationSpec("UT", "slc", None, "provo")
-    plan = _plan([], specs=(spec,), clusters=[["acc1", "acc2"]])
-    _edges, selected = assign_access(("c1", "c2"), inputs, plan) or ([], set())
-    assert selected == {"slc", "ogden"}
 
 
 def test_aggregation_haul_miles_reports_the_worst_and_total_to_nearest_core() -> None:
