@@ -24,10 +24,10 @@ source,target,source_page,note
 "Los Angeles, CA","Tustin, CA",overview/west,visible route
 "Tustin, CA","San Diego, CA",overview/west,visible route
 "San Diego, CA","Riverside, CA",overview/west,visible route
-"Los Angeles, CA","San Bernadino, CA",overview/west,visible route
-"Riverside, CA","San Bernadino, CA",overview/west,visible route
-"San Bernadino, CA","Las Vegas, NV",overview/west,visible route
-"San Bernadino, CA","Phoenix, AZ",overview/west,visible route
+"Los Angeles, CA","San Bernardino, CA",overview/west,visible route
+"Riverside, CA","San Bernardino, CA",overview/west,visible route
+"San Bernardino, CA","Las Vegas, NV",overview/west,visible route
+"San Bernardino, CA","Phoenix, AZ",overview/west,visible route
 "San Diego, CA","Phoenix, AZ",overview/west,visible route
 "Phoenix, AZ","Goodyear, AZ",overview/west,visible route
 "Phoenix, AZ","Tucson, AZ",overview/southwest,visible route
