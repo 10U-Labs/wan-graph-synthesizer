@@ -42,11 +42,13 @@ def run_design(paths: DesignPaths, params: DesignParams, augment: bool) -> Desig
     physical_edges: dict[tuple[str, str], PhysicalEdge] = {}
     for edge_path in (paths.edge_path, *paths.regional_edge_paths):
         physical_edges.update(load_carrier_edges(edge_path, carrier_pops))
-    realized = realize_installations(vertices, physical_edges)
+    realized = realize_installations(
+        vertices, physical_edges, frozenset(params.forced_aggregation_names)
+    )
     vertices, physical_edges = realized.vertices, realized.physical_edges
     roles = {pop.id: carrier_role(pop) for pop in vertices if is_carrier_pop(pop)}
     vertices, physical_edges, overrides = apply_role_overrides(
-        vertices, physical_edges, params, realized.facility_ids
+        vertices, physical_edges, params
     )
     logger.info(
         "Loaded %d vertices and %d physical edges; starting optimization",

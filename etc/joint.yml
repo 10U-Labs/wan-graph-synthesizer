@@ -7,11 +7,14 @@ design:
   allow_roadm_aggregation: false
   # PoPs barred from every selected role.
   excluded: []
-  # PoPs pinned into the aggregation tier. Richmond is pinned (not Norfolk, a
-  # single-homed ROADM leaf) so southeast-Virginia demand homes into a PoP that
-  # can dual-home to two cores. Cheyenne, Great Falls, and Minot pin the three
-  # ICBM-wing sites (F.E. Warren, Malmstrom, Minot AFB); Great Falls and Minot are
-  # ROADMs, so pinning them overrides allow_roadm_aggregation for those two.
+  # PoPs pinned into the aggregation tier -- all carrier municipalities, never
+  # installations. Richmond is pinned (not Norfolk, a single-homed ROADM leaf) so
+  # southeast-Virginia demand homes into a PoP that can dual-home to two cores.
+  # Cheyenne, Great Falls, and Minot are the municipalities nearest the three ICBM
+  # wings (F.E. Warren, Malmstrom, Minot AFB): forcing the carrier PoP gives each
+  # wing's demand a local aggregation while the installation itself stays demand --
+  # to instead force a base as an aggregation, name the installation here. Great
+  # Falls and Minot are ROADMs, so pinning them overrides allow_roadm_aggregation.
   forced_aggregations:
     - Cheyenne, WY
     - Great Falls, MT
@@ -62,9 +65,9 @@ tuning:
   cluster_min_radius_miles: 0.0
   # Compass sectors used to score a core's link spread.
   compass_octants: 8
-  # Most other cores any one core links to on the backbone. The full mesh is
-  # thinned to a minimum-mileage, 2-edge-connected subgraph within this cap.
-  core_backbone_degree_cap: 3
+  # Fewest other cores each core links to on the backbone. The full mesh is thinned
+  # to a minimum-mileage, 2-edge-connected subgraph that holds each core at this floor.
+  core_backbone_min_degree: 3
   # Grow the core tier past min_core_count until every aggregation is within this
   # straight-line distance of a core (extra cores are added only where they bring
   # demand meaningfully closer). Raise it for fewer, farther cores; lower it for more.

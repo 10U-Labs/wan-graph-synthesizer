@@ -27,6 +27,7 @@ from wan_designer.optimize import (
     assign_access,
     best_design_at_size,
     build_design_for_cores,
+    build_search_plan,
     cluster_diameter,
     cluster_local_heads,
     complete_homes,
@@ -88,12 +89,11 @@ def _plan(
     forced: set[str] | None = None,
     strength: dict[str, float] | None = None,
     clusters: list[list[str]] | None = None,
-    facilities: set[str] | None = None,
 ) -> _SearchPlan:
     """Build a search plan for direct optimizer tests."""
     return _SearchPlan(
         candidates,
-        _AggregationPlan(frozenset(forced or set()), frozenset(facilities or set())),
+        _AggregationPlan(frozenset(forced or set())),
         strength or {},
         clusters=clusters or [],
     )
@@ -229,39 +229,44 @@ def _degrees(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> dict[st
     return {core: sum(1 for pair in pairs if core in pair) for core in core_ids}
 
 
-def _capped_backbone() -> list[tuple[str, str]]:
-    """The degree-3 backbone selected over the five-core mesh (asserted non-None)."""
+def _floored_backbone() -> list[tuple[str, str]]:
+    """The min-degree-3 backbone selected over the five-core mesh (asserted non-None)."""
     pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, 3)
     assert pairs is not None
     return pairs
 
 
-def test_core_backbone_caps_degree_at_three() -> None:
-    """With a cap of three, no core keeps four backbone neighbors."""
-    assert max(_degrees(_FIVE_CORES, _capped_backbone()).values()) <= 3
+def test_core_backbone_keeps_every_core_at_three_links() -> None:
+    """With a floor of three, no core is left with fewer than three backbone neighbors."""
+    assert min(_degrees(_FIVE_CORES, _floored_backbone()).values()) >= 3
 
 
 def test_core_backbone_stays_two_edge_connected() -> None:
-    """The capped backbone still survives the loss of any single link."""
-    assert is_two_edge_connected(set(_FIVE_CORES), set(_capped_backbone()))
+    """The floored backbone still survives the loss of any single link."""
+    assert is_two_edge_connected(set(_FIVE_CORES), set(_floored_backbone()))
 
 
 def test_core_backbone_drops_the_longest_link() -> None:
-    """The single longest core-to-core link is the first dropped under the cap."""
-    assert edge_key("c1", "c5") not in _capped_backbone()
+    """The single longest core-to-core link is the first dropped toward the floor."""
+    assert edge_key("c1", "c5") not in _floored_backbone()
 
 
-def test_core_backbone_is_full_mesh_without_a_cap() -> None:
-    """A None cap leaves the full mesh: every core pair keeps a backbone link."""
-    pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, None)
-    assert pairs is not None and len(pairs) == 10  # C(5, 2)
+def test_core_backbone_thins_below_the_full_mesh() -> None:
+    """Holding only the floor still drops links: the result is sparser than the mesh."""
+    assert len(_floored_backbone()) < 10  # fewer than C(5, 2)
 
 
-def test_core_backbone_unchanged_when_already_within_cap() -> None:
-    """Four cores at the cap of three are already a full mesh -- nothing is dropped."""
+def test_core_backbone_is_full_mesh_for_four_cores() -> None:
+    """Four cores cannot drop below a full mesh while each keeps three links."""
     four = ("c1", "c2", "c3", "c4")
     pairs = select_core_backbone_pairs(four, _FIVE_CORE_DISTANCES, 3)
     assert pairs is not None and len(pairs) == 6  # C(4, 2): every degree is exactly three
+
+
+def test_core_backbone_reduces_to_a_cycle_at_a_floor_of_one() -> None:
+    """A floor of one thins the mesh to a minimal 2-edge-connected cycle of five links."""
+    pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, 1)
+    assert pairs is not None and len(pairs) == 5
 
 
 def test_core_backbone_none_when_a_core_pair_is_unreachable() -> None:
@@ -280,22 +285,17 @@ _UNIT_MESH_EDGES = physical({
 })
 
 
-def _five_core_mesh_paths(degree_cap: int | None) -> list[PathUse]:
+def _five_core_mesh_paths(min_degree: int) -> list[PathUse]:
     """Route the five-core backbone over a unit-weight full-mesh graph."""
     adjacency = unit_adjacency(_UNIT_MESH_EDGES)
     distances, predecessors = all_pairs_shortest([pop(c) for c in _FIVE_CORES], adjacency)
-    return core_mesh_paths(_FIVE_CORES, distances, predecessors, _UNIT_MESH_EDGES, degree_cap)
+    return core_mesh_paths(_FIVE_CORES, distances, predecessors, _UNIT_MESH_EDGES, min_degree)
 
 
-def test_core_mesh_paths_route_the_full_mesh_without_a_cap() -> None:
-    """Without a cap, routing emits one link per core pair (the full mesh)."""
-    assert len(_five_core_mesh_paths(None)) == 10
-
-
-def test_core_mesh_paths_route_within_the_degree_cap() -> None:
-    """Routing under the cap leaves no core with more than three backbone links."""
+def test_core_mesh_paths_keep_every_core_at_the_floor() -> None:
+    """Routing at a floor of three leaves no core with fewer than three backbone links."""
     pairs = [edge_key(use.source, use.target) for use in _five_core_mesh_paths(3)]
-    assert max(_degrees(_FIVE_CORES, pairs).values()) <= 3
+    assert min(_degrees(_FIVE_CORES, pairs).values()) >= 3
 
 
 def test_vertex_straightness_is_zero_without_reachable_vertices() -> None:
@@ -600,19 +600,14 @@ def test_effective_forced_aggregations_returns_operator_pins() -> None:
     assert effective_forced_aggregations(_plan([], forced={"op"})) == {"op"}
 
 
-def test_assign_access_prefers_a_feasible_installation_facility() -> None:
-    """A justified installation's facility that can dual-home is seated as a head."""
-    edges = physical(
-        {
-            ("fac", "c1"): 1.0, ("fac", "c2"): 1.0,
-            ("p", "c1"): 1.0, ("p", "c2"): 1.0, ("c1", "c2"): 1.0,
-        }
+def test_build_search_plan_excludes_forced_aggregations_from_cores() -> None:
+    """A forced aggregation -- like a forced installation twin -- is never a core candidate."""
+    edges = physical({("fac", "p"): 1.0, ("p", "c"): 1.0, ("fac", "c"): 1.0})
+    inputs = _inputs_from_edges(["fac", "p", "c"], edges, {"fac", "p", "c"})
+    plan = build_search_plan(
+        inputs, {"fac", "p", "c"}, _AggregationPlan(frozenset({"fac"})), frozenset(), DesignParams()
     )
-    inputs = _inputs_from_edges(["fac", "p", "c1", "c2"], edges, {"fac", "p"}, [access("s")])
-    _edges, selected = assign_access(
-        ("c1", "c2"), inputs, _plan([], facilities={"fac"})
-    ) or ([], set())
-    assert "fac" in selected
+    assert "fac" not in plan.core_candidates
 
 
 def test_prune_unused_aggregations_drops_a_zero_access_anchor() -> None:

@@ -1,15 +1,16 @@
-"""Synthesize aggregation facilities for operator-justified access sites.
+"""Synthesize aggregation facilities for operator-forced installations.
 
-A justified installation (see :func:`is_justified_aggregation`) carries no fiber
-of its own, so unaided it can only be demand. To let it serve as an aggregation
-point -- and, when its topology is strong enough, a core -- we stand up a
-co-located carrier-PoP *twin* at its coordinates, wired by synthetic backbone
-links to the nearest existing carrier PoPs. The twin then flows through the
-unchanged strength, eligibility, and dual-homing machinery exactly like any PoP,
-while the original installation stays an access/demand vertex that homes to its
-own twin plus one neighbor.
+An installation carries no fiber of its own, so unaided it can only be demand. An
+installation is promoted to an aggregation only when the operator explicitly forces
+it (its name appears in ``forced_aggregations``); it is never auto-selected and
+never a core. To let a forced installation serve as an aggregation point we stand
+up a co-located carrier-PoP *twin* at its coordinates, wired by synthetic backbone
+links to the nearest existing carrier PoPs. The twin's name matches the
+installation, so the operator's force-pin resolves onto it; it then flows through
+the unchanged dual-homing machinery while the original installation stays an
+access/demand vertex that homes to its own twin plus one neighbor.
 
-Co-located justified sites (e.g. Hill AFB and Ogden ALC sharing one location)
+Co-located forced sites (e.g. Hill AFB and Ogden ALC sharing one location)
 collapse to a single twin. A site with fewer than two distinct carrier PoPs
 within :data:`FACILITY_RADIUS_MILES` cannot be biconnected into the backbone, so
 it is left demand-only rather than seated as a fragile single-homed facility --
@@ -47,8 +48,8 @@ class RealizedInstallations:
 
     ``vertices`` and ``physical_edges`` are the graph augmented with one co-located
     twin PoP per realized installation and its synthetic backbone links;
-    ``facility_ids`` are those twins' ids, the facilities the optimizer should seat
-    as aggregation heads and offer as core candidates.
+    ``facility_ids`` are those twins' ids. Each twin is seated as a forced
+    aggregation via the operator's force-pin (it is never a core candidate).
     """
 
     vertices: list[Vertex]
@@ -113,12 +114,16 @@ def _unique_facility_id(installation: Vertex, used_ids: set[str]) -> str:
 
 
 def realize_installations(
-    vertices: list[Vertex], physical_edges: dict[tuple[str, str], PhysicalEdge]
+    vertices: list[Vertex],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    forced_aggregation_names: frozenset[str] = frozenset(),
 ) -> RealizedInstallations:
-    """Seat a co-located facility twin for every realizable justified installation.
+    """Seat a co-located facility twin for every operator-forced justified installation.
 
-    Justified installations are taken in a stable id order; co-located sites yield
-    a single twin, and a site without two distinct carrier PoPs within
+    Only justified installations the operator has named in ``forced_aggregation_names``
+    are realized -- an unforced installation stays demand-only, never an aggregation
+    or a core. Forced installations are taken in a stable id order; co-located sites
+    yield a single twin, and a site without two distinct carrier PoPs within
     :data:`FACILITY_RADIUS_MILES` is skipped (it stays demand-only).
     """
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
@@ -128,7 +133,10 @@ def realize_installations(
     facility_ids: set[str] = set()
     seen_coords: set[tuple[float, float]] = set()
     for installation in sorted(
-        (vertex for vertex in vertices if is_justified_aggregation(vertex)),
+        (
+            vertex for vertex in vertices
+            if is_justified_aggregation(vertex) and vertex.name in forced_aggregation_names
+        ),
         key=lambda vertex: vertex.id,
     ):
         coord_key = _coord_key(installation)

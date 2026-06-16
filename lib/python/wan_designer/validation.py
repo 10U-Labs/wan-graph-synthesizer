@@ -22,6 +22,30 @@ from wan_designer.graphs import (
 )
 
 
+# Every core must link to at least this many other cores -- but only once the core
+# tier is larger than the floor itself, since fewer cores cannot reach it.
+CORE_BACKBONE_MIN_DEGREE = 3
+
+
+def backbone_degree_deficient(
+    core_ids: tuple[str, ...],
+    backbone_degrees: dict[str, int],
+    vertices_by_id: dict[str, Vertex],
+) -> list[dict[str, object]]:
+    """Cores with too few backbone links, once there are more cores than the floor.
+
+    With ``CORE_BACKBONE_MIN_DEGREE`` or fewer cores the rule cannot be met (a core
+    has only that many peers), so the list is empty.
+    """
+    if len(core_ids) <= CORE_BACKBONE_MIN_DEGREE:
+        return []
+    return [
+        {"id": core_id, "name": vertices_by_id[core_id].name, "degree": degree}
+        for core_id, degree in sorted(backbone_degrees.items())
+        if degree < CORE_BACKBONE_MIN_DEGREE
+    ]
+
+
 def design_edge_set(design: Design) -> set[tuple[str, str]]:
     """All edges in the design: selected physical edges plus access edges."""
     edges = set(design.physical_edge_keys)
@@ -207,6 +231,9 @@ def validate_design(vertices: list[Vertex], design: Design) -> ValidationReport:
     missing_core_redundancy = aggregations_without_core_redundancy(design)
     core_pairs = disconnected_core_pairs(design)
     backbone_degrees = neighbor_degrees(set(design.core_ids), core_backbone_pairs(design))
+    backbone_deficient = backbone_degree_deficient(
+        design.core_ids, backbone_degrees, vertices_by_id
+    )
 
     return {
         "connected": len(components) == 1,
@@ -235,7 +262,9 @@ def validate_design(vertices: list[Vertex], design: Design) -> ValidationReport:
             {"source": vertices_by_id[left].name, "target": vertices_by_id[right].name}
             for left, right in core_pairs
         ],
-        "core_backbone_max_degree": max(backbone_degrees.values(), default=0),
+        "core_backbone_min_degree": min(backbone_degrees.values(), default=0),
+        "cores_connect_to_three_others": not backbone_deficient,
+        "core_backbone_degree_deficient": backbone_deficient,
         "core_backbone_two_edge_connected": core_backbone_two_edge_connected(design),
     }
 

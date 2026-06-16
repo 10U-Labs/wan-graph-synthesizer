@@ -10,6 +10,7 @@ from wan_designer import (
     Design,
     DesignMetrics,
     PathUse,
+    ValidationReport,
     Vertex,
     aggregations_without_core_redundancy,
     disconnected_core_pairs,
@@ -126,26 +127,57 @@ def _backbone_design(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) ->
     )
 
 
-# Five cores wired so no core exceeds three backbone links, and the graph stays
-# 2-edge-connected (every link sits on a cycle).
-CAPPED_CORES = ("C1", "C2", "C3", "C4", "C5")
-CAPPED_BACKBONE = _backbone_design(
-    CAPPED_CORES,
+def _backbone_report(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> ValidationReport:
+    """Validate a core-only design defined by its backbone links."""
+    return validate_design(
+        [make_pop(name) for name in core_ids], _backbone_design(core_ids, pairs)
+    )
+
+
+# Five cores each wired to at least three others: a 5-cycle plus three chords.
+_HEALTHY = (
+    ("C1", "C2", "C3", "C4", "C5"),
+    [("C1", "C2"), ("C2", "C3"), ("C3", "C4"), ("C4", "C5"), ("C5", "C1"),
+     ("C1", "C3"), ("C2", "C4"), ("C3", "C5")],
+)
+# Five cores wired so C3, C4, and C5 keep only two backbone links -- below the floor.
+_DEFICIENT = (
+    ("C1", "C2", "C3", "C4", "C5"),
     [("C1", "C2"), ("C1", "C3"), ("C1", "C4"), ("C2", "C4"), ("C2", "C5"), ("C3", "C5")],
 )
-CAPPED_VERTICES = [make_pop(name) for name in CAPPED_CORES]
+# Three cores cannot reach a floor of three, so the connect-to-three rule is moot.
+_SMALL = (("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3"), ("C1", "C3")])
 
 
-def test_capped_backbone_reports_max_degree_within_cap() -> None:
-    """The report's max backbone degree reflects the degree-capped wiring."""
-    report = validate_design(CAPPED_VERTICES, CAPPED_BACKBONE)
-    assert report["core_backbone_max_degree"] == 3
+def test_backbone_meeting_the_floor_satisfies_the_connect_rule() -> None:
+    """Five cores each wired to three or more others satisfy the connect-to-three rule."""
+    assert _backbone_report(*_HEALTHY)["cores_connect_to_three_others"] is True
 
 
-def test_capped_backbone_is_two_edge_connected() -> None:
-    """A degree-capped backbone that survives any single link loss is reported resilient."""
-    report = validate_design(CAPPED_VERTICES, CAPPED_BACKBONE)
-    assert report["core_backbone_two_edge_connected"] is True
+def test_backbone_reports_its_minimum_degree() -> None:
+    """The report's min backbone degree reflects the least-connected core's links."""
+    assert _backbone_report(*_HEALTHY)["core_backbone_min_degree"] == 3
+
+
+def test_backbone_below_the_floor_fails_the_connect_rule() -> None:
+    """Cores left with only two backbone links fail the connect-to-three rule."""
+    assert _backbone_report(*_DEFICIENT)["cores_connect_to_three_others"] is False
+
+
+def test_backbone_below_the_floor_names_the_deficient_cores() -> None:
+    """The deficient list names every core left under three backbone links."""
+    report = _backbone_report(*_DEFICIENT)
+    assert {item["id"] for item in report["core_backbone_degree_deficient"]} == {"C3", "C4", "C5"}
+
+
+def test_three_cores_are_exempt_from_the_connect_rule() -> None:
+    """With only three cores the connect-to-three rule cannot apply, so it passes."""
+    assert _backbone_report(*_SMALL)["cores_connect_to_three_others"] is True
+
+
+def test_healthy_backbone_is_two_edge_connected() -> None:
+    """A backbone that survives any single link loss is reported resilient."""
+    assert _backbone_report(*_HEALTHY)["core_backbone_two_edge_connected"] is True
 
 
 def test_bridged_backbone_is_not_two_edge_connected() -> None:

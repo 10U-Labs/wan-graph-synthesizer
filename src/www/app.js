@@ -85,13 +85,28 @@ function drawVertices(vertices) {
   return byId;
 }
 
+// Unwrap the target longitude relative to the source so a link spanning the
+// antimeridian (e.g. a Pacific hop from the US west coast to the Marshall Islands)
+// is drawn the short way west, not the long way east across the globe.
+function shortWayEnds(source, target) {
+  const [sourceLat, sourceLon] = source.coords;
+  const [targetLat, targetLon] = target.coords;
+  let lon = targetLon;
+  if (lon - sourceLon > 180) {
+    lon -= 360;
+  } else if (lon - sourceLon < -180) {
+    lon += 360;
+  }
+  return [source.coords, [targetLat, lon]];
+}
+
 // Draw one set of edges in the given tier style, each with a hover tooltip.
 function drawEdges(edges, byId, style, label) {
   for (const edge of edges) {
     const source = byId[edge.source_id];
     const target = byId[edge.target_id];
     if (source && target) {
-      add(L.polyline([source.coords, target.coords], {
+      add(L.polyline(shortWayEnds(source, target), {
         color: style.color,
         weight: style.weight,
         opacity: 0.8,
