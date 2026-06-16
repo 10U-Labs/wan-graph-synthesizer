@@ -40,6 +40,9 @@ design:
     - Los Angeles, CA
     - McLean, VA
     - Salt Lake City, UT
+  # Maximum number of core PoPs. Coverage growth past the floor never seats more
+  # cores than this ceiling, so the backbone stays bounded.
+  max_core_count: 7
   # Minimum number of core PoPs. The search adds more cores only when feasibility
   # requires it; it never drops below this floor.
   min_core_count: 3

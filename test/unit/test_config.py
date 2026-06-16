@@ -30,6 +30,11 @@ def test_default_has_no_forced_cores() -> None:
     assert len(default_config().params.forced_core_names) == 0
 
 
+def test_default_max_core_count_is_none() -> None:
+    """The default config leaves the core tier uncapped."""
+    assert default_config().params.max_core_count is None
+
+
 def test_default_vertex_files() -> None:
     """The default config maps each tenant to its per-tenant vertices CSV."""
     assert ("Lumen", Path("data/vertices/lumen.csv")) in default_config().paths.vertex_files
@@ -71,6 +76,11 @@ def test_reads_label() -> None:
 def test_reads_min_core_count() -> None:
     """A min_core_count value is read from the design section."""
     assert _config({"design": {"min_core_count": 5}}).params.min_core_count == 5
+
+
+def test_reads_max_core_count() -> None:
+    """A max_core_count value is read from the design section."""
+    assert _config({"design": {"max_core_count": 7}}).params.max_core_count == 7
 
 
 def test_reads_forced_cores() -> None:

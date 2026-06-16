@@ -134,6 +134,7 @@ class DesignParams:
     """Operator choices plus the algorithm :class:`Tuning` for the optimization."""
 
     min_core_count: int = 3  # minimum cores; the search adds more only if needed
+    max_core_count: int | None = None  # ceiling on cores; None leaves the tier uncapped
     allow_roadm_aggregation: bool = False
     forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
     forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations

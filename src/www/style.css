@@ -22,6 +22,9 @@ body {
 
 #counts {
   margin-left: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-align: right;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   color: #cfd8dc;

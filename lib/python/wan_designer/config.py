@@ -113,6 +113,7 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
     base = DesignParams()
     return DesignParams(
         min_core_count=design.get("min_core_count", base.min_core_count),
+        max_core_count=design.get("max_core_count", base.max_core_count),
         allow_roadm_aggregation=design.get(
             "allow_roadm_aggregation", base.allow_roadm_aggregation
         ),

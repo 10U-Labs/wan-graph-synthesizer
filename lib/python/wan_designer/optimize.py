@@ -787,23 +787,27 @@ def grow_cores_for_coverage(
     base: Design,
     inputs: DesignInputs,
     plan: _SearchPlan,
-    target_miles: float,
+    params: DesignParams,
     pop_by_id: dict[str, Vertex],
 ) -> Design:
     """Add cores beyond the strength-chosen base until demand is close enough.
 
-    While some aggregation is farther than ``target_miles`` from every core, add the
-    one remaining candidate that most reduces the total aggregation-to-core haul,
-    rebuilding the design around it. Extra cores are thus coverage-driven: strength
+    While some aggregation is farther than ``core_coverage_target_miles`` from every
+    core, add the one remaining candidate that most reduces the total aggregation-to-core
+    haul, rebuilding the design around it. Extra cores are thus coverage-driven: strength
     still chooses the base tier, and the operator's coverage target is a constraint on
     how far the tier may leave demand, not a mileage cost minimized over candidate
-    sets. Growth stops once every aggregation is within target, no remaining candidate
-    brings demand meaningfully closer, or the candidates are exhausted.
+    sets. Growth stops once every aggregation is within target, the tier reaches
+    ``max_core_count``, no remaining candidate brings demand meaningfully closer, or
+    the candidates are exhausted.
     """
+    target_miles = params.tuning.core_coverage_target_miles
     core_ids = base.core_ids
     design = base
     free = [pop_id for pop_id in plan.core_candidates if pop_id not in core_ids]
     while free:
+        if params.max_core_count is not None and len(core_ids) >= params.max_core_count:
+            break
         worst, total = aggregation_haul_miles(core_ids, design.aggregation_ids, pop_by_id)
         if worst <= target_miles:
             break
@@ -839,7 +843,10 @@ def search_best_design(
     """
     limit = enumeration_limit(total_memory_bytes(), params)
     base: Design | None = None
-    for size in range(params.min_core_count, len(plan.core_candidates) + 1):
+    max_size = len(plan.core_candidates)
+    if params.max_core_count is not None:
+        max_size = min(max_size, params.max_core_count)
+    for size in range(params.min_core_count, max_size + 1):
         sets = core_combination_count(plan, size)
         if sets > limit:
             raise ValueError(
@@ -860,9 +867,7 @@ def search_best_design(
         raise ValueError(f"No feasible design with at least {params.min_core_count} cores")
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     pop_by_id.update(plan.aggregations.twin_vertices)
-    design = grow_cores_for_coverage(
-        base, inputs, plan, params.tuning.core_coverage_target_miles, pop_by_id
-    )
+    design = grow_cores_for_coverage(base, inputs, plan, params, pop_by_id)
     logger.info("Selected a %d-core design", len(design.core_ids))
     return design
 
@@ -942,6 +947,13 @@ def optimize_three_tier_design(
     overrides = overrides if overrides is not None else RoleOverrides()
     if params.min_core_count < 2:
         raise ValueError("min_core_count (the minimum number of cores) must be at least 2")
+    if params.max_core_count is not None and params.max_core_count < params.min_core_count:
+        raise ValueError("max_core_count must be at least min_core_count")
+    if (
+        params.max_core_count is not None
+        and len(overrides.forced_core_ids) > params.max_core_count
+    ):
+        raise ValueError("more cores are forced than max_core_count allows")
 
     context = graph_context(vertices, physical_edges)
     operator_forced = overrides.forced_aggregation_ids

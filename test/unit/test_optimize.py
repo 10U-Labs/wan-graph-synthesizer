@@ -122,6 +122,24 @@ def test_min_core_count_below_two_is_rejected() -> None:
         optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(min_core_count=1))
 
 
+def test_max_core_count_below_min_is_rejected() -> None:
+    """A maximum core count below the minimum is rejected."""
+    with pytest.raises(ValueError):
+        optimize_three_tier_design(
+            TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(min_core_count=3, max_core_count=2)
+        )
+
+
+def test_forced_cores_exceeding_max_core_count_is_rejected() -> None:
+    """Pinning more cores than the cap allows is rejected: the pins cannot be dropped."""
+    with pytest.raises(ValueError):
+        optimize_three_tier_design(
+            TRIANGLE_VERTICES, TRIANGLE, {},
+            DesignParams(min_core_count=2, max_core_count=2),
+            RoleOverrides(forced_core_ids=frozenset({"a", "b", "c"})),
+        )
+
+
 def test_unknown_pop_ids_are_rejected() -> None:
     """Unknown pop ids are rejected."""
     with pytest.raises(ValueError):
@@ -733,12 +751,12 @@ def test_aggregation_haul_miles_reports_the_worst_and_total_to_nearest_core() ->
     assert result == pytest.approx((far_miles, near_miles + far_miles))
 
 
-def test_search_grows_cores_past_the_floor_to_cover_far_demand() -> None:
-    """Past the floor, cores are added until far demand is within the coverage target.
+def _far_demand_inputs_plan() -> tuple[DesignInputs, _SearchPlan]:
+    """Two central cores ~1000 mi from west/east demand, with two coverage candidates.
 
-    Two central cores (cc1, cc2) sit ~1000 mi from west and east demand. With a
-    permissive target the tier stays at the two-core floor; with a tight target it
-    grows to seat a western (cw) and an eastern (ce) core that bring demand within reach.
+    Shared by the growth and cap tests: a permissive coverage target holds the tier
+    at the two-core floor, while a tight one would grow it to seat a western (cw) and
+    an eastern (ce) core that bring the far demand within reach.
     """
     edges = physical(
         {
@@ -762,6 +780,12 @@ def test_search_grows_cores_past_the_floor_to_cover_far_demand() -> None:
         strength={"cc1": 3.0, "cc2": 3.0, "cw": 1.0, "ce": 1.0},
         clusters=[["aw1", "aw2"], ["ae1", "ae2"]],
     )
+    return inputs, plan
+
+
+def test_search_grows_cores_past_the_floor_to_cover_far_demand() -> None:
+    """Past the floor, cores are added until far demand is within the coverage target."""
+    inputs, plan = _far_demand_inputs_plan()
 
     def cores(target_miles: float) -> tuple[str, ...]:
         params = DesignParams(
@@ -773,6 +797,19 @@ def test_search_grows_cores_past_the_floor_to_cover_far_demand() -> None:
         ("cc1", "cc2"),
         {"cc1", "cc2", "cw", "ce"},
     )
+
+
+def test_max_core_count_caps_coverage_growth() -> None:
+    """Coverage growth stops once the core tier reaches the configured cap.
+
+    The tight target alone would grow this design to four cores; capping at three
+    halts the growth one core short, leaving exactly the cap.
+    """
+    inputs, plan = _far_demand_inputs_plan()
+    params = DesignParams(
+        min_core_count=2, max_core_count=3, tuning=Tuning(core_coverage_target_miles=300.0)
+    )
+    assert len(search_best_design(inputs, params, plan).core_ids) == 3
 
 
 def test_search_holds_at_the_floor_when_the_only_candidate_would_strand_demand() -> None:
