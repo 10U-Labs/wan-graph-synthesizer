@@ -806,3 +806,28 @@ def test_search_grows_cores_past_the_floor_to_cover_far_demand() -> None:
         ("cc1", "cc2"),
         {"cc1", "cc2", "cw", "ce"},
     )
+
+
+def test_search_holds_at_the_floor_when_the_only_candidate_would_strand_demand() -> None:
+    """Growth stops if adding the lone candidate drops the aggregation tier below two.
+
+    Aggregations ``agg`` and ``p`` both serve the far eastern access, but ``p`` is also
+    the only free core candidate; promoting it would leave a single aggregation, so the
+    grown set is infeasible and the tier holds at the floor despite the long haul.
+    """
+    edges = physical(
+        {
+            ("c1", "c2"): 1.0, ("agg", "c1"): 1.0, ("agg", "c2"): 1.0,
+            ("p", "c1"): 1.0, ("p", "c2"): 1.0,
+        }
+    )
+    coords = {
+        "c1": (40.0, -100.0), "c2": (40.0, -99.0),
+        "agg": (40.0, -80.0), "p": (40.0, -81.0),
+    }
+    inputs = _inputs_from_edges(
+        ["c1", "c2", "agg", "p"], edges, {"agg", "p"}, [access("s", 40.0, -80.5)], coords
+    )
+    plan = _plan(["c1", "c2", "p"], strength={"c1": 3.0, "c2": 3.0, "p": 1.0})
+    params = DesignParams(min_core_count=2, tuning=Tuning(core_coverage_target_miles=300.0))
+    assert search_best_design(inputs, params, plan).core_ids == ("c1", "c2")
