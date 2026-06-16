@@ -94,11 +94,9 @@ def _tuning(tuning: dict[str, Any]) -> Tuning:
     base = Tuning()
     return Tuning(
         cluster_min_points=tuning.get("cluster_min_points", base.cluster_min_points),
-        cluster_min_radius_miles=tuning.get(
-            "cluster_min_radius_miles", base.cluster_min_radius_miles
-        ),
-        cluster_max_radius_miles=tuning.get(
-            "cluster_max_radius_miles", base.cluster_max_radius_miles
+        cluster_radius_miles=(
+            tuning.get("cluster_min_radius_miles", base.cluster_radius_miles[0]),
+            tuning.get("cluster_max_radius_miles", base.cluster_radius_miles[1]),
         ),
         compass_octants=tuning.get("compass_octants", base.compass_octants),
         core_backbone_degree_cap=tuning.get(

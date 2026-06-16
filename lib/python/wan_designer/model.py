@@ -118,8 +118,7 @@ class Tuning:
     """
 
     cluster_min_points: int = 2  # access vertices needed to seed a new aggregation
-    cluster_min_radius_miles: float = 50.0  # floor on the derived cluster radius
-    cluster_max_radius_miles: float = 250.0  # ceiling on the derived cluster radius
+    cluster_radius_miles: tuple[float, float] = (50.0, 250.0)  # (floor, ceiling) on derived radius
     compass_octants: int = 8  # compass sectors used to score a core's link spread
     core_backbone_degree_cap: int = 3  # max core-to-core backbone links per core
     core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one

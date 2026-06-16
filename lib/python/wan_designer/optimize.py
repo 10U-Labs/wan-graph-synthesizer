@@ -735,6 +735,29 @@ def aggregation_haul_miles(
     return max(distances, default=0.0), sum(distances)
 
 
+def coverage_candidate_totals(
+    core_ids: tuple[str, ...],
+    free: list[str],
+    inputs: DesignInputs,
+    plan: _SearchPlan,
+    pop_by_id: dict[str, Vertex],
+) -> list[tuple[float, str]]:
+    """Each free candidate's total aggregation-to-core haul once it joins the cores.
+
+    Infeasible additions (a candidate whose promotion strands demand) are dropped, so
+    every returned pair is a buildable grown set ranked by how short it leaves the haul.
+    """
+    totals: list[tuple[float, str]] = []
+    for candidate_id in free:
+        candidate_cores = tuple(sorted((*core_ids, candidate_id)))
+        evaluation = evaluate_cores(candidate_cores, inputs, plan)
+        if evaluation is None:
+            continue
+        _worst, total = aggregation_haul_miles(candidate_cores, evaluation[1], pop_by_id)
+        totals.append((total, candidate_id))
+    return totals
+
+
 def grow_cores_for_coverage(
     base: Design,
     inputs: DesignInputs,
@@ -759,21 +782,15 @@ def grow_cores_for_coverage(
         worst, total = aggregation_haul_miles(core_ids, design.aggregation_ids, pop_by_id)
         if worst <= target_miles:
             break
-        best_id, best_total = None, total - COVERAGE_EPSILON_MILES
-        for candidate_id in free:
-            candidate_cores = tuple(sorted((*core_ids, candidate_id)))
-            evaluation = evaluate_cores(candidate_cores, inputs, plan)
-            if evaluation is None:
-                continue
-            candidate_total = aggregation_haul_miles(candidate_cores, evaluation[1], pop_by_id)[1]
-            if candidate_total < best_total:
-                best_id, best_total = candidate_id, candidate_total
-        if best_id is None:
+        candidates = coverage_candidate_totals(core_ids, free, inputs, plan, pop_by_id)
+        improving = [pair for pair in candidates if pair[0] < total - COVERAGE_EPSILON_MILES]
+        if not improving:
             break
+        best_id = min(improving)[1]
         core_ids = tuple(sorted((*core_ids, best_id)))
         grown = build_design_for_cores(core_ids, inputs, plan)
-        if grown is None:
-            break
+        # The winning candidate already passed evaluate_cores above, so its design builds.
+        assert grown is not None
         design = grown
         free.remove(best_id)
     return design
@@ -869,8 +886,8 @@ def build_search_plan(
     clusters, _sparse, _radius = cluster_access_vertices(
         inputs.access_vertices,
         params.tuning.cluster_min_points,
-        params.tuning.cluster_min_radius_miles,
-        params.tuning.cluster_max_radius_miles,
+        params.tuning.cluster_radius_miles[0],
+        params.tuning.cluster_radius_miles[1],
     )
     core_candidates = sorted(
         eligible_ids - aggregations.never_core_ids(),

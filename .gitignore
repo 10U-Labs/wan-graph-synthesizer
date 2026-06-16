@@ -8,3 +8,4 @@ outputs/
 .venv/
 .serve.pid
 .serve.log
+.ci-venv/
