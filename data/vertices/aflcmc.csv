@@ -1,12 +1,12 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
-"Norfolk, VA",36.8508,-76.2859,Military installation,Shown in map,State: Virginia,Norfolk,VA
-Cannon AFB,34.3828,-103.3222,Military installation,Shown in map,State: New Mexico,Clovis,NM
-Corpus Christi Army Depot,27.6936,-97.2911,Military installation,Shown in map,State: Texas,Corpus Christi,TX
-Hurlburt Field,30.4279,-86.6889,Military installation,Shown in map,State: Florida,Mary Esther,FL
-Joint Base Andrews,38.8108,-76.867,Military installation,Shown in map,State: Maryland,Camp Springs,MD
-Joint Base San Antonio,29.4595,-98.436,Military installation,Shown in map,State: Texas,San Antonio,TX
-Maxwell AFB,32.379,-86.366,Military installation,Shown in map,State: Alabama,Montgomery,AL
-Redstone Arsenal,34.6856,-86.6486,Military installation,Shown in map,State: Alabama,Huntsville,AL
-Robins AFB,32.64,-83.5919,Military installation,Shown in map,State: Georgia,Warner Robins,GA
-Tinker AFB,35.4147,-97.3866,Military installation,Shown in map,State: Oklahoma,Midwest City,OK
-Wright-Patterson AFB,39.8261,-84.0488,Military installation,Shown in map,State: Ohio,Dayton,OH
+name,latitude,longitude,kind,shown_in_map,description,municipality,state,Justified as an aggregation point
+"Norfolk, VA",36.8508,-76.2859,Military installation,Shown in map,State: Virginia,Norfolk,VA,yes
+Cannon AFB,34.3828,-103.3222,Military installation,Shown in map,State: New Mexico,Clovis,NM,yes
+Corpus Christi Army Depot,27.6936,-97.2911,Military installation,Shown in map,State: Texas,Corpus Christi,TX,no
+Hurlburt Field,30.4279,-86.6889,Military installation,Shown in map,State: Florida,Mary Esther,FL,yes
+Joint Base Andrews,38.8108,-76.867,Military installation,Shown in map,State: Maryland,Camp Springs,MD,yes
+Joint Base San Antonio,29.4595,-98.436,Military installation,Shown in map,State: Texas,San Antonio,TX,yes
+Maxwell AFB,32.379,-86.366,Military installation,Shown in map,State: Alabama,Montgomery,AL,yes
+Redstone Arsenal,34.6856,-86.6486,Military installation,Shown in map,State: Alabama,Huntsville,AL,yes
+Robins AFB,32.64,-83.5919,Military installation,Shown in map,State: Georgia,Warner Robins,GA,yes
+Tinker AFB,35.4147,-97.3866,Military installation,Shown in map,State: Oklahoma,Midwest City,OK,yes
+Wright-Patterson AFB,39.8261,-84.0488,Military installation,Shown in map,State: Ohio,Dayton,OH,yes

@@ -1,43 +1,43 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
+name,latitude,longitude,kind,shown_in_map,description,municipality,state,Justified as an aggregation point
 Hill AFB,41.124,-111.9731,Military installation,Shown in map,"Program: Sentinel
 Location: Hill AFB
-State/Territory: Utah",Layton,UT
+State/Territory: Utah",Layton,UT,yes
 Malmstrom AFB,47.5053,-111.183,Military installation,Shown in map,"Program: Sentinel
 Location: Malmstrom AFB
-State/Territory: Montana",Great Falls,MT
+State/Territory: Montana",Great Falls,MT,yes
 Minot AFB,48.4156,-101.3577,Military installation,Shown in map,"Program: Sentinel
 Location: Minot AFB
-State/Territory: North Dakota",Minot,ND
+State/Territory: North Dakota",Minot,ND,yes
 Vandenberg SFB,34.742,-120.5724,Military installation,Shown in map,"Program: Sentinel
 Location: Vandenberg SFB
-State/Territory: California",Lompoc,CA
+State/Territory: California",Lompoc,CA,yes
 Cape Canaveral SFS,28.4889,-80.5772,Military installation,Shown in map,"Program: Sentinel
 Location: Cape Canaveral SFS
-State/Territory: Florida",Cape Canaveral,FL
+State/Territory: Florida",Cape Canaveral,FL,yes
 F.E. Warren AFB,41.151,-104.861,Military installation,Shown in map,"Program: Sentinel
 Location: F.E. Warren AFB
-State/Territory: Wyoming",Cheyenne,WY
+State/Territory: Wyoming",Cheyenne,WY,yes
 Camp Guernsey,42.269,-104.745,Military installation,Shown in map,"Program: Sentinel
 Location: Camp Guernsey
-State/Territory: Wyoming",Guernsey,WY
+State/Territory: Wyoming",Guernsey,WY,no
 Camp Navajo,35.222,-111.842,Military installation,Shown in map,"Program: Sentinel
 Location: Camp Navajo
-State/Territory: Arizona",Bellemont,AZ
+State/Territory: Arizona",Bellemont,AZ,no
 JHU APL,39.1684,-76.8991,UARC,Shown in map,"Program: Sentinel
 Location: JHU APL
-State/Territory: Maryland",Laurel,MD
+State/Territory: Maryland",Laurel,MD,no
 Reagan Test Site,8.72,167.731,Military installation,Shown in map,"Program: Sentinel
 Location: Reagan Test Site
-State/Territory: Marshall Islands",Kwajalein,MH
+State/Territory: Marshall Islands",Kwajalein,MH,no
 Barksdale AFB,32.5018,-93.6627,Military installation,Shown in map,"Program: Sentinel
 Location: Barksdale AFB
-State/Territory: Louisiana",Bossier City,LA
+State/Territory: Louisiana",Bossier City,LA,yes
 Hanscom AFB,42.4699,-71.289,Military installation,Shown in map,"Program: Sentinel
 Location: Hanscom AFB
-State/Territory: Massachusetts",Bedford,MA
+State/Territory: Massachusetts",Bedford,MA,yes
 "Washington, DC",38.9072,-77.0369,Corporate office,Shown in map,"Program: Sentinel
 Location: Washington, DC
-State/Territory: District of Columbia",Washington,DC
+State/Territory: District of Columbia",Washington,DC,no
 Utah Test and Training Range (UTTR),41.0,-113.0,Military installation,Shown in map,"Program: Sentinel
 Location: Utah Test and Training Range (UTTR)
-State/Territory: Utah",Tooele,UT
+State/Territory: Utah",Tooele,UT,no
