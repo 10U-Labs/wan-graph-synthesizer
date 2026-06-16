@@ -156,17 +156,18 @@ def aggregation_core_paths(
 def select_core_backbone_pairs(
     core_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
-    degree_cap: int | None = None,
+    min_degree: int = 3,
 ) -> list[tuple[str, str]] | None:
     """Choose which core pairs get a logical backbone link.
 
-    Without a cap this is the full mesh -- every pair. With ``degree_cap`` set, the
-    result is a minimum-mileage subgraph of the mesh in which no core has more than
-    ``degree_cap`` backbone neighbors while staying 2-edge-connected, so the cores
-    remain mutually reachable after any single backbone link fails. The longest
-    links are dropped first -- but only when an endpoint is over the cap and the
-    backbone survives the removal. Returns ``None`` if some core pair is unreachable
-    over the carrier graph (the cores do not full-mesh).
+    The result is a minimum-mileage subgraph of the full mesh in which every core
+    keeps at least ``min_degree`` backbone neighbors (clamped to ``len(core_ids) -
+    1`` when there are too few cores to reach it) while staying 2-edge-connected,
+    so the cores remain mutually reachable after any single backbone link fails.
+    The longest links are dropped first -- but only when both endpoints stay at or
+    above the floor and the backbone survives the removal -- so the result need not
+    be a full mesh. Returns ``None`` if some core pair is unreachable over the
+    carrier graph (the cores do not full-mesh).
     """
     ids = set(core_ids)
     weight: dict[tuple[str, str], float] = {}
@@ -176,16 +177,15 @@ def select_core_backbone_pairs(
             return None
         weight[edge_key(left, right)] = distance
     selected = set(weight)
-    if degree_cap is None:
-        return sorted(selected)
+    floor = min(min_degree, len(ids) - 1)
 
     def degree(node: str) -> int:
         return sum(1 for pair in selected if node in pair)
 
-    # Each mesh pair is visited once, longest first; drop it only when an endpoint
-    # is over the cap and the backbone survives without it.
+    # Each mesh pair is visited once, longest first; drop it only when both
+    # endpoints stay at or above the floor and the backbone survives without it.
     for pair in sorted(weight, key=lambda item: (-weight[item], item)):
-        if degree(pair[0]) <= degree_cap and degree(pair[1]) <= degree_cap:
+        if degree(pair[0]) - 1 < floor or degree(pair[1]) - 1 < floor:
             continue
         if is_two_edge_connected(ids, selected - {pair}):
             selected.discard(pair)
@@ -196,14 +196,14 @@ def core_mesh_paths(
     all_distances: dict[str, dict[str, float]],
     all_predecessors: dict[str, dict[str, str]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-    degree_cap: int | None = None,
+    min_degree: int = 3,
 ) -> list[PathUse]:
     """Route a shortest path over the selected core-to-core backbone links.
 
-    The backbone is a full mesh unless ``degree_cap`` bounds each core's neighbor
-    count (see :func:`select_core_backbone_pairs`).
+    The backbone is the minimum-mileage subgraph in which every core keeps at
+    least ``min_degree`` neighbors (see :func:`select_core_backbone_pairs`).
     """
-    pairs = select_core_backbone_pairs(core_ids, all_distances, degree_cap)
+    pairs = select_core_backbone_pairs(core_ids, all_distances, min_degree)
     if pairs is None:
         return []
     uses: list[PathUse] = []
@@ -435,9 +435,6 @@ def assign_access(
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     access_by_id = {access.id: access for access in inputs.access_vertices}
     selected: set[str] = set(effective_forced_aggregations(plan))
-    # Prefer a justified installation's own facility as a head wherever it can
-    # dual-home to these cores, so nearby demand reuses it before a PoP head is built.
-    selected |= plan.aggregations.installation_facilities & feasible_ids
     homes: dict[str, list[str]] = {}
 
     # Pass 1: stand up each cluster's local aggregation heads. This places the
@@ -488,12 +485,12 @@ def routed_path_uses(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
     selected: set[str],
-    core_backbone_degree_cap: int | None = None,
+    core_backbone_min_degree: int = 3,
 ) -> list[PathUse]:
     """Reconstruct the core-mesh and aggregation-to-core paths for a design."""
     path_uses = core_mesh_paths(
         core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges,
-        core_backbone_degree_cap,
+        core_backbone_min_degree,
     )
     for aggregation_id in sorted(selected):
         _cost, uses = aggregation_core_paths(
@@ -516,7 +513,7 @@ def build_design_for_cores(
     if evaluation is None:
         return None
     access_edges, selected = evaluation
-    path_uses = routed_path_uses(core_ids, inputs, selected, plan.core_backbone_degree_cap)
+    path_uses = routed_path_uses(core_ids, inputs, selected, plan.core_backbone_min_degree)
     draft = _DesignDraft(access_edges, selected, path_uses)
     return finalize_design(core_ids, inputs, draft)
 
@@ -566,17 +563,14 @@ def validate_pop_graph(
 
 @dataclass(frozen=True)
 class _AggregationPlan:
-    """The aggregations a design must seat or prefer.
+    """The aggregations a design must seat.
 
-    ``operator_forced`` are the operator's pinned aggregations, always seated.
-    ``installation_facilities`` are the co-located twins of justified installations;
-    each is preferred as the aggregation head for nearby demand wherever it can
-    dual-home to the chosen cores, so a fresh PoP head is built only where no
-    justified installation is near.
+    ``operator_forced`` are the operator's pinned aggregations, always seated. A
+    forced installation's co-located twin is one of these, so installations enter
+    the aggregation tier only by operator force and never as cores.
     """
 
     operator_forced: frozenset[str] = frozenset()
-    installation_facilities: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -596,7 +590,7 @@ class _SearchPlan:
     clusters: list[list[str]] = field(default_factory=list)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
     required_cores: frozenset[str] = field(default_factory=frozenset)
-    core_backbone_degree_cap: int | None = None
+    core_backbone_min_degree: int = 3
 
 def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
@@ -840,9 +834,9 @@ def build_search_plan(
     """Compute vertex strengths, access-vertex clusters, and core candidates.
 
     Required cores are the operator-forced cores. Operator-pinned aggregations are
-    excluded from the free core candidates; every other eligible PoP -- carrier
-    backbone and justified-installation facility alike -- is a candidate, ranked
-    nationally by strength.
+    excluded from the free core candidates; since a forced installation's twin is an
+    operator-pinned aggregation, installations are aggregation-only and never core
+    candidates. Every other eligible PoP is a candidate, ranked nationally by strength.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
@@ -863,7 +857,7 @@ def build_search_plan(
     return _SearchPlan(
         core_candidates, aggregations, strength_by_id, clusters=clusters,
         required_cores=frozenset(forced_core_ids & eligible_ids),
-        core_backbone_degree_cap=params.tuning.core_backbone_degree_cap,
+        core_backbone_min_degree=params.tuning.core_backbone_min_degree,
     )
 
 def optimize_three_tier_design(
@@ -885,7 +879,7 @@ def optimize_three_tier_design(
 
     context = graph_context(vertices, physical_edges)
     operator_forced = overrides.forced_aggregation_ids
-    aggregations = _AggregationPlan(operator_forced, overrides.installation_facility_ids)
+    aggregations = _AggregationPlan(operator_forced)
     eligible_ids = compute_eligible_ids(
         context.carrier_pops, roles, context.adjacency, params.allow_roadm_aggregation
     )

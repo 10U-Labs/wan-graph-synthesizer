@@ -124,7 +124,7 @@ class Tuning:
     cluster_min_points: int = 2  # access vertices needed to seed a new aggregation
     cluster_radius_miles: tuple[float, float] = (50.0, 250.0)  # (floor, ceiling) on derived radius
     compass_octants: int = 8  # compass sectors used to score a core's link spread
-    core_backbone_degree_cap: int = 3  # max core-to-core backbone links per core
+    core_backbone_min_degree: int = 3  # min core-to-core backbone links per core
     core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one
     enum_memory_fraction: float = 0.6  # share of RAM the core enumeration may use
     core_set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
@@ -150,15 +150,13 @@ class RoleOverrides:
     vertex (whose id is what lands in ``forced_aggregation_ids``). ``excluded_ids``
     are barred from being a core, an aggregation, or an access home.
 
-    ``installation_facility_ids`` are the co-located twins synthesized for justified
-    installations; the search prefers each as the aggregation head for its nearby
-    demand and ranks it as a core candidate by strength like any other PoP.
+    A forced installation is realized as a co-located carrier twin before pins are
+    resolved, so its force-pin lands in ``forced_aggregation_ids`` like any other.
     """
 
     forced_core_ids: frozenset[str] = frozenset()
     forced_aggregation_ids: frozenset[str] = frozenset()
     excluded_ids: frozenset[str] = frozenset()
-    installation_facility_ids: frozenset[str] = frozenset()
 
 @dataclass(frozen=True)
 class DesignInputs:
@@ -186,7 +184,9 @@ class ValidationReport(TypedDict):
     aggregations_missing_core_redundancy: list[dict[str, str]]
     cores_full_mesh: bool
     core_pairs_disconnected: list[dict[str, str]]
-    core_backbone_max_degree: int
+    core_backbone_min_degree: int
+    cores_connect_to_three_others: bool
+    core_backbone_degree_deficient: list[dict[str, object]]
     core_backbone_two_edge_connected: bool
 
 @dataclass(frozen=True)

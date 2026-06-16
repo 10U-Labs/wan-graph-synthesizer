@@ -67,9 +67,9 @@ def test_cores_form_full_mesh(design: dict[str, Any]) -> None:
     assert design["validation"]["cores_full_mesh"] is True
 
 
-def test_core_backbone_respects_degree_cap(design: dict[str, Any]) -> None:
-    """Each core links to at most three other cores on the backbone."""
-    assert design["validation"]["core_backbone_max_degree"] <= 3
+def test_cores_connect_to_at_least_three_others(design: dict[str, Any]) -> None:
+    """Every core links to at least three others once there are more than three cores."""
+    assert design["validation"]["cores_connect_to_three_others"] is True
 
 
 def test_access_vertices_are_dual_homed(design: dict[str, Any]) -> None:

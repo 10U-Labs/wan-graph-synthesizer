@@ -36,10 +36,11 @@ def test_run_design_over_justified_installations_is_connected(tmp_path: Path) ->
     assert artifacts.validation["connected"] is True
 
 
-def test_run_design_seats_a_justified_installation_as_aggregation(tmp_path: Path) -> None:
-    """A justified installation's facility twin is seated on the aggregation tier."""
+def test_run_design_seats_a_forced_installation_as_aggregation(tmp_path: Path) -> None:
+    """A forced justified installation's facility twin is seated on the aggregation tier."""
     design = run_design(
-        fixtures.write_justified_solvable_inputs(tmp_path), DesignParams(min_core_count=2), False
+        fixtures.write_justified_solvable_inputs(tmp_path),
+        DesignParams(min_core_count=2, forced_aggregation_names=("A1",)), False,
     ).design
     assert any(agg.startswith("fac_") for agg in design.aggregation_ids)
 

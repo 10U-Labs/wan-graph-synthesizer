@@ -67,9 +67,9 @@ def test_cores_form_full_mesh() -> None:
     assert ARTIFACTS.validation["cores_full_mesh"] is True
 
 
-def test_core_backbone_respects_degree_cap() -> None:
-    """No core links to more than the default of three other cores on the backbone."""
-    assert ARTIFACTS.validation["core_backbone_max_degree"] <= 3
+def test_cores_connect_to_at_least_three_others() -> None:
+    """Every core links to at least three others once there are more than three cores."""
+    assert ARTIFACTS.validation["cores_connect_to_three_others"] is True
 
 
 def test_access_vertices_dual_homed() -> None:
@@ -78,15 +78,22 @@ def test_access_vertices_dual_homed() -> None:
 
 
 def _justified_artifacts(directory: Path) -> DesignArtifacts:
-    """Optimize over the ring whose access nodes are justified installations."""
+    """Optimize over the ring of justified installations with A1 forced as an aggregation."""
     paths = fixtures.write_justified_solvable_inputs(directory)
-    return run_design(paths, DesignParams(min_core_count=2), False)
+    params = DesignParams(min_core_count=2, forced_aggregation_names=("A1",))
+    return run_design(paths, params, False)
 
 
-def test_justified_installation_is_seated_as_an_aggregation(tmp_path: Path) -> None:
-    """A justified installation's facility twin lands on the aggregation tier."""
+def test_forced_installation_is_seated_as_an_aggregation(tmp_path: Path) -> None:
+    """A forced installation's facility twin lands on the aggregation tier."""
     design = _justified_artifacts(tmp_path).design
     assert any(aggregation.startswith("fac_") for aggregation in design.aggregation_ids)
+
+
+def test_installation_facility_is_never_a_core(tmp_path: Path) -> None:
+    """A forced installation's twin is aggregation-only -- it never reaches the core tier."""
+    design = _justified_artifacts(tmp_path).design
+    assert not any(core.startswith("fac_") for core in design.core_ids)
 
 
 def test_justified_design_dual_homes_every_aggregation(tmp_path: Path) -> None:

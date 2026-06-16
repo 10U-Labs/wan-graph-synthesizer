@@ -129,14 +129,13 @@ def apply_role_overrides(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
-    installation_facilities: frozenset[str] = frozenset(),
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
-    """Resolve operator pins (and installation facilities) into the search's overrides.
+    """Resolve operator pins into the search's role overrides.
 
     Operator forced cores stay required and an operator co-location is split into a
-    ``CORE``/``AGGR`` pair. ``installation_facilities`` -- the twins synthesized for
-    justified installations -- are carried through so the search prefers them as
-    aggregation heads and ranks them as core candidates by strength.
+    ``CORE``/``AGGR`` pair. A forced installation has already been realized as a
+    co-located carrier twin, so its force-pin resolves onto that twin here and lands
+    in the forced aggregations like any other operator pin.
     """
     vertices, physical_edges, forced_core, operator_forced, excluded = _resolve_operator_pins(
         vertices, physical_edges, params
@@ -145,6 +144,5 @@ def apply_role_overrides(
         forced_core_ids=frozenset(forced_core),
         forced_aggregation_ids=frozenset(operator_forced),
         excluded_ids=frozenset(excluded),
-        installation_facility_ids=installation_facilities,
     )
     return vertices, physical_edges, overrides
