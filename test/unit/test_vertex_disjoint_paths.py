@@ -160,3 +160,55 @@ def test_prefers_cheaper_pair_of_cores() -> None:
     )
     _distance, paths = vertex_disjoint_paths_to_cores(adjacency, "S", ("C1", "C2", "C3"))
     assert {path[-1] for path in paths} == {"C1", "C2"}
+
+
+# Default routing prefers the cheap C1+C2 pair; forcing the far C3 must override it.
+FORCED_CORE_GRAPH = adjacency_from_edges(
+    [
+        ("S", "A", 1.0),
+        ("S", "B", 1.0),
+        ("A", "C1", 1.0),
+        ("B", "C2", 1.0),
+        ("A", "C3", 10.0),
+    ]
+)
+
+
+def test_required_core_is_one_of_the_path_endpoints() -> None:
+    """A required core is forced to terminate one of the disjoint paths."""
+    _distance, paths = vertex_disjoint_paths_to_cores(
+        FORCED_CORE_GRAPH, "S", ("C1", "C2", "C3"), 2, frozenset({"C3"})
+    )
+    assert "C3" in {path[-1] for path in paths}
+
+
+def test_required_core_still_returns_two_distinct_cores() -> None:
+    """Forcing one core still yields two vertex-disjoint paths to two distinct cores."""
+    _distance, paths = vertex_disjoint_paths_to_cores(
+        FORCED_CORE_GRAPH, "S", ("C1", "C2", "C3"), 2, frozenset({"C3"})
+    )
+    assert {path[-1] for path in paths} == {"C2", "C3"}
+
+
+def test_two_required_cores_behind_one_cut_is_infeasible() -> None:
+    """Two required cores that share a single exit cannot both anchor disjoint paths.
+
+    C2 and C3 both sit behind B (C3 hangs off C2), so a path to each would reuse B
+    -- they cannot be vertex-disjoint, even though the graph has two disjoint paths
+    to other cores. Forcing both is infeasible.
+    """
+    adjacency = adjacency_from_edges(
+        [("S", "A", 1.0), ("S", "B", 1.0), ("A", "C1", 1.0), ("B", "C2", 1.0), ("C2", "C3", 1.0)]
+    )
+    _distance, paths = vertex_disjoint_paths_to_cores(
+        adjacency, "S", ("C1", "C2", "C3"), 2, frozenset({"C2", "C3"})
+    )
+    assert not paths
+
+
+def test_required_core_absent_from_core_set_is_infeasible() -> None:
+    """A required core that is not among the candidate cores is infeasible."""
+    _distance, paths = vertex_disjoint_paths_to_cores(
+        DIAMOND, "S", ("C1", "C2"), 2, frozenset({"C9"})
+    )
+    assert not paths

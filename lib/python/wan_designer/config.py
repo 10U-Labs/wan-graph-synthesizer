@@ -15,7 +15,13 @@ from typing import Any
 
 import yaml
 
-from wan_designer.model import DesignPaths, DesignParams, Tuning
+from wan_designer.model import (
+    FORCED_CONNECTION_TYPES,
+    DesignPaths,
+    DesignParams,
+    ForcedConnection,
+    Tuning,
+)
 
 DEFAULT_CONFIG_PATH = Path("etc/joint.yml")
 DEFAULT_VERTICES = {
@@ -42,6 +48,7 @@ class AppConfig:
     params: DesignParams
     resilience_augmentation: bool
     label: str = ""
+    forced_connections: tuple[ForcedConnection, ...] = ()
 
 
 def _mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
@@ -58,6 +65,29 @@ def _str_list(data: dict[str, Any], key: str, default: list[str]) -> tuple[str, 
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError(f"config key '{key}' must be a list of strings")
     return tuple(value)
+
+
+def _forced_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
+    """Parse the operator-pinned ``forced_connections`` edges, rejecting bad shapes.
+
+    Each entry is a mapping with string ``source``/``target``/``type`` keys, the
+    ``type`` one of :data:`FORCED_CONNECTION_TYPES`. An absent key defaults to an
+    empty list (no pinned edges).
+    """
+    value = design.get("forced_connections", [])
+    if not isinstance(value, list):
+        raise ValueError("config key 'forced_connections' must be a list")
+    connections: list[ForcedConnection] = []
+    for item in value:
+        if not isinstance(item, dict) or not all(
+            isinstance(item.get(key), str) for key in ("source", "target", "type")
+        ):
+            raise ValueError("each forced_connection must map source, target, and type to strings")
+        if item["type"] not in FORCED_CONNECTION_TYPES:
+            allowed = sorted(FORCED_CONNECTION_TYPES)
+            raise ValueError(f"forced_connection type must be one of {allowed}")
+        connections.append(ForcedConnection(item["type"], item["source"], item["target"]))
+    return tuple(connections)
 
 
 def _optional_path(value: Any) -> Path | None:
@@ -132,6 +162,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
         params=_params(design, _mapping(data, "tuning")),
         resilience_augmentation=design.get("resilience_augmentation", True),
         label=str(data.get("label", "")),
+        forced_connections=_forced_connections(design),
     )
 
 

@@ -14,6 +14,7 @@ from wan_designer.model import (
     DesignInputs,
     DesignMetrics,
     DesignParams,
+    ForcedLinks,
     Vertex,
     PathUse,
     PhysicalEdge,
@@ -21,6 +22,11 @@ from wan_designer.model import (
     Tuning,
     edge_key,
     haversine_miles,
+)
+from wan_designer.backbone import (
+    BackboneConstraints,
+    core_mesh_paths,
+    select_core_backbone_pairs,
 )
 from wan_designer.optimize import (
     aggregation_core_paths,
@@ -35,10 +41,8 @@ from wan_designer.optimize import (
     complete_homes,
     core_combination_count,
     core_combinations,
-    core_mesh_paths,
     cores_mesh,
     cores_reachable_avoiding,
-    select_core_backbone_pairs,
     dual_homes_to_pair,
     effective_forced_aggregations,
     enumeration_limit,
@@ -108,7 +112,8 @@ def _plan(
 def _required_plan(candidates: list[str], required: set[str]) -> _SearchPlan:
     """Build a search plan with required cores, for core-combination tests."""
     return _SearchPlan(
-        candidates, _AggregationPlan(), {}, required_cores=frozenset(required)
+        candidates, _AggregationPlan(), {},
+        forced_links=ForcedLinks(required_cores=frozenset(required)),
     )
 
 
@@ -282,6 +287,18 @@ def test_core_backbone_thins_below_the_full_mesh() -> None:
     assert len(_floored_backbone()) < 10  # fewer than C(5, 2)
 
 
+def test_core_backbone_retains_a_required_pair() -> None:
+    """An operator-forced core-core pair is pinned in even when it would be dropped.
+
+    ``(c1, c5)`` is the longest link and is dropped by the unconstrained backbone
+    (see :func:`test_core_backbone_drops_the_longest_link`); forcing it keeps it.
+    """
+    pairs = select_core_backbone_pairs(
+        _FIVE_CORES, _FIVE_CORE_DISTANCES, 3, frozenset({edge_key("c1", "c5")})
+    )
+    assert pairs is not None and edge_key("c1", "c5") in pairs
+
+
 def test_core_backbone_is_full_mesh_for_four_cores() -> None:
     """Four cores cannot drop below a full mesh while each keeps three links."""
     four = ("c1", "c2", "c3", "c4")
@@ -315,7 +332,9 @@ def _five_core_mesh_paths(min_degree: int) -> list[PathUse]:
     """Route the five-core backbone over a unit-weight full-mesh graph."""
     adjacency = unit_adjacency(_UNIT_MESH_EDGES)
     distances, predecessors = all_pairs_shortest([pop(c) for c in _FIVE_CORES], adjacency)
-    return core_mesh_paths(_FIVE_CORES, distances, predecessors, _UNIT_MESH_EDGES, min_degree)
+    return core_mesh_paths(
+        _FIVE_CORES, distances, predecessors, _UNIT_MESH_EDGES, BackboneConstraints(min_degree)
+    )
 
 
 def test_core_mesh_paths_keep_every_core_at_the_floor() -> None:
@@ -719,7 +738,8 @@ def test_build_search_plan_excludes_forced_aggregations_from_cores() -> None:
     edges = physical({("fac", "p"): 1.0, ("p", "c"): 1.0, ("fac", "c"): 1.0})
     inputs = _inputs_from_edges(["fac", "p", "c"], edges, {"fac", "p", "c"})
     plan = build_search_plan(
-        inputs, {"fac", "p", "c"}, _AggregationPlan(frozenset({"fac"})), frozenset(), DesignParams()
+        inputs, {"fac", "p", "c"}, _AggregationPlan(frozenset({"fac"})), RoleOverrides(),
+        DesignParams(),
     )
     assert "fac" not in plan.core_candidates
 

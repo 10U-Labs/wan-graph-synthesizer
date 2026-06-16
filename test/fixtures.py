@@ -19,6 +19,7 @@ from wan_designer.model import (
     DesignArtifacts,
     DesignParams,
     DesignPaths,
+    ForcedConnection,
     Vertex,
     VertexInfo,
     PhysicalEdge,
@@ -260,7 +261,11 @@ def ring_inputs_with_roadm(roadm_id: str) -> RingInputs:
     return vertices, edges, roles
 
 
-def _forced_artifacts(params: DesignParams, inputs: RingInputs | None = None) -> DesignArtifacts:
+def _forced_artifacts(
+    params: DesignParams,
+    inputs: RingInputs | None = None,
+    forced_connections: tuple[ForcedConnection, ...] = (),
+) -> DesignArtifacts:
     """Run the ring optimizer with operator pins resolved through the CLI's path.
 
     Resolving via ``apply_role_overrides`` -- the same step ``run_design`` takes --
@@ -268,7 +273,7 @@ def _forced_artifacts(params: DesignParams, inputs: RingInputs | None = None) ->
     requests rather than emergent selections.
     """
     vertices, edges, roles = inputs if inputs is not None else _ring_inputs()
-    vertices, edges, overrides = apply_role_overrides(vertices, edges, params)
+    vertices, edges, overrides = apply_role_overrides(vertices, edges, params, forced_connections)
     design = optimize_three_tier_design(vertices, edges, roles, params, overrides)
     vertices, edges = materialize_selected_colocation_twins(vertices, edges, design)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
@@ -294,6 +299,13 @@ def forced_roadm_aggregation_artifacts(name: str) -> DesignArtifacts:
 def forced_core_artifacts(name: str) -> DesignArtifacts:
     """Ring artifacts with one PoP forced onto the core tier."""
     return _forced_artifacts(DesignParams(min_core_count=2, forced_core_names=(name,)))
+
+
+def forced_connection_artifacts(
+    params: DesignParams, forced_connections: tuple[ForcedConnection, ...]
+) -> DesignArtifacts:
+    """Ring artifacts for operator pins plus forced connections, resolved via overrides."""
+    return _forced_artifacts(params, forced_connections=forced_connections)
 
 
 def write_justified_solvable_inputs(directory: Path) -> DesignPaths:

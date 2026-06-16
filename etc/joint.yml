@@ -19,6 +19,7 @@ design:
     - Ashburn, VA
     - Atlanta, GA
     - Cheyenne, WY
+    - Chicago, IL
     - Dallas, TX
     - Denver, CO
     - Great Falls, MT
@@ -34,6 +35,19 @@ design:
     - Salt Lake City, UT
     - San Bernardino, CA
     - Tallahassee, FL
+  # Operator-forced edges pinned into the design, keyed by source, target, and the
+  # edge type (core-core, aggregation-core, or access-aggregation). Each endpoint
+  # must already be pinned into the tier its edge type requires.
+  forced_connections:
+    - source: Dallas, TX
+      target: Denver, CO
+      type: core-core
+    - source: Phoenix, AZ
+      target: Salt Lake City, UT
+      type: aggregation-core
+    - source: Minot, ND
+      target: Salt Lake City, UT
+      type: aggregation-core
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
   forced_cores:
