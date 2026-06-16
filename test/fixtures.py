@@ -7,6 +7,7 @@ duplicating data (which copy-paste detection would otherwise flag).
 from __future__ import annotations
 
 import csv
+import dataclasses
 import io
 from collections.abc import Iterable, Sequence
 from pathlib import Path
@@ -14,6 +15,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from wan_designer.model import (
+    KIND_ROADM,
     DesignArtifacts,
     DesignParams,
     DesignPaths,
@@ -212,14 +214,28 @@ def ring_artifacts() -> DesignArtifacts:
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 
 
-def _forced_artifacts(params: DesignParams) -> DesignArtifacts:
+RingInputs = tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]
+
+
+def ring_inputs_with_roadm(roadm_id: str) -> RingInputs:
+    """Ring inputs with one PoP recast as a transit-only ROADM (carrier role ``roadm``)."""
+    vertices, edges, _roles = _ring_inputs()
+    vertices = [
+        dataclasses.replace(vertex, kind=KIND_ROADM) if vertex.id == roadm_id else vertex
+        for vertex in vertices
+    ]
+    roles = {vertex.id: carrier_role(vertex) for vertex in vertices if is_carrier_pop(vertex)}
+    return vertices, edges, roles
+
+
+def _forced_artifacts(params: DesignParams, inputs: RingInputs | None = None) -> DesignArtifacts:
     """Run the ring optimizer with operator pins resolved through the CLI's path.
 
     Resolving via ``apply_role_overrides`` -- the same step ``run_design`` takes --
     means the artifacts reflect genuinely honored force-core/force-aggregation
     requests rather than emergent selections.
     """
-    vertices, edges, roles = _ring_inputs()
+    vertices, edges, roles = inputs if inputs is not None else _ring_inputs()
     vertices, edges, overrides = apply_role_overrides(vertices, edges, params)
     design = optimize_three_tier_design(vertices, edges, roles, params, overrides)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
@@ -228,6 +244,18 @@ def _forced_artifacts(params: DesignParams) -> DesignArtifacts:
 def forced_aggregation_artifacts(name: str) -> DesignArtifacts:
     """Ring artifacts with one PoP forced onto the aggregation tier."""
     return _forced_artifacts(DesignParams(min_core_count=2, forced_aggregation_names=(name,)))
+
+
+def forced_roadm_aggregation_artifacts(name: str) -> DesignArtifacts:
+    """Ring artifacts forcing a transit-only ROADM onto the aggregation tier.
+
+    ``allow_roadm_aggregation`` stays false, so a ROADM is otherwise ineligible; the
+    pin must override that gate -- the mechanism the Joint Great Falls/Minot pins use.
+    """
+    params = DesignParams(
+        min_core_count=2, allow_roadm_aggregation=False, forced_aggregation_names=(name,)
+    )
+    return _forced_artifacts(params, ring_inputs_with_roadm(name))
 
 
 def forced_core_artifacts(name: str) -> DesignArtifacts:

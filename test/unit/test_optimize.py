@@ -39,6 +39,7 @@ from wan_designer.optimize import (
     enumeration_limit,
     feasible_aggregation_ids,
     nearest_pop_id,
+    prune_unused_aggregations,
     vertex_straightness,
     optimize_three_tier_design,
     search_best_design,
@@ -706,3 +707,44 @@ def test_assign_access_seeds_the_resolved_first_aggregation() -> None:
     spec = StateAggregationSpec("CO", "core_city", "second_city", "metro2")
     _edges, selected = assign_access(("c1", "c2"), inputs, _plan([], specs=(spec,))) or ([], set())
     assert {"core_city", "metro2"} <= selected
+
+
+def test_prune_unused_aggregations_drops_a_zero_access_anchor() -> None:
+    """A seated aggregation that no access vertex homes to is dropped from the tier."""
+    edges = [AccessEdge("a1", "used", 10.0)]
+    assert prune_unused_aggregations({"used", "unused"}, edges, frozenset()) == {"used"}
+
+
+def test_prune_unused_aggregations_keeps_an_operator_pin_without_access() -> None:
+    """An operator-forced pin is retained even when no access vertex homes to it."""
+    edges = [AccessEdge("a1", "used", 10.0)]
+    result = prune_unused_aggregations({"used", "pinned"}, edges, frozenset({"pinned"}))
+    assert result == {"used", "pinned"}
+
+
+def test_assign_access_drops_a_second_metro_anchor_demand_never_reaches() -> None:
+    """A population second-metro anchor far from all demand is not left in the tier.
+
+    Models Utah: the core city (SLC) and a near cluster head (Ogden) carry every
+    access node, while the higher-population second metro (Provo) sits to the south
+    with nothing homed to it -- so it is dropped rather than built for no demand.
+    """
+    edges = physical(
+        {
+            ("slc", "c1"): 1.0, ("slc", "c2"): 1.0,
+            ("ogden", "c1"): 1.0, ("ogden", "c2"): 1.0,
+            ("provo", "c1"): 1.0, ("provo", "c2"): 1.0,
+            ("c1", "c2"): 1.0,
+        }
+    )
+    coords = {
+        "slc": (40.76, -111.89), "ogden": (41.22, -111.97), "provo": (40.23, -111.66),
+        "c1": (39.0, -111.0), "c2": (42.0, -112.5),
+    }
+    ids = ["slc", "ogden", "provo", "c1", "c2"]
+    access_nodes = [access("acc1", 41.20, -111.95), access("acc2", 41.24, -111.99)]
+    inputs = _inputs_from_edges(ids, edges, {"slc", "ogden", "provo"}, access_nodes, coords)
+    spec = StateAggregationSpec("UT", "slc", None, "provo")
+    plan = _plan([], specs=(spec,), clusters=[["acc1", "acc2"]])
+    _edges, selected = assign_access(("c1", "c2"), inputs, plan) or ([], set())
+    assert selected == {"slc", "ogden"}

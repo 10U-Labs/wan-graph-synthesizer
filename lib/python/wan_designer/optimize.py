@@ -407,6 +407,25 @@ def forced_can_dual_home(
         for forced_id in effective_forced_aggregations(core_ids, plan)
     )
 
+def prune_unused_aggregations(
+    selected: set[str], access_edges: list[AccessEdge], pinned: frozenset[str]
+) -> set[str]:
+    """Drop seated aggregations no access vertex homes to, keeping operator pins.
+
+    A population anchor (a state's metro slot) can be seated where demand never
+    reaches -- e.g. a second-metro city that outranks a smaller metro on paper while
+    every access node clusters near the smaller one -- leaving an aggregation that
+    aggregates nothing. Such facilities are dropped so the tier stays demand-driven.
+    Operator-forced pins are intentional regardless of demand and are always kept.
+    """
+    homed = {edge.target for edge in access_edges}
+    return {
+        aggregation_id
+        for aggregation_id in selected
+        if aggregation_id in homed or aggregation_id in pinned
+    }
+
+
 def assign_access(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
@@ -453,6 +472,7 @@ def assign_access(
         for access_id, aggregations in homes.items()
         for aggregation_id in aggregations
     ]
+    selected = prune_unused_aggregations(selected, access_edges, plan.aggregations.operator_forced)
     return access_edges, selected
 
 def evaluate_cores(
