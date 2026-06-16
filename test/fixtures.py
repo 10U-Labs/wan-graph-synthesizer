@@ -72,6 +72,25 @@ def write_vertex_files(
         files.append((tenant, path))
     return tuple(sorted(files))
 
+JUSTIFIED_COLUMN = "Justified as an aggregation point"
+
+
+def write_justified_vertices(directory: Path) -> tuple[str, Path]:
+    """Write a tenant CSV exercising the ``Justified as an aggregation point`` column.
+
+    One justified installation (``yes``), one not (``no``), and a carrier PoP whose
+    column value is ignored because it is not an access vertex. Returns the
+    ``(tenant, path)`` pair ready to hand to :func:`load_vertices`.
+    """
+    rows = [
+        ("Luke AFB", 33.5, -112.4, "Military installation", "Shown in map", "", "yes"),
+        ("Crystal City, VA", 38.9, -77.1, "Military installation", "Shown in map", "", "no"),
+        ("Denver, CO", 39.7, -104.99, "PoP", "Not shown in map", "", "yes"),
+    ]
+    path = directory / "justified.csv"
+    _write_csv(path, [*VERTEX_HEADER, JUSTIFIED_COLUMN], rows)
+    return ("F-35", path)
+
 RING_COORDS = {
     "P0": (40.0, -100.0),
     "P1": (41.0, -100.0),

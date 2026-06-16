@@ -24,6 +24,7 @@ from wan_designer.model import (
     edge_key,
     haversine_miles,
     is_carrier_pop,
+    is_justified_aggregation,
     slugify,
 )
 from wan_designer.parsing import (
@@ -74,6 +75,7 @@ __all__ = [
     "edge_key",
     "haversine_miles",
     "is_carrier_pop",
+    "is_justified_aggregation",
     "load_carrier_edges",
     "load_config",
     "load_vertices",

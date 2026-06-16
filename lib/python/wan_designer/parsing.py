@@ -53,6 +53,10 @@ def load_vertices(vertex_files: list[tuple[str, Path]]) -> list[Vertex]:
                             description=row.get("description", "").strip(),
                             municipality=row.get("municipality", "").strip(),
                             state=row.get("state", "").strip(),
+                            justified_aggregation=(
+                                row.get("Justified as an aggregation point", "").strip().lower()
+                                == "yes"
+                            ),
                         ),
                         shown_in_map=row.get("shown_in_map", "").strip() != "Not shown in map",
                     )

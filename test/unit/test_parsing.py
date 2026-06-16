@@ -7,12 +7,40 @@ from pathlib import Path
 import pytest
 
 import fixtures
-from wan_designer import Vertex, is_carrier_pop
+from wan_designer import Vertex, is_carrier_pop, is_justified_aggregation
 from wan_designer.parsing import build_adjacency, load_carrier_edges, load_vertices
 
 def carrier_names(vertices: list[Vertex]) -> set[str]:
     """Names of the carrier PoP vertices."""
     return {vertex.name for vertex in vertices if is_carrier_pop(vertex)}
+
+
+def _justified_by_name(tmp_path: Path, name: str) -> Vertex:
+    """Load the justified-column fixture and return the vertex with ``name``."""
+    tenant, path = fixtures.write_justified_vertices(tmp_path)
+    return next(vertex for vertex in load_vertices([(tenant, path)]) if vertex.name == name)
+
+
+def test_load_vertices_reads_justified_yes(tmp_path: Path) -> None:
+    """A justified installation row sets the justified_aggregation flag."""
+    assert _justified_by_name(tmp_path, "Luke AFB").info.justified_aggregation is True
+
+
+def test_is_justified_aggregation_false_for_no(tmp_path: Path) -> None:
+    """An installation marked 'no' is not a justified aggregation."""
+    assert is_justified_aggregation(_justified_by_name(tmp_path, "Crystal City, VA")) is False
+
+
+def test_is_justified_aggregation_ignores_carrier_pops(tmp_path: Path) -> None:
+    """A carrier PoP is never a justified aggregation, even with the column set."""
+    assert is_justified_aggregation(_justified_by_name(tmp_path, "Denver, CO")) is False
+
+
+def test_load_vertices_defaults_missing_justified_column(tmp_path: Path) -> None:
+    """Files without the justified column default installations to not-justified."""
+    vertex_files = fixtures.write_sample_inputs(tmp_path)[0]
+    buckley = next(v for v in load_vertices(list(vertex_files)) if v.name == "Buckley")
+    assert is_justified_aggregation(buckley) is False
 
 
 def test_load_vertices_reads_every_file(tmp_path: Path) -> None:
