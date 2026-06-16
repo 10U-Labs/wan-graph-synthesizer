@@ -47,6 +47,16 @@ def test_honors_the_core_count_minimum() -> None:
     assert len(ARTIFACTS.design.core_ids) >= 2
 
 
+def test_a_core_may_also_serve_as_an_aggregation() -> None:
+    """The search may seat a core's co-located twin so the core also aggregates."""
+    twinned = {
+        agg[len("aggr_"):]
+        for agg in ARTIFACTS.design.aggregation_ids
+        if agg.startswith("aggr_")
+    }
+    assert twinned & set(ARTIFACTS.design.core_ids)
+
+
 def test_degree_one_spur_is_not_an_aggregation() -> None:
     """Degree one spur is not an aggregation."""
     assert "P6" not in ARTIFACTS.design.aggregation_ids

@@ -7,9 +7,9 @@ AWS Secret East Region,39.9612,-82.9988,CSP data center,Shown in map,"Layer: Sec
 Provider: AWS
 Region: Secret East Region
 Location: Columbus, OH",Columbus,OH
-CUI West Region,45.8396,-119.7006,CSP data center,Shown in map,"Region: CUI West Region
+AWS GovCloud West,45.8396,-119.7006,CSP data center,Shown in map,"Region: AWS GovCloud West
 Location: Boardman, OR",Boardman,OR
-CUI East Region,39.9612,-82.9988,CSP data center,Shown in map,"Region: CUI East Region
+AWS GovCloud East,39.9612,-82.9988,CSP data center,Shown in map,"Region: AWS GovCloud East
 Location: Columbus, OH",Columbus,OH
 Top Secret East Region,38.9696,-77.3861,CSP data center,Shown in map,"Region: Top Secret East Region
 Location: Herndon, VA",Herndon,VA

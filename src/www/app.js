@@ -64,32 +64,44 @@ function add(layer) {
   drawn.push(layer);
 }
 
+// Build a vertex's circle marker at the given coordinates, or null for
+// transit/unused carrier PoPs (which are not drawn). Factored out so the
+// primary marker and any antimeridian-wrapped duplicate share one style.
+function vertexMarker(vertex, coords) {
+  const style = styleFor(vertex);
+  if (!style) {
+    return null;
+  }
+  return L.circleMarker(coords, {
+    radius: style.radius,
+    color: style.color,
+    fillColor: style.color,
+    fillOpacity: 0.85,
+    weight: 1,
+  }).bindTooltip(vertexLabel(vertex));
+}
+
 // Draw every tiered vertex; skip transit/unused carrier PoPs. Returns the
 // vertices indexed by id so edges can resolve their endpoints.
 function drawVertices(vertices) {
   const byId = {};
   for (const vertex of vertices) {
     byId[vertex.id] = vertex;
-    const style = styleFor(vertex);
-    if (!style) {
-      continue;
+    const marker = vertexMarker(vertex, vertex.coords);
+    if (marker) {
+      add(marker);
     }
-    add(L.circleMarker(vertex.coords, {
-      radius: style.radius,
-      color: style.color,
-      fillColor: style.color,
-      fillOpacity: 0.85,
-      weight: 1,
-    }).bindTooltip(vertexLabel(vertex)));
   }
   return byId;
 }
 
 // Unwrap the target longitude relative to the source so a link spanning the
 // antimeridian (e.g. a Pacific hop from the US west coast to the Marshall Islands)
-// is drawn the short way west, not the long way east across the globe.
+// is drawn the short way west, not the long way east across the globe. When the
+// target is unwrapped onto an adjacent world copy, `wrappedLon` reports the
+// shifted longitude so the caller can duplicate the target's marker there.
 function shortWayEnds(source, target) {
-  const [sourceLat, sourceLon] = source.coords;
+  const [, sourceLon] = source.coords;
   const [targetLat, targetLon] = target.coords;
   let lon = targetLon;
   if (lon - sourceLon > 180) {
@@ -97,22 +109,46 @@ function shortWayEnds(source, target) {
   } else if (lon - sourceLon < -180) {
     lon += 360;
   }
-  return [source.coords, [targetLat, lon]];
+  return { ends: [source.coords, [targetLat, lon]], wrappedLon: lon === targetLon ? null : lon };
 }
 
 // Draw one set of edges in the given tier style, each with a hover tooltip.
-function drawEdges(edges, byId, style, label) {
+// Records any target unwrapped onto an adjacent world copy in `wrapped` (keyed
+// by id@lon so a vertex touched by many edges is duplicated only once).
+function drawEdges(edges, byId, style, label, wrapped) {
   for (const edge of edges) {
     const source = byId[edge.source_id];
     const target = byId[edge.target_id];
     if (source && target) {
-      add(L.polyline(shortWayEnds(source, target), {
+      const { ends, wrappedLon } = shortWayEnds(source, target);
+      add(L.polyline(ends, {
         color: style.color,
         weight: style.weight,
         opacity: 0.8,
       }).bindTooltip(edgeLabel(label, source, target), { sticky: true }));
+      if (wrappedLon !== null) {
+        wrapped.set(`${target.id}@${wrappedLon}`, {
+          vertex: target,
+          coords: [target.coords[0], wrappedLon],
+        });
+      }
     }
   }
+}
+
+// Duplicate each antimeridian-wrapped endpoint's marker onto the world copy
+// where its link lands, so a trans-Pacific connection is visually complete.
+// Returns the duplicated coordinates so they can be framed by fitBounds.
+function drawWrappedMarkers(wrapped) {
+  const coords = [];
+  for (const entry of wrapped.values()) {
+    const marker = vertexMarker(entry.vertex, entry.coords);
+    if (marker) {
+      add(marker);
+      coords.push(entry.coords);
+    }
+  }
+  return coords;
 }
 
 // Split the routed core/aggregation paths by purpose for distinct styling.
@@ -136,14 +172,16 @@ async function render(mapId) {
   ]);
 
   const byId = drawVertices(vertices);
-  drawEdges(pathsByPurpose(edges.path_uses, "core_mesh"), byId, EDGE_STYLE.backbone, "Backbone");
+  const wrapped = new Map();
+  drawEdges(pathsByPurpose(edges.path_uses, "core_mesh"), byId, EDGE_STYLE.backbone, "Backbone", wrapped);
   drawEdges(
     pathsByPurpose(edges.path_uses, "aggregation_to_core"),
-    byId, EDGE_STYLE.aggregation, "Aggregation link",
+    byId, EDGE_STYLE.aggregation, "Aggregation link", wrapped,
   );
-  drawEdges(edges.access_edges, byId, EDGE_STYLE.access, "Access link");
+  drawEdges(edges.access_edges, byId, EDGE_STYLE.access, "Access link", wrapped);
+  const wrappedCoords = drawWrappedMarkers(wrapped);
 
-  const points = vertices.map((vertex) => vertex.coords);
+  const points = vertices.map((vertex) => vertex.coords).concat(wrappedCoords);
   if (points.length) {
     map.fitBounds(points, { padding: [30, 30] });
   }

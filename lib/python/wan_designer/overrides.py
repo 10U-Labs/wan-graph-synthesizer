@@ -12,6 +12,7 @@ aggregation. It runs before the search and never calls back into it.
 from __future__ import annotations
 
 from wan_designer.model import (
+    Design,
     DesignParams,
     PhysicalEdge,
     RoleOverrides,
@@ -44,10 +45,14 @@ def reject_override_conflicts(
     if clash:
         raise ValueError(f"PoPs cannot be both excluded and forced: {sorted(clash)}")
 
+def twin_vertex_id(core_id: str) -> str:
+    """The id of the co-located ``AGGR`` twin that shares a core's facility."""
+    return f"aggr_{core_id}"
+
 def colocated_twin(core: Vertex) -> Vertex:
     """Build the co-located ``AGGR`` vertex that shares a core's coordinates."""
     return Vertex(
-        id=f"aggr_{core.id}",
+        id=twin_vertex_id(core.id),
         name=f"AGGR {core.name}",
         tenant=core.tenant,
         kind=core.kind,
@@ -123,6 +128,34 @@ def _resolve_operator_pins(
     vertices, physical_edges, twin_by_core = split_colocated(vertices, physical_edges, colocated)
     operator_forced = (forced_aggregation - colocated) | set(twin_by_core.values())
     return vertices, physical_edges, forced_core, operator_forced, excluded
+
+
+def materialize_selected_colocation_twins(
+    vertices: list[Vertex],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    design: Design,
+) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
+    """Stand up the co-located ``AGGR`` twin for every core the search dual-roled.
+
+    The optimizer may seat a core's twin as an aggregation without an operator pin;
+    that twin's id rides in ``design.aggregation_ids`` but its vertex and fiber are
+    not yet in the graph. Materialize each such twin -- skipping any already present
+    (an operator co-location or a ``fac_`` installation twin) -- so validation, the
+    physical-resilience augmenter, and the payload all see a real aggregation vertex
+    with the cross-connect and duplicated handoffs that back its redundancy.
+    """
+    existing = {vertex.id for vertex in vertices}
+    vertex_by_id = {vertex.id: vertex for vertex in vertices}
+    augmented_vertices = list(vertices)
+    augmented_edges = dict(physical_edges)
+    aggregation_ids = set(design.aggregation_ids)
+    for core_id in design.core_ids:
+        twin_id = twin_vertex_id(core_id)
+        if twin_id in aggregation_ids and twin_id not in existing:
+            augmented_vertices.append(colocated_twin(vertex_by_id[core_id]))
+            augmented_edges.update(colocation_edges(core_id, twin_id, physical_edges))
+            existing.add(twin_id)
+    return augmented_vertices, augmented_edges
 
 
 def apply_role_overrides(

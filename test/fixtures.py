@@ -29,7 +29,7 @@ from wan_designer.model import (
     slugify,
 )
 from wan_designer.optimize import optimize_three_tier_design
-from wan_designer.overrides import apply_role_overrides
+from wan_designer.overrides import apply_role_overrides, materialize_selected_colocation_twins
 from wan_designer.validation import validate_design
 
 from api.app import build_app
@@ -242,6 +242,7 @@ def ring_artifacts() -> DesignArtifacts:
     """Run the optimizer over the in-memory ring and bundle the artifacts."""
     vertices, edges, roles = _ring_inputs()
     design = optimize_three_tier_design(vertices, edges, roles, ring_params())
+    vertices, edges = materialize_selected_colocation_twins(vertices, edges, design)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 
 
@@ -269,6 +270,7 @@ def _forced_artifacts(params: DesignParams, inputs: RingInputs | None = None) ->
     vertices, edges, roles = inputs if inputs is not None else _ring_inputs()
     vertices, edges, overrides = apply_role_overrides(vertices, edges, params)
     design = optimize_three_tier_design(vertices, edges, roles, params, overrides)
+    vertices, edges = materialize_selected_colocation_twins(vertices, edges, design)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 
 
