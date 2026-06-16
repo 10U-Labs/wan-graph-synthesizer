@@ -236,8 +236,6 @@ class DesignPaths:
 
     vertex_files: tuple[tuple[str, Path], ...]
     edge_path: Path
-    mapbook_pdf: Path | None
-    output_dir: Path
     regional_edge_paths: tuple[Path, ...] = ()
 
 @dataclass(frozen=True)
@@ -246,7 +244,6 @@ class SourceFiles:
 
     vertex_files: tuple[Path, ...]
     edge_path: Path
-    mapbook_pdf: Path | None
 
 @dataclass(frozen=True)
 class DesignArtifacts:

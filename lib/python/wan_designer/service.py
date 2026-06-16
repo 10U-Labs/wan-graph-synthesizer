@@ -99,7 +99,6 @@ def design_for_wan_map(
     sources = SourceFiles(
         tuple(path for _tenant, path in config.paths.vertex_files),
         config.paths.edge_path,
-        config.paths.mapbook_pdf,
     )
     payload = design_payload(sources, artifacts)
     cache[wan_map_id] = payload

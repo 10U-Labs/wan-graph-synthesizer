@@ -15,7 +15,7 @@ from wan_designer.service import available_wan_maps, design_for_wan_map, run_des
 def test_run_design_without_augmentation(tmp_path: Path) -> None:
     """Run design without augmentation."""
     vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
-    paths = DesignPaths(vertex_files, edges, None, tmp_path)
+    paths = DesignPaths(vertex_files, edges)
     artifacts = run_design(paths, fixtures.ring_params(), False)
     assert artifacts.validation["connected"] is True
 
@@ -23,7 +23,7 @@ def test_run_design_without_augmentation(tmp_path: Path) -> None:
 def test_run_design_with_augmentation(tmp_path: Path) -> None:
     """Run design augments physical resilience when requested."""
     vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
-    paths = DesignPaths(vertex_files, edges, None, tmp_path)
+    paths = DesignPaths(vertex_files, edges)
     artifacts = run_design(paths, fixtures.ring_params(), True)
     assert artifacts.validation["connected"] is True
 
@@ -56,7 +56,7 @@ def test_run_design_stitches_regional_edges(tmp_path: Path) -> None:
     )
     redges = tmp_path / "redges.csv"
     redges.write_text("source,target\nR1,P0\n", encoding="utf-8")
-    paths = DesignPaths(vertex_files + (("DCN", dcn),), edges, None, tmp_path, (redges,))
+    paths = DesignPaths(vertex_files + (("DCN", dcn),), edges, (redges,))
     artifacts = run_design(paths, fixtures.ring_params(), False)
     assert any(vertex.name == "R1" for vertex in artifacts.vertices)
 
@@ -67,7 +67,7 @@ def test_run_design_rejects_empty_vertices(tmp_path: Path) -> None:
     empty.write_text(
         "name,latitude,longitude,kind,shown_in_map,description\n", encoding="utf-8"
     )
-    paths = DesignPaths((("Lumen", empty),), tmp_path / "e.csv", None, tmp_path)
+    paths = DesignPaths((("Lumen", empty),), tmp_path / "e.csv")
     with pytest.raises(ValueError):
         run_design(paths, fixtures.ring_params(), False)
 

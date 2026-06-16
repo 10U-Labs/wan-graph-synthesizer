@@ -69,8 +69,6 @@ design:
 inputs:
   # Physical Lumen backbone edges between carrier PoPs.
   carrier_edges: data/edges/lumen.csv
-  # Optional source PDF path recorded in the JSON output for provenance.
-  mapbook_pdf: ""
   # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
   regional_edges:
     - data/edges/dcn.csv
@@ -89,7 +87,6 @@ inputs:
     VisionNet: data/vertices/vision_net.csv
 # Display label surfaced by the REST API's /api/wan-maps endpoint.
 label: Joint
-output_dir: outputs
 tuning:
   # Ceiling (miles) on the data-derived DBSCAN cluster radius.
   cluster_max_radius_miles: 250.0

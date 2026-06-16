@@ -33,7 +33,6 @@ def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str
     return {
         "vertices_files": [str(path) for path in sources.vertex_files],
         "physical_edge_file": str(sources.edge_path),
-        "mapbook_pdf": str(sources.mapbook_pdf) if sources.mapbook_pdf else None,
         "objective": (
             "Three-tier WAN design: access vertices dual-home to Carrier aggregation PoPs, "
             "aggregation PoPs dual-home to core PoPs over the physical Carrier graph, "
