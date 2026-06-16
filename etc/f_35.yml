@@ -18,17 +18,21 @@ design:
     - Dallas, TX
     - Denver, CO
     - Houston, TX
+    - Las Vegas, NV
     - Los Angeles, CA
     - McLean, VA
     - New York, NY
+    - Phoenix, AZ
     - Portland, OR
     - Richmond, VA
     - Salt Lake City, UT
+    - San Bernadino, CA
     - Tallahassee, FL
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
   forced_cores:
     - Atlanta, GA
+    - Chicago, IL
     - Dallas, TX
     - Denver, CO
     - Los Angeles, CA
