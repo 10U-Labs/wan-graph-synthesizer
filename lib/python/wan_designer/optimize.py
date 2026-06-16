@@ -36,6 +36,7 @@ from wan_designer.model import (
     DesignInputs,
     DesignMetrics,
     DesignParams,
+    ForcedLinks,
     Vertex,
     PathUse,
     PhysicalEdge,
@@ -44,13 +45,17 @@ from wan_designer.model import (
     haversine_miles,
     is_carrier_pop,
 )
+from wan_designer.forced import (
+    apply_forced_access_homes,
+    forced_cores_for_aggregation,
+    required_core_pairs,
+)
 from wan_designer.graphs import (
     dijkstra,
-    is_two_edge_connected,
     vertex_disjoint_paths_to_cores,
     path_edge_keys,
-    reconstruct_path,
 )
+from wan_designer.backbone import BackboneConstraints, core_mesh_paths, path_geometry_miles
 from wan_designer.clustering import cluster_access_vertices
 from wan_designer.overrides import colocated_twin, colocation_edges, twin_vertex_id
 from wan_designer.strength import core_strength
@@ -69,24 +74,21 @@ def unit_adjacency(
         neighbors.sort()
     return adjacency
 
-def path_geometry_miles(
-    path: tuple[str, ...],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-) -> float:
-    """Sum the per-span straight-line estimate along a routed path (display)."""
-    return sum(
-        physical_edges[edge_key(path[index], path[index + 1])].distance_miles
-        for index in range(len(path) - 1)
-    )
-
 def aggregation_core_paths(
     aggregation_id: str,
     core_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
+    required_cores: frozenset[str] = frozenset(),
 ) -> tuple[float, list[PathUse]]:
-    """Route an aggregation to two distinct cores over vertex-disjoint paths."""
-    total, paths = vertex_disjoint_paths_to_cores(adjacency, aggregation_id, core_ids, 2)
+    """Route an aggregation to two distinct cores over vertex-disjoint paths.
+
+    ``required_cores`` are operator-forced cores this aggregation must home to;
+    each is forced to anchor one of the two routed paths.
+    """
+    total, paths = vertex_disjoint_paths_to_cores(
+        adjacency, aggregation_id, core_ids, 2, required_cores
+    )
     if not paths:
         return math.inf, []
     uses = [
@@ -100,67 +102,6 @@ def aggregation_core_paths(
         for path in paths
     ]
     return total, uses
-
-def select_core_backbone_pairs(
-    core_ids: tuple[str, ...],
-    all_distances: dict[str, dict[str, float]],
-    min_degree: int = 3,
-) -> list[tuple[str, str]] | None:
-    """Choose which core pairs get a logical backbone link.
-
-    The result is a minimum-mileage subgraph of the full mesh in which every core
-    keeps at least ``min_degree`` backbone neighbors (clamped to ``len(core_ids) -
-    1`` when there are too few cores to reach it) while staying 2-edge-connected,
-    so the cores remain mutually reachable after any single backbone link fails.
-    The longest links are dropped first -- but only when both endpoints stay at or
-    above the floor and the backbone survives the removal -- so the result need not
-    be a full mesh. Returns ``None`` if some core pair is unreachable over the
-    carrier graph (the cores do not full-mesh).
-    """
-    ids = set(core_ids)
-    weight: dict[tuple[str, str], float] = {}
-    for left, right in itertools.combinations(core_ids, 2):
-        distance = all_distances[left].get(right, math.inf)
-        if not math.isfinite(distance):
-            return None
-        weight[edge_key(left, right)] = distance
-    selected = set(weight)
-    floor = min(min_degree, len(ids) - 1)
-
-    def degree(node: str) -> int:
-        return sum(1 for pair in selected if node in pair)
-
-    # Each mesh pair is visited once, longest first; drop it only when both
-    # endpoints stay at or above the floor and the backbone survives without it.
-    for pair in sorted(weight, key=lambda item: (-weight[item], item)):
-        if degree(pair[0]) - 1 < floor or degree(pair[1]) - 1 < floor:
-            continue
-        if is_two_edge_connected(ids, selected - {pair}):
-            selected.discard(pair)
-    return sorted(selected)
-
-def core_mesh_paths(
-    core_ids: tuple[str, ...],
-    all_distances: dict[str, dict[str, float]],
-    all_predecessors: dict[str, dict[str, str]],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-    min_degree: int = 3,
-) -> list[PathUse]:
-    """Route a shortest path over the selected core-to-core backbone links.
-
-    The backbone is the minimum-mileage subgraph in which every core keeps at
-    least ``min_degree`` neighbors (see :func:`select_core_backbone_pairs`).
-    """
-    pairs = select_core_backbone_pairs(core_ids, all_distances, min_degree)
-    if pairs is None:
-        return []
-    uses: list[PathUse] = []
-    for left, right in pairs:
-        path = reconstruct_path(left, right, all_predecessors[left])
-        uses.append(
-            PathUse("core_mesh", left, right, path, path_geometry_miles(path, physical_edges))
-        )
-    return uses
 
 @dataclass
 class _DesignDraft:
@@ -442,9 +383,11 @@ def assign_access(
         selected.update(cluster_local_heads(member_vertices, feasible_ids, selected, pop_by_id))
 
     # Pass 2: home every vertex to its nearest two facilities, reusing the placed
-    # heads before opening any new build.
+    # heads before opening any new build. An operator-forced access link pins one
+    # of that vertex's two homes regardless of distance.
     for access in inputs.access_vertices:
         completed = complete_homes(access, [], selected, feasible_ids, pop_by_id)
+        completed = apply_forced_access_homes(access, completed, plan.forced_links, pop_by_id)
         homes[access.id] = completed
         selected.update(completed)
 
@@ -514,14 +457,18 @@ def routed_path_uses(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> list[PathUse]:
     """Reconstruct the core-mesh and aggregation-to-core paths for a design."""
+    core_set = set(core_ids)
+    constraints = BackboneConstraints(
+        plan.core_backbone_min_degree, required_core_pairs(core_set, plan.forced_links)
+    )
     path_uses = core_mesh_paths(
-        core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges,
-        plan.core_backbone_min_degree,
+        core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
     )
     for aggregation_id in sorted(selected):
         adjacency = twin_routing_adjacency(aggregation_id, inputs, plan)
         _cost, uses = aggregation_core_paths(
-            aggregation_id, core_ids, adjacency, physical_edges
+            aggregation_id, core_ids, adjacency, physical_edges,
+            forced_cores_for_aggregation(aggregation_id, core_set, plan.forced_links),
         )
         path_uses.extend(uses)
     return path_uses
@@ -652,8 +599,13 @@ class _SearchPlan:
     strength_by_id: dict[str, float]
     clusters: list[list[str]] = field(default_factory=list)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
-    required_cores: frozenset[str] = field(default_factory=frozenset)
     core_backbone_min_degree: int = 3
+    forced_links: ForcedLinks = field(default_factory=ForcedLinks)
+
+    @property
+    def required_cores(self) -> frozenset[str]:
+        """The operator-forced cores fixed into every candidate set."""
+        return self.forced_links.required_cores
 
 def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
@@ -897,7 +849,7 @@ def build_search_plan(
     inputs: DesignInputs,
     eligible_ids: set[str],
     aggregations: _AggregationPlan,
-    forced_core_ids: frozenset[str],
+    overrides: RoleOverrides,
     params: DesignParams,
 ) -> _SearchPlan:
     """Compute vertex strengths, access-vertex clusters, and core candidates.
@@ -906,6 +858,7 @@ def build_search_plan(
     excluded from the free core candidates; since a forced installation's twin is an
     operator-pinned aggregation, installations are aggregation-only and never core
     candidates. Every other eligible PoP is a candidate, ranked nationally by strength.
+    The operator's resolved forced-connection links ride along for the routing stage.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
@@ -923,12 +876,16 @@ def build_search_plan(
         eligible_ids - aggregations.operator_forced,
         key=lambda pop_id: (-strength_by_id[pop_id], pop_id),
     )
+    forced_links = replace(
+        overrides.forced_links,
+        required_cores=frozenset(overrides.forced_core_ids & eligible_ids),
+    )
     return _SearchPlan(
         core_candidates,
         with_colocation_twins(aggregations, core_candidates, pop_by_id, inputs.adjacency),
         strength_by_id, clusters=clusters,
-        required_cores=frozenset(forced_core_ids & eligible_ids),
         core_backbone_min_degree=params.tuning.core_backbone_min_degree,
+        forced_links=forced_links,
     )
 
 def optimize_three_tier_design(
@@ -976,9 +933,7 @@ def optimize_three_tier_design(
         all_distances=context.all_distances,
         all_predecessors=context.all_predecessors,
     )
-    plan = build_search_plan(
-        inputs, eligible_ids, aggregations, overrides.forced_core_ids, params
-    )
+    plan = build_search_plan(inputs, eligible_ids, aggregations, overrides, params)
     if len(plan.core_candidates) < params.min_core_count:
         raise ValueError("Not enough reachable core candidates")
     return search_best_design(inputs, params, plan)

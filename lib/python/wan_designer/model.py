@@ -129,6 +129,23 @@ class Tuning:
     enum_memory_fraction: float = 0.6  # share of RAM the core enumeration may use
     core_set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
 
+# The three edge types a forced connection may pin, named as in ``README.md``.
+FORCED_CONNECTION_TYPES = frozenset({"core-core", "aggregation-core", "access-aggregation"})
+
+@dataclass(frozen=True)
+class ForcedConnection:
+    """An operator-pinned edge between two named PoPs of a given edge type.
+
+    ``edge_type`` is one of :data:`FORCED_CONNECTION_TYPES`; ``source`` and
+    ``target`` are PoP display names (resolved to vertex ids by the overrides
+    layer, like ``forced_core_names``). The endpoints must already be seated in
+    the tiers the edge type requires (e.g. both cores for ``core-core``).
+    """
+
+    edge_type: str
+    source: str
+    target: str
+
 @dataclass(frozen=True)
 class DesignParams:
     """Operator choices plus the algorithm :class:`Tuning` for the optimization."""
@@ -142,6 +159,23 @@ class DesignParams:
     tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)
+class ForcedLinks:
+    """Operator-forced edges (and core pins) resolved to vertex ids.
+
+    ``core`` holds each ``core-core`` link as an order-independent :func:`edge_key`
+    pair; ``aggregation`` holds each ``aggregation-core`` link as
+    ``(aggregation_id, core_id)``; ``access`` holds each ``access-aggregation`` link
+    as ``(access_id, aggregation_id)``. ``required_cores`` are the operator-forced
+    core ids restricted to the eligible set; it is empty until the search plan
+    refines it.
+    """
+
+    core: frozenset[tuple[str, str]] = frozenset()
+    aggregation: frozenset[tuple[str, str]] = frozenset()
+    access: frozenset[tuple[str, str]] = frozenset()
+    required_cores: frozenset[str] = frozenset()
+
+@dataclass(frozen=True)
 class RoleOverrides:
     """Operator role pins resolved from PoP names to concrete vertex ids.
 
@@ -153,11 +187,13 @@ class RoleOverrides:
 
     A forced installation is realized as a co-located carrier twin before pins are
     resolved, so its force-pin lands in ``forced_aggregation_ids`` like any other.
+    ``forced_links`` carries the operator's pinned edges resolved to ids.
     """
 
     forced_core_ids: frozenset[str] = frozenset()
     forced_aggregation_ids: frozenset[str] = frozenset()
     excluded_ids: frozenset[str] = frozenset()
+    forced_links: ForcedLinks = field(default_factory=ForcedLinks)
 
 @dataclass(frozen=True)
 class DesignInputs:

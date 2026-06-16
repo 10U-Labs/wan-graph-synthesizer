@@ -9,13 +9,55 @@ from __future__ import annotations
 from pathlib import Path
 
 import fixtures
-from wan_designer.model import DesignArtifacts, DesignParams
+from wan_designer.model import DesignArtifacts, DesignParams, ForcedConnection, edge_key
 from wan_designer.service import run_design
+from wan_designer.validation import core_backbone_pairs
 
 ARTIFACTS = fixtures.ring_artifacts()
 FORCED = fixtures.forced_aggregation_artifacts("P3")
 FORCED_ROADM = fixtures.forced_roadm_aggregation_artifacts("P3")
 FORCED_CORE = fixtures.forced_core_artifacts("P4")
+
+# Three forced-connection designs over the ring, each resolved through the
+# operator-pin path so the asserted edges reflect genuinely honored requests.
+FORCED_CORE_LINK = fixtures.forced_connection_artifacts(
+    DesignParams(min_core_count=2, forced_core_names=("P0", "P3")),
+    (ForcedConnection("core-core", "P0", "P3"),),
+)
+FORCED_AGG_LINK = fixtures.forced_connection_artifacts(
+    DesignParams(min_core_count=2, forced_core_names=("P0",), forced_aggregation_names=("P3",)),
+    (ForcedConnection("aggregation-core", "P3", "P0"),),
+)
+FORCED_ACCESS_LINK = fixtures.forced_connection_artifacts(
+    DesignParams(min_core_count=2, forced_aggregation_names=("P3",)),
+    (ForcedConnection("access-aggregation", "A1", "P3"),),
+)
+
+
+def test_forced_core_connection_appears_in_the_backbone() -> None:
+    """A forced core-core connection is present in the routed core backbone."""
+    assert edge_key("P0", "P3") in core_backbone_pairs(FORCED_CORE_LINK.design)
+
+
+def test_forced_aggregation_connection_routes_to_the_named_core() -> None:
+    """A forced aggregation-core connection routes the aggregation to that core."""
+    assert any(
+        use.purpose == "aggregation_to_core" and use.source == "P3" and use.target == "P0"
+        for use in FORCED_AGG_LINK.design.path_uses
+    )
+
+
+def test_forced_access_connection_homes_the_access_node_to_the_named_aggregation() -> None:
+    """A forced access-aggregation connection homes the access node to that aggregation."""
+    assert any(
+        edge.source == "A1" and edge.target == "P3"
+        for edge in FORCED_ACCESS_LINK.design.access_edges
+    )
+
+
+def test_forced_connection_designs_stay_valid() -> None:
+    """Forcing connections does not break the aggregation dual-homing invariant."""
+    assert FORCED_AGG_LINK.validation["aggregations_dual_homed_to_cores"] is True
 
 
 def test_forced_pop_is_placed_in_the_aggregation_tier() -> None:

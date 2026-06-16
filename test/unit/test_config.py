@@ -13,6 +13,7 @@ from wan_designer.config import (
     default_config,
     load_config,
 )
+from wan_designer.model import ForcedConnection
 
 
 def _config(data: dict[str, Any]) -> AppConfig:
@@ -88,6 +89,43 @@ def test_reads_forced_cores() -> None:
     assert _config({"design": {"forced_cores": ["Atlanta, GA"]}}).params.forced_core_names == (
         "Atlanta, GA",
     )
+
+
+def test_default_has_no_forced_connections() -> None:
+    """The default config pins no connections."""
+    assert len(default_config().forced_connections) == 0
+
+
+def test_reads_forced_connections() -> None:
+    """A forced_connections list is parsed into ForcedConnection entries."""
+    connection = {"source": "Dallas, TX", "target": "Denver, CO", "type": "core-core"}
+    assert _config({"design": {"forced_connections": [connection]}}).forced_connections == (
+        ForcedConnection("core-core", "Dallas, TX", "Denver, CO"),
+    )
+
+
+def test_forced_connections_must_be_a_list() -> None:
+    """A non-list forced_connections value is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"forced_connections": {"source": "A"}}})
+
+
+def test_forced_connection_must_be_a_mapping() -> None:
+    """A forced_connections entry that is not a mapping is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"forced_connections": ["Dallas, TX"]}})
+
+
+def test_forced_connection_requires_all_keys() -> None:
+    """A forced_connections entry missing a key is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"forced_connections": [{"source": "A", "target": "B"}]}})
+
+
+def test_forced_connection_rejects_unknown_type() -> None:
+    """A forced_connections entry with an unsupported type is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"forced_connections": [{"source": "A", "target": "B", "type": "x"}]}})
 
 
 def test_reads_tuning_min_points() -> None:

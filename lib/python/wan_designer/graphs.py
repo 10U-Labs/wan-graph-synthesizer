@@ -113,11 +113,15 @@ def _build_disjoint_flow_network(
     adjacency: dict[str, list[tuple[str, float]]],
     source: str,
     core_set: set[str],
+    required: set[str],
+    bias: float,
 ) -> _FlowNetwork:
     """Build the vertex-split min-cost flow network used for disjoint routing.
 
     Every vertex is split into an in/out pair with unit capacity (vertex-disjoint
     routing); cores are pure sinks behind a super-sink so each carries one path.
+    A required core's sink edge carries a ``-bias`` cost (``bias`` exceeds any real
+    path mileage), so min-cost flow saturates it whenever a disjoint pair can.
     """
     vertex_ids = sorted(adjacency)
     index = {vertex_id: position for position, vertex_id in enumerate(vertex_ids)}
@@ -140,7 +144,7 @@ def _build_disjoint_flow_network(
         for neighbor, distance in adjacency[vertex_id]:
             add_edge(2 * index[vertex_id] + 1, 2 * index[neighbor], 1.0, distance)
     for core in sorted(core_set):
-        add_edge(2 * index[core] + 1, sink, 1.0, 0.0)
+        add_edge(2 * index[core] + 1, sink, 1.0, -bias if core in required else 0.0)
 
     return _FlowNetwork(graph, edges, vertex_ids, 2 * index[source] + 1, sink)
 
@@ -190,19 +194,25 @@ def vertex_disjoint_paths_to_cores(
     source: str,
     core_ids: tuple[str, ...],
     count: int = 2,
+    required_cores: frozenset[str] = frozenset(),
 ) -> tuple[float, list[tuple[str, ...]]]:
     """Return `count` vertex-disjoint shortest paths from `source` to distinct cores.
 
     Routing is over the physical `adjacency` graph. Each vertex has unit capacity
     (vertex splitting), so the returned paths share only `source`; each terminates
-    at a different core and the combined distance is minimized. Returns
-    ``(math.inf, [])`` when fewer than `count` such paths exist.
+    at a different core and the combined distance is minimized. Every core in
+    ``required_cores`` is forced to anchor one of the returned paths. Returns
+    ``(math.inf, [])`` when fewer than `count` such paths exist, or when a required
+    core cannot anchor a path in any disjoint solution.
     """
     core_set = {core for core in core_ids if core != source}
     if count < 1 or len(core_set) < count or source not in adjacency:
         return math.inf, []
+    if not required_cores <= core_set:
+        return math.inf, []
 
-    network = _build_disjoint_flow_network(adjacency, source, core_set)
+    bias = sum(weight for neighbors in adjacency.values() for _, weight in neighbors) + 1.0
+    network = _build_disjoint_flow_network(adjacency, source, core_set, set(required_cores), bias)
     pushed = 0
     while pushed < count and _spfa_augment(
         network.graph, network.edges, network.flow_source, network.sink
@@ -212,6 +222,8 @@ def vertex_disjoint_paths_to_cores(
         return math.inf, []
 
     paths = _trace_flow_paths(network, count)
+    if not required_cores <= {path[-1] for path in paths}:
+        return math.inf, []
     return _paths_distance(paths, adjacency), paths
 
 def undirected_adjacency(

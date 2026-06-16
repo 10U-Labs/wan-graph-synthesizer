@@ -14,6 +14,8 @@ from __future__ import annotations
 from wan_designer.model import (
     Design,
     DesignParams,
+    ForcedConnection,
+    ForcedLinks,
     PhysicalEdge,
     RoleOverrides,
     Vertex,
@@ -158,17 +160,93 @@ def materialize_selected_colocation_twins(
     return augmented_vertices, augmented_edges
 
 
+def _forced_core_endpoint(
+    name: str, name_to_id: dict[str, str], forced_core: set[str]
+) -> str:
+    """Resolve a forced-connection core endpoint, requiring it be a forced core."""
+    if name not in name_to_id:
+        raise ValueError(f"forced-connection core not found in the Carrier graph: {name}")
+    core_id = name_to_id[name]
+    if core_id not in forced_core:
+        raise ValueError(f"forced-connection endpoint must be a forced core: {name}")
+    return core_id
+
+
+def _forced_aggregation_endpoint(
+    name: str, name_to_id: dict[str, str], forced_core: set[str], operator_forced: set[str]
+) -> str:
+    """Resolve a forced-connection aggregation endpoint to its seated vertex id.
+
+    A co-located PoP (a forced core also forced as an aggregation) is seated as its
+    ``AGGR`` twin, so resolve to that twin id; the endpoint must be a forced
+    aggregation either way.
+    """
+    if name not in name_to_id:
+        raise ValueError(f"forced-connection aggregation not found in the Carrier graph: {name}")
+    carrier_id = name_to_id[name]
+    seated = twin_vertex_id(carrier_id) if carrier_id in forced_core else carrier_id
+    if seated not in operator_forced:
+        raise ValueError(f"forced-connection endpoint must be a forced aggregation: {name}")
+    return seated
+
+
+def resolve_forced_links(
+    connections: tuple[ForcedConnection, ...],
+    vertices: list[Vertex],
+    forced_core: set[str],
+    operator_forced: set[str],
+) -> ForcedLinks:
+    """Resolve operator forced connections to id-typed link sets, validating tiers.
+
+    Returns a :class:`ForcedLinks` of the core-core, aggregation-core, and
+    access-aggregation links. Each endpoint must already be seated in the tier its
+    edge type requires, or a ``ValueError`` names the offending connection.
+    """
+    name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
+    access_name_to_id = {
+        vertex.name: vertex.id for vertex in vertices if not is_carrier_pop(vertex)
+    }
+    core_links: set[tuple[str, str]] = set()
+    aggregation_links: set[tuple[str, str]] = set()
+    access_links: set[tuple[str, str]] = set()
+    for connection in connections:
+        if connection.edge_type == "core-core":
+            left = _forced_core_endpoint(connection.source, name_to_id, forced_core)
+            right = _forced_core_endpoint(connection.target, name_to_id, forced_core)
+            core_links.add(edge_key(left, right))
+        elif connection.edge_type == "aggregation-core":
+            agg = _forced_aggregation_endpoint(
+                connection.source, name_to_id, forced_core, operator_forced
+            )
+            core = _forced_core_endpoint(connection.target, name_to_id, forced_core)
+            aggregation_links.add((agg, core))
+        else:  # access-aggregation
+            if connection.source not in access_name_to_id:
+                raise ValueError(f"forced-connection access node not found: {connection.source}")
+            agg = _forced_aggregation_endpoint(
+                connection.target, name_to_id, forced_core, operator_forced
+            )
+            access_links.add((access_name_to_id[connection.source], agg))
+    return ForcedLinks(
+        core=frozenset(core_links),
+        aggregation=frozenset(aggregation_links),
+        access=frozenset(access_links),
+    )
+
+
 def apply_role_overrides(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
+    forced_connections: tuple[ForcedConnection, ...] = (),
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
     """Resolve operator pins into the search's role overrides.
 
     Operator forced cores stay required and an operator co-location is split into a
     ``CORE``/``AGGR`` pair. A forced installation has already been realized as a
     co-located carrier twin, so its force-pin resolves onto that twin here and lands
-    in the forced aggregations like any other operator pin.
+    in the forced aggregations like any other operator pin. ``forced_connections``
+    are resolved to id-typed link sets against the seated tiers.
     """
     vertices, physical_edges, forced_core, operator_forced, excluded = _resolve_operator_pins(
         vertices, physical_edges, params
@@ -177,5 +255,8 @@ def apply_role_overrides(
         forced_core_ids=frozenset(forced_core),
         forced_aggregation_ids=frozenset(operator_forced),
         excluded_ids=frozenset(excluded),
+        forced_links=resolve_forced_links(
+            forced_connections, vertices, forced_core, operator_forced
+        ),
     )
     return vertices, physical_edges, overrides

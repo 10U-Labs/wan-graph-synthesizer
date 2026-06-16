@@ -19,6 +19,7 @@ from wan_designer.model import (
     DesignPaths,
     DesignArtifacts,
     DesignParams,
+    ForcedConnection,
     PhysicalEdge,
     SourceFiles,
     carrier_role,
@@ -33,7 +34,12 @@ from wan_designer.validation import augment_physical_resilience, validate_design
 logger = logging.getLogger(__name__)
 
 
-def run_design(paths: DesignPaths, params: DesignParams, augment: bool) -> DesignArtifacts:
+def run_design(
+    paths: DesignPaths,
+    params: DesignParams,
+    augment: bool,
+    forced_connections: tuple[ForcedConnection, ...] = (),
+) -> DesignArtifacts:
     """Load inputs, optimize the three-tier design, and validate it."""
     vertices = load_vertices(list(paths.vertex_files))
     if not vertices:
@@ -48,7 +54,7 @@ def run_design(paths: DesignPaths, params: DesignParams, augment: bool) -> Desig
     vertices, physical_edges = realized.vertices, realized.physical_edges
     roles = {pop.id: carrier_role(pop) for pop in vertices if is_carrier_pop(pop)}
     vertices, physical_edges, overrides = apply_role_overrides(
-        vertices, physical_edges, params
+        vertices, physical_edges, params, forced_connections
     )
     logger.info(
         "Loaded %d vertices and %d physical edges; starting optimization",
@@ -87,7 +93,9 @@ def design_for_wan_map(
     if wan_map_id not in {entry["id"] for entry in available_wan_maps(config_dir)}:
         raise KeyError(wan_map_id)
     config = load_config(config_dir / f"{wan_map_id}.yml")
-    artifacts = run_design(config.paths, config.params, config.resilience_augmentation)
+    artifacts = run_design(
+        config.paths, config.params, config.resilience_augmentation, config.forced_connections
+    )
     sources = SourceFiles(
         tuple(path for _tenant, path in config.paths.vertex_files),
         config.paths.edge_path,
