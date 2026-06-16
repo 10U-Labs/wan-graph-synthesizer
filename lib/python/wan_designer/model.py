@@ -122,6 +122,7 @@ class Tuning:
     cluster_max_radius_miles: float = 250.0  # ceiling on the derived cluster radius
     compass_octants: int = 8  # compass sectors used to score a core's link spread
     core_backbone_degree_cap: int = 3  # max core-to-core backbone links per core
+    core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one
     enum_memory_fraction: float = 0.6  # share of RAM the core enumeration may use
     core_set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
 

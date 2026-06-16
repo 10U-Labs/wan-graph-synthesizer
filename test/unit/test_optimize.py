@@ -17,11 +17,13 @@ from wan_designer.model import (
     PhysicalEdge,
     RoleOverrides,
     StateAggregationSpec,
+    Tuning,
     edge_key,
     haversine_miles,
 )
 from wan_designer.optimize import (
     aggregation_core_paths,
+    aggregation_haul_miles,
     all_pairs_shortest,
     assign_access,
     best_design_at_size,
@@ -748,3 +750,58 @@ def test_assign_access_drops_a_second_metro_anchor_demand_never_reaches() -> Non
     plan = _plan([], specs=(spec,), clusters=[["acc1", "acc2"]])
     _edges, selected = assign_access(("c1", "c2"), inputs, plan) or ([], set())
     assert selected == {"slc", "ogden"}
+
+
+def test_aggregation_haul_miles_reports_the_worst_and_total_to_nearest_core() -> None:
+    """The haul metric sums, and takes the worst of, each aggregation's nearest-core miles."""
+    pops = {
+        "core_w": pop("core_w", 40.0, -100.0),
+        "core_e": pop("core_e", 40.0, -80.0),
+        "near": pop("near", 40.0, -99.0),
+        "far": pop("far", 40.0, -90.0),
+    }
+    worst, total = aggregation_haul_miles(("core_w", "core_e"), ("near", "far"), pops)
+    near_miles = haversine_miles(pops["near"], pops["core_w"])
+    far_miles = haversine_miles(pops["far"], pops["core_w"])
+    assert worst == pytest.approx(far_miles)
+    assert total == pytest.approx(near_miles + far_miles)
+
+
+def test_search_grows_cores_past_the_floor_to_cover_far_demand() -> None:
+    """Past the floor, cores are added until far demand is within the coverage target.
+
+    Two central cores (cc1, cc2) sit ~1000 mi from west and east demand. With a
+    permissive target the tier stays at the two-core floor; with a tight target it
+    grows to seat a western (cw) and an eastern (ce) core that bring demand within reach.
+    """
+    edges = physical(
+        {
+            ("cc1", "cw"): 1.0, ("cw", "aw"): 1.0, ("aw", "ae"): 1.0,
+            ("ae", "ce"): 1.0, ("ce", "cc2"): 1.0, ("cc2", "cc1"): 1.0,
+        }
+    )
+    coords = {
+        "cc1": (44.0, -100.0), "cc2": (44.0, -96.0),
+        "cw": (40.0, -118.0), "ce": (40.0, -78.0),
+        "aw": (40.0, -120.0), "ae": (40.0, -76.0),
+    }
+    ids = ["cc1", "cc2", "cw", "ce", "aw", "ae"]
+    access_nodes = [
+        access("aw1", 40.0, -120.3), access("aw2", 40.3, -119.7),
+        access("ae1", 40.0, -76.3), access("ae2", 40.3, -75.7),
+    ]
+    inputs = _inputs_from_edges(ids, edges, {"aw", "ae"}, access_nodes, coords)
+    plan = _plan(
+        ["cc1", "cc2", "cw", "ce"],
+        strength={"cc1": 3.0, "cc2": 3.0, "cw": 1.0, "ce": 1.0},
+        clusters=[["aw1", "aw2"], ["ae1", "ae2"]],
+    )
+
+    def cores(target_miles: float) -> tuple[str, ...]:
+        params = DesignParams(
+            min_core_count=2, tuning=Tuning(core_coverage_target_miles=target_miles)
+        )
+        return search_best_design(inputs, params, plan).core_ids
+
+    assert cores(100_000.0) == ("cc1", "cc2")
+    assert set(cores(300.0)) == {"cc1", "cc2", "cw", "ce"}

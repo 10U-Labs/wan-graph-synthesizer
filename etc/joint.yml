@@ -74,6 +74,10 @@ tuning:
   # Most other cores any one core links to on the backbone. The full mesh is
   # thinned to a minimum-mileage, 2-edge-connected subgraph within this cap.
   core_backbone_degree_cap: 3
+  # Grow the core tier past min_core_count until every aggregation is within this
+  # straight-line distance of a core (extra cores are added only where they bring
+  # demand meaningfully closer). Raise it for fewer, farther cores; lower it for more.
+  core_coverage_target_miles: 600.0
   # Peak bytes one enumerated core set costs (sizes the search to free RAM).
   core_set_peak_bytes: 160
   # Share of RAM the core enumeration may use at its peak.
