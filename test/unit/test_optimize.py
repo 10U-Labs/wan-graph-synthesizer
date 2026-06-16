@@ -760,11 +760,10 @@ def test_aggregation_haul_miles_reports_the_worst_and_total_to_nearest_core() ->
         "near": pop("near", 40.0, -99.0),
         "far": pop("far", 40.0, -90.0),
     }
-    worst, total = aggregation_haul_miles(("core_w", "core_e"), ("near", "far"), pops)
     near_miles = haversine_miles(pops["near"], pops["core_w"])
     far_miles = haversine_miles(pops["far"], pops["core_w"])
-    assert worst == pytest.approx(far_miles)
-    assert total == pytest.approx(near_miles + far_miles)
+    result = aggregation_haul_miles(("core_w", "core_e"), ("near", "far"), pops)
+    assert result == pytest.approx((far_miles, near_miles + far_miles))
 
 
 def test_search_grows_cores_past_the_floor_to_cover_far_demand() -> None:
@@ -803,5 +802,7 @@ def test_search_grows_cores_past_the_floor_to_cover_far_demand() -> None:
         )
         return search_best_design(inputs, params, plan).core_ids
 
-    assert cores(100_000.0) == ("cc1", "cc2")
-    assert set(cores(300.0)) == {"cc1", "cc2", "cw", "ce"}
+    assert (cores(100_000.0), set(cores(300.0))) == (
+        ("cc1", "cc2"),
+        {"cc1", "cc2", "cw", "ce"},
+    )

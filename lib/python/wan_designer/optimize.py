@@ -765,8 +765,7 @@ def grow_cores_for_coverage(
             evaluation = evaluate_cores(candidate_cores, inputs, plan)
             if evaluation is None:
                 continue
-            _access_edges, selected = evaluation
-            _worst, candidate_total = aggregation_haul_miles(candidate_cores, selected, pop_by_id)
+            candidate_total = aggregation_haul_miles(candidate_cores, evaluation[1], pop_by_id)[1]
             if candidate_total < best_total:
                 best_id, best_total = candidate_id, candidate_total
         if best_id is None:
