@@ -16,17 +16,24 @@ design:
   # to instead force a base as an aggregation, name the installation here. Great
   # Falls and Minot are ROADMs, so pinning them overrides allow_roadm_aggregation.
   forced_aggregations:
+    - Ashburn, VA
     - Cheyenne, WY
     - Great Falls, MT
-    - Los Angeles, CA
+    - Houston, TX
     - Minot, ND
     - New York, NY
     - Portland, OR
     - Richmond, VA
     - Tallahassee, FL
-  # PoPs pinned into the core tier. None are pinned; the search selects cores
-  # freely subject to min_core_count.
-  forced_cores: []
+  # PoPs pinned into the core tier. The search may still add cores past these to
+  # satisfy min_core_count and coverage, but never drops a pinned one.
+  forced_cores:
+    - Atlanta, GA
+    - Dallas, TX
+    - Denver, CO
+    - Los Angeles, CA
+    - McLean, VA
+    - Salt Lake City, UT
   # Minimum number of core PoPs. The search adds more cores only when feasibility
   # requires it; it never drops below this floor.
   min_core_count: 3
