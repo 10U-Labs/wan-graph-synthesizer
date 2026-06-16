@@ -12,12 +12,22 @@ import fixtures
 
 ARTIFACTS = fixtures.ring_artifacts()
 FORCED = fixtures.forced_aggregation_artifacts("P3")
+FORCED_ROADM = fixtures.forced_roadm_aggregation_artifacts("P3")
 FORCED_CORE = fixtures.forced_core_artifacts("P4")
 
 
 def test_forced_pop_is_placed_in_the_aggregation_tier() -> None:
     """A PoP named on the force-aggregation list is honored as an aggregation."""
     assert "P3" in FORCED.design.aggregation_ids
+
+
+def test_forced_roadm_is_seated_though_roadm_aggregation_is_disabled() -> None:
+    """A pinned ROADM is honored as an aggregation even with allow_roadm_aggregation false.
+
+    This is the mechanism the Joint Great Falls and Minot pins rely on: both are
+    ROADMs, and the operator pin must override the ROADM-aggregation gate.
+    """
+    assert "P3" in FORCED_ROADM.design.aggregation_ids
 
 
 def test_forced_aggregation_is_not_also_made_a_core() -> None:

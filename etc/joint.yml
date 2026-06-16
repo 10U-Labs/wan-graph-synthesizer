@@ -9,9 +9,14 @@ design:
   excluded: []
   # PoPs pinned into the aggregation tier. Richmond is pinned (not Norfolk, a
   # single-homed ROADM leaf) so southeast-Virginia demand homes into a PoP that
-  # can dual-home to two cores.
+  # can dual-home to two cores. Cheyenne, Great Falls, and Minot pin the three
+  # ICBM-wing sites (F.E. Warren, Malmstrom, Minot AFB); Great Falls and Minot are
+  # ROADMs, so pinning them overrides allow_roadm_aggregation for those two.
   forced_aggregations:
+    - Cheyenne, WY
+    - Great Falls, MT
     - Los Angeles, CA
+    - Minot, ND
     - New York, NY
     - Portland, OR
     - Richmond, VA
