@@ -37,7 +37,6 @@ DEFAULT_VERTICES = {
 }
 DEFAULT_CARRIER_EDGES = "data/edges/lumen.csv"
 DEFAULT_REGIONAL_EDGES = ["data/edges/dcn.csv", "data/edges/vision_net.csv"]
-DEFAULT_OUTPUT_DIR = "outputs"
 
 
 @dataclass(frozen=True)
@@ -90,11 +89,6 @@ def _forced_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
     return tuple(connections)
 
 
-def _optional_path(value: Any) -> Path | None:
-    """Wrap a non-empty path string as a Path; an empty value disables it."""
-    return Path(str(value)) if value else None
-
-
 def _vertex_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
     """Resolve the tenant -> vertices-CSV mapping into sorted (tenant, path) pairs."""
     value = inputs.get("vertices", DEFAULT_VERTICES)
@@ -105,14 +99,12 @@ def _vertex_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
     return tuple(sorted((tenant, Path(path)) for tenant, path in value.items()))
 
 
-def _paths(data: dict[str, Any], inputs: dict[str, Any]) -> DesignPaths:
+def _paths(inputs: dict[str, Any]) -> DesignPaths:
     """Resolve the file-path configuration into a :class:`DesignPaths`."""
     regional_edges = _str_list(inputs, "regional_edges", DEFAULT_REGIONAL_EDGES)
     return DesignPaths(
         vertex_files=_vertex_files(inputs),
         edge_path=Path(str(inputs.get("carrier_edges", DEFAULT_CARRIER_EDGES))),
-        mapbook_pdf=_optional_path(inputs.get("mapbook_pdf", "")),
-        output_dir=Path(str(data.get("output_dir", DEFAULT_OUTPUT_DIR))),
         regional_edge_paths=tuple(Path(item) for item in regional_edges),
     )
 
@@ -158,7 +150,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
     """Resolve an already-parsed config mapping into a :class:`AppConfig`."""
     design = _mapping(data, "design")
     return AppConfig(
-        paths=_paths(data, _mapping(data, "inputs")),
+        paths=_paths(_mapping(data, "inputs")),
         params=_params(design, _mapping(data, "tuning")),
         resilience_augmentation=design.get("resilience_augmentation", True),
         label=str(data.get("label", "")),

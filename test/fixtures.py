@@ -209,7 +209,6 @@ def write_solvable_config(directory: Path, min_core_count: int | None = None) ->
         "  vertices:",
     ]
     lines += [f"    {tenant}: {path}" for tenant, path in vertex_files]
-    lines.append(f"output_dir: {directory / 'out'}")
     config_path = directory / "joint.yml"
     config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return config_path
@@ -328,12 +327,12 @@ def write_justified_solvable_inputs(directory: Path) -> DesignPaths:
     _write_csv(f35_path, [*VERTEX_HEADER, JUSTIFIED_COLUMN], access)
     edges_path = directory / "ring_edges.csv"
     edges_path.write_text(solvable_edges_csv(), encoding="utf-8")
-    return DesignPaths((("F-35", f35_path), ("Lumen", lumen_path)), edges_path, None, directory)
+    return DesignPaths((("F-35", f35_path), ("Lumen", lumen_path)), edges_path)
 
 
 def sample_sources() -> SourceFiles:
     """Provenance paths for output rendering tests."""
-    return SourceFiles((Path("vertices/lumen.csv"),), Path("edges.csv"), None)
+    return SourceFiles((Path("vertices/lumen.csv"),), Path("edges.csv"))
 
 
 def api_client(directory: Path) -> TestClient:

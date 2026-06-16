@@ -41,16 +41,6 @@ def test_default_vertex_files() -> None:
     assert ("Lumen", Path("data/vertices/lumen.csv")) in default_config().paths.vertex_files
 
 
-def test_default_output_dir() -> None:
-    """The default config writes outputs to the outputs directory."""
-    assert default_config().paths.output_dir == Path("outputs")
-
-
-def test_default_mapbook_pdf_is_none() -> None:
-    """The default config has no source PDF path."""
-    assert default_config().paths.mapbook_pdf is None
-
-
 def test_default_regional_edges() -> None:
     """The default config lists both regional carrier edge files."""
     assert default_config().paths.regional_edge_paths == (
@@ -133,11 +123,6 @@ def test_reads_tuning_min_points() -> None:
     assert _config({"tuning": {"cluster_min_points": 4}}).params.tuning.cluster_min_points == 4
 
 
-def test_reads_output_dir() -> None:
-    """A top-level output_dir value is read into the paths."""
-    assert _config({"output_dir": "out2"}).paths.output_dir == Path("out2")
-
-
 def test_reads_vertices_mapping() -> None:
     """A vertices tenant->path mapping is read into sorted (tenant, path) pairs."""
     vertices = {"Lumen": "lumen.csv", "F-35": "f_35.csv"}
@@ -151,11 +136,6 @@ def test_rejects_non_mapping_vertices() -> None:
     """A non-mapping vertices value is rejected."""
     with pytest.raises(ValueError):
         _config({"inputs": {"vertices": "single.csv"}})
-
-
-def test_reads_mapbook_pdf_path() -> None:
-    """A non-empty mapbook_pdf input is wrapped as a path."""
-    assert _config({"inputs": {"mapbook_pdf": "m.pdf"}}).paths.mapbook_pdf == Path("m.pdf")
 
 
 def test_reads_resilience_augmentation_off() -> None:
