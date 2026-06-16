@@ -39,13 +39,24 @@ function styleFor(vertex) {
   return ROLE_STYLE[vertex.tier_role] || null;
 }
 
-// Tooltip: the vertex name, its municipality/state beneath, then the tenant.
+// Tier-role label prefixes, so every cored/aggregated/access vertex tooltip
+// announces its role up front. Untiered vertices (provider, transit) get no prefix.
+const TIER_PREFIX = {
+  core: "CORE",
+  aggregation: "AGGR",
+  access: "ACCS",
+};
+
+// Tooltip: the role-prefixed vertex name, its municipality/state beneath, then
+// the tenant.
 function vertexLabel(vertex) {
   const info = vertex.info || {};
   const located = info.municipality && info.state
     ? `<br>${info.municipality}, ${info.state}`
     : "";
-  return `<strong>${vertex.name}</strong>${located}<br>Tenant: ${vertex.tenant}`;
+  const prefix = TIER_PREFIX[vertex.tier_role];
+  const name = prefix ? `${prefix} ${vertex.name}` : vertex.name;
+  return `<strong>${name}</strong>${located}<br>Tenant: ${vertex.tenant}`;
 }
 
 function edgeLabel(label, source, target) {
@@ -164,12 +175,20 @@ async function getJSON(path) {
   return response.json();
 }
 
+// Show the design's core and aggregation tallies in the top-right of the bar.
+function showCounts(summary) {
+  const counts = document.getElementById("counts");
+  counts.textContent = `CORES ${summary.core_count} AGGR ${summary.aggregation_count}`;
+}
+
 async function render(mapId) {
   clear();
-  const [vertices, edges] = await Promise.all([
+  const [vertices, edges, summary] = await Promise.all([
     getJSON(`/api/wan-maps/${mapId}/vertices`),
     getJSON(`/api/wan-maps/${mapId}/edges`),
+    getJSON(`/api/wan-maps/${mapId}/summary`),
   ]);
+  showCounts(summary);
 
   const byId = drawVertices(vertices);
   const wrapped = new Map();

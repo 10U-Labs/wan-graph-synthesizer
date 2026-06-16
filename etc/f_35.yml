@@ -14,10 +14,16 @@ design:
   # can dual-home to two cores.
   forced_aggregations:
     - Ashburn, VA
+    - Atlanta, GA
+    - Dallas, TX
+    - Denver, CO
     - Houston, TX
+    - Los Angeles, CA
+    - McLean, VA
     - New York, NY
     - Portland, OR
     - Richmond, VA
+    - Salt Lake City, UT
     - Tallahassee, FL
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
