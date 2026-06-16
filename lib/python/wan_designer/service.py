@@ -25,7 +25,7 @@ from wan_designer.model import (
     is_carrier_pop,
 )
 from wan_designer.optimize import optimize_three_tier_design
-from wan_designer.overrides import apply_role_overrides
+from wan_designer.overrides import apply_role_overrides, materialize_selected_colocation_twins
 from wan_designer.output import design_payload
 from wan_designer.parsing import load_carrier_edges, load_vertices
 from wan_designer.validation import augment_physical_resilience, validate_design
@@ -56,6 +56,9 @@ def run_design(paths: DesignPaths, params: DesignParams, augment: bool) -> Desig
     )
     design = optimize_three_tier_design(vertices, physical_edges, roles, params, overrides)
     logger.info("Optimization done; validating the design")
+    vertices, physical_edges = materialize_selected_colocation_twins(
+        vertices, physical_edges, design
+    )
     if augment:
         design = augment_physical_resilience(vertices, physical_edges, design)
     validation = validate_design(vertices, design)

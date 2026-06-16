@@ -28,7 +28,7 @@ import itertools
 import logging
 import math
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from wan_designer.model import (
     AccessEdge,
@@ -52,6 +52,8 @@ from wan_designer.graphs import (
     reconstruct_path,
 )
 from wan_designer.clustering import cluster_access_vertices
+from wan_designer.overrides import colocated_twin, colocation_edges, twin_vertex_id
+from wan_designer.strength import core_strength
 
 logger = logging.getLogger(__name__)
 
@@ -66,60 +68,6 @@ def unit_adjacency(
     for neighbors in adjacency.values():
         neighbors.sort()
     return adjacency
-
-def link_bearing(origin: Vertex, neighbor: Vertex) -> float:
-    """Initial compass bearing in degrees from one vertex toward another."""
-    lat1, lat2 = math.radians(origin.lat), math.radians(neighbor.lat)
-    delta_lon = math.radians(neighbor.lon - origin.lon)
-    x = math.sin(delta_lon) * math.cos(lat2)
-    y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(
-        delta_lon
-    )
-    return (math.degrees(math.atan2(x, y)) + 360.0) % 360.0
-
-def link_octants(
-    pop_id: str,
-    adjacency: dict[str, list[tuple[str, float]]],
-    pop_by_id: dict[str, Vertex],
-) -> set[int]:
-    """The distinct compass octants (of eight) the PoP's links point toward."""
-    origin = pop_by_id[pop_id]
-    return {
-        int(((link_bearing(origin, pop_by_id[neighbor]) + 22.5) % 360.0) // 45.0)
-        for neighbor, _weight in adjacency[pop_id]
-    }
-
-def vertex_straightness(
-    pop_id: str,
-    pop_by_id: dict[str, Vertex],
-    predecessors: dict[str, str],
-) -> float:
-    """Mean directness to reachable PoPs: straight-line over routed geometry."""
-    origin = pop_by_id[pop_id]
-    ratios: list[float] = []
-    for dest_id in predecessors:
-        path = reconstruct_path(pop_id, dest_id, predecessors)
-        routed = sum(
-            haversine_miles(pop_by_id[path[index]], pop_by_id[path[index + 1]])
-            for index in range(len(path) - 1)
-        )
-        straight = haversine_miles(origin, pop_by_id[dest_id])
-        if routed > 0.0:
-            ratios.append(straight / routed)
-    return sum(ratios) / len(ratios) if ratios else 0.0
-
-def core_strength(
-    pop_id: str,
-    inputs: DesignInputs,
-    pop_by_id: dict[str, Vertex],
-    max_degree: int,
-    compass_octants: int,
-) -> float:
-    """Score a PoP's strength: reach plus spread plus straightness (~0..3)."""
-    degree = len(inputs.adjacency[pop_id])
-    spread = len(link_octants(pop_id, inputs.adjacency, pop_by_id))
-    straight = vertex_straightness(pop_id, pop_by_id, inputs.all_predecessors[pop_id])
-    return degree / max_degree + spread / compass_octants + straight
 
 def path_geometry_miles(
     path: tuple[str, ...],
@@ -253,6 +201,45 @@ def aggregation_dual_homes(
     """True if the aggregation can dual-home to two cores of the given set."""
     return any(dual_homes_to_pair(aggregation_id, pair, inputs, cache) for pair in pairs)
 
+def cores_reachable_avoiding(
+    pop_id: str,
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> set[str]:
+    """PoPs reachable from ``pop_id``'s neighbors without passing through ``pop_id``.
+
+    A co-located twin reaches its own (selected) core for free over the in-facility
+    cross-connect, so its second vertex-disjoint path only has to reach a *different*
+    core while bypassing the core they share. That second path exists exactly when
+    one of the core's neighbors can reach another core with the core itself removed,
+    which this breadth-first reachability answers once per candidate.
+    """
+    frontier = [
+        neighbor for neighbor, _weight in adjacency.get(pop_id, []) if neighbor != pop_id
+    ]
+    reached = set(frontier)
+    while frontier:
+        node = frontier.pop()
+        for neighbor, _weight in adjacency.get(node, []):
+            if neighbor != pop_id and neighbor not in reached:
+                reached.add(neighbor)
+                frontier.append(neighbor)
+    return reached
+
+def feasible_colocation_twins(core_ids: tuple[str, ...], plan: _SearchPlan) -> set[str]:
+    """Twin ids whose own core is selected and that keep two-distinct-core redundancy.
+
+    A core's twin is offered as an aggregation only when its core is in the set and
+    another core is reachable around it, so the twin keeps two vertex-disjoint paths
+    to two distinct cores -- itself over the cross-connect and the remote core beyond.
+    """
+    core_set = set(core_ids)
+    twins = plan.aggregations
+    return {
+        twin_id
+        for twin_id, core_id in twins.twin_to_core.items()
+        if core_id in core_set and twins.reach_avoiding[core_id] & core_set
+    }
+
 def feasible_aggregation_ids(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
@@ -260,17 +247,20 @@ def feasible_aggregation_ids(
 ) -> set[str]:
     """Eligible aggregations that can dual-home to two of the given cores.
 
-    Only feasibility is computed here -- routed paths are reconstructed once for
-    the winning core set -- because the design is ranked solely on last-mile
+    Includes the co-located twin of any selected core that can still dual-home (see
+    :func:`feasible_colocation_twins`), so the search may let a core also serve as an
+    aggregation. Only feasibility is computed here -- routed paths are reconstructed
+    once for the winning core set -- because the design is ranked solely on last-mile
     mileage and core strength, neither of which depends on those paths.
     """
     pairs = core_pairs(core_ids)
     candidates = inputs.eligible_aggregation_ids - set(core_ids)
-    return {
+    feasible = {
         aggregation_id
         for aggregation_id in candidates
         if aggregation_dual_homes(aggregation_id, pairs, inputs, plan.feasibility_cache)
     }
+    return feasible | feasible_colocation_twins(core_ids, plan)
 
 def cores_mesh(core_ids: tuple[str, ...], all_distances: dict[str, dict[str, float]]) -> bool:
     """True if every pair of cores is connected over the carrier graph."""
@@ -347,17 +337,21 @@ def complete_homes(
 
 def finalize_design(
     core_ids: tuple[str, ...],
-    inputs: DesignInputs,
     draft: _DesignDraft,
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> Design:
-    """Compute edge sets, mileage estimate, and score for a design draft."""
+    """Compute edge sets, mileage estimate, and score for a design draft.
+
+    ``physical_edges`` carries the base graph plus the fiber of every seated
+    co-located twin, so a dual-roled core's aggregation path resolves its mileage.
+    """
     physical_edge_keys: set[tuple[str, str]] = set()
     for path_use in draft.path_uses:
         physical_edge_keys.update(path_edge_keys(path_use.path))
 
     access_miles = sum(edge.distance_miles for edge in draft.access_edges)
     physical_miles = sum(
-        inputs.physical_edges[key].distance_miles for key in physical_edge_keys
+        physical_edges[key].distance_miles for key in physical_edge_keys
     )
     score = access_miles + physical_miles
     carrier_on_paths = {vertex_id for use in draft.path_uses for vertex_id in use.path}
@@ -433,6 +427,7 @@ def assign_access(
     if len(feasible_ids) < 2:
         return None
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
+    pop_by_id.update(plan.aggregations.twin_vertices)
     access_by_id = {access.id: access for access in inputs.access_vertices}
     selected: set[str] = set(effective_forced_aggregations(plan))
     homes: dict[str, list[str]] = {}
@@ -481,20 +476,52 @@ def evaluate_cores(
         return None
     return assign_access(core_ids, inputs, plan)
 
+def physical_edges_with_twins(
+    selected: set[str],
+    inputs: DesignInputs,
+    plan: _SearchPlan,
+) -> dict[tuple[str, str], PhysicalEdge]:
+    """The base physical edges plus the fiber of every selected co-located twin."""
+    edges = dict(inputs.physical_edges)
+    for aggregation_id in selected:
+        core_id = plan.aggregations.twin_to_core.get(aggregation_id)
+        if core_id is not None:
+            edges.update(colocation_edges(core_id, aggregation_id, inputs.physical_edges))
+    return edges
+
+def twin_routing_adjacency(
+    aggregation_id: str,
+    inputs: DesignInputs,
+    plan: _SearchPlan,
+) -> dict[str, list[tuple[str, float]]]:
+    """Adjacency to route one aggregation: the base graph, plus its own twin fiber.
+
+    A real aggregation routes over the base graph unchanged. A co-located twin gets
+    only *its own* cross-connect and duplicated handoffs added, so it reaches its core
+    and a remote core without another core's twin fiber leaking into the path.
+    """
+    core_id = plan.aggregations.twin_to_core.get(aggregation_id)
+    if core_id is None:
+        return inputs.adjacency
+    twin_edges = colocation_edges(core_id, aggregation_id, inputs.physical_edges)
+    return unit_adjacency({**inputs.physical_edges, **twin_edges})
+
 def routed_path_uses(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
     selected: set[str],
-    core_backbone_min_degree: int = 3,
+    plan: _SearchPlan,
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> list[PathUse]:
     """Reconstruct the core-mesh and aggregation-to-core paths for a design."""
     path_uses = core_mesh_paths(
-        core_ids, inputs.all_distances, inputs.all_predecessors, inputs.physical_edges,
-        core_backbone_min_degree,
+        core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges,
+        plan.core_backbone_min_degree,
     )
     for aggregation_id in sorted(selected):
+        adjacency = twin_routing_adjacency(aggregation_id, inputs, plan)
         _cost, uses = aggregation_core_paths(
-            aggregation_id, core_ids, inputs.adjacency, inputs.physical_edges
+            aggregation_id, core_ids, adjacency, physical_edges
         )
         path_uses.extend(uses)
     return path_uses
@@ -513,9 +540,10 @@ def build_design_for_cores(
     if evaluation is None:
         return None
     access_edges, selected = evaluation
-    path_uses = routed_path_uses(core_ids, inputs, selected, plan.core_backbone_min_degree)
+    physical_edges = physical_edges_with_twins(selected, inputs, plan)
+    path_uses = routed_path_uses(core_ids, inputs, selected, plan, physical_edges)
     draft = _DesignDraft(access_edges, selected, path_uses)
-    return finalize_design(core_ids, inputs, draft)
+    return finalize_design(core_ids, draft, physical_edges)
 
 def compute_eligible_ids(
     carrier_pops: list[Vertex],
@@ -563,14 +591,49 @@ def validate_pop_graph(
 
 @dataclass(frozen=True)
 class _AggregationPlan:
-    """The aggregations a design must seat.
+    """The aggregations a design may seat.
 
     ``operator_forced`` are the operator's pinned aggregations, always seated. A
     forced installation's co-located twin is one of these, so installations enter
-    the aggregation tier only by operator force and never as cores.
+    the aggregation tier only by operator force and never as cores. The remaining
+    fields carry the optional co-located twins the search may seat so a core also
+    serves as an aggregation: each twin id to its core, each core's reach-around set,
+    and the twin vertices whose coordinates (their core's) drive access homing.
     """
 
     operator_forced: frozenset[str] = frozenset()
+    twin_to_core: dict[str, str] = field(default_factory=dict)
+    reach_avoiding: dict[str, set[str]] = field(default_factory=dict)
+    twin_vertices: dict[str, Vertex] = field(default_factory=dict)
+
+
+def with_colocation_twins(
+    aggregations: _AggregationPlan,
+    core_candidates: list[str],
+    pop_by_id: dict[str, Vertex],
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> _AggregationPlan:
+    """Offer each core candidate a co-located twin the search may seat as an aggregation.
+
+    Skips any core whose twin already exists -- an operator co-location or a forced
+    installation already stands up and pins that twin -- so it is never double-built.
+    """
+    twin_to_core: dict[str, str] = {}
+    reach_avoiding: dict[str, set[str]] = {}
+    twin_vertices: dict[str, Vertex] = {}
+    for core_id in core_candidates:
+        twin_id = twin_vertex_id(core_id)
+        if twin_id in pop_by_id:
+            continue
+        twin_to_core[twin_id] = core_id
+        reach_avoiding[core_id] = cores_reachable_avoiding(core_id, adjacency)
+        twin_vertices[twin_id] = colocated_twin(pop_by_id[core_id])
+    return replace(
+        aggregations,
+        twin_to_core=twin_to_core,
+        reach_avoiding=reach_avoiding,
+        twin_vertices=twin_vertices,
+    )
 
 
 @dataclass(frozen=True)
@@ -581,7 +644,7 @@ class _SearchPlan:
     is core-independent); each cluster's heads are then chosen relative to its
     own extent. ``feasibility_cache`` memoizes per-pair vertex-disjoint
     reachability so the search avoids re-running max-flows for every core set.
-    ``aggregations`` carries the operator pins and per-state population specs.
+    ``aggregations`` carries the operator pins and the optional core twins.
     """
 
     core_candidates: list[str]
@@ -796,6 +859,7 @@ def search_best_design(
     if base is None:
         raise ValueError(f"No feasible design with at least {params.min_core_count} cores")
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
+    pop_by_id.update(plan.aggregations.twin_vertices)
     design = grow_cores_for_coverage(
         base, inputs, plan, params.tuning.core_coverage_target_miles, pop_by_id
     )
@@ -855,7 +919,9 @@ def build_search_plan(
         key=lambda pop_id: (-strength_by_id[pop_id], pop_id),
     )
     return _SearchPlan(
-        core_candidates, aggregations, strength_by_id, clusters=clusters,
+        core_candidates,
+        with_colocation_twins(aggregations, core_candidates, pop_by_id, inputs.adjacency),
+        strength_by_id, clusters=clusters,
         required_cores=frozenset(forced_core_ids & eligible_ids),
         core_backbone_min_degree=params.tuning.core_backbone_min_degree,
     )

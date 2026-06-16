@@ -10,7 +10,9 @@ import fixtures
 from wan_designer.graphs import is_two_edge_connected
 from wan_designer.model import (
     AccessEdge,
+    Design,
     DesignInputs,
+    DesignMetrics,
     DesignParams,
     Vertex,
     PathUse,
@@ -35,14 +37,15 @@ from wan_designer.optimize import (
     core_combinations,
     core_mesh_paths,
     cores_mesh,
+    cores_reachable_avoiding,
     select_core_backbone_pairs,
     dual_homes_to_pair,
     effective_forced_aggregations,
     enumeration_limit,
     feasible_aggregation_ids,
+    feasible_colocation_twins,
     nearest_pop_id,
     prune_unused_aggregations,
-    vertex_straightness,
     optimize_three_tier_design,
     search_best_design,
     unit_adjacency,
@@ -51,10 +54,13 @@ from wan_designer.optimize import (
 )
 from wan_designer.overrides import (
     apply_role_overrides,
+    colocated_twin,
     colocation_edges,
+    materialize_selected_colocation_twins,
     reject_override_conflicts,
     resolve_pinned_ids,
 )
+from wan_designer.strength import vertex_straightness
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
@@ -167,9 +173,11 @@ def test_core_tier_grows_past_the_floor_to_seat_more_forced_cores() -> None:
 
 
 def test_no_feasible_design_is_rejected() -> None:
-    """No feasible design is rejected when access cannot reach two aggregations."""
+    """No feasible design is rejected when the eligible PoPs cannot mesh as cores."""
+    edges = physical({("x1", "b1"): 1.0, ("b1", "y1"): 1.0, ("x2", "b2"): 1.0, ("b2", "y2"): 1.0})
+    vertices = [pop(name) for name in ("x1", "b1", "y1", "x2", "b2", "y2")]
     with pytest.raises(ValueError):
-        optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(min_core_count=2))
+        optimize_three_tier_design(vertices, edges, {}, DesignParams(min_core_count=2))
 
 
 def test_not_enough_core_candidates_is_rejected() -> None:
@@ -331,6 +339,41 @@ def test_feasible_aggregation_ids_skips_infeasible_aggregations() -> None:
     ids = ["gA", "x1", "x2", "gB", "y", "c1", "c2"]
     inputs = _inputs_from_edges(ids, edges, {"gA", "gB", "c1", "c2"})
     assert feasible_aggregation_ids(("c1", "c2"), inputs, _plan([])) == {"gA"}
+
+
+def test_cores_reachable_avoiding_excludes_the_blocked_pop() -> None:
+    """Reachability from a PoP's neighbors never passes back through the PoP itself."""
+    adjacency = unit_adjacency(physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "d"): 1.0}))
+    assert cores_reachable_avoiding("b", adjacency) == {"a", "c", "d"}
+
+
+def test_cores_reachable_avoiding_cannot_cross_a_cut_vertex() -> None:
+    """With the only connector removed, the spokes reach nothing past it."""
+    adjacency = unit_adjacency(physical({("hub", "l1"): 1.0, ("hub", "l2"): 1.0}))
+    assert cores_reachable_avoiding("hub", adjacency) == {"l1", "l2"}
+
+
+def _twin_plan(reach: set[str]) -> _SearchPlan:
+    """A plan offering ``c1``'s co-located twin, reaching ``reach`` around ``c1``."""
+    aggregations = _AggregationPlan(
+        twin_to_core={"aggr_c1": "c1"}, reach_avoiding={"c1": reach}
+    )
+    return _SearchPlan([], aggregations, {})
+
+
+def test_feasible_colocation_twins_offers_a_reachable_core_twin() -> None:
+    """A selected core that can reach another core around itself offers its twin."""
+    assert feasible_colocation_twins(("c1", "c2"), _twin_plan({"c2"})) == {"aggr_c1"}
+
+
+def test_feasible_colocation_twins_skips_an_unselected_cores_twin() -> None:
+    """A core that is not in the set offers no twin, even if it could reach around."""
+    assert feasible_colocation_twins(("c2", "c3"), _twin_plan({"c2"})) == set()
+
+
+def test_feasible_colocation_twins_skips_a_twin_that_loses_redundancy() -> None:
+    """A selected core whose only reach-around lands off the core set offers no twin."""
+    assert feasible_colocation_twins(("c1", "c2"), _twin_plan({"x"})) == set()
 
 
 def test_dual_homes_to_pair_memoizes_feasibility() -> None:
@@ -584,6 +627,59 @@ def test_apply_role_overrides_splits_a_co_located_pop() -> None:
         [pop("Colo"), pop("z")], physical({("Colo", "z"): 1.0}), params
     )
     assert "aggr_Colo" in overrides.forced_aggregation_ids
+
+
+def test_optimize_lets_a_core_also_serve_as_an_aggregation() -> None:
+    """On a small graph the search dual-roles a core through its co-located twin."""
+    design = optimize_three_tier_design(
+        TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(min_core_count=2)
+    )
+    twinned = {agg[len("aggr_"):] for agg in design.aggregation_ids if agg.startswith("aggr_")}
+    assert twinned & set(design.core_ids)
+
+
+def test_optimize_keeps_a_single_twin_for_an_operator_colocation() -> None:
+    """An operator co-location yields one twin; the auto pass never adds a second."""
+    params = DesignParams(
+        min_core_count=2, forced_core_names=("P0",), forced_aggregation_names=("P0",)
+    )
+    vertices, edges, overrides = apply_role_overrides(
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), params
+    )
+    design = optimize_three_tier_design(vertices, edges, {}, params, overrides)
+    assert design.aggregation_ids.count("aggr_P0") == 1
+
+
+def _bare_design(core_ids: tuple[str, ...], aggregation_ids: tuple[str, ...]) -> Design:
+    """A minimal design carrying only the tier ids the twin materializer reads."""
+    return Design(core_ids, aggregation_ids, (), [], set(), [], DesignMetrics(0.0, 0.0, 0.0))
+
+
+def test_materialize_selected_colocation_twins_stands_up_a_seated_twin() -> None:
+    """A seated co-located twin gains its vertex so validation and the payload see it."""
+    design = _bare_design(("c1",), ("aggr_c1",))
+    vertices, _edges = materialize_selected_colocation_twins(
+        [pop("c1")], physical({("c1", "c2"): 1.0}), design
+    )
+    assert any(vertex.id == "aggr_c1" for vertex in vertices)
+
+
+def test_materialize_selected_colocation_twins_skips_an_existing_twin() -> None:
+    """An operator-built twin already in the graph is not stood up a second time."""
+    design = _bare_design(("c1",), ("aggr_c1",))
+    vertices, _edges = materialize_selected_colocation_twins(
+        [pop("c1"), colocated_twin(pop("c1"))], physical({("c1", "c2"): 1.0}), design
+    )
+    assert sum(1 for vertex in vertices if vertex.id == "aggr_c1") == 1
+
+
+def test_materialize_selected_colocation_twins_ignores_a_core_without_a_twin() -> None:
+    """A core the search did not dual-role gets no co-located twin vertex."""
+    design = _bare_design(("c1",), ())
+    vertices, _edges = materialize_selected_colocation_twins(
+        [pop("c1")], physical({("c1", "c2"): 1.0}), design
+    )
+    assert all(not vertex.id.startswith("aggr_") for vertex in vertices)
 
 
 def test_optimize_honors_a_forced_core_override() -> None:
