@@ -36,7 +36,8 @@ Edges are tuples of one of the supported connection types:
 
 The resilience rules the design enforces:
 
-- Every site dual-homes to two distinct aggregation points.
+- Every site homes to the configured number of distinct aggregation points
+  (`tuning.access_aggregation_links`, default two).
 - Every aggregation point reaches two distinct core sites over two
   vertex-disjoint paths, so no single PoP or link failure can sever it
   from the core tier.
@@ -67,11 +68,11 @@ aggregations, exclusions, and resilience augmentation — so tuning a design
 means editing the YAML, never source.
 
 The design selects up to three Carrier core PoPs, selects aggregation PoPs
-as needed, dual-homes every access vertex to two aggregation PoPs, routes
-every aggregation to two cores over vertex-disjoint paths on the physical
-Carrier graph, and meshes the cores. A design that cannot reach two cores
-disjointly, or whose cores are not a full mesh, is reported as invalid by
-the `validation` endpoint.
+as needed, homes every access vertex to `access_aggregation_links`
+aggregation PoPs, routes every aggregation to two cores over vertex-disjoint
+paths on the physical Carrier graph, and meshes the cores. A design that
+cannot reach two cores disjointly, or whose cores are not a full mesh, is
+reported as invalid by the `validation` endpoint.
 
 ## Web app
 

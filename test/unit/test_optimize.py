@@ -99,6 +99,7 @@ def _plan(
     forced: set[str] | None = None,
     strength: dict[str, float] | None = None,
     clusters: list[list[str]] | None = None,
+    access_aggregation_links: int = 2,
 ) -> _SearchPlan:
     """Build a search plan for direct optimizer tests."""
     return _SearchPlan(
@@ -106,6 +107,7 @@ def _plan(
         _AggregationPlan(frozenset(forced or set())),
         strength or {},
         clusters=clusters or [],
+        tuning=Tuning(access_aggregation_links=access_aggregation_links),
     )
 
 
@@ -513,6 +515,49 @@ def test_assign_access_completes_a_cluster_with_no_local_head() -> None:
     assert result is not None and len(result[0]) == 2 * len(CLUSTER_ACCESS)
 
 
+# Three aggregations, each dual-homing to both cores, for the configurable-count check.
+TRIPLE_EDGES = physical(
+    {
+        ("g1", "c1"): 1.0, ("g1", "c2"): 1.0,
+        ("g2", "c1"): 1.0, ("g2", "c2"): 1.0,
+        ("g3", "c1"): 1.0, ("g3", "c2"): 1.0, ("c1", "c2"): 1.0,
+    }
+)
+
+
+def _access_link_counts(edges: list[AccessEdge]) -> dict[str, int]:
+    """Number of aggregation links each access vertex received."""
+    counts: dict[str, int] = {}
+    for edge in edges:
+        counts[edge.source] = counts.get(edge.source, 0) + 1
+    return counts
+
+
+def test_assign_access_homes_to_the_configured_count() -> None:
+    """Each access vertex homes to exactly the configured number of aggregations."""
+    coords = {"g1": (0.0, 0.0), "g2": (0.0, 0.05), "g3": (0.0, 0.1)}
+    access_vertices = [access(name, lat, lon) for name, (lat, lon) in CLUSTER_ACCESS.items()]
+    inputs = _inputs_from_edges(
+        ["g1", "g2", "g3", "c1", "c2"], TRIPLE_EDGES, {"g1", "g2", "g3"}, access_vertices, coords
+    )
+    plan = _plan([], clusters=[list(CLUSTER_ACCESS)], access_aggregation_links=3)
+    result = assign_access(("c1", "c2"), inputs, plan)
+    assert result is not None and _access_link_counts(result[0]) == {
+        name: 3 for name in CLUSTER_ACCESS
+    }
+
+
+def test_assign_access_requires_the_configured_count_of_feasible_aggregations() -> None:
+    """With fewer feasible aggregations than the configured count, assignment fails."""
+    coords = {"g1": (0.0, 0.0), "g2": (0.0, 0.05)}
+    access_vertices = [access(name, lat, lon) for name, (lat, lon) in CLUSTER_ACCESS.items()]
+    inputs = _inputs_from_edges(
+        ["g1", "g2", "c1", "c2"], DUAL_EDGES, {"g1", "g2"}, access_vertices, coords
+    )
+    plan = _plan([], clusters=[list(CLUSTER_ACCESS)], access_aggregation_links=3)
+    assert assign_access(("c1", "c2"), inputs, plan) is None
+
+
 def test_cluster_diameter_is_the_farthest_member_pair() -> None:
     """A cluster's diameter is the greatest distance between two members."""
     members = [access("a", 0.0, 0.0), access("b", 0.0, 1.0), access("c", 0.0, 3.0)]
@@ -533,6 +578,13 @@ def test_cluster_local_heads_caps_at_two() -> None:
     assert len(cluster_local_heads(members, set(by_id), set(), by_id)) == 2
 
 
+def test_cluster_local_heads_caps_at_the_configured_count() -> None:
+    """A cluster takes up to the configured number of heads when more PoPs are local."""
+    members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
+    by_id = {key: pop(key, 0.0, off) for key, off in (("x", 0.0), ("y", 0.1), ("z", 0.2))}
+    assert len(cluster_local_heads(members, set(by_id), set(), by_id, count=3)) == 3
+
+
 def test_cluster_local_heads_prefers_a_selected_facility_over_a_nearer_build() -> None:
     """A local pin becomes a head over closer new builds; reuse beats new-build."""
     members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
@@ -549,20 +601,27 @@ HOMES_POPS = {key: pop(key, 0.0, off) for key, off in (("x", 1.0), ("y", 2.0), (
 
 
 @pytest.mark.parametrize(
-    "current, selected, feasible, expected",
+    "selected, feasible, expected",
     [
-        ([], {"x", "y"}, {"x", "y", "z"}, {"x", "y"}),  # reuse fills both homes
-        ([], set(), {"x", "y"}, {"x", "y"}),  # nothing to reuse: build two
-        ([], set(), {"x"}, {"x"}),  # only one reachable: returns one
-        (["x"], {"y"}, {"x", "y", "z"}, {"x", "y"}),  # keep the prefilled home, add one
+        ({"x", "y"}, {"x", "y", "z"}, {"x", "y"}),  # reuse fills both homes
+        (set(), {"x", "y"}, {"x", "y"}),  # nothing to reuse: build two
+        (set(), {"x"}, {"x"}),  # only one reachable: returns one
     ],
 )
 def test_complete_homes(
-    current: list[str], selected: set[str], feasible: set[str], expected: set[str]
+    selected: set[str], feasible: set[str], expected: set[str]
 ) -> None:
-    """Homes prefer reuse, then build, and keep any prefilled home."""
-    result = complete_homes(access("s", 0.0, 0.0), current, selected, feasible, HOMES_POPS)
+    """Homes prefer reuse, then build, toward the requested count."""
+    result = complete_homes(access("s", 0.0, 0.0), selected, feasible, HOMES_POPS)
     assert set(result) == expected
+
+
+def test_complete_homes_fills_to_the_configured_count() -> None:
+    """complete_homes reaches the configured number of homes when enough are reachable."""
+    result = complete_homes(
+        access("s", 0.0, 0.0), {"x", "y"}, {"x", "y", "z"}, HOMES_POPS, count=3
+    )
+    assert set(result) == {"x", "y", "z"}
 
 
 def test_required_core_is_fixed_into_every_core_set() -> None:

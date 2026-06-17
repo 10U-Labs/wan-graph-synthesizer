@@ -7,6 +7,7 @@ over vertex-disjoint paths, and the core tier must form a connected full mesh.
 from __future__ import annotations
 
 from wan_designer import (
+    AccessEdge,
     Design,
     DesignMetrics,
     PathUse,
@@ -87,6 +88,31 @@ def test_good_design_has_full_mesh() -> None:
 def test_good_design_has_no_missing_redundancy() -> None:
     """Good design has no missing redundancy."""
     assert not aggregations_without_core_redundancy(GOOD)
+
+
+# An access vertex "s" homed to three aggregations, for the configurable-count check.
+TRIPLE_HOMED = Design(
+    core_ids=("C1", "C2"),
+    aggregation_ids=("A", "B", "D"),
+    transit_ids=(),
+    access_edges=[AccessEdge("s", target, 1.0) for target in ("A", "B", "D")],
+    physical_edge_keys={edge_key("C1", "C2")},
+    path_uses=[],
+    metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+)
+TRIPLE_HOMED_VERTICES = [make_pop(name) for name in ("s", "A", "B", "D", "C1", "C2")]
+
+
+def test_access_links_pass_at_the_configured_count() -> None:
+    """Access vertices with the configured number of aggregation links pass the check."""
+    report = validate_design(TRIPLE_HOMED_VERTICES, TRIPLE_HOMED, access_aggregation_links=3)
+    assert report["access_vertices_with_required_aggregation_links"] is True
+
+
+def test_access_links_fail_below_the_configured_count() -> None:
+    """The same triple-homed design fails when only two links are required."""
+    report = validate_design(TRIPLE_HOMED_VERTICES, TRIPLE_HOMED, access_aggregation_links=2)
+    assert report["access_vertices_with_required_aggregation_links"] is False
 
 
 def test_bottleneck_is_not_dual_homed() -> None:

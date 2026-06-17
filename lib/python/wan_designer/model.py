@@ -112,13 +112,23 @@ class Design:
     metrics: DesignMetrics
 
 @dataclass(frozen=True)
+class EnumBudget:
+    """Memory budget governing how many core sets the search may enumerate."""
+
+    memory_fraction: float = 0.6  # share of RAM the core enumeration may use
+    set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
+
+
+@dataclass(frozen=True)
 class Tuning:
     """Algorithm dials for the optimizer.
 
     These defaults are the single source of truth; ``etc/joint.yml`` overrides
     them. The clustering defaults are mirrored as function-argument defaults in
     ``clustering.py`` (which ``model`` cannot import without a cycle), so keep the
-    two in step.
+    two in step. ``core_backbone_min_degree`` and ``access_aggregation_links`` are
+    the two minimum-connectivity requirements the design must meet (per core, and
+    per access vertex).
     """
 
     cluster_min_points: int = 2  # access vertices needed to seed a new aggregation
@@ -126,8 +136,8 @@ class Tuning:
     compass_octants: int = 8  # compass sectors used to score a core's link spread
     core_backbone_min_degree: int = 3  # min core-to-core backbone links per core
     core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one
-    enum_memory_fraction: float = 0.6  # share of RAM the core enumeration may use
-    core_set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
+    access_aggregation_links: int = 2  # aggregation facilities each access vertex homes to
+    enum_budget: EnumBudget = field(default_factory=EnumBudget)  # core-enumeration memory budget
 
 # The three edge types a forced connection may pin, named as in ``README.md``.
 FORCED_CONNECTION_TYPES = frozenset({"core-core", "aggregation-core", "access-aggregation"})
@@ -216,7 +226,7 @@ class ValidationReport(TypedDict):
     degree_deficient_vertices: list[dict[str, object]]
     biconnected_no_articulation_points: bool
     articulation_points: list[dict[str, str]]
-    access_vertices_with_two_aggregation_links: bool
+    access_vertices_with_required_aggregation_links: bool
     aggregations_dual_homed_to_cores: bool
     aggregations_missing_core_redundancy: list[dict[str, str]]
     cores_full_mesh: bool

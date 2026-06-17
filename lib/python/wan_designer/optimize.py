@@ -10,7 +10,7 @@ most shortens the aggregation-to-core haul -- so extra cores appear only where t
 bring demand closer, never as a mileage cost minimized over candidate sets.
 
 Access sites with no aggregation within the last-mile cap are exempt from the cap
-and home to their nearest two regardless.
+and home to their nearest ``access_aggregation_links`` regardless.
 
 On top of the algorithm, the operator may pin roles by PoP name (``RoleOverrides``,
 resolved by ``apply_role_overrides``): force a PoP to be a core, force it to be an
@@ -37,6 +37,7 @@ from wan_designer.model import (
     DesignMetrics,
     DesignParams,
     ForcedLinks,
+    Tuning,
     Vertex,
     PathUse,
     PhysicalEdge,
@@ -222,8 +223,9 @@ def cluster_local_heads(
     feasible_ids: set[str],
     selected: set[str],
     pop_by_id: dict[str, Vertex],
+    count: int = 2,
 ) -> list[str]:
-    """Up to two distinct feasible PoPs local to a cluster, its heads.
+    """Up to ``count`` distinct feasible PoPs local to a cluster, its heads.
 
     A PoP is local when it sits within the cluster's own extent -- its diameter,
     the farthest distance between two members -- of at least one member, so a
@@ -247,31 +249,32 @@ def cluster_local_heads(
             (reuse if aggregation_id in selected else build).append((total, aggregation_id))
     reuse.sort()
     build.sort()
-    return [aggregation_id for _total, aggregation_id in (reuse + build)[:2]]
+    return [aggregation_id for _total, aggregation_id in (reuse + build)[:count]]
 
 def complete_homes(
     access: Vertex,
-    current: list[str],
     selected: set[str],
     feasible_ids: set[str],
     pop_by_id: dict[str, Vertex],
+    count: int = 2,
 ) -> list[str]:
-    """Fill an access vertex out toward two homes, preferring reuse over a build.
+    """Fill an access vertex out toward ``count`` homes, preferring reuse over a build.
 
     Existing facilities (cluster heads already placed, forced bases) are reused
-    first; a new aggregation is opened only when fewer than two existing
+    first; a new aggregation is opened only when fewer than ``count`` existing
     facilities are reachable -- the last resort for a lone vertex or a synthetic
-    graph with no clusters. With two or more feasible aggregations available this
-    always reaches two; it can return fewer only when the graph cannot offer two.
+    graph with no clusters. With ``count`` or more feasible aggregations available
+    this always reaches ``count``; it can return fewer only when the graph cannot
+    offer that many.
     """
-    homes = list(current)
+    homes: list[str] = []
     for source in (selected, feasible_ids):
         for _distance, facility in sorted(
             (haversine_miles(access, pop_by_id[facility]), facility)
             for facility in source
             if facility not in homes
         ):
-            if len(homes) >= 2:
+            if len(homes) >= count:
                 break
             homes.append(facility)
     return homes
@@ -357,15 +360,16 @@ def assign_access(
 ) -> tuple[list[AccessEdge], set[str]] | None:
     """Home every access vertex by clustering: cluster heads first, then reuse.
 
-    Aggregations are placed as the heads of dense access-vertex clusters (two
-    distinct local PoPs each). Every vertex then dual-homes to two facilities,
-    completing any gap (a cluster with one local head, or a sparse lone vertex) by
-    reusing an existing facility rather than building a redundant one. Returns
-    the access edges and selected aggregation ids, or None if some vertex cannot
-    reach two facilities.
+    Aggregations are placed as the heads of dense access-vertex clusters (up to
+    ``plan.tuning.access_aggregation_links`` distinct local PoPs each). Every vertex then
+    homes to that many facilities, completing any gap (a cluster with too few local
+    heads, or a sparse lone vertex) by reusing an existing facility rather than
+    building a redundant one. Returns the access edges and selected aggregation ids,
+    or None if some vertex cannot reach the configured number of facilities.
     """
+    links = plan.tuning.access_aggregation_links
     feasible_ids = feasible_aggregation_ids(core_ids, inputs, plan)
-    if len(feasible_ids) < 2:
+    if len(feasible_ids) < links:
         return None
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     pop_by_id.update(plan.aggregations.twin_vertices)
@@ -380,13 +384,15 @@ def assign_access(
     # common head chosen for the cluster as a whole.
     for members in plan.clusters:
         member_vertices = [access_by_id[member] for member in members]
-        selected.update(cluster_local_heads(member_vertices, feasible_ids, selected, pop_by_id))
+        selected.update(
+            cluster_local_heads(member_vertices, feasible_ids, selected, pop_by_id, links)
+        )
 
-    # Pass 2: home every vertex to its nearest two facilities, reusing the placed
-    # heads before opening any new build. An operator-forced access link pins one
-    # of that vertex's two homes regardless of distance.
+    # Pass 2: home every vertex to its nearest ``links`` facilities, reusing the
+    # placed heads before opening any new build. An operator-forced access link pins
+    # one of that vertex's homes regardless of distance.
     for access in inputs.access_vertices:
-        completed = complete_homes(access, [], selected, feasible_ids, pop_by_id)
+        completed = complete_homes(access, selected, feasible_ids, pop_by_id, links)
         completed = apply_forced_access_homes(access, completed, plan.forced_links, pop_by_id)
         homes[access.id] = completed
         selected.update(completed)
@@ -459,7 +465,7 @@ def routed_path_uses(
     """Reconstruct the core-mesh and aggregation-to-core paths for a design."""
     core_set = set(core_ids)
     constraints = BackboneConstraints(
-        plan.core_backbone_min_degree, required_core_pairs(core_set, plan.forced_links)
+        plan.tuning.core_backbone_min_degree, required_core_pairs(core_set, plan.forced_links)
     )
     path_uses = core_mesh_paths(
         core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
@@ -599,7 +605,7 @@ class _SearchPlan:
     strength_by_id: dict[str, float]
     clusters: list[list[str]] = field(default_factory=list)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
-    core_backbone_min_degree: int = 3
+    tuning: Tuning = field(default_factory=Tuning)  # the dials this plan was built from
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
 
     @property
@@ -686,9 +692,8 @@ def total_memory_bytes() -> int:
 
 def enumeration_limit(memory_bytes: int, params: DesignParams) -> int:
     """How many core sets fit in the share of RAM the enumeration may use."""
-    return int(
-        memory_bytes * params.tuning.enum_memory_fraction / params.tuning.core_set_peak_bytes
-    )
+    budget = params.tuning.enum_budget
+    return int(memory_bytes * budget.memory_fraction / budget.set_peak_bytes)
 
 COVERAGE_EPSILON_MILES = 1.0  # a new core must cut total aggregation haul by at least this
 
@@ -884,7 +889,7 @@ def build_search_plan(
         core_candidates,
         with_colocation_twins(aggregations, core_candidates, pop_by_id, inputs.adjacency),
         strength_by_id, clusters=clusters,
-        core_backbone_min_degree=params.tuning.core_backbone_min_degree,
+        tuning=params.tuning,
         forced_links=forced_links,
     )
 

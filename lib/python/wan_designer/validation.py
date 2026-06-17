@@ -219,8 +219,14 @@ def access_attachment_counts(design: Design) -> dict[str, int]:
         counts[edge.source] = counts.get(edge.source, 0) + 1
     return counts
 
-def validate_design(vertices: list[Vertex], design: Design) -> ValidationReport:
-    """Check a design against every hard structural requirement."""
+def validate_design(
+    vertices: list[Vertex], design: Design, access_aggregation_links: int = 2
+) -> ValidationReport:
+    """Check a design against every hard structural requirement.
+
+    ``access_aggregation_links`` is the number of aggregation facilities each access
+    vertex is required to home to (the operator's configured redundancy level).
+    """
     vertices_by_id = {vertex.id: vertex for vertex in vertices}
     ids = included_vertex_ids(design)
     edges = design_edge_set(design)
@@ -249,8 +255,8 @@ def validate_design(vertices: list[Vertex], design: Design) -> ValidationReport:
             {"id": vertex_id, "name": vertices_by_id[vertex_id].name}
             for vertex_id in sorted(articulations)
         ],
-        "access_vertices_with_two_aggregation_links": all(
-            count == 2 for count in attachments.values()
+        "access_vertices_with_required_aggregation_links": all(
+            count == access_aggregation_links for count in attachments.values()
         ),
         "aggregations_dual_homed_to_cores": not missing_core_redundancy,
         "aggregations_missing_core_redundancy": [

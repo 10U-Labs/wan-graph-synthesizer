@@ -67,6 +67,9 @@ inputs:
 # Display label surfaced by the REST API's /api/wan-maps endpoint.
 label: F-35
 tuning:
+  # Aggregation facilities every access vertex homes to (its redundancy level). The
+  # design fails validation if any access vertex reaches fewer than this many.
+  access_aggregation_links: 2
   # Ceiling (miles) on the data-derived DBSCAN cluster radius.
   cluster_max_radius_miles: 250.0
   # A cluster needs at least this many close access vertices to seed an aggregation.

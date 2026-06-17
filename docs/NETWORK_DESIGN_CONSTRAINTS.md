@@ -34,7 +34,8 @@ PoP), which are new builds rather than existing carrier routes.
 
 A design is invalid unless all of the following hold.
 
-1. Every access vertex dual-homes to exactly two aggregation points.
+1. Every access vertex homes to exactly `tuning.access_aggregation_links`
+   aggregation points (default two).
 2. Every aggregation point dual-homes to two distinct core vertices over
    vertex-disjoint paths.
 3. Core vertices form a full mesh: every pair of cores is connected over

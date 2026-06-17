@@ -74,7 +74,7 @@ def test_cores_connect_to_at_least_three_others(design: dict[str, Any]) -> None:
 
 def test_access_vertices_are_dual_homed(design: dict[str, Any]) -> None:
     """Access vertices are dual homed."""
-    assert design["validation"]["access_vertices_with_two_aggregation_links"] is True
+    assert design["validation"]["access_vertices_with_required_aggregation_links"] is True
 
 
 def test_core_tier_meets_the_minimum(design: dict[str, Any]) -> None:

@@ -126,7 +126,7 @@ def test_cores_connect_to_at_least_three_others() -> None:
 
 def test_access_vertices_dual_homed() -> None:
     """Access vertices dual homed."""
-    assert ARTIFACTS.validation["access_vertices_with_two_aggregation_links"] is True
+    assert ARTIFACTS.validation["access_vertices_with_required_aggregation_links"] is True
 
 
 def _justified_artifacts(directory: Path) -> DesignArtifacts:
@@ -157,7 +157,7 @@ def test_justified_design_dual_homes_every_aggregation(tmp_path: Path) -> None:
 def test_justified_design_dual_homes_every_access_vertex(tmp_path: Path) -> None:
     """Every access vertex still reaches two aggregation facilities."""
     artifacts = _justified_artifacts(tmp_path)
-    assert artifacts.validation["access_vertices_with_two_aggregation_links"] is True
+    assert artifacts.validation["access_vertices_with_required_aggregation_links"] is True
 
 
 def test_forced_off_net_site_is_seated_as_an_aggregation(tmp_path: Path) -> None:

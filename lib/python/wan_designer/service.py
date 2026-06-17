@@ -76,7 +76,7 @@ def run_design(
     )
     if augment:
         design = augment_physical_resilience(vertices, physical_edges, design)
-    validation = validate_design(vertices, design)
+    validation = validate_design(vertices, design, params.tuning.access_aggregation_links)
     return DesignArtifacts(vertices, physical_edges, design, validation)
 
 

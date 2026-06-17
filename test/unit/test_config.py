@@ -84,6 +84,18 @@ def test_reads_max_core_count() -> None:
     assert _config({"design": {"max_core_count": 7}}).params.max_core_count == 7
 
 
+def test_default_access_aggregation_links() -> None:
+    """The default config homes each access vertex to two aggregations."""
+    assert default_config().params.tuning.access_aggregation_links == 2
+
+
+def test_reads_access_aggregation_links() -> None:
+    """An access_aggregation_links value is read from the tuning section."""
+    assert _config(
+        {"tuning": {"access_aggregation_links": 3}}
+    ).params.tuning.access_aggregation_links == 3
+
+
 def test_reads_forced_cores() -> None:
     """A forced_cores list is read into the design params."""
     assert _config({"design": {"forced_cores": ["Atlanta, GA"]}}).params.forced_core_names == (

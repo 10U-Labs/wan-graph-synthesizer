@@ -19,6 +19,7 @@ from wan_designer.model import (
     FORCED_CONNECTION_TYPES,
     DesignPaths,
     DesignParams,
+    EnumBudget,
     ForcedConnection,
     Tuning,
 )
@@ -127,8 +128,13 @@ def _tuning(tuning: dict[str, Any]) -> Tuning:
         core_coverage_target_miles=tuning.get(
             "core_coverage_target_miles", base.core_coverage_target_miles
         ),
-        enum_memory_fraction=tuning.get("enum_memory_fraction", base.enum_memory_fraction),
-        core_set_peak_bytes=tuning.get("core_set_peak_bytes", base.core_set_peak_bytes),
+        access_aggregation_links=tuning.get(
+            "access_aggregation_links", base.access_aggregation_links
+        ),
+        enum_budget=EnumBudget(
+            memory_fraction=tuning.get("enum_memory_fraction", base.enum_budget.memory_fraction),
+            set_peak_bytes=tuning.get("core_set_peak_bytes", base.enum_budget.set_peak_bytes),
+        ),
     )
 
 
