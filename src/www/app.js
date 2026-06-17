@@ -53,8 +53,12 @@ function vertexLabel(vertex) {
   const located = info.municipality && info.state
     ? `<br>${info.municipality}, ${info.state}`
     : "";
+  // Co-located aggregation twins are already named "AGGR <core>" server-side, so
+  // skip the prefix when the name carries it to avoid a doubled "AGGR AGGR".
   const prefix = TIER_PREFIX[vertex.tier_role];
-  const name = prefix ? `${prefix} ${vertex.name}` : vertex.name;
+  const name = prefix && !vertex.name.startsWith(prefix)
+    ? `${prefix} ${vertex.name}`
+    : vertex.name;
   return `<strong>${name}</strong>${located}<br>Tenant: ${vertex.tenant}`;
 }
 
