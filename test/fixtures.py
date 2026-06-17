@@ -29,6 +29,7 @@ from wan_designer.model import (
     is_carrier_pop,
     slugify,
 )
+from wan_designer.offnet import OFF_NET_KIND, OFF_NET_TENANT
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.overrides import apply_role_overrides, materialize_selected_colocation_twins
 from wan_designer.validation import validate_design
@@ -141,6 +142,13 @@ def justified_installation(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -
         kind="Military installation",
         coords=(lat, lon),
         info=VertexInfo(justified_aggregation=True),
+    )
+
+
+def off_net_site(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
+    """Build an off-net candidate site: not a carrier PoP and carrying no demand."""
+    return Vertex(
+        id=vertex_id, name=vertex_id, tenant=OFF_NET_TENANT, kind=OFF_NET_KIND, coords=(lat, lon)
     )
 
 
@@ -328,6 +336,22 @@ def write_justified_solvable_inputs(directory: Path) -> DesignPaths:
     edges_path = directory / "ring_edges.csv"
     edges_path.write_text(solvable_edges_csv(), encoding="utf-8")
     return DesignPaths((("F-35", f35_path), ("Lumen", lumen_path)), edges_path)
+
+
+def write_off_net_solvable_inputs(directory: Path) -> tuple[DesignPaths, str]:
+    """Write the solvable ring plus an off-net site CSV near two ring PoPs.
+
+    Returns the :class:`DesignPaths` (with ``off_net_path`` set) and the off-net
+    site's name, ready to force as a core or aggregation through :func:`run_design`.
+    """
+    vertex_files = write_vertex_files(directory, solvable_tenant_rows())
+    edges_path = directory / "ring_edges.csv"
+    edges_path.write_text(solvable_edges_csv(), encoding="utf-8")
+    off_net_path = directory / "off_net.csv"
+    off_net_path.write_text(
+        "name,latitude,longitude\nDulles Hub,40.5,-100.0\n", encoding="utf-8"
+    )
+    return DesignPaths(vertex_files, edges_path, off_net_path=off_net_path), "Dulles Hub"
 
 
 def sample_sources() -> SourceFiles:

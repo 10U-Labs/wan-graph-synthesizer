@@ -11,16 +11,16 @@ design:
   excluded: []
   # PoPs pinned into the aggregation tier. Richmond is pinned (not Norfolk, a
   # single-homed ROADM leaf) so southeast-Virginia demand homes into a PoP that
-  # can dual-home to two cores.
+  # can dual-home to two cores. Dulles is an off-net seat (see inputs.off_net):
+  # not a carrier PoP itself, reached by local fiber to the nearest PoPs.
   forced_aggregations:
     - Ashburn, VA
     - Atlanta, GA
     - Dallas, TX
-    - Denver, CO
+    - Dulles, VA
     - Houston, TX
     - Las Vegas, NV
     - Los Angeles, CA
-    - McLean, VA
     - New York, NY
     - Phoenix, AZ
     - Portland, OR
@@ -34,9 +34,8 @@ design:
     - Atlanta, GA
     - Chicago, IL
     - Dallas, TX
-    - Denver, CO
+    - Dulles, VA
     - Los Angeles, CA
-    - McLean, VA
     - Salt Lake City, UT
   # Maximum number of core PoPs. Coverage growth past the floor never seats more
   # cores than this ceiling, so the backbone stays bounded.
@@ -49,6 +48,9 @@ design:
 inputs:
   # Physical Lumen backbone edges between carrier PoPs.
   carrier_edges: data/edges/lumen.csv
+  # Off-net seats: non-PoP locations the operator may force as cores/aggregations,
+  # reached by synthetic local fiber to the nearest carrier PoPs. Dulles lives here.
+  off_net: data/vertices/off_net.csv
   # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
   regional_edges:
     - data/edges/dcn.csv

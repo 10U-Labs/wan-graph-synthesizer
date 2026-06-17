@@ -45,6 +45,15 @@ def test_run_design_seats_a_forced_installation_as_aggregation(tmp_path: Path) -
     assert any(agg.startswith("fac_") for agg in design.aggregation_ids)
 
 
+def test_run_design_seats_a_forced_off_net_site_as_core(tmp_path: Path) -> None:
+    """A forced off-net site is seated as a core via its synthesized local-fiber twin."""
+    paths, name = fixtures.write_off_net_solvable_inputs(tmp_path)
+    design = run_design(
+        paths, DesignParams(min_core_count=2, forced_core_names=(name,)), False
+    ).design
+    assert any(core.startswith("offnet_") for core in design.core_ids)
+
+
 def test_run_design_stitches_regional_edges(tmp_path: Path) -> None:
     """Run design loads regional edge files against the carrier PoP set."""
     vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)

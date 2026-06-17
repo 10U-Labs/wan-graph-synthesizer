@@ -232,11 +232,14 @@ class DesignPaths:
 
     ``vertex_files`` pairs each tenant with its per-tenant vertices CSV; the
     tenant is carried here because the CSVs no longer hold a ``tenant`` column.
+    ``off_net_path`` is an optional CSV of off-net candidate seats (non-PoP
+    locations the operator may force as cores/aggregations, reached by local fiber).
     """
 
     vertex_files: tuple[tuple[str, Path], ...]
     edge_path: Path
     regional_edge_paths: tuple[Path, ...] = ()
+    off_net_path: Path | None = None
 
 @dataclass(frozen=True)
 class SourceFiles:

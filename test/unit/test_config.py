@@ -49,6 +49,16 @@ def test_default_regional_edges() -> None:
     )
 
 
+def test_default_off_net_path_is_none() -> None:
+    """The default config configures no off-net site file."""
+    assert default_config().paths.off_net_path is None
+
+
+def test_reads_off_net_path() -> None:
+    """An inputs.off_net value is read into the design paths."""
+    assert _config({"inputs": {"off_net": "off.csv"}}).paths.off_net_path == Path("off.csv")
+
+
 def test_default_resilience_augmentation_on() -> None:
     """Resilience augmentation defaults on."""
     assert default_config().resilience_augmentation is True

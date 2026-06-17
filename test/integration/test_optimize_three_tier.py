@@ -158,3 +158,21 @@ def test_justified_design_dual_homes_every_access_vertex(tmp_path: Path) -> None
     """Every access vertex still reaches two aggregation facilities."""
     artifacts = _justified_artifacts(tmp_path)
     assert artifacts.validation["access_vertices_with_two_aggregation_links"] is True
+
+
+def test_forced_off_net_site_is_seated_as_an_aggregation(tmp_path: Path) -> None:
+    """A forced off-net site's local-fiber twin lands on the aggregation tier."""
+    paths, name = fixtures.write_off_net_solvable_inputs(tmp_path)
+    design = run_design(
+        paths, DesignParams(min_core_count=2, forced_aggregation_names=(name,)), False
+    ).design
+    assert any(aggregation.startswith("offnet_") for aggregation in design.aggregation_ids)
+
+
+def test_off_net_design_dual_homes_every_aggregation(tmp_path: Path) -> None:
+    """An off-net aggregation twin dual-homes to two cores like any other aggregation."""
+    paths, name = fixtures.write_off_net_solvable_inputs(tmp_path)
+    artifacts = run_design(
+        paths, DesignParams(min_core_count=2, forced_aggregation_names=(name,)), False
+    )
+    assert artifacts.validation["aggregations_dual_homed_to_cores"] is True

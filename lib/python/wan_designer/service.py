@@ -15,6 +15,7 @@ from typing import Any
 
 from wan_designer.config import load_config
 from wan_designer.installations import realize_installations
+from wan_designer.offnet import load_off_net_sites, realize_off_net_sites
 from wan_designer.model import (
     DesignPaths,
     DesignArtifacts,
@@ -52,6 +53,14 @@ def run_design(
         vertices, physical_edges, frozenset(params.forced_aggregation_names)
     )
     vertices, physical_edges = realized.vertices, realized.physical_edges
+    sites = load_off_net_sites(paths.off_net_path) if paths.off_net_path else []
+    off_net = realize_off_net_sites(
+        vertices,
+        physical_edges,
+        sites,
+        frozenset(params.forced_core_names) | frozenset(params.forced_aggregation_names),
+    )
+    vertices, physical_edges = off_net.vertices, off_net.physical_edges
     roles = {pop.id: carrier_role(pop) for pop in vertices if is_carrier_pop(pop)}
     vertices, physical_edges, overrides = apply_role_overrides(
         vertices, physical_edges, params, forced_connections

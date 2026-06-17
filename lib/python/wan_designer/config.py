@@ -102,10 +102,12 @@ def _vertex_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
 def _paths(inputs: dict[str, Any]) -> DesignPaths:
     """Resolve the file-path configuration into a :class:`DesignPaths`."""
     regional_edges = _str_list(inputs, "regional_edges", DEFAULT_REGIONAL_EDGES)
+    off_net = inputs.get("off_net")
     return DesignPaths(
         vertex_files=_vertex_files(inputs),
         edge_path=Path(str(inputs.get("carrier_edges", DEFAULT_CARRIER_EDGES))),
         regional_edge_paths=tuple(Path(item) for item in regional_edges),
+        off_net_path=Path(str(off_net)) if off_net is not None else None,
     )
 
 
