@@ -1,0 +1,74 @@
+---
+# F-35-only WAN design: same topology and pins as joint.yml, but the demand is
+# F-35 installations only -- the AFLCMC and AFNWC/NI vertices are omitted while
+# every carrier (Lumen, DCN, VisionNet) and cloud region (AWS, OCI, Azure)
+# remains. Operator choices live here, not in source; CLI flags override these.
+# Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
+design:
+  # Allow mapbook ROADM vertices to be selected as aggregation/core points.
+  allow_roadm_aggregation: false
+  # PoPs barred from every selected role.
+  excluded: []
+  # PoPs pinned into the aggregation tier. Dulles is an off-net seat (see
+  # inputs.off_net): not a carrier PoP itself, reached by local fiber to the
+  # nearest PoPs.
+  forced_aggregations:
+    - Dulles, VA
+    - Los Angeles, CA
+    - Tallahassee, FL
+  # PoPs pinned into the core tier. The search may still add cores past these to
+  # satisfy min_core_count and coverage, but never drops a pinned one.
+  forced_cores:
+    - Dulles, VA
+    - Los Angeles, CA
+    - Tallahassee, FL
+  # Maximum number of core PoPs. Coverage growth past the floor never seats more
+  # cores than this ceiling, so the backbone stays bounded.
+  max_core_count: 3
+  # Minimum number of core PoPs. The search adds more cores only when feasibility
+  # requires it; it never drops below this floor.
+  min_core_count: 3
+  # Add extra physical Carrier edges to reduce articulation or degree risk.
+  resilience_augmentation: true
+inputs:
+  # Physical Lumen backbone edges between carrier PoPs.
+  carrier_edges: data/edges/lumen.csv
+  # Off-net seats: non-PoP locations the operator may force as cores/aggregations,
+  # reached by synthetic local fiber to the nearest carrier PoPs. Dulles lives here.
+  off_net: data/vertices/off_net.csv
+  # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
+  regional_edges:
+    - data/edges/dcn.csv
+    - data/edges/vision_net.csv
+  # F-35 only: the AFLCMC and AFNWC/NI tenant files are intentionally omitted.
+  vertices:
+    AWS:
+      - data/vertices/aws_secret_east.csv
+    Azure:
+      - data/vertices/azure_secret_east.csv
+    DCN: data/vertices/dcn.csv
+    F-35: data/vertices/f_35.csv
+    Lumen: data/vertices/lumen.csv
+    # OCI: data/vertices/oci.csv
+    VisionNet: data/vertices/vision_net.csv
+# Display label surfaced by the REST API's /api/wan-maps endpoint.
+label: F-35 (redundant)
+tuning:
+  # Aggregation facilities every access vertex homes to (its redundancy level). The
+  # design fails validation if any access vertex reaches fewer than this many.
+  access_aggregation_links: 2
+  # Ceiling (miles) on the data-derived DBSCAN cluster radius.
+  cluster_max_radius_miles: 250.0
+  # A cluster needs at least this many close access vertices to seed an aggregation.
+  cluster_min_points: 2
+  # Floor (miles) on the data-derived DBSCAN cluster radius.
+  cluster_min_radius_miles: 0.0
+  # Compass sectors used to score a core's link spread.
+  compass_octants: 8
+  # Fewest other cores each core links to on the backbone. The full mesh is thinned
+  # to a minimum-mileage, 2-edge-connected subgraph that holds each core at this floor.
+  core_backbone_min_degree: 3
+  # Peak bytes one enumerated core set costs (sizes the search to free RAM).
+  core_set_peak_bytes: 160
+  # Share of RAM the core enumeration may use at its peak.
+  enum_memory_fraction: 0.6

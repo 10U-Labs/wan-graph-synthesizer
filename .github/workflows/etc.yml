@@ -26,7 +26,8 @@ jobs:
           yamllint --strict \
             --config-data \
             "{extends: default, rules: {$RULES}}" \
-            .github/workflows/etc.yml etc/joint.yml etc/f_35_non_redundant.yml
+            .github/workflows/etc.yml etc/joint.yml \
+            etc/f_35_non_redundant.yml etc/f_35_redundant.yml
 name: etc
 on:
   pull_request:
