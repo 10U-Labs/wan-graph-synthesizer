@@ -57,6 +57,7 @@ class AppConfig:
     resilience_augmentation: bool
     label: str = ""
     forced_connections: tuple[ForcedConnection, ...] = ()
+    excluded_connections: tuple[ForcedConnection, ...] = ()
 
 
 def _mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
@@ -75,27 +76,46 @@ def _str_list(data: dict[str, Any], key: str, default: list[str]) -> tuple[str, 
     return tuple(value)
 
 
-def _forced_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
-    """Parse the operator-pinned ``forced_connections`` edges, rejecting bad shapes.
+def _connection_list(
+    design: dict[str, Any],
+    key: str,
+    allowed_types: frozenset[str],
+    default_type: str | None,
+) -> tuple[ForcedConnection, ...]:
+    """Parse a list of operator connection mappings, rejecting bad shapes.
 
-    Each entry is a mapping with string ``source``/``target``/``type`` keys, the
-    ``type`` one of :data:`FORCED_CONNECTION_TYPES`. An absent key defaults to an
-    empty list (no pinned edges).
+    Each entry maps string ``source``/``target`` plus a ``type`` in
+    ``allowed_types``. ``default_type`` fills an absent ``type`` (use ``None`` to
+    require it); an absent ``key`` defaults to an empty list (no connections).
     """
-    value = design.get("forced_connections", [])
+    value = design.get(key, [])
     if not isinstance(value, list):
-        raise ValueError("config key 'forced_connections' must be a list")
+        raise ValueError(f"config key '{key}' must be a list")
     connections: list[ForcedConnection] = []
     for item in value:
         if not isinstance(item, dict) or not all(
-            isinstance(item.get(key), str) for key in ("source", "target", "type")
+            isinstance(item.get(field), str) for field in ("source", "target")
         ):
-            raise ValueError("each forced_connection must map source, target, and type to strings")
-        if item["type"] not in FORCED_CONNECTION_TYPES:
-            allowed = sorted(FORCED_CONNECTION_TYPES)
-            raise ValueError(f"forced_connection type must be one of {allowed}")
-        connections.append(ForcedConnection(item["type"], item["source"], item["target"]))
+            raise ValueError(f"each {key} entry must map source and target to strings")
+        edge_type = item.get("type", default_type)
+        if edge_type not in allowed_types:
+            raise ValueError(f"{key} type must be one of {sorted(allowed_types)}")
+        connections.append(ForcedConnection(edge_type, item["source"], item["target"]))
     return tuple(connections)
+
+
+def _forced_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
+    """Parse the operator-pinned ``forced_connections`` edges (``type`` required)."""
+    return _connection_list(design, "forced_connections", FORCED_CONNECTION_TYPES, None)
+
+
+def _excluded_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
+    """Parse the operator-pruned ``excluded_connections`` (``core-core`` only).
+
+    The only mesh link an operator may remove is a ``core-core`` pair, so ``type``
+    defaults to and must be ``core-core``.
+    """
+    return _connection_list(design, "excluded_connections", frozenset({"core-core"}), "core-core")
 
 
 def _vertex_paths(tenant: object, value: object) -> list[tuple[str, Path]]:
@@ -181,6 +201,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
         resilience_augmentation=design.get("resilience_augmentation", True),
         label=str(data.get("label", "")),
         forced_connections=_forced_connections(design),
+        excluded_connections=_excluded_connections(design),
     )
 
 

@@ -175,14 +175,16 @@ class ForcedLinks:
     ``core`` holds each ``core-core`` link as an order-independent :func:`edge_key`
     pair; ``aggregation`` holds each ``aggregation-core`` link as
     ``(aggregation_id, core_id)``; ``access`` holds each ``access-aggregation`` link
-    as ``(access_id, aggregation_id)``. ``required_cores`` are the operator-forced
-    core ids restricted to the eligible set; it is empty until the search plan
-    refines it.
+    as ``(access_id, aggregation_id)``. ``removed_core`` holds the ``core-core``
+    pairs the operator pruned from the otherwise-full core mesh, also as
+    :func:`edge_key` pairs. ``required_cores`` are the operator-forced core ids
+    restricted to the eligible set; it is empty until the search plan refines it.
     """
 
     core: frozenset[tuple[str, str]] = frozenset()
     aggregation: frozenset[tuple[str, str]] = frozenset()
     access: frozenset[tuple[str, str]] = frozenset()
+    removed_core: frozenset[tuple[str, str]] = frozenset()
     required_cores: frozenset[str] = frozenset()
 
 @dataclass(frozen=True)

@@ -49,7 +49,7 @@ from wan_designer.model import (
 from wan_designer.forced import (
     apply_forced_access_homes,
     forced_cores_for_aggregation,
-    required_core_pairs,
+    removed_core_pairs,
 )
 from wan_designer.graphs import (
     dijkstra,
@@ -63,14 +63,18 @@ from wan_designer.strength import core_strength
 
 logger = logging.getLogger(__name__)
 
-def unit_adjacency(
+def mileage_adjacency(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> dict[str, list[tuple[str, float]]]:
-    """Build a unit-weight adjacency map: every fiber span counts the same."""
+    """Build a mileage-weighted adjacency map: each span weighs its straight-line miles.
+
+    Routing minimizes miles, not hops, so an aggregation homes to the core that is
+    nearest on the ground -- not merely the one fewest fiber spans away.
+    """
     adjacency: dict[str, list[tuple[str, float]]] = {}
-    for left, right in physical_edges:
-        adjacency.setdefault(left, []).append((right, 1.0))
-        adjacency.setdefault(right, []).append((left, 1.0))
+    for (left, right), edge in physical_edges.items():
+        adjacency.setdefault(left, []).append((right, edge.distance_miles))
+        adjacency.setdefault(right, []).append((left, edge.distance_miles))
     for neighbors in adjacency.values():
         neighbors.sort()
     return adjacency
@@ -453,7 +457,7 @@ def twin_routing_adjacency(
     if core_id is None:
         return inputs.adjacency
     twin_edges = colocation_edges(core_id, aggregation_id, inputs.physical_edges)
-    return unit_adjacency({**inputs.physical_edges, **twin_edges})
+    return mileage_adjacency({**inputs.physical_edges, **twin_edges})
 
 def routed_path_uses(
     core_ids: tuple[str, ...],
@@ -464,9 +468,7 @@ def routed_path_uses(
 ) -> list[PathUse]:
     """Reconstruct the core-mesh and aggregation-to-core paths for a design."""
     core_set = set(core_ids)
-    constraints = BackboneConstraints(
-        plan.tuning.core_backbone_min_degree, required_core_pairs(core_set, plan.forced_links)
-    )
+    constraints = BackboneConstraints(removed_core_pairs(core_set, plan.forced_links))
     path_uses = core_mesh_paths(
         core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
     )
@@ -845,7 +847,7 @@ def graph_context(
     """Split vertices into PoPs/access and precompute the shared graph context."""
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     all_access = [vertex for vertex in vertices if not is_carrier_pop(vertex)]
-    adjacency = unit_adjacency(physical_edges)
+    adjacency = mileage_adjacency(physical_edges)
     validate_pop_graph(carrier_pops, physical_edges, adjacency)
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
     return _GraphContext(carrier_pops, all_access, adjacency, all_distances, all_predecessors)

@@ -190,17 +190,43 @@ def _forced_aggregation_endpoint(
     return seated
 
 
+def _core_core_pair(
+    connection: ForcedConnection, name_to_id: dict[str, str], forced_core: set[str]
+) -> tuple[str, str]:
+    """Resolve a core-core connection's two endpoints to a forced-core edge key."""
+    left = _forced_core_endpoint(connection.source, name_to_id, forced_core)
+    right = _forced_core_endpoint(connection.target, name_to_id, forced_core)
+    return edge_key(left, right)
+
+
+def _removed_core_links(
+    connections: tuple[ForcedConnection, ...],
+    name_to_id: dict[str, str],
+    forced_core: set[str],
+) -> frozenset[tuple[str, str]]:
+    """Resolve operator-pruned core-core pairs to edge keys, validating both endpoints.
+
+    Each endpoint must be a forced core (you can only prune a link between cores you
+    pinned), so an off-tier endpoint raises a ``ValueError`` naming the connection.
+    """
+    return frozenset(
+        _core_core_pair(connection, name_to_id, forced_core) for connection in connections
+    )
+
+
 def resolve_forced_links(
     connections: tuple[ForcedConnection, ...],
     vertices: list[Vertex],
     forced_core: set[str],
     operator_forced: set[str],
+    excluded_connections: tuple[ForcedConnection, ...] = (),
 ) -> ForcedLinks:
-    """Resolve operator forced connections to id-typed link sets, validating tiers.
+    """Resolve operator forced/pruned connections to id-typed link sets, validating tiers.
 
     Returns a :class:`ForcedLinks` of the core-core, aggregation-core, and
-    access-aggregation links. Each endpoint must already be seated in the tier its
-    edge type requires, or a ``ValueError`` names the offending connection.
+    access-aggregation links, plus the ``removed_core`` pairs the operator pruned
+    from the full mesh. Each endpoint must already be seated in the tier its edge
+    type requires, or a ``ValueError`` names the offending connection.
     """
     name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
     access_name_to_id = {
@@ -211,9 +237,7 @@ def resolve_forced_links(
     access_links: set[tuple[str, str]] = set()
     for connection in connections:
         if connection.edge_type == "core-core":
-            left = _forced_core_endpoint(connection.source, name_to_id, forced_core)
-            right = _forced_core_endpoint(connection.target, name_to_id, forced_core)
-            core_links.add(edge_key(left, right))
+            core_links.add(_core_core_pair(connection, name_to_id, forced_core))
         elif connection.edge_type == "aggregation-core":
             agg = _forced_aggregation_endpoint(
                 connection.source, name_to_id, forced_core, operator_forced
@@ -231,6 +255,7 @@ def resolve_forced_links(
         core=frozenset(core_links),
         aggregation=frozenset(aggregation_links),
         access=frozenset(access_links),
+        removed_core=_removed_core_links(excluded_connections, name_to_id, forced_core),
     )
 
 
@@ -239,6 +264,7 @@ def apply_role_overrides(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
     forced_connections: tuple[ForcedConnection, ...] = (),
+    excluded_connections: tuple[ForcedConnection, ...] = (),
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
     """Resolve operator pins into the search's role overrides.
 
@@ -246,7 +272,8 @@ def apply_role_overrides(
     ``CORE``/``AGGR`` pair. A forced installation has already been realized as a
     co-located carrier twin, so its force-pin resolves onto that twin here and lands
     in the forced aggregations like any other operator pin. ``forced_connections``
-    are resolved to id-typed link sets against the seated tiers.
+    are resolved to id-typed link sets against the seated tiers, and
+    ``excluded_connections`` to the core-core pairs pruned from the full mesh.
     """
     vertices, physical_edges, forced_core, operator_forced, excluded = _resolve_operator_pins(
         vertices, physical_edges, params
@@ -256,7 +283,7 @@ def apply_role_overrides(
         forced_aggregation_ids=frozenset(operator_forced),
         excluded_ids=frozenset(excluded),
         forced_links=resolve_forced_links(
-            forced_connections, vertices, forced_core, operator_forced
+            forced_connections, vertices, forced_core, operator_forced, excluded_connections
         ),
     )
     return vertices, physical_edges, overrides

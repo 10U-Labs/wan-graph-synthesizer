@@ -187,10 +187,12 @@ async function getJSON(path) {
   return response.json();
 }
 
-// Show the design's core and aggregation tallies in the top-right of the bar.
+// Show the design's core, aggregation, and access tallies in the top-right of the bar.
 function showCounts(summary) {
   const counts = document.getElementById("counts");
-  counts.textContent = `CORES ${summary.core_count} AGGR ${summary.aggregation_count}`;
+  counts.textContent =
+    `CORES ${summary.core_count} AGGR ${summary.aggregation_count}` +
+    ` ACCESS ${summary.access_vertex_count}`;
 }
 
 async function render(mapId) {

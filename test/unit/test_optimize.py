@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 
 import fixtures
-from wan_designer.graphs import is_two_edge_connected
 from wan_designer.model import (
     AccessEdge,
     Design,
@@ -52,7 +49,7 @@ from wan_designer.optimize import (
     prune_unused_aggregations,
     optimize_three_tier_design,
     search_best_design,
-    unit_adjacency,
+    mileage_adjacency,
     _AggregationPlan,
     _SearchPlan,
 )
@@ -78,10 +75,10 @@ def _inputs_from_edges(
     access_vertices: list[Vertex] | None = None,
     coords: dict[str, tuple[float, float]] | None = None,
 ) -> DesignInputs:
-    """Build DesignInputs over a unit-weight graph for direct optimizer tests."""
+    """Build DesignInputs over a mileage-weighted graph for direct optimizer tests."""
     places = coords or {}
     pops = [pop(vertex_id, *places.get(vertex_id, (0.0, 0.0))) for vertex_id in edge_ids]
-    adjacency = unit_adjacency(edges)
+    adjacency = mileage_adjacency(edges)
     distances, predecessors = all_pairs_shortest(pops, adjacency)
     return DesignInputs(
         access_vertices=access_vertices if access_vertices is not None else [],
@@ -223,14 +220,32 @@ def test_not_enough_core_candidates_is_rejected() -> None:
 def test_aggregation_core_paths_infeasible_through_bottleneck() -> None:
     """Aggregation core paths infeasible through bottleneck."""
     edges = physical({("S", "X"): 1.0, ("X", "C1"): 1.0, ("X", "C2"): 1.0})
-    _distance, paths = aggregation_core_paths("S", ("C1", "C2"), unit_adjacency(edges), edges)
+    _distance, paths = aggregation_core_paths("S", ("C1", "C2"), mileage_adjacency(edges), edges)
     assert not paths
+
+
+def test_aggregation_homes_to_the_two_nearest_cores_by_miles() -> None:
+    """An aggregation routes to the two cores nearest in miles, not in hops.
+
+    ``C3`` is one hop away but 100 miles off; ``C1``/``C2`` are two hops but two
+    miles each. Mileage routing picks the near pair and skips the far single hop --
+    a hop-count metric would instead keep the single-hop ``C3``.
+    """
+    edges = physical({
+        ("S", "C3"): 100.0,
+        ("S", "A"): 1.0, ("A", "C1"): 1.0,
+        ("S", "B"): 1.0, ("B", "C2"): 1.0,
+    })
+    _distance, paths = aggregation_core_paths(
+        "S", ("C1", "C2", "C3"), mileage_adjacency(edges), edges
+    )
+    assert {use.target for use in paths} == {"C1", "C2"}
 
 
 def test_core_mesh_paths_empty_when_cores_disconnected() -> None:
     """Core mesh paths empty when cores disconnected."""
     edges = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
-    adjacency = unit_adjacency(edges)
+    adjacency = mileage_adjacency(edges)
     distances, predecessors = all_pairs_shortest(
         [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
     )
@@ -247,7 +262,7 @@ def _symmetric_distances(weights: dict[tuple[str, str], float]) -> dict[str, dic
     return table
 
 
-# Five fully-connected cores; (c1, c5) is the single longest backbone link.
+# Five fully-connected cores with distinct finite inter-core distances.
 _FIVE_CORE_DISTANCES = _symmetric_distances({
     ("c1", "c2"): 1.0, ("c1", "c3"): 2.0, ("c1", "c4"): 3.0, ("c1", "c5"): 10.0,
     ("c2", "c3"): 4.0, ("c2", "c4"): 5.0, ("c2", "c5"): 6.0,
@@ -257,70 +272,32 @@ _FIVE_CORE_DISTANCES = _symmetric_distances({
 _FIVE_CORES = ("c1", "c2", "c3", "c4", "c5")
 
 
-def _degrees(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> dict[str, int]:
-    """Backbone neighbor count of each core over the selected pairs."""
-    return {core: sum(1 for pair in pairs if core in pair) for core in core_ids}
-
-
-def _floored_backbone() -> list[tuple[str, str]]:
-    """The min-degree-3 backbone selected over the five-core mesh (asserted non-None)."""
-    pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, 3)
+def _full_mesh(removed: frozenset[tuple[str, str]] = frozenset()) -> list[tuple[str, str]]:
+    """The core backbone over the five-core mesh, minus ``removed`` (asserted reachable)."""
+    pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, removed)
     assert pairs is not None
     return pairs
 
 
-def test_core_backbone_keeps_every_core_at_three_links() -> None:
-    """With a floor of three, no core is left with fewer than three backbone neighbors."""
-    assert min(_degrees(_FIVE_CORES, _floored_backbone()).values()) >= 3
+def test_core_backbone_is_the_full_mesh() -> None:
+    """Every core pair gets a backbone link: the full mesh of C(5, 2) = 10 links."""
+    assert len(_full_mesh()) == 10
 
 
-def test_core_backbone_stays_two_edge_connected() -> None:
-    """The floored backbone still survives the loss of any single link."""
-    assert is_two_edge_connected(set(_FIVE_CORES), set(_floored_backbone()))
+def test_core_backbone_omits_a_removed_pair() -> None:
+    """An operator-pruned core-core pair gets no backbone link."""
+    assert edge_key("c1", "c5") not in _full_mesh(frozenset({edge_key("c1", "c5")}))
 
 
-def test_core_backbone_drops_the_longest_link() -> None:
-    """The single longest core-to-core link is the first dropped toward the floor."""
-    assert edge_key("c1", "c5") not in _floored_backbone()
+def test_core_backbone_keeps_the_other_pairs_when_one_is_removed() -> None:
+    """Pruning one pair drops exactly that link: nine of the ten mesh links remain."""
+    assert len(_full_mesh(frozenset({edge_key("c1", "c5")}))) == 9
 
 
-def test_core_backbone_thins_below_the_full_mesh() -> None:
-    """Holding only the floor still drops links: the result is sparser than the mesh."""
-    assert len(_floored_backbone()) < 10  # fewer than C(5, 2)
-
-
-def test_core_backbone_retains_a_required_pair() -> None:
-    """An operator-forced core-core pair is pinned in even when it would be dropped.
-
-    ``(c1, c5)`` is the longest link and is dropped by the unconstrained backbone
-    (see :func:`test_core_backbone_drops_the_longest_link`); forcing it keeps it.
-    """
-    pairs = select_core_backbone_pairs(
-        _FIVE_CORES, _FIVE_CORE_DISTANCES, 3, frozenset({edge_key("c1", "c5")})
-    )
-    assert pairs is not None and edge_key("c1", "c5") in pairs
-
-
-def test_core_backbone_is_full_mesh_for_four_cores() -> None:
-    """Four cores cannot drop below a full mesh while each keeps three links."""
-    four = ("c1", "c2", "c3", "c4")
-    pairs = select_core_backbone_pairs(four, _FIVE_CORE_DISTANCES, 3)
-    assert pairs is not None and len(pairs) == 6  # C(4, 2): every degree is exactly three
-
-
-def test_core_backbone_reduces_to_a_cycle_at_a_floor_of_one() -> None:
-    """A floor of one thins the mesh to a minimal 2-edge-connected cycle of five links."""
-    pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, 1)
-    assert pairs is not None and len(pairs) == 5
-
-
-def test_core_backbone_none_when_a_core_pair_is_unreachable() -> None:
-    """An unreachable core pair yields no backbone selection."""
+def test_core_backbone_none_when_a_kept_core_pair_is_unreachable() -> None:
+    """A kept core pair unreachable over the carrier graph yields no backbone selection."""
     distances = _symmetric_distances({("c1", "c2"): 1.0})
-    distances["c1"]["c3"] = math.inf
-    distances["c2"]["c3"] = math.inf
-    distances["c3"] = {"c3": 0.0, "c1": math.inf, "c2": math.inf}
-    assert select_core_backbone_pairs(("c1", "c2", "c3"), distances, 3) is None
+    assert select_core_backbone_pairs(("c1", "c2", "c3"), distances) is None
 
 
 _UNIT_MESH_EDGES = physical({
@@ -330,19 +307,24 @@ _UNIT_MESH_EDGES = physical({
 })
 
 
-def _five_core_mesh_paths(min_degree: int) -> list[PathUse]:
-    """Route the five-core backbone over a unit-weight full-mesh graph."""
-    adjacency = unit_adjacency(_UNIT_MESH_EDGES)
+def _five_core_mesh_paths(removed: frozenset[tuple[str, str]] = frozenset()) -> list[PathUse]:
+    """Route the five-core backbone over a mileage-weighted full-mesh graph."""
+    adjacency = mileage_adjacency(_UNIT_MESH_EDGES)
     distances, predecessors = all_pairs_shortest([pop(c) for c in _FIVE_CORES], adjacency)
     return core_mesh_paths(
-        _FIVE_CORES, distances, predecessors, _UNIT_MESH_EDGES, BackboneConstraints(min_degree)
+        _FIVE_CORES, distances, predecessors, _UNIT_MESH_EDGES, BackboneConstraints(removed)
     )
 
 
-def test_core_mesh_paths_keep_every_core_at_the_floor() -> None:
-    """Routing at a floor of three leaves no core with fewer than three backbone links."""
-    pairs = [edge_key(use.source, use.target) for use in _five_core_mesh_paths(3)]
-    assert min(_degrees(_FIVE_CORES, pairs).values()) >= 3
+def test_core_mesh_paths_route_the_full_mesh() -> None:
+    """The backbone routes one path per core pair: the full mesh of ten links."""
+    assert len(_five_core_mesh_paths()) == 10
+
+
+def test_core_mesh_paths_omit_a_removed_pair() -> None:
+    """An operator-pruned pair gets no routed core-mesh path."""
+    routed = _five_core_mesh_paths(frozenset({edge_key("c1", "c2")}))
+    assert edge_key("c1", "c2") not in {edge_key(use.source, use.target) for use in routed}
 
 
 def test_vertex_straightness_is_zero_without_reachable_vertices() -> None:
@@ -382,13 +364,13 @@ def test_feasible_aggregation_ids_skips_infeasible_aggregations() -> None:
 
 def test_cores_reachable_avoiding_excludes_the_blocked_pop() -> None:
     """Reachability from a PoP's neighbors never passes back through the PoP itself."""
-    adjacency = unit_adjacency(physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "d"): 1.0}))
+    adjacency = mileage_adjacency(physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "d"): 1.0}))
     assert cores_reachable_avoiding("b", adjacency) == {"a", "c", "d"}
 
 
 def test_cores_reachable_avoiding_cannot_cross_a_cut_vertex() -> None:
     """With the only connector removed, the spokes reach nothing past it."""
-    adjacency = unit_adjacency(physical({("hub", "l1"): 1.0, ("hub", "l2"): 1.0}))
+    adjacency = mileage_adjacency(physical({("hub", "l1"): 1.0, ("hub", "l2"): 1.0}))
     assert cores_reachable_avoiding("hub", adjacency) == {"l1", "l2"}
 
 
@@ -434,7 +416,7 @@ def test_dual_homes_to_pair_uses_cached_result() -> None:
 def test_cores_mesh_false_when_cores_disconnected() -> None:
     """Cores mesh is false when two cores cannot reach each other."""
     edges = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
-    adjacency = unit_adjacency(edges)
+    adjacency = mileage_adjacency(edges)
     distances, _predecessors = all_pairs_shortest(
         [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
     )

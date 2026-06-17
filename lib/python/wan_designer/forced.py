@@ -2,8 +2,8 @@
 
 The overrides layer resolves the operator's forced connections into a
 :class:`~wan_designer.model.ForcedLinks` bundle; these helpers consume it while
-the optimizer routes a design, so the pinned edges are honored: core-core links
-pinned into the backbone, aggregation-core links forced as routing sinks, and
+the optimizer routes a design, so the pinned edges are honored: core-core pairs
+pruned from the full mesh, aggregation-core links forced as routing sinks, and
 access-aggregation links pinned as homes. They depend only on the model, so the
 optimizer imports them without a cycle.
 """
@@ -13,12 +13,14 @@ from __future__ import annotations
 from wan_designer.model import ForcedLinks, Vertex, haversine_miles
 
 
-def required_core_pairs(
+def removed_core_pairs(
     core_set: set[str], links: ForcedLinks
 ) -> frozenset[tuple[str, str]]:
-    """Forced core-core pairs whose both endpoints are in the current core set."""
+    """Operator-pruned core-core pairs whose both endpoints are in the current core set."""
     return frozenset(
-        pair for pair in links.core if pair[0] in core_set and pair[1] in core_set
+        pair
+        for pair in links.removed_core
+        if pair[0] in core_set and pair[1] in core_set
     )
 
 

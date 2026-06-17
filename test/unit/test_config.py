@@ -140,6 +140,26 @@ def test_forced_connection_rejects_unknown_type() -> None:
         _config({"design": {"forced_connections": [{"source": "A", "target": "B", "type": "x"}]}})
 
 
+def test_default_has_no_excluded_connections() -> None:
+    """The default config prunes no core-core mesh links."""
+    assert len(default_config().excluded_connections) == 0
+
+
+def test_reads_excluded_connections() -> None:
+    """An excluded_connections entry defaults to a pruned core-core pair."""
+    design = {"excluded_connections": [{"source": "Seattle, WA", "target": "Boise, ID"}]}
+    assert _config({"design": design}).excluded_connections == (
+        ForcedConnection("core-core", "Seattle, WA", "Boise, ID"),
+    )
+
+
+def test_excluded_connection_rejects_a_non_core_core_type() -> None:
+    """An excluded_connections entry of a non-core-core type is rejected."""
+    bad = {"source": "A", "target": "B", "type": "aggregation-core"}
+    with pytest.raises(ValueError):
+        _config({"design": {"excluded_connections": [bad]}})
+
+
 def test_reads_tuning_min_points() -> None:
     """A tuning cluster_min_points value is read into the design params."""
     assert _config({"tuning": {"cluster_min_points": 4}}).params.tuning.cluster_min_points == 4

@@ -9,7 +9,11 @@ from __future__ import annotations
 import pytest
 
 import fixtures
-from wan_designer.forced import apply_forced_access_homes, forced_cores_for_aggregation
+from wan_designer.forced import (
+    apply_forced_access_homes,
+    forced_cores_for_aggregation,
+    removed_core_pairs,
+)
 from wan_designer.model import ForcedConnection, ForcedLinks, edge_key
 from wan_designer.overrides import resolve_forced_links
 
@@ -42,6 +46,28 @@ def test_access_aggregation_link_resolves_to_a_pair() -> None:
         (ForcedConnection("access-aggregation", "A1", "P1"),), VERTICES, set(), {"P1"}
     )
     assert links.access == frozenset({("A1", "P1")})
+
+
+def test_excluded_core_core_resolves_to_a_removed_pair() -> None:
+    """An excluded core-core connection resolves to a pruned mesh pair."""
+    links = resolve_forced_links(
+        (), VERTICES, {"P0", "P1"}, set(), (ForcedConnection("core-core", "P0", "P1"),)
+    )
+    assert links.removed_core == frozenset({edge_key("P0", "P1")})
+
+
+def test_excluded_core_core_endpoint_not_forced_is_rejected() -> None:
+    """An excluded core-core endpoint that is not a forced core is rejected."""
+    with pytest.raises(ValueError):
+        resolve_forced_links(
+            (), VERTICES, {"P0"}, set(), (ForcedConnection("core-core", "P0", "P1"),)
+        )
+
+
+def test_removed_core_pairs_keeps_only_in_set_pairs() -> None:
+    """Only pruned pairs with both endpoints in the current core set are removed."""
+    links = ForcedLinks(removed_core=frozenset({edge_key("P0", "P1"), edge_key("P0", "P9")}))
+    assert removed_core_pairs({"P0", "P1"}, links) == frozenset({edge_key("P0", "P1")})
 
 
 def test_colocated_aggregation_endpoint_resolves_to_its_twin() -> None:
