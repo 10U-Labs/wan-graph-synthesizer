@@ -46,24 +46,33 @@ const TIER_PREFIX = {
   aggregation: "AGGR",
 };
 
-// Tooltip: the role-prefixed vertex name, its municipality/state beneath, then
+// The bare city: the vertex name stripped of any trailing ", ST" state and any
+// leading role prefix (co-located twins are named "AGGR <core>" server-side), so
+// the role-prefixed name reads "CORE Los Angeles", never "CORE Los Angeles, CA"
+// or a doubled "AGGR AGGR Los Angeles".
+function cityName(vertex) {
+  return vertex.name.replace(/^(?:CORE|AGGR)\s+/, "").replace(/,\s*[A-Z]{2}$/, "");
+}
+
+// Role-prefixed display name, e.g. "CORE Los Angeles". Untiered vertices (access,
+// provider, transit) keep their full name unchanged.
+function displayName(vertex) {
+  const prefix = TIER_PREFIX[vertex.tier_role];
+  return prefix ? `${prefix} ${cityName(vertex)}` : vertex.name;
+}
+
+// Tooltip: the role-prefixed display name, its municipality/state beneath, then
 // the tenant.
 function vertexLabel(vertex) {
   const info = vertex.info || {};
   const located = info.municipality && info.state
     ? `<br>${info.municipality}, ${info.state}`
     : "";
-  // Co-located aggregation twins are already named "AGGR <core>" server-side, so
-  // skip the prefix when the name carries it to avoid a doubled "AGGR AGGR".
-  const prefix = TIER_PREFIX[vertex.tier_role];
-  const name = prefix && !vertex.name.startsWith(prefix)
-    ? `${prefix} ${vertex.name}`
-    : vertex.name;
-  return `<strong>${name}</strong>${located}<br>Tenant: ${vertex.tenant}`;
+  return `<strong>${displayName(vertex)}</strong>${located}<br>Tenant: ${vertex.tenant}`;
 }
 
 function edgeLabel(source, target) {
-  return `<strong>${source.name}</strong> ↔ <strong>${target.name}</strong>`;
+  return `<strong>${displayName(source)}</strong> ↔ <strong>${displayName(target)}</strong>`;
 }
 
 function clear() {
