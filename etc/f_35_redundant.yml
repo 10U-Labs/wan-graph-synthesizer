@@ -13,7 +13,6 @@ design:
   # (see inputs.off_net): not carrier PoPs themselves, reached by local fiber to
   # the nearest PoPs.
   forced_aggregations:
-    - Dulles, VA
     - Manassas, VA
     - Richmond, VA
     - Tallahassee, FL
