@@ -14,14 +14,17 @@ design:
   # nearest PoPs.
   forced_aggregations:
     - Dulles, VA
+    - Los Angeles, CA
     - Tallahassee, FL
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
   forced_cores:
     - Dulles, VA
+    - Los Angeles, CA
+    - Tallahassee, FL
   # Maximum number of core PoPs. Coverage growth past the floor never seats more
   # cores than this ceiling, so the backbone stays bounded.
-  max_core_count: 7
+  max_core_count: 3
   # Minimum number of core PoPs. The search adds more cores only when feasibility
   # requires it; it never drops below this floor.
   min_core_count: 3
