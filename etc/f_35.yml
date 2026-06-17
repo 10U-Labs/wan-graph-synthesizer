@@ -41,7 +41,8 @@ inputs:
   vertices:
     AWS:
       - data/vertices/aws_secret_east.csv
-    Azure: data/vertices/azure_secret.csv
+    Azure:
+      - data/vertices/azure_secret_east.csv
     DCN: data/vertices/dcn.csv
     F-35: data/vertices/f_35.csv
     Lumen: data/vertices/lumen.csv
