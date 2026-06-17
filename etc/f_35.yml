@@ -49,7 +49,7 @@ inputs:
     DCN: data/vertices/dcn.csv
     F-35: data/vertices/f_35.csv
     Lumen: data/vertices/lumen.csv
-    provider: data/vertices/providers/providers.csv
+    # provider: data/vertices/providers/providers.csv
     VisionNet: data/vertices/vision_net.csv
 # Display label surfaced by the REST API's /api/wan-maps endpoint.
 label: F-35
