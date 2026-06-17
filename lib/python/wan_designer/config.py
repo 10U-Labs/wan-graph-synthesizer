@@ -34,7 +34,10 @@ DEFAULT_VERTICES = {
         "data/vertices/aws_provider region.csv",
         "data/vertices/providers/providers.csv",
     ],
-    "provider": "data/vertices/providers/providers.csv",
+    "provider": [
+        "data/vertices/provider_provider region.csv",
+        "data/vertices/provider_provider region.csv",
+    ],
     "DCN": "data/vertices/dcn.csv",
     "F-35": "data/vertices/f_35.csv",
     "Lumen": "data/vertices/lumen.csv",
