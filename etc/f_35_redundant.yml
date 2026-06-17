@@ -20,6 +20,7 @@ design:
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
   forced_cores:
+    - Atlanta, GA
     - Dulles, VA
     - Los Angeles, CA
   # Maximum number of core PoPs. Coverage growth past the floor never seats more
