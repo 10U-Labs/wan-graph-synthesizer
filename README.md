@@ -63,7 +63,8 @@ PoPs versus `Military installation`, `provider region`, `UARC`, and
 transcribed from the carriers' published network maps.
 
 Each WAN map is a config in `etc/`: `joint.yml` lists every tenant file;
-`f_35.yml` is an F-35-only variant that omits AFLCMC and AFNWC/NI. The
+`f_35_non_redundant.yml` is an F-35-only variant that omits AFLCMC and
+AFNWC/NI. The
 config also carries every design choice — core count, forced cores and
 aggregations, exclusions, and resilience augmentation — so tuning a design
 means editing the YAML, never source.
@@ -79,7 +80,8 @@ reported as invalid by the `validation` endpoint.
 
 Run the self-hosted web app and pick a tenant view in the browser. It
 serves a REST API and a Leaflet map from one process; designs are computed
-on demand from the configs in `etc/` (Joint, F-35) and cached in memory.
+on demand from the configs in `etc/` (Joint, F-35 (non-redundant)) and
+cached in memory.
 Start and stop it with one script — nothing to install by hand, the first
 start bootstraps an isolated `.venv` for you:
 
@@ -89,14 +91,15 @@ start bootstraps an isolated `.venv` for you:
 ```
 
 Then open `http://localhost:8000`; the **Joint** map loads by default, and
-clicking **Joint** or **F-35** in the header redraws the map with the cores
-(purple), aggregations (light green), provider regions (orange), and other
+clicking **Joint** or **F-35 (non-redundant)** in the header redraws the map
+with the cores (purple), aggregations (light green), provider regions
+(orange), and other
 access vertices (blue). Links are colored and weighted by tier: thin blue
 access links, thicker light-green aggregation links, and thick purple
 backbones between cores. Hover any vertex or link for its details.
 
 The REST surface is a set of atomic resources (WAN map `id` = `joint`
-or `f_35`):
+or `f_35_non_redundant`):
 
 - `GET /api/wan-maps` — selectable WAN maps (`id`, `label`)
 - `GET /api/wan-maps/{id}/vertices` — vertices with tier role and coordinates

@@ -68,7 +68,7 @@ A design is invalid unless all of the following hold.
 
 Beyond the algorithm, the operator may pin tier roles by PoP name. The
 pins are keys under the `design:` block of a WAN map's config in `etc/`
-(`joint.yml`, `f_35.yml`) — explicit data rather than hidden constants:
+(`joint.yml`, `f_35_non_redundant.yml`) — explicit data rather than hidden constants:
 
 - `forced_cores: [NAME, ...]` makes each PoP a core. It is fixed into every
   candidate core set the search considers; the search still adds any

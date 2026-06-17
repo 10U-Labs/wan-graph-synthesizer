@@ -2,7 +2,8 @@
 """Self-hosted launcher for the WAN Graph Designer web app.
 
 Serves the REST API and the Leaflet frontend from one process. Designs are
-computed on demand from the configs in ``etc/`` (Joint, F-35), so no managed
+computed on demand from the configs in ``etc/`` (Joint, F-35 (non-redundant)),
+so no managed
 service is required -- run it locally and open the printed URL.
 """
 

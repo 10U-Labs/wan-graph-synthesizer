@@ -52,7 +52,7 @@ inputs:
     # provider: data/vertices/providers/providers.csv
     VisionNet: data/vertices/vision_net.csv
 # Display label surfaced by the REST API's /api/wan-maps endpoint.
-label: F-35
+label: F-35 (non-redundant)
 tuning:
   # Aggregation facilities every access vertex homes to (its redundancy level). The
   # design fails validation if any access vertex reaches fewer than this many.

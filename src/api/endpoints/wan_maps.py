@@ -1,4 +1,4 @@
-"""Endpoint listing the selectable WAN maps (e.g. Joint, F-35)."""
+"""Endpoint listing the selectable WAN maps (e.g. Joint, F-35 (non-redundant))."""
 
 from __future__ import annotations
 
