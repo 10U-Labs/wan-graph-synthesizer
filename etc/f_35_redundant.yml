@@ -9,12 +9,13 @@ design:
   allow_roadm_aggregation: false
   # PoPs barred from every selected role.
   excluded: []
-  # PoPs pinned into the aggregation tier. Dulles is an off-net seat (see
-  # inputs.off_net): not a carrier PoP itself, reached by local fiber to the
-  # nearest PoPs.
+  # PoPs pinned into the aggregation tier. Dulles and Manassas are off-net seats
+  # (see inputs.off_net): not carrier PoPs themselves, reached by local fiber to
+  # the nearest PoPs.
   forced_aggregations:
     - Dulles, VA
     - Los Angeles, CA
+    - Manassas, VA
     - Tallahassee, FL
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
