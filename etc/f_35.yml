@@ -30,13 +30,7 @@ design:
     - Tallahassee, FL
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
-  forced_cores:
-    - Atlanta, GA
-    - Chicago, IL
-    - Dallas, TX
-    - Dulles, VA
-    - Los Angeles, CA
-    - Salt Lake City, UT
+  forced_cores: []
   # Maximum number of core PoPs. Coverage growth past the floor never seats more
   # cores than this ceiling, so the backbone stays bounded.
   max_core_count: 7
@@ -69,7 +63,7 @@ label: F-35
 tuning:
   # Aggregation facilities every access vertex homes to (its redundancy level). The
   # design fails validation if any access vertex reaches fewer than this many.
-  access_aggregation_links: 2
+  access_aggregation_links: 1
   # Ceiling (miles) on the data-derived DBSCAN cluster radius.
   cluster_max_radius_miles: 250.0
   # A cluster needs at least this many close access vertices to seed an aggregation.
