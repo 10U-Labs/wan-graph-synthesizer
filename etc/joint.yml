@@ -78,7 +78,11 @@ inputs:
   vertices:
     AFLCMC: data/vertices/aflcmc.csv
     AFNWC/NI: data/vertices/afnwc_ni.csv
-    AWS: data/vertices/providers/providers.csv
+    AWS:
+      - data/vertices/providers/providers.csv
+      - data/vertices/aws_provider region.csv
+      - data/vertices/aws_provider region.csv
+      - data/vertices/providers/providers.csv
     provider: data/vertices/providers/providers.csv
     DCN: data/vertices/dcn.csv
     F-35: data/vertices/f_35.csv

@@ -154,6 +154,21 @@ def test_reads_vertices_mapping() -> None:
     )
 
 
+def test_reads_vertices_list_of_paths() -> None:
+    """A tenant mapped to a list expands into one (tenant, path) pair per entry."""
+    vertices = {"Providers": ["providers.csv", "aws_provider.csv"]}
+    assert _config({"inputs": {"vertices": vertices}}).paths.vertex_files == (
+        ("Providers", Path("providers.csv")),
+        ("Providers", Path("aws_provider.csv")),
+    )
+
+
+def test_rejects_non_string_path_in_list() -> None:
+    """A vertices list containing a non-string path is rejected."""
+    with pytest.raises(ValueError):
+        _config({"inputs": {"vertices": {"Providers": ["aws.csv", 3]}}})
+
+
 def test_rejects_non_mapping_vertices() -> None:
     """A non-mapping vertices value is rejected."""
     with pytest.raises(ValueError):

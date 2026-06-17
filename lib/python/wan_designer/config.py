@@ -28,7 +28,12 @@ DEFAULT_CONFIG_PATH = Path("etc/joint.yml")
 DEFAULT_VERTICES = {
     "AFLCMC": "data/vertices/aflcmc.csv",
     "AFNWC/NI": "data/vertices/afnwc_ni.csv",
-    "Providers": "data/vertices/providers/providers.csv",
+    "Providers": [
+        "data/vertices/providers/providers.csv",
+        "data/vertices/aws_provider region.csv",
+        "data/vertices/aws_provider region.csv",
+        "data/vertices/providers/providers.csv",
+    ],
     "provider": "data/vertices/providers/providers.csv",
     "DCN": "data/vertices/dcn.csv",
     "F-35": "data/vertices/f_35.csv",
@@ -90,14 +95,24 @@ def _forced_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
     return tuple(connections)
 
 
+def _vertex_paths(tenant: object, value: object) -> list[tuple[str, Path]]:
+    """Expand one tenant's value (a path or list of paths) into (tenant, path) pairs."""
+    items = value if isinstance(value, list) else [value]
+    pairs: list[tuple[str, Path]] = []
+    for path in items:
+        if not isinstance(tenant, str) or not isinstance(path, str):
+            raise ValueError("config key 'vertices' must map tenant to a path or list of paths")
+        pairs.append((tenant, Path(path)))
+    return pairs
+
+
 def _vertex_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
-    """Resolve the tenant -> vertices-CSV mapping into sorted (tenant, path) pairs."""
+    """Resolve the tenant -> vertices-CSV(s) mapping into sorted (tenant, path) pairs."""
     value = inputs.get("vertices", DEFAULT_VERTICES)
-    if not isinstance(value, dict) or not all(
-        isinstance(tenant, str) and isinstance(path, str) for tenant, path in value.items()
-    ):
+    if not isinstance(value, dict):
         raise ValueError("config key 'vertices' must be a mapping of tenant to path")
-    return tuple(sorted((tenant, Path(path)) for tenant, path in value.items()))
+    pairs = [pair for tenant, paths in value.items() for pair in _vertex_paths(tenant, paths)]
+    return tuple(sorted(pairs))
 
 
 def _paths(inputs: dict[str, Any]) -> DesignPaths:

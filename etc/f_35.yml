@@ -50,7 +50,8 @@ inputs:
     - data/edges/vision_net.csv
   # F-35 only: the AFLCMC and AFNWC/NI tenant files are intentionally omitted.
   vertices:
-    AWS: data/vertices/providers/providers.csv
+    AWS:
+      - data/vertices/aws_provider region.csv
     provider: data/vertices/providers/providers.csv
     DCN: data/vertices/dcn.csv
     F-35: data/vertices/f_35.csv
