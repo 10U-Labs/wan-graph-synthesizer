@@ -16,23 +16,16 @@ design:
   # to instead force a base as an aggregation, name the installation here. Great
   # Falls and Minot are ROADMs, so pinning them overrides allow_roadm_aggregation.
   forced_aggregations:
-    - Ashburn, VA
-    - Atlanta, GA
     - Cheyenne, WY
-    - Chicago, IL
-    - Dallas, TX
-    - Denver, CO
+    - Fredericksburg, VA
     - Great Falls, MT
     - Houston, TX
     - Las Vegas, NV
-    - Los Angeles, CA
-    - McLean, VA
+    - Manassas, VA
     - Minot, ND
     - New York, NY
     - Phoenix, AZ
     - Portland, OR
-    - Richmond, VA
-    - Salt Lake City, UT
     - San Bernardino, CA
     - Tallahassee, FL
   # Operator-forced edges pinned into the design, keyed by source, target, and the
@@ -55,8 +48,8 @@ design:
     - Chicago, IL
     - Dallas, TX
     - Denver, CO
+    - Dulles, VA
     - Los Angeles, CA
-    - McLean, VA
     - Salt Lake City, UT
   # Maximum number of core PoPs. Coverage growth past the floor never seats more
   # cores than this ceiling, so the backbone stays bounded.
@@ -69,6 +62,9 @@ design:
 inputs:
   # Physical Lumen backbone edges between carrier PoPs.
   carrier_edges: data/edges/lumen.csv
+  # Off-net seats: non-PoP locations the operator may force as cores/aggregations,
+  # reached by synthetic local fiber to the nearest carrier PoPs. Dulles lives here.
+  off_net: data/vertices/off_net.csv
   # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
   regional_edges:
     - data/edges/dcn.csv
