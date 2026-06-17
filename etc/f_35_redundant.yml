@@ -15,10 +15,12 @@ design:
   forced_aggregations:
     - Dulles, VA
     - Manassas, VA
+    - Richmond, VA
     - Tallahassee, FL
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
-  forced_cores: []
+  forced_cores:
+    - Dulles, VA
   # Maximum number of core PoPs. Coverage growth past the floor never seats more
   # cores than this ceiling, so the backbone stays bounded.
   max_core_count: 3
