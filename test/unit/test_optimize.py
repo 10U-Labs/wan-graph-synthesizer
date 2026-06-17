@@ -49,10 +49,10 @@ from wan_designer.optimize import (
     prune_unused_aggregations,
     optimize_three_tier_design,
     search_best_design,
-    mileage_adjacency,
     _AggregationPlan,
     _SearchPlan,
 )
+from wan_designer.parsing import build_adjacency
 from wan_designer.overrides import (
     apply_role_overrides,
     colocated_twin,
@@ -78,7 +78,7 @@ def _inputs_from_edges(
     """Build DesignInputs over a mileage-weighted graph for direct optimizer tests."""
     places = coords or {}
     pops = [pop(vertex_id, *places.get(vertex_id, (0.0, 0.0))) for vertex_id in edge_ids]
-    adjacency = mileage_adjacency(edges)
+    adjacency = build_adjacency(edges)
     distances, predecessors = all_pairs_shortest(pops, adjacency)
     return DesignInputs(
         access_vertices=access_vertices if access_vertices is not None else [],
@@ -220,7 +220,7 @@ def test_not_enough_core_candidates_is_rejected() -> None:
 def test_aggregation_core_paths_infeasible_through_bottleneck() -> None:
     """Aggregation core paths infeasible through bottleneck."""
     edges = physical({("S", "X"): 1.0, ("X", "C1"): 1.0, ("X", "C2"): 1.0})
-    _distance, paths = aggregation_core_paths("S", ("C1", "C2"), mileage_adjacency(edges), edges)
+    _distance, paths = aggregation_core_paths("S", ("C1", "C2"), build_adjacency(edges), edges)
     assert not paths
 
 
@@ -237,7 +237,7 @@ def test_aggregation_homes_to_the_two_nearest_cores_by_miles() -> None:
         ("S", "B"): 1.0, ("B", "C2"): 1.0,
     })
     _distance, paths = aggregation_core_paths(
-        "S", ("C1", "C2", "C3"), mileage_adjacency(edges), edges
+        "S", ("C1", "C2", "C3"), build_adjacency(edges), edges
     )
     assert {use.target for use in paths} == {"C1", "C2"}
 
@@ -245,7 +245,7 @@ def test_aggregation_homes_to_the_two_nearest_cores_by_miles() -> None:
 def test_core_mesh_paths_empty_when_cores_disconnected() -> None:
     """Core mesh paths empty when cores disconnected."""
     edges = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
-    adjacency = mileage_adjacency(edges)
+    adjacency = build_adjacency(edges)
     distances, predecessors = all_pairs_shortest(
         [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
     )
@@ -309,7 +309,7 @@ _UNIT_MESH_EDGES = physical({
 
 def _five_core_mesh_paths(removed: frozenset[tuple[str, str]] = frozenset()) -> list[PathUse]:
     """Route the five-core backbone over a mileage-weighted full-mesh graph."""
-    adjacency = mileage_adjacency(_UNIT_MESH_EDGES)
+    adjacency = build_adjacency(_UNIT_MESH_EDGES)
     distances, predecessors = all_pairs_shortest([pop(c) for c in _FIVE_CORES], adjacency)
     return core_mesh_paths(
         _FIVE_CORES, distances, predecessors, _UNIT_MESH_EDGES, BackboneConstraints(removed)
@@ -364,13 +364,13 @@ def test_feasible_aggregation_ids_skips_infeasible_aggregations() -> None:
 
 def test_cores_reachable_avoiding_excludes_the_blocked_pop() -> None:
     """Reachability from a PoP's neighbors never passes back through the PoP itself."""
-    adjacency = mileage_adjacency(physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "d"): 1.0}))
+    adjacency = build_adjacency(physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "d"): 1.0}))
     assert cores_reachable_avoiding("b", adjacency) == {"a", "c", "d"}
 
 
 def test_cores_reachable_avoiding_cannot_cross_a_cut_vertex() -> None:
     """With the only connector removed, the spokes reach nothing past it."""
-    adjacency = mileage_adjacency(physical({("hub", "l1"): 1.0, ("hub", "l2"): 1.0}))
+    adjacency = build_adjacency(physical({("hub", "l1"): 1.0, ("hub", "l2"): 1.0}))
     assert cores_reachable_avoiding("hub", adjacency) == {"l1", "l2"}
 
 
@@ -416,7 +416,7 @@ def test_dual_homes_to_pair_uses_cached_result() -> None:
 def test_cores_mesh_false_when_cores_disconnected() -> None:
     """Cores mesh is false when two cores cannot reach each other."""
     edges = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
-    adjacency = mileage_adjacency(edges)
+    adjacency = build_adjacency(edges)
     distances, _predecessors = all_pairs_shortest(
         [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
     )

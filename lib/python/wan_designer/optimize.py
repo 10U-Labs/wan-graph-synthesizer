@@ -59,25 +59,11 @@ from wan_designer.graphs import (
 from wan_designer.backbone import BackboneConstraints, core_mesh_paths, path_geometry_miles
 from wan_designer.clustering import cluster_access_vertices
 from wan_designer.overrides import colocated_twin, colocation_edges, twin_vertex_id
+from wan_designer.parsing import build_adjacency
 from wan_designer.strength import core_strength
 
 logger = logging.getLogger(__name__)
 
-def mileage_adjacency(
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-) -> dict[str, list[tuple[str, float]]]:
-    """Build a mileage-weighted adjacency map: each span weighs its straight-line miles.
-
-    Routing minimizes miles, not hops, so an aggregation homes to the core that is
-    nearest on the ground -- not merely the one fewest fiber spans away.
-    """
-    adjacency: dict[str, list[tuple[str, float]]] = {}
-    for (left, right), edge in physical_edges.items():
-        adjacency.setdefault(left, []).append((right, edge.distance_miles))
-        adjacency.setdefault(right, []).append((left, edge.distance_miles))
-    for neighbors in adjacency.values():
-        neighbors.sort()
-    return adjacency
 
 def aggregation_core_paths(
     aggregation_id: str,
@@ -457,7 +443,7 @@ def twin_routing_adjacency(
     if core_id is None:
         return inputs.adjacency
     twin_edges = colocation_edges(core_id, aggregation_id, inputs.physical_edges)
-    return mileage_adjacency({**inputs.physical_edges, **twin_edges})
+    return build_adjacency({**inputs.physical_edges, **twin_edges})
 
 def routed_path_uses(
     core_ids: tuple[str, ...],
@@ -847,7 +833,7 @@ def graph_context(
     """Split vertices into PoPs/access and precompute the shared graph context."""
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     all_access = [vertex for vertex in vertices if not is_carrier_pop(vertex)]
-    adjacency = mileage_adjacency(physical_edges)
+    adjacency = build_adjacency(physical_edges)
     validate_pop_graph(carrier_pops, physical_edges, adjacency)
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
     return _GraphContext(carrier_pops, all_access, adjacency, all_distances, all_predecessors)

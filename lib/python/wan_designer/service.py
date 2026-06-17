@@ -54,11 +54,10 @@ def run_design(
         vertices, physical_edges, frozenset(params.forced_aggregation_names)
     )
     vertices, physical_edges = realized.vertices, realized.physical_edges
-    sites = load_off_net_sites(paths.off_net_path) if paths.off_net_path else []
     off_net = realize_off_net_sites(
         vertices,
         physical_edges,
-        sites,
+        load_off_net_sites(paths.off_net_path) if paths.off_net_path else [],
         frozenset(params.forced_core_names) | frozenset(params.forced_aggregation_names),
     )
     vertices, physical_edges = off_net.vertices, off_net.physical_edges
