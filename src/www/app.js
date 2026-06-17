@@ -39,12 +39,11 @@ function styleFor(vertex) {
   return ROLE_STYLE[vertex.tier_role] || null;
 }
 
-// Tier-role label prefixes, so every cored/aggregated/access vertex tooltip
+// Tier-role label prefixes, so every cored/aggregated vertex tooltip
 // announces its role up front. Untiered vertices (CSP, transit) get no prefix.
 const TIER_PREFIX = {
   core: "CORE",
   aggregation: "AGGR",
-  access: "ACCS",
 };
 
 // Tooltip: the role-prefixed vertex name, its municipality/state beneath, then
@@ -59,8 +58,8 @@ function vertexLabel(vertex) {
   return `<strong>${name}</strong>${located}<br>Tenant: ${vertex.tenant}`;
 }
 
-function edgeLabel(label, source, target) {
-  return `${label}<br><strong>${source.name}</strong> ↔ <strong>${target.name}</strong>`;
+function edgeLabel(source, target) {
+  return `<strong>${source.name}</strong> ↔ <strong>${target.name}</strong>`;
 }
 
 function clear() {
@@ -126,7 +125,7 @@ function shortWayEnds(source, target) {
 // Draw one set of edges in the given tier style, each with a hover tooltip.
 // Records any target unwrapped onto an adjacent world copy in `wrapped` (keyed
 // by id@lon so a vertex touched by many edges is duplicated only once).
-function drawEdges(edges, byId, style, label, wrapped) {
+function drawEdges(edges, byId, style, wrapped) {
   for (const edge of edges) {
     const source = byId[edge.source_id];
     const target = byId[edge.target_id];
@@ -136,7 +135,7 @@ function drawEdges(edges, byId, style, label, wrapped) {
         color: style.color,
         weight: style.weight,
         opacity: 0.8,
-      }).bindTooltip(edgeLabel(label, source, target), { sticky: true }));
+      }).bindTooltip(edgeLabel(source, target), { sticky: true }));
       if (wrappedLon !== null) {
         wrapped.set(`${target.id}@${wrappedLon}`, {
           vertex: target,
@@ -192,12 +191,12 @@ async function render(mapId) {
 
   const byId = drawVertices(vertices);
   const wrapped = new Map();
-  drawEdges(pathsByPurpose(edges.path_uses, "core_mesh"), byId, EDGE_STYLE.backbone, "Backbone", wrapped);
+  drawEdges(pathsByPurpose(edges.path_uses, "core_mesh"), byId, EDGE_STYLE.backbone, wrapped);
   drawEdges(
     pathsByPurpose(edges.path_uses, "aggregation_to_core"),
-    byId, EDGE_STYLE.aggregation, "Aggregation link", wrapped,
+    byId, EDGE_STYLE.aggregation, wrapped,
   );
-  drawEdges(edges.access_edges, byId, EDGE_STYLE.access, "Access link", wrapped);
+  drawEdges(edges.access_edges, byId, EDGE_STYLE.access, wrapped);
   const wrappedCoords = drawWrappedMarkers(wrapped);
 
   const points = vertices.map((vertex) => vertex.coords).concat(wrappedCoords);
