@@ -1,0 +1,5 @@
+name,latitude,longitude,kind,shown_in_map,description,municipality,state
+AWS GovCloud West,45.8396,-119.7006,CSP data center,Shown in map,"Region: AWS GovCloud West
+Location: Boardman, OR",Boardman,OR
+AWS GovCloud East,39.9612,-82.9988,CSP data center,Shown in map,"Region: AWS GovCloud East
+Location: Columbus, OH",Columbus,OH

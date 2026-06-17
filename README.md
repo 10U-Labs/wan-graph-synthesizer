@@ -53,10 +53,11 @@ redraws as you pick a tenant view. There is no manual export step.
 
 ## Data and WAN map configs
 
-Vertices live in `data/vertices/`, one CSV per tenant (`lumen.csv`,
-`dcn.csv`, `f_35.csv`, `aws.csv`, ...), each row with columns
+Vertices live in `data/vertices/`, one or more CSVs per tenant (`lumen.csv`,
+`dcn.csv`, `f_35.csv`, `aws_secret_east.csv`, ...; a config maps a tenant to a
+single path or a list of them), each row with columns
 `name,latitude,longitude,kind,shown_in_map,description`. The tenant is the
-file, and the `kind` column classifies each vertex (`PoP`/`ROADM` carrier
+config key, and the `kind` column classifies each vertex (`PoP`/`ROADM` carrier
 PoPs versus `Military installation`, `CSP data center`, `UARC`, and
 `Corporate office` access vertices). The edge files in `data/edges/` are
 transcribed from the carriers' published network maps.
