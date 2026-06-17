@@ -9,27 +9,16 @@ design:
   allow_roadm_aggregation: false
   # PoPs barred from every selected role.
   excluded: []
-  # PoPs pinned into the aggregation tier. Richmond is pinned (not Norfolk, a
-  # single-homed ROADM leaf) so southeast-Virginia demand homes into a PoP that
-  # can dual-home to two cores. Dulles is an off-net seat (see inputs.off_net):
-  # not a carrier PoP itself, reached by local fiber to the nearest PoPs.
+  # PoPs pinned into the aggregation tier. Dulles is an off-net seat (see
+  # inputs.off_net): not a carrier PoP itself, reached by local fiber to the
+  # nearest PoPs.
   forced_aggregations:
-    - Ashburn, VA
-    - Atlanta, GA
-    - Dallas, TX
     - Dulles, VA
-    - Houston, TX
-    - Las Vegas, NV
-    - Los Angeles, CA
-    - New York, NY
-    - Phoenix, AZ
-    - Portland, OR
-    - Richmond, VA
-    - Salt Lake City, UT
     - Tallahassee, FL
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
-  forced_cores: []
+  forced_cores:
+    - Dulles, VA
   # Maximum number of core PoPs. Coverage growth past the floor never seats more
   # cores than this ceiling, so the backbone stays bounded.
   max_core_count: 7
