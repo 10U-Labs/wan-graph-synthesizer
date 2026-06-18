@@ -108,8 +108,11 @@ tuning:
   # Aggregation facilities every access vertex homes to (its redundancy level). The
   # design fails validation if any access vertex reaches fewer than this many.
   access_aggregation_links: 2
-  # Ceiling (miles) on the data-derived DBSCAN cluster radius.
-  cluster_max_radius_miles: 250.0
+  # Ceiling (miles) on the data-derived DBSCAN cluster radius. Set above the data's
+  # natural k-distance elbow (~459 mi) so the cap does not bind: clusters stay sparse
+  # and nearby installations fold into the big metro clusters rather than splitting
+  # off their own small heads (e.g. Tulsa, Corpus Christi).
+  cluster_max_radius_miles: 500.0
   # A cluster needs at least this many close access vertices to seed an aggregation.
   cluster_min_points: 2
   # Floor (miles) on the data-derived DBSCAN cluster radius.
