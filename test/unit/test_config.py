@@ -160,6 +160,26 @@ def test_excluded_connection_rejects_a_non_core_core_type() -> None:
         _config({"design": {"excluded_connections": [bad]}})
 
 
+def test_default_has_no_prohibited_aggregations() -> None:
+    """The default config bars no PoP from the aggregation tier."""
+    assert len(default_config().params.prohibited_aggregation_names) == 0
+
+
+def test_reads_prohibited_aggregations() -> None:
+    """A prohibited_aggregations list is read into the design params."""
+    design = {"prohibited_aggregations": ["Denver, CO", "Boise, ID"]}
+    assert _config({"design": design}).params.prohibited_aggregation_names == (
+        "Denver, CO",
+        "Boise, ID",
+    )
+
+
+def test_prohibited_aggregations_must_be_a_list_of_strings() -> None:
+    """A prohibited_aggregations value that is not a list of strings is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"prohibited_aggregations": "Denver, CO"}})
+
+
 def test_reads_tuning_min_points() -> None:
     """A tuning cluster_min_points value is read into the design params."""
     assert _config({"tuning": {"cluster_min_points": 4}}).params.tuning.cluster_min_points == 4

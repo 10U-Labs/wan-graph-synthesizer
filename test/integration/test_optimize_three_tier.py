@@ -17,6 +17,7 @@ ARTIFACTS = fixtures.ring_artifacts()
 FORCED = fixtures.forced_aggregation_artifacts("P3")
 FORCED_ROADM = fixtures.forced_roadm_aggregation_artifacts("P3")
 FORCED_CORE = fixtures.forced_core_artifacts("P4")
+PROHIBITED = fixtures.prohibited_aggregation_artifacts("P4")
 
 # Three forced-connection designs over the ring, each resolved through the
 # operator-pin path so the asserted edges reflect genuinely honored requests.
@@ -82,6 +83,22 @@ def test_forced_aggregation_is_not_also_made_a_core() -> None:
 def test_forced_pop_is_placed_in_the_core_tier() -> None:
     """A PoP named on the force-core list is honored as a core."""
     assert "P4" in FORCED_CORE.design.core_ids
+
+
+def test_prohibited_pop_is_kept_off_the_aggregation_tier() -> None:
+    """A prohibited PoP -- and its co-located twin -- never reach the aggregation tier."""
+    assert "P4" not in PROHIBITED.design.aggregation_ids
+    assert "aggr_P4" not in PROHIBITED.design.aggregation_ids
+
+
+def test_prohibited_pop_may_still_serve_as_a_core() -> None:
+    """Barring a PoP from the aggregation tier does not bar it from the core tier."""
+    assert "P4" in PROHIBITED.design.core_ids
+
+
+def test_prohibited_design_stays_valid() -> None:
+    """Prohibiting an aggregation does not break the dual-homing invariant."""
+    assert PROHIBITED.validation["aggregations_dual_homed_to_cores"] is True
 
 
 def test_honors_the_core_count_minimum() -> None:

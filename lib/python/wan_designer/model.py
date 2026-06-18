@@ -166,6 +166,8 @@ class DesignParams:
     forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
     forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations
     excluded_names: tuple[str, ...] = ()  # PoPs barred from every selected role
+    # PoPs barred from the aggregation tier but still eligible to be a core
+    prohibited_aggregation_names: tuple[str, ...] = ()
     tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)
@@ -195,7 +197,9 @@ class RoleOverrides:
     the core and aggregation tiers; a PoP pinned as both is co-located and has
     already been split into a distinct ``CORE`` vertex (kept here) and ``AGGR``
     vertex (whose id is what lands in ``forced_aggregation_ids``). ``excluded_ids``
-    are barred from being a core, an aggregation, or an access home.
+    are barred from being a core, an aggregation, or an access home;
+    ``prohibited_aggregation_ids`` are barred from the aggregation tier only (no free
+    aggregation and no co-located twin) yet stay eligible to be a core.
 
     A forced installation is realized as a co-located carrier twin before pins are
     resolved, so its force-pin lands in ``forced_aggregation_ids`` like any other.
@@ -205,6 +209,7 @@ class RoleOverrides:
     forced_core_ids: frozenset[str] = frozenset()
     forced_aggregation_ids: frozenset[str] = frozenset()
     excluded_ids: frozenset[str] = frozenset()
+    prohibited_aggregation_ids: frozenset[str] = frozenset()
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
 
 @dataclass(frozen=True)

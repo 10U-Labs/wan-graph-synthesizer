@@ -188,6 +188,7 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
         forced_core_names=_str_list(design, "forced_cores", []),
         forced_aggregation_names=_str_list(design, "forced_aggregations", []),
         excluded_names=_str_list(design, "excluded", []),
+        prohibited_aggregation_names=_str_list(design, "prohibited_aggregations", []),
         tuning=_tuning(tuning),
     )
 

@@ -553,18 +553,21 @@ def with_colocation_twins(
     core_candidates: list[str],
     pop_by_id: dict[str, Vertex],
     adjacency: dict[str, list[tuple[str, float]]],
+    aggregation_eligible_ids: set[str],
 ) -> _AggregationPlan:
     """Offer each core candidate a co-located twin the search may seat as an aggregation.
 
     Skips any core whose twin already exists -- an operator co-location or a forced
-    installation already stands up and pins that twin -- so it is never double-built.
+    installation already stands up and pins that twin -- so it is never double-built,
+    and any core barred from the aggregation tier (absent from
+    ``aggregation_eligible_ids``), so a prohibited PoP is never dual-roled.
     """
     twin_to_core: dict[str, str] = {}
     reach_avoiding: dict[str, set[str]] = {}
     twin_vertices: dict[str, Vertex] = {}
     for core_id in core_candidates:
         twin_id = twin_vertex_id(core_id)
-        if twin_id in pop_by_id:
+        if twin_id in pop_by_id or core_id not in aggregation_eligible_ids:
             continue
         twin_to_core[twin_id] = core_id
         reach_avoiding[core_id] = cores_reachable_avoiding(core_id, adjacency)
@@ -875,7 +878,10 @@ def build_search_plan(
     )
     return _SearchPlan(
         core_candidates,
-        with_colocation_twins(aggregations, core_candidates, pop_by_id, inputs.adjacency),
+        with_colocation_twins(
+            aggregations, core_candidates, pop_by_id, inputs.adjacency,
+            inputs.eligible_aggregation_ids,
+        ),
         strength_by_id, clusters=clusters,
         tuning=params.tuning,
         forced_links=forced_links,
@@ -916,12 +922,15 @@ def optimize_three_tier_design(
     ) - overrides.excluded_ids
     if len(eligible_ids) < max(2, params.min_core_count):
         raise ValueError("Not enough eligible Carrier aggregation/core PoPs")
+    # Prohibited PoPs stay core candidates but leave the aggregation tier entirely:
+    # no free aggregation here, and no co-located twin (see ``build_search_plan``).
+    eligible_aggregation_ids = eligible_ids - overrides.prohibited_aggregation_ids
 
     inputs = DesignInputs(
         access_vertices=context.all_access,
         carrier_pops=context.carrier_pops,
         physical_edges=physical_edges,
-        eligible_aggregation_ids=eligible_ids,
+        eligible_aggregation_ids=eligible_aggregation_ids,
         adjacency=context.adjacency,
         all_distances=context.all_distances,
         all_predecessors=context.all_predecessors,

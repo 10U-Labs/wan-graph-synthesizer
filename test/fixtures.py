@@ -308,6 +308,22 @@ def forced_core_artifacts(name: str) -> DesignArtifacts:
     return _forced_artifacts(DesignParams(min_core_count=2, forced_core_names=(name,)))
 
 
+def prohibited_aggregation_artifacts(name: str) -> DesignArtifacts:
+    """Ring artifacts forcing a PoP as a core while barring it from the aggregation tier.
+
+    Pairing the force-core pin with the prohibition exercises the distinctive
+    behavior: the PoP must land on the core tier yet never reach the aggregation
+    tier, not even through its co-located twin.
+    """
+    return _forced_artifacts(
+        DesignParams(
+            min_core_count=2,
+            forced_core_names=(name,),
+            prohibited_aggregation_names=(name,),
+        )
+    )
+
+
 def forced_connection_artifacts(
     params: DesignParams, forced_connections: tuple[ForcedConnection, ...]
 ) -> DesignArtifacts:
