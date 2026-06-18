@@ -21,6 +21,7 @@ from wan_designer.model import (
     DesignParams,
     EnumBudget,
     ForcedConnection,
+    RoleExclusions,
     Tuning,
 )
 
@@ -58,7 +59,6 @@ class AppConfig:
     label: str = ""
     forced_connections: tuple[ForcedConnection, ...] = ()
     excluded_connections: tuple[ForcedConnection, ...] = ()
-    prohibited_aggregation_names: tuple[str, ...] = ()
 
 
 def _mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
@@ -188,7 +188,10 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
         ),
         forced_core_names=_str_list(design, "forced_cores", []),
         forced_aggregation_names=_str_list(design, "forced_aggregations", []),
-        excluded_names=_str_list(design, "excluded", []),
+        exclusions=RoleExclusions(
+            excluded_names=_str_list(design, "excluded", []),
+            prohibited_aggregation_names=_str_list(design, "prohibited_aggregations", []),
+        ),
         tuning=_tuning(tuning),
     )
 
@@ -203,7 +206,6 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
         label=str(data.get("label", "")),
         forced_connections=_forced_connections(design),
         excluded_connections=_excluded_connections(design),
-        prohibited_aggregation_names=_str_list(design, "prohibited_aggregations", []),
     )
 
 

@@ -15,6 +15,7 @@ from wan_designer.model import (
     Vertex,
     PathUse,
     PhysicalEdge,
+    RoleExclusions,
     RoleOverrides,
     Tuning,
     edge_key,
@@ -702,20 +703,18 @@ def test_reject_override_conflicts_allows_prohibiting_a_forced_core() -> None:
 
 def test_apply_role_overrides_resolves_prohibited_aggregations() -> None:
     """A prohibited-aggregation name resolves to its vertex id in the overrides."""
+    params = DesignParams(exclusions=RoleExclusions(prohibited_aggregation_names=("P",)))
     _vertices, _edges, overrides = apply_role_overrides(
-        [pop("P"), pop("z")], physical({("P", "z"): 1.0}), DesignParams(),
-        prohibited_aggregation_names=("P",),
+        [pop("P"), pop("z")], physical({("P", "z"): 1.0}), params
     )
     assert overrides.prohibited_aggregation_ids == frozenset({"P"})
 
 
 def test_apply_role_overrides_rejects_an_unknown_prohibited_name() -> None:
     """An unknown prohibited-aggregation PoP name is rejected, not silently dropped."""
+    params = DesignParams(exclusions=RoleExclusions(prohibited_aggregation_names=("Nowhere",)))
     with pytest.raises(ValueError):
-        apply_role_overrides(
-            [pop("P")], physical({("P", "z"): 1.0}), DesignParams(),
-            prohibited_aggregation_names=("Nowhere",),
-        )
+        apply_role_overrides([pop("P")], physical({("P", "z"): 1.0}), params)
 
 
 def _prohibited_plan() -> _SearchPlan:

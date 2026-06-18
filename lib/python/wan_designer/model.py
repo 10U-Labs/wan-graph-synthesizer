@@ -157,6 +157,19 @@ class ForcedConnection:
     target: str
 
 @dataclass(frozen=True)
+class RoleExclusions:
+    """Operator pins that bar a PoP from a role, by PoP display name.
+
+    ``excluded_names`` bar a PoP from every selected role (core, aggregation, and
+    access home); ``prohibited_aggregation_names`` bar it from the aggregation tier
+    only -- it stays eligible to be a core. The overrides layer resolves both to
+    vertex ids.
+    """
+
+    excluded_names: tuple[str, ...] = ()
+    prohibited_aggregation_names: tuple[str, ...] = ()
+
+@dataclass(frozen=True)
 class DesignParams:
     """Operator choices plus the algorithm :class:`Tuning` for the optimization."""
 
@@ -165,7 +178,7 @@ class DesignParams:
     allow_roadm_aggregation: bool = False
     forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
     forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations
-    excluded_names: tuple[str, ...] = ()  # PoPs barred from every selected role
+    exclusions: RoleExclusions = field(default_factory=RoleExclusions)  # role bars
     tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)
