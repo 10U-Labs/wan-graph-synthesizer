@@ -696,9 +696,16 @@ def test_reject_override_conflicts_rejects_prohibiting_a_forced_aggregation() ->
         reject_override_conflicts(set(), {"a"}, set(), {"a"})
 
 
-def test_reject_override_conflicts_allows_prohibiting_a_forced_core() -> None:
-    """Forcing a PoP as a core while barring it from the aggregation tier is allowed."""
-    assert reject_override_conflicts({"a"}, set(), set(), {"a"}) is None
+def test_apply_role_overrides_allows_a_prohibited_forced_core() -> None:
+    """A PoP may be both a forced core and barred from the aggregation tier."""
+    params = DesignParams(
+        forced_core_names=("P",),
+        exclusions=RoleExclusions(prohibited_aggregation_names=("P",)),
+    )
+    _vertices, _edges, overrides = apply_role_overrides(
+        [pop("P"), pop("z")], physical({("P", "z"): 1.0}), params
+    )
+    assert "P" in overrides.forced_core_ids & overrides.prohibited_aggregation_ids
 
 
 def test_apply_role_overrides_resolves_prohibited_aggregations() -> None:
