@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict
 from typing import Any
 
@@ -9,6 +10,7 @@ from wan_designer.model import (
     Design,
     DesignArtifacts,
     SourceFiles,
+    Vertex,
     edge_key,
     is_carrier_pop,
 )
@@ -39,6 +41,19 @@ def tier_breakdown(
         "standalone_aggregation_count": len(aggregation_set - twin_ids),
     }
 
+def included_access_count(vertices: Iterable[Vertex], design: Design) -> int:
+    """Count access vertices actually homed into the design.
+
+    Mirrors the design-membership semantics of the core/aggregation counts: an
+    access vertex only counts once it is homed to an aggregation (i.e. it appears
+    in :func:`included_vertex_ids`), not merely because it was loaded as demand.
+    """
+    included = included_vertex_ids(design)
+    return sum(
+        1 for vertex in vertices if not is_carrier_pop(vertex) and vertex.id in included
+    )
+
+
 def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str, Any]:
     """Build the full design, vertices, edges, and validation report as a dict.
 
@@ -64,7 +79,7 @@ def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str
             "aggregation_count": len(design.aggregation_ids),
             **tier_breakdown(design.core_ids, design.aggregation_ids),
             "transit_count": len(design.transit_ids),
-            "access_vertex_count": sum(1 for vertex in vertices if not is_carrier_pop(vertex)),
+            "access_vertex_count": included_access_count(vertices, design),
             "access_edge_count": len(design.access_edges),
             "physical_edge_count": len(design.physical_edge_keys),
             "access_miles": round(design.metrics.access_miles, 3),
