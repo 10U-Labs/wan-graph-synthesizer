@@ -10,7 +10,9 @@ design:
   # Core-core mesh links the operator prunes from the full backbone mesh. Both
   # endpoints must be forced cores. (type defaults to core-core, the only kind a
   # link can be removed as.)
-  excluded_connections: []
+  excluded_connections:
+    - source: Los Angeles, CA
+      target: Dulles, VA
   # PoPs pinned into the aggregation tier -- all carrier municipalities, never
   # installations. Richmond is pinned (not Norfolk, a single-homed ROADM leaf) so
   # southeast-Virginia demand homes into a PoP that can dual-home to two cores.
