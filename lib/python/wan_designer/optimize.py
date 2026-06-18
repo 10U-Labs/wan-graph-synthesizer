@@ -354,8 +354,10 @@ def assign_access(
     ``plan.tuning.access_aggregation_links`` distinct local PoPs each). Every vertex then
     homes to that many facilities, completing any gap (a cluster with too few local
     heads, or a sparse lone vertex) by reusing an existing facility rather than
-    building a redundant one. Returns the access edges and selected aggregation ids,
-    or None if some vertex cannot reach the configured number of facilities.
+    building a redundant one. A facility the operator forced an access vertex onto is
+    seeded up front so clusters reuse it instead of standing up a neighbor beside it.
+    Returns the access edges and selected aggregation ids, or None if some vertex
+    cannot reach the configured number of facilities.
     """
     links = plan.tuning.access_aggregation_links
     feasible_ids = feasible_aggregation_ids(core_ids, inputs, plan)
@@ -365,6 +367,13 @@ def assign_access(
     pop_by_id.update(plan.aggregations.twin_vertices)
     access_by_id = {access.id: access for access in inputs.access_vertices}
     selected: set[str] = set(effective_forced_aggregations(plan))
+    # Seed the targets of operator-forced access links so cluster heads and later
+    # homes reuse a pinned facility rather than building a redundant neighbor
+    # beside it (and so homing no longer depends on the order vertices are seen).
+    # Restricted to feasible aggregations: a target that cannot dual-home to this
+    # core set is still pinned onto its own node by apply_forced_access_homes, but
+    # must not pull other vertices onto an aggregation that cannot route.
+    selected |= {agg for _access, agg in plan.forced_links.access} & feasible_ids
     homes: dict[str, list[str]] = {}
 
     # Pass 1: stand up each cluster's local aggregation heads. This places the

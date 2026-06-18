@@ -98,6 +98,7 @@ def _plan(
     strength: dict[str, float] | None = None,
     clusters: list[list[str]] | None = None,
     access_aggregation_links: int = 2,
+    forced_links: ForcedLinks | None = None,
 ) -> _SearchPlan:
     """Build a search plan for direct optimizer tests."""
     return _SearchPlan(
@@ -106,6 +107,7 @@ def _plan(
         strength or {},
         clusters=clusters or [],
         tuning=Tuning(access_aggregation_links=access_aggregation_links),
+        forced_links=forced_links or ForcedLinks(),
     )
 
 
@@ -496,6 +498,41 @@ def test_assign_access_completes_a_cluster_with_no_local_head() -> None:
     """A cluster whose PoPs are all distant still homes every member to two."""
     result = _assign((3.0, 0.0), (3.0, 1.0))
     assert result is not None and len(result[0]) == 2 * len(CLUSTER_ACCESS)
+
+
+# Three local, dual-homing aggregations beside one access cluster. gD is central
+# (least total distance to members), gE next; gC sits at the cluster edge (most
+# total distance) -- it would never be a natural head, but it is the forced target.
+REUSE_ACCESS = {"A1": (0.0, 0.0), "A2": (0.0, 0.04), "A3": (0.0, 0.08)}
+REUSE_EDGES = physical(
+    {
+        ("gC", "c1"): 1.0, ("gC", "c2"): 1.0,
+        ("gD", "c1"): 1.0, ("gD", "c2"): 1.0,
+        ("gE", "c1"): 1.0, ("gE", "c2"): 1.0, ("c1", "c2"): 1.0,
+    }
+)
+REUSE_COORDS = {"gC": (0.0, 0.0), "gD": (0.0, 0.04), "gE": (0.0, 0.06)}
+
+
+def test_assign_access_reuses_a_forced_target_as_a_cluster_head() -> None:
+    """A forced access target is reused as a head, not built beside a redundant one.
+
+    Forcing A1 onto gC (the cluster's edge facility) must not also stand up gE: gC
+    is seated up front, so the cluster reuses it and adds only the central gD,
+    leaving gE unbuilt. Without seeding the forced target the cluster would build
+    its two nearest heads (gD, gE) and seat gC separately -- a redundant third.
+    """
+    access_vertices = [access(name, lat, lon) for name, (lat, lon) in REUSE_ACCESS.items()]
+    inputs = _inputs_from_edges(
+        ["gC", "gD", "gE", "c1", "c2"], REUSE_EDGES, {"gC", "gD", "gE"},
+        access_vertices, REUSE_COORDS,
+    )
+    plan = _plan(
+        [], clusters=[list(REUSE_ACCESS)],
+        forced_links=ForcedLinks(access=frozenset({("A1", "gC")})),
+    )
+    result = assign_access(("c1", "c2"), inputs, plan)
+    assert result is not None and result[1] == {"gC", "gD"}
 
 
 # Three aggregations, each dual-homing to both cores, for the configurable-count check.
