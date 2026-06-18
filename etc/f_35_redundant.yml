@@ -13,9 +13,11 @@ design:
   # (see inputs.off_net): not carrier PoPs themselves, reached by local fiber to
   # the nearest PoPs.
   forced_aggregations:
+    - Atlanta, GA
+    - Dulles, VA
     - Las Vegas, NV
+    - Los Angeles, CA
     - Manassas, VA
-    - Richmond, VA
     - Tallahassee, FL
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
