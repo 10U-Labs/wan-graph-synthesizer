@@ -58,6 +58,11 @@ design:
   # Minimum number of core PoPs. The search adds more cores only when feasibility
   # requires it; it never drops below this floor.
   min_core_count: 3
+  # PoPs barred from the aggregation tier yet still eligible as cores (unlike
+  # `excluded`, which bars every role). Salt Lake City is a forced core that must
+  # never also be dual-roled as an aggregation.
+  prohibited_aggregations:
+    - Salt Lake City, UT
   # Add extra physical Carrier edges to reduce articulation or degree risk.
   resilience_augmentation: true
 inputs:

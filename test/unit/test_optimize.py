@@ -689,6 +689,45 @@ def test_reject_override_conflicts_rejects_excluding_a_forced_pop() -> None:
         reject_override_conflicts({"a"}, set(), {"a"})
 
 
+def test_reject_override_conflicts_rejects_prohibiting_a_forced_aggregation() -> None:
+    """A PoP both forced as and prohibited from being an aggregation is rejected."""
+    with pytest.raises(ValueError):
+        reject_override_conflicts(set(), {"a"}, set(), {"a"})
+
+
+def test_reject_override_conflicts_allows_prohibiting_a_forced_core() -> None:
+    """Forcing a PoP as a core while barring it from the aggregation tier is allowed."""
+    reject_override_conflicts({"a"}, set(), set(), {"a"})
+
+
+def test_apply_role_overrides_resolves_prohibited_aggregations() -> None:
+    """A prohibited-aggregation name resolves to its vertex id in the overrides."""
+    params = DesignParams(prohibited_aggregation_names=("P",))
+    _vertices, _edges, overrides = apply_role_overrides(
+        [pop("P"), pop("z")], physical({("P", "z"): 1.0}), params
+    )
+    assert overrides.prohibited_aggregation_ids == frozenset({"P"})
+
+
+def test_apply_role_overrides_rejects_an_unknown_prohibited_name() -> None:
+    """An unknown prohibited-aggregation PoP name is rejected, not silently dropped."""
+    params = DesignParams(prohibited_aggregation_names=("Nowhere",))
+    with pytest.raises(ValueError):
+        apply_role_overrides([pop("P")], physical({("P", "z"): 1.0}), params)
+
+
+def test_build_search_plan_keeps_a_prohibited_pop_as_a_core_candidate() -> None:
+    """A prohibited PoP stays a core candidate but is offered no aggregation twin."""
+    edges = physical({("p", "q"): 1.0, ("q", "c"): 1.0, ("p", "c"): 1.0})
+    inputs = _inputs_from_edges(["p", "q", "c"], edges, {"q", "c"})  # p barred from aggregation
+    plan = build_search_plan(
+        inputs, {"p", "q", "c"}, _AggregationPlan(), RoleOverrides(), DesignParams()
+    )
+    assert "p" in plan.core_candidates
+    assert "aggr_p" not in plan.aggregations.twin_to_core
+    assert "aggr_q" in plan.aggregations.twin_to_core
+
+
 def test_colocation_edges_duplicate_a_cores_handoffs_onto_its_twin() -> None:
     """The twin gains an in-facility cross-connect plus each of the core's handoffs."""
     edges = physical({("m", "z"): 1.0, ("a", "m"): 1.0, ("p", "q"): 1.0})
