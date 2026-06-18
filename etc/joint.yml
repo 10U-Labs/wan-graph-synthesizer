@@ -62,6 +62,9 @@ design:
     - source: F.E. Warren AFB
       target: Salt Lake City, UT
       type: access-aggregation
+    - source: Camp Guernsey
+      target: Salt Lake City, UT
+      type: access-aggregation
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
   forced_cores:
