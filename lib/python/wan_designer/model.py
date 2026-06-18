@@ -157,8 +157,13 @@ class ForcedConnection:
     target: str
 
 @dataclass(frozen=True)
-class DesignParams:
-    """Operator choices plus the algorithm :class:`Tuning` for the optimization."""
+class DesignParams:  # pylint: disable=too-many-instance-attributes
+    """Operator choices plus the algorithm :class:`Tuning` for the optimization.
+
+    A flat aggregate of independent operator dials (core bounds, the role-pin name
+    lists, and the algorithm tuning); they have no natural sub-grouping, so the
+    instance-attribute count is allowed to exceed the default.
+    """
 
     min_core_count: int = 3  # minimum cores; the search adds more only if needed
     max_core_count: int | None = None  # ceiling on cores; None leaves the tier uncapped
