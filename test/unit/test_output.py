@@ -3,10 +3,29 @@
 from __future__ import annotations
 
 import fixtures
-from wan_designer.output import design_payload, sorted_physical_edges, tier_breakdown
+from wan_designer.model import AccessEdge, Design, DesignMetrics
+from wan_designer.output import (
+    design_payload,
+    included_access_count,
+    sorted_physical_edges,
+    tier_breakdown,
+)
 
 ARTIFACTS = fixtures.ring_artifacts()
 SOURCES = fixtures.sample_sources()
+
+
+def _design_with_homed_access() -> Design:
+    """A design that homes a single access vertex to an aggregation PoP."""
+    return Design(
+        core_ids=(),
+        aggregation_ids=("agg",),
+        transit_ids=(),
+        access_edges=[AccessEdge("homed", "agg", 1.0)],
+        physical_edge_keys=set(),
+        path_uses=[],
+        metrics=DesignMetrics(0.0, 0.0, 0.0),
+    )
 
 
 def test_design_payload_includes_vertices() -> None:
@@ -62,3 +81,21 @@ def test_tier_breakdown_excludes_a_twin_from_standalone_aggregations() -> None:
     """A seated twin is not counted as a standalone aggregation."""
     breakdown = tier_breakdown(("core_a", "core_b"), ("aggr_core_a", "agg_x"))
     assert breakdown["standalone_aggregation_count"] == 1
+
+
+def test_included_access_count_counts_a_homed_access_vertex() -> None:
+    """An access vertex homed to an aggregation counts toward the ACCESS tally."""
+    vertices = [fixtures.access_vertex("homed")]
+    assert included_access_count(vertices, _design_with_homed_access()) == 1
+
+
+def test_included_access_count_excludes_unhomed_access_vertices() -> None:
+    """A loaded access vertex never homed into the design is not counted."""
+    vertices = [fixtures.access_vertex("homed"), fixtures.access_vertex("stranded")]
+    assert included_access_count(vertices, _design_with_homed_access()) == 1
+
+
+def test_included_access_count_excludes_carrier_pops() -> None:
+    """Carrier PoPs in the design are not access vertices and are not counted."""
+    vertices = [fixtures.access_vertex("homed"), fixtures.carrier_pop("agg")]
+    assert included_access_count(vertices, _design_with_homed_access()) == 1
