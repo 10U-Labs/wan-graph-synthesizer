@@ -11,6 +11,8 @@ aggregation. It runs before the search and never calls back into it.
 
 from __future__ import annotations
 
+from collections.abc import Set as AbstractSet
+
 from wan_designer.model import (
     Design,
     DesignParams,
@@ -43,7 +45,7 @@ def reject_override_conflicts(
     forced_core: set[str],
     forced_aggregation: set[str],
     excluded: set[str],
-    prohibited_aggregation: set[str] = frozenset(),
+    prohibited_aggregation: AbstractSet[str] = frozenset(),
 ) -> None:
     """Reject contradictory role pins.
 
