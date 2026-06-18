@@ -13,18 +13,12 @@ design:
   excluded_connections:
     - source: Atlanta, GA
       target: Los Angeles, CA
-    - source: Chicago, IL
-      target: Los Angeles, CA
     - source: Los Angeles, CA
       target: Dulles, VA
     - source: Atlanta, GA
       target: Salt Lake City, UT
     - source: Dulles, VA
       target: Salt Lake City, UT
-    - source: Chicago, IL
-      target: Salt Lake City, UT
-    - source: Denver, CO
-      target: Dulles, VA
   # PoPs pinned into the aggregation tier -- all carrier municipalities, never
   # installations. Richmond is pinned (not Norfolk, a single-homed ROADM leaf) so
   # southeast-Virginia demand homes into a PoP that can dual-home to two cores.
@@ -41,26 +35,19 @@ design:
     - Denver, CO
     - Dulles, VA
     - Great Falls, MT
-    - Houston, TX
     - Las Vegas, NV
     - Los Angeles, CA
     - Manassas, VA
     - Minot, ND
     - New York, NY
-    - Phoenix, AZ
     - Portland, OR
     - Salt Lake City, UT
+    - San Antonio, TX
     - Tallahassee, FL
   # Operator-forced edges pinned into the design, keyed by source, target, and the
   # edge type (core-core, aggregation-core, or access-aggregation). Each endpoint
   # must already be pinned into the tier its edge type requires.
   forced_connections:
-    - source: Dallas, TX
-      target: Denver, CO
-      type: core-core
-    - source: Phoenix, AZ
-      target: Salt Lake City, UT
-      type: aggregation-core
     - source: Minot, ND
       target: Salt Lake City, UT
       type: aggregation-core
@@ -68,15 +55,13 @@ design:
   # satisfy min_core_count and coverage, but never drops a pinned one.
   forced_cores:
     - Atlanta, GA
-    - Chicago, IL
     - Dallas, TX
-    - Denver, CO
     - Dulles, VA
     - Los Angeles, CA
     - Salt Lake City, UT
   # Maximum number of core PoPs. Coverage growth past the floor never seats more
   # cores than this ceiling, so the backbone stays bounded.
-  max_core_count: 7
+  max_core_count: 5
   # Minimum number of core PoPs. The search adds more cores only when feasibility
   # requires it; it never drops below this floor.
   min_core_count: 3
