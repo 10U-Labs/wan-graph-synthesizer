@@ -7,6 +7,16 @@ design:
   allow_roadm_aggregation: false
   # PoPs barred from every selected role.
   excluded: []
+  # Core-core mesh links the operator prunes from the full backbone mesh. Both
+  # endpoints must be forced cores. (type defaults to core-core, the only kind a
+  # link can be removed as.)
+  excluded_connections:
+    - source: Atlanta, GA
+      target: Los Angeles, CA
+    - source: Chicago, IL
+      target: Los Angeles, CA
+    - source: Los Angeles, CA
+      target: Dulles, VA
   # PoPs pinned into the aggregation tier -- all carrier municipalities, never
   # installations. Richmond is pinned (not Norfolk, a single-homed ROADM leaf) so
   # southeast-Virginia demand homes into a PoP that can dual-home to two cores.
@@ -16,18 +26,22 @@ design:
   # to instead force a base as an aggregation, name the installation here. Great
   # Falls and Minot are ROADMs, so pinning them overrides allow_roadm_aggregation.
   forced_aggregations:
+    - Atlanta, GA
     - Cheyenne, WY
-    - Fredericksburg, VA
+    - Chicago, IL
+    - Dallas, TX
+    - Denver, CO
+    - Dulles, VA
     - Great Falls, MT
     - Houston, TX
-    - Jacksonville, FL
     - Las Vegas, NV
+    - Los Angeles, CA
     - Manassas, VA
     - Minot, ND
     - New York, NY
     - Phoenix, AZ
     - Portland, OR
-    - San Bernardino, CA
+    - Salt Lake City, UT
     - Tallahassee, FL
   # Operator-forced edges pinned into the design, keyed by source, target, and the
   # edge type (core-core, aggregation-core, or access-aggregation). Each endpoint
@@ -59,10 +73,9 @@ design:
   # requires it; it never drops below this floor.
   min_core_count: 3
   # PoPs barred from the aggregation tier yet still eligible as cores (unlike
-  # `excluded`, which bars every role). Salt Lake City is a forced core that must
-  # never also be dual-roled as an aggregation.
-  prohibited_aggregations:
-    - Salt Lake City, UT
+  # `excluded`, which bars every role). Empty: every forced core is now also
+  # dual-roled as a co-located aggregation, so none are aggregation-barred.
+  prohibited_aggregations: []
   # Add extra physical Carrier edges to reduce articulation or degree risk.
   resilience_augmentation: true
 inputs:
