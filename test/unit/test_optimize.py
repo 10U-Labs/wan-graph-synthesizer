@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 import fixtures
@@ -98,7 +100,6 @@ def _plan(
     strength: dict[str, float] | None = None,
     clusters: list[list[str]] | None = None,
     access_aggregation_links: int = 2,
-    forced_links: ForcedLinks | None = None,
 ) -> _SearchPlan:
     """Build a search plan for direct optimizer tests."""
     return _SearchPlan(
@@ -107,7 +108,6 @@ def _plan(
         strength or {},
         clusters=clusters or [],
         tuning=Tuning(access_aggregation_links=access_aggregation_links),
-        forced_links=forced_links or ForcedLinks(),
     )
 
 
@@ -527,8 +527,8 @@ def test_assign_access_reuses_a_forced_target_as_a_cluster_head() -> None:
         ["gC", "gD", "gE", "c1", "c2"], REUSE_EDGES, {"gC", "gD", "gE"},
         access_vertices, REUSE_COORDS,
     )
-    plan = _plan(
-        [], clusters=[list(REUSE_ACCESS)],
+    plan = replace(
+        _plan([], clusters=[list(REUSE_ACCESS)]),
         forced_links=ForcedLinks(access=frozenset({("A1", "gC")})),
     )
     result = assign_access(("c1", "c2"), inputs, plan)
