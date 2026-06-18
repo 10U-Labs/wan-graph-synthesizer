@@ -12,12 +12,32 @@ from wan_designer.model import (
     edge_key,
     is_carrier_pop,
 )
+from wan_designer.overrides import twin_vertex_id
 from wan_designer.validation import included_vertex_ids, vertex_role
 
 
 def sorted_physical_edges(design: Design) -> list[tuple[str, str]]:
     """Return the design's physical edge keys in sorted order."""
     return sorted(design.physical_edge_keys)
+
+
+def tier_breakdown(
+    core_ids: tuple[str, ...], aggregation_ids: tuple[str, ...]
+) -> dict[str, int]:
+    """Split the core and aggregation tiers into standalone vs co-located counts.
+
+    A core is dual-role (``CORE+AGGR``) when its co-located ``AGGR`` twin
+    (id :func:`twin_vertex_id`) is itself a seated aggregation. Standalone cores
+    are the rest; standalone aggregations are those that are not any core's twin.
+    """
+    aggregation_set = set(aggregation_ids)
+    colocated = [core_id for core_id in core_ids if twin_vertex_id(core_id) in aggregation_set]
+    twin_ids = {twin_vertex_id(core_id) for core_id in colocated}
+    return {
+        "standalone_core_count": len(core_ids) - len(colocated),
+        "colocated_core_count": len(colocated),
+        "standalone_aggregation_count": len(aggregation_set - twin_ids),
+    }
 
 def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str, Any]:
     """Build the full design, vertices, edges, and validation report as a dict.
@@ -42,6 +62,7 @@ def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str
         "summary": {
             "core_count": len(design.core_ids),
             "aggregation_count": len(design.aggregation_ids),
+            **tier_breakdown(design.core_ids, design.aggregation_ids),
             "transit_count": len(design.transit_ids),
             "access_vertex_count": sum(1 for vertex in vertices if not is_carrier_pop(vertex)),
             "access_edge_count": len(design.access_edges),
