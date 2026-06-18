@@ -87,8 +87,7 @@ def test_forced_pop_is_placed_in_the_core_tier() -> None:
 
 def test_prohibited_pop_is_kept_off_the_aggregation_tier() -> None:
     """A prohibited PoP -- and its co-located twin -- never reach the aggregation tier."""
-    assert "P4" not in PROHIBITED.design.aggregation_ids
-    assert "aggr_P4" not in PROHIBITED.design.aggregation_ids
+    assert not ({"P4", "aggr_P4"} & set(PROHIBITED.design.aggregation_ids))
 
 
 def test_prohibited_pop_may_still_serve_as_a_core() -> None:

@@ -697,7 +697,7 @@ def test_reject_override_conflicts_rejects_prohibiting_a_forced_aggregation() ->
 
 def test_reject_override_conflicts_allows_prohibiting_a_forced_core() -> None:
     """Forcing a PoP as a core while barring it from the aggregation tier is allowed."""
-    reject_override_conflicts({"a"}, set(), set(), {"a"})
+    assert reject_override_conflicts({"a"}, set(), set(), {"a"}) is None
 
 
 def test_apply_role_overrides_resolves_prohibited_aggregations() -> None:
@@ -716,16 +716,23 @@ def test_apply_role_overrides_rejects_an_unknown_prohibited_name() -> None:
         apply_role_overrides([pop("P")], physical({("P", "z"): 1.0}), params)
 
 
-def test_build_search_plan_keeps_a_prohibited_pop_as_a_core_candidate() -> None:
-    """A prohibited PoP stays a core candidate but is offered no aggregation twin."""
+def _prohibited_plan() -> _SearchPlan:
+    """Search plan over a triangle where ``p`` is barred from the aggregation tier."""
     edges = physical({("p", "q"): 1.0, ("q", "c"): 1.0, ("p", "c"): 1.0})
     inputs = _inputs_from_edges(["p", "q", "c"], edges, {"q", "c"})  # p barred from aggregation
-    plan = build_search_plan(
+    return build_search_plan(
         inputs, {"p", "q", "c"}, _AggregationPlan(), RoleOverrides(), DesignParams()
     )
-    assert "p" in plan.core_candidates
-    assert "aggr_p" not in plan.aggregations.twin_to_core
-    assert "aggr_q" in plan.aggregations.twin_to_core
+
+
+def test_build_search_plan_keeps_a_prohibited_pop_as_a_core_candidate() -> None:
+    """A PoP barred from the aggregation tier is still a core candidate."""
+    assert "p" in _prohibited_plan().core_candidates
+
+
+def test_build_search_plan_offers_no_aggregation_twin_to_a_prohibited_pop() -> None:
+    """A prohibited PoP gets no co-located twin; the other candidates still do."""
+    assert _prohibited_plan().aggregations.twin_to_core == {"aggr_q": "q", "aggr_c": "c"}
 
 
 def test_colocation_edges_duplicate_a_cores_handoffs_onto_its_twin() -> None:
