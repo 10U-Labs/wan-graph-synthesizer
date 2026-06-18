@@ -47,6 +47,15 @@ design:
     - source: Minot, ND
       target: Salt Lake City, UT
       type: aggregation-core
+    - source: Cannon AFB
+      target: Cheyenne, WY
+      type: access-aggregation
+    - source: Hanscom AFB
+      target: New York, NY
+      type: access-aggregation
+    - source: Burlington ANGB
+      target: New York, NY
+      type: access-aggregation
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
   forced_cores:
