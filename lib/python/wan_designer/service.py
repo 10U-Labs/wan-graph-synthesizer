@@ -41,6 +41,7 @@ def run_design(
     augment: bool,
     forced_connections: tuple[ForcedConnection, ...] = (),
     excluded_connections: tuple[ForcedConnection, ...] = (),
+    prohibited_aggregation_names: tuple[str, ...] = (),
 ) -> DesignArtifacts:
     """Load inputs, optimize the three-tier design, and validate it."""
     vertices = load_vertices(list(paths.vertex_files))
@@ -63,7 +64,8 @@ def run_design(
     vertices, physical_edges = off_net.vertices, off_net.physical_edges
     roles = {pop.id: carrier_role(pop) for pop in vertices if is_carrier_pop(pop)}
     vertices, physical_edges, overrides = apply_role_overrides(
-        vertices, physical_edges, params, forced_connections, excluded_connections
+        vertices, physical_edges, params, forced_connections, excluded_connections,
+        prohibited_aggregation_names,
     )
     logger.info(
         "Loaded %d vertices and %d physical edges; starting optimization",
@@ -108,6 +110,7 @@ def design_for_wan_map(
         config.resilience_augmentation,
         config.forced_connections,
         config.excluded_connections,
+        config.prohibited_aggregation_names,
     )
     sources = SourceFiles(
         tuple(path for _tenant, path in config.paths.vertex_files),
