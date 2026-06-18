@@ -17,6 +17,10 @@ design:
       target: Los Angeles, CA
     - source: Los Angeles, CA
       target: Dulles, VA
+    - source: Atlanta, GA
+      target: Salt Lake City, UT
+    - source: Dulles, VA
+      target: Salt Lake City, UT
   # PoPs pinned into the aggregation tier -- all carrier municipalities, never
   # installations. Richmond is pinned (not Norfolk, a single-homed ROADM leaf) so
   # southeast-Virginia demand homes into a PoP that can dual-home to two cores.
