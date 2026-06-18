@@ -272,6 +272,7 @@ def _forced_artifacts(
     params: DesignParams,
     inputs: RingInputs | None = None,
     forced_connections: tuple[ForcedConnection, ...] = (),
+    prohibited_aggregation_names: tuple[str, ...] = (),
 ) -> DesignArtifacts:
     """Run the ring optimizer with operator pins resolved through the CLI's path.
 
@@ -280,7 +281,10 @@ def _forced_artifacts(
     requests rather than emergent selections.
     """
     vertices, edges, roles = inputs if inputs is not None else _ring_inputs()
-    vertices, edges, overrides = apply_role_overrides(vertices, edges, params, forced_connections)
+    vertices, edges, overrides = apply_role_overrides(
+        vertices, edges, params, forced_connections,
+        prohibited_aggregation_names=prohibited_aggregation_names,
+    )
     design = optimize_three_tier_design(vertices, edges, roles, params, overrides)
     vertices, edges = materialize_selected_colocation_twins(vertices, edges, design)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
@@ -316,11 +320,8 @@ def prohibited_aggregation_artifacts(name: str) -> DesignArtifacts:
     tier, not even through its co-located twin.
     """
     return _forced_artifacts(
-        DesignParams(
-            min_core_count=2,
-            forced_core_names=(name,),
-            prohibited_aggregation_names=(name,),
-        )
+        DesignParams(min_core_count=2, forced_core_names=(name,)),
+        prohibited_aggregation_names=(name,),
     )
 
 

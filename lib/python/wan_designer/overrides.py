@@ -126,6 +126,7 @@ def _resolve_operator_pins(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
+    prohibited_aggregation_names: tuple[str, ...],
 ) -> tuple[
     list[Vertex], dict[tuple[str, str], PhysicalEdge], set[str], set[str], set[str], set[str]
 ]:
@@ -144,7 +145,7 @@ def _resolve_operator_pins(
     )
     excluded = resolve_pinned_ids(params.excluded_names, name_to_id, "exclude")
     prohibited = resolve_pinned_ids(
-        params.prohibited_aggregation_names, name_to_id, "prohibit-aggregation"
+        prohibited_aggregation_names, name_to_id, "prohibit-aggregation"
     )
     reject_override_conflicts(forced_core, forced_aggregation, excluded, prohibited)
     colocated = forced_core & forced_aggregation
@@ -286,6 +287,7 @@ def apply_role_overrides(
     params: DesignParams,
     forced_connections: tuple[ForcedConnection, ...] = (),
     excluded_connections: tuple[ForcedConnection, ...] = (),
+    prohibited_aggregation_names: tuple[str, ...] = (),
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
     """Resolve operator pins into the search's role overrides.
 
@@ -295,9 +297,11 @@ def apply_role_overrides(
     in the forced aggregations like any other operator pin. ``forced_connections``
     are resolved to id-typed link sets against the seated tiers, and
     ``excluded_connections`` to the core-core pairs pruned from the full mesh.
+    ``prohibited_aggregation_names`` are barred from the aggregation tier (yet stay
+    core-eligible) and resolve into ``RoleOverrides.prohibited_aggregation_ids``.
     """
     vertices, physical_edges, forced_core, operator_forced, excluded, prohibited = (
-        _resolve_operator_pins(vertices, physical_edges, params)
+        _resolve_operator_pins(vertices, physical_edges, params, prohibited_aggregation_names)
     )
     overrides = RoleOverrides(
         forced_core_ids=frozenset(forced_core),

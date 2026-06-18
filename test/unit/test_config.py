@@ -162,13 +162,13 @@ def test_excluded_connection_rejects_a_non_core_core_type() -> None:
 
 def test_default_has_no_prohibited_aggregations() -> None:
     """The default config bars no PoP from the aggregation tier."""
-    assert len(default_config().params.prohibited_aggregation_names) == 0
+    assert len(default_config().prohibited_aggregation_names) == 0
 
 
 def test_reads_prohibited_aggregations() -> None:
-    """A prohibited_aggregations list is read into the design params."""
+    """A prohibited_aggregations list is read into the resolved config."""
     design = {"prohibited_aggregations": ["Denver, CO", "Boise, ID"]}
-    assert _config({"design": design}).params.prohibited_aggregation_names == (
+    assert _config({"design": design}).prohibited_aggregation_names == (
         "Denver, CO",
         "Boise, ID",
     )
