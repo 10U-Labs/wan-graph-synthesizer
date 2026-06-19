@@ -30,7 +30,7 @@ design:
     - Los Angeles, CA
     - Salt Lake City, UT
     - Seattle, WA
-  max_core_count: 7
+  max_core_count: 11
   min_core_count: 3
   prohibited_aggregations: []
   resilience_augmentation: true
