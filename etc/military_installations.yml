@@ -5,8 +5,11 @@ design:
   excluded_connections: []
   forced_aggregations:
     - Atlanta, GA
+    - Cheyenne, WY
     - Dulles, VA
+    - Great Falls, MT
     - Los Angeles, CA
+    - Minot, ND
     - New York, NY
     - Portland, OR
     - Tallahassee, FL
