@@ -5,6 +5,7 @@ design:
   excluded_connections: []
   forced_aggregations:
     - Albuquerque, NM
+    - Anchorage, AK
     - Atlanta, GA
     - Boston, MA
     - Cheyenne, WY
@@ -12,6 +13,8 @@ design:
     - Dallas, TX
     - Dulles, VA
     - Great Falls, MT
+    - Honolulu, HI
+    - Kansas City, KS
     - Las Vegas, NV
     - Los Angeles, CA
     - Minot, ND
