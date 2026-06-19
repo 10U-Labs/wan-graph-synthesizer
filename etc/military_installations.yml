@@ -16,9 +16,7 @@ design:
     - source: Los Angeles, CA
       target: Boston, MA
   forced_aggregations:
-    - Albuquerque, NM
     - Boston, MA
-    - Charleston, SC
     - Cheyenne, WY
     - Chicago, IL
     - Colorado Springs, CO
@@ -30,20 +28,12 @@ design:
     - Los Angeles, CA
     - McLean, VA
     - Minot, ND
-    - Montgomery, AL
     - New York, NY
-    - Norfolk, VA
     - Portland, OR
-    - Sacramento, CA
     - Salt Lake City, UT
-    - San Antonio, TX
-    - San Diego, CA
     - Seattle, WA
     - Tallahassee, FL
-    - Tucson, AZ
-    - Tulsa, OK
     - Virginia Beach, VA
-    - Wichita Falls, TX
   forced_connections: []
   forced_cores:
     - Boston, MA
@@ -84,7 +74,7 @@ inputs:
 label: Military Installations
 tuning:
   access_aggregation_links: 2
-  cluster_max_radius_miles: 200.0
+  cluster_max_radius_miles: 70.0
   cluster_min_points: 2
   cluster_min_radius_miles: 0.0
   compass_octants: 8
