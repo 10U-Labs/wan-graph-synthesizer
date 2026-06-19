@@ -22,25 +22,24 @@ design:
     - Minot, ND
     - Montgomery, AL
     - New York, NY
-    - Phoenix, AZ
     - Portland, OR
     - Sacramento, CA
     - Salt Lake City, UT
     - Seattle, WA
     - Tallahassee, FL
+    - Tucson, AZ
     - Tulsa, OK
     - Virginia Beach, VA
   forced_connections: []
   forced_cores:
     - Boston, MA
-    - Colorado Springs, CO
     - Dallas, TX
     - Dulles, VA
     - Los Angeles, CA
     - Salt Lake City, UT
     - Seattle, WA
     - Tallahassee, FL
-  max_core_count: 8
+  max_core_count: 7
   min_core_count: 3
   prohibited_aggregations: []
   resilience_augmentation: true
