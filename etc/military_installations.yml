@@ -11,6 +11,10 @@ design:
       target: Dulles, VA
     - source: Salt Lake City, UT
       target: Boston, MA
+    - source: Seattle, WA
+      target: Tallahassee, FL
+    - source: Seattle, WA
+      target: Boston, MA
   forced_aggregations:
     - Albuquerque, NM
     - Boston, MA
