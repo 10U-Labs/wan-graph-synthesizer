@@ -893,6 +893,7 @@ def build_search_plan(
         params.tuning.cluster_min_points,
         params.tuning.cluster_radius_miles[0],
         params.tuning.cluster_radius_miles[1],
+        params.tuning.cluster_k,
     )
     core_candidates = sorted(
         eligible_ids - aggregations.operator_forced,

@@ -60,11 +60,12 @@ tuning:
   # Aggregation facilities every access vertex homes to (its redundancy level). The
   # design fails validation if any access vertex reaches fewer than this many.
   access_aggregation_links: 2
-  # Ceiling (miles) on the data-derived DBSCAN cluster radius.
+  # Continent-bridge guard (miles): the longest mutual k-NN link allowed, so
+  # far-flung regions never fuse into one cluster. Not a tuning dial.
   cluster_max_radius_miles: 250.0
-  # A cluster needs at least this many close access vertices to seed an aggregation.
+  # A cluster needs at least this many access vertices to seed an aggregation.
   cluster_min_points: 2
-  # Floor (miles) on the data-derived DBSCAN cluster radius.
+  # Fallback radius (miles) reported when there is nothing to cluster.
   cluster_min_radius_miles: 0.0
   # Compass sectors used to score a core's link spread.
   compass_octants: 8

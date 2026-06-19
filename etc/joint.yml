@@ -101,14 +101,15 @@ tuning:
   # Aggregation facilities every access vertex homes to (its redundancy level). The
   # design fails validation if any access vertex reaches fewer than this many.
   access_aggregation_links: 2
-  # Ceiling (miles) on the data-derived DBSCAN cluster radius. Set above the data's
-  # natural k-distance elbow (~459 mi) so the cap does not bind: clusters stay sparse
-  # and nearby installations fold into the big metro clusters rather than splitting
-  # off their own small heads (e.g. Tulsa, Corpus Christi).
+  # Continent-bridge guard (miles) on a mutual k-NN cluster link, not a tuning dial.
+  # Clusters now form by relative density (each member is among the other's nearest),
+  # so this only bounds how far one link may reach -- keep it generous so genuine
+  # regional groups still link while cross-continent fusion stays impossible.
   cluster_max_radius_miles: 500.0
-  # A cluster needs at least this many close access vertices to seed an aggregation.
+  # A cluster needs at least this many access vertices to seed an aggregation; it
+  # also defaults the mutual-neighbor count k (raise cluster_k to pull in outliers).
   cluster_min_points: 2
-  # Floor (miles) on the data-derived DBSCAN cluster radius.
+  # Fallback radius (miles) reported when there is nothing to cluster.
   cluster_min_radius_miles: 0.0
   # Compass sectors used to score a core's link spread.
   compass_octants: 8
