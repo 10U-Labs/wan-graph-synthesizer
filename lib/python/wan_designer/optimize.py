@@ -463,7 +463,10 @@ def routed_path_uses(
 ) -> list[PathUse]:
     """Reconstruct the core-mesh and aggregation-to-core paths for a design."""
     core_set = set(core_ids)
-    constraints = BackboneConstraints(removed_core_pairs(core_set, plan.forced_links))
+    constraints = BackboneConstraints(
+        removed_core_pairs(core_set, plan.forced_links),
+        max_degree=plan.tuning.core_backbone_max_degree,
+    )
     path_uses = core_mesh_paths(
         core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
     )

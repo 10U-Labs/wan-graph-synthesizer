@@ -96,6 +96,18 @@ def test_reads_access_aggregation_links() -> None:
     ).params.tuning.access_aggregation_links == 3
 
 
+def test_default_core_backbone_max_degree_is_none() -> None:
+    """The default config leaves the core backbone degree uncapped."""
+    assert default_config().params.tuning.core_backbone_max_degree is None
+
+
+def test_reads_core_backbone_max_degree() -> None:
+    """A core_backbone_max_degree value is read from the tuning section."""
+    assert _config(
+        {"tuning": {"core_backbone_max_degree": 4}}
+    ).params.tuning.core_backbone_max_degree == 4
+
+
 def test_reads_forced_cores() -> None:
     """A forced_cores list is read into the design params."""
     assert _config({"design": {"forced_cores": ["Atlanta, GA"]}}).params.forced_core_names == (
