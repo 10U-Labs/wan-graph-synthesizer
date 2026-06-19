@@ -7,6 +7,7 @@ design:
     - Albuquerque, NM
     - Boston, MA
     - Cheyenne, WY
+    - Colorado Springs, CO
     - Dallas, TX
     - Dulles, VA
     - Great Falls, MT
@@ -26,6 +27,7 @@ design:
     - Dallas, TX
     - Dulles, VA
     - Los Angeles, CA
+    - Salt Lake City, UT
     - Seattle, WA
   max_core_count: 7
   min_core_count: 3
