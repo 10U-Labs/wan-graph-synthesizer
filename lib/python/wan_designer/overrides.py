@@ -33,11 +33,15 @@ def pop_id_by_name(carrier_pops: list[Vertex]) -> dict[str, str]:
 def resolve_pinned_ids(
     names: tuple[str, ...], name_to_id: dict[str, str], label: str
 ) -> set[str]:
-    """Resolve operator-supplied PoP names to ids, rejecting any unknown name."""
+    """Resolve operator-supplied PoP names to ids, rejecting any unknown name.
+
+    ``label`` is the config field the names came from; it names the offending field
+    in the error so the operator knows which list to fix.
+    """
     resolved: set[str] = set()
     for name in names:
         if name not in name_to_id:
-            raise ValueError(f"--{label} PoP not found in the Carrier graph: {name}")
+            raise ValueError(f"{label} entry not found in the Carrier graph: {name}")
         resolved.add(name_to_id[name])
     return resolved
 
@@ -140,13 +144,13 @@ def _resolve_operator_pins(
     aggregations resolve to plain carrier-PoP ids (never co-located).
     """
     name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
-    forced_core = resolve_pinned_ids(params.forced_core_names, name_to_id, "force-core")
+    forced_core = resolve_pinned_ids(params.forced_core_names, name_to_id, "forced_cores")
     forced_aggregation = resolve_pinned_ids(
-        params.forced_aggregation_names, name_to_id, "force-aggregation"
+        params.forced_aggregation_names, name_to_id, "forced_aggregations"
     )
-    excluded = resolve_pinned_ids(params.exclusions.excluded_names, name_to_id, "exclude")
+    excluded = resolve_pinned_ids(params.exclusions.excluded_names, name_to_id, "excluded")
     prohibited = resolve_pinned_ids(
-        params.exclusions.prohibited_aggregation_names, name_to_id, "prohibit-aggregation"
+        params.exclusions.prohibited_aggregation_names, name_to_id, "prohibited_aggregations"
     )
     reject_override_conflicts(forced_core, forced_aggregation, excluded, prohibited)
     colocated = forced_core & forced_aggregation
