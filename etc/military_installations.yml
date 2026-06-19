@@ -4,6 +4,7 @@ design:
   excluded: []
   excluded_connections: []
   forced_aggregations:
+    - Albuquerque, NM
     - Boston, MA
     - Cheyenne, WY
     - Dallas, TX
