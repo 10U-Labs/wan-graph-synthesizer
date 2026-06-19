@@ -22,12 +22,12 @@ design:
     - Boston, MA
     - Charleston, SC
     - Cheyenne, WY
+    - Chicago, IL
     - Colorado Springs, CO
     - Dallas, TX
     - Dulles, VA
     - Great Falls, MT
     - Jacksonville, FL
-    - Kansas City, MO
     - Las Vegas, NV
     - Los Angeles, CA
     - McLean, VA
@@ -49,9 +49,9 @@ design:
   forced_connections: []
   forced_cores:
     - Boston, MA
+    - Chicago, IL
     - Dallas, TX
     - Dulles, VA
-    - Kansas City, MO
     - Los Angeles, CA
     - Salt Lake City, UT
     - Seattle, WA
