@@ -5,7 +5,6 @@ design:
   excluded_connections: []
   forced_aggregations:
     - Albuquerque, NM
-    - Atlanta, GA
     - Boston, MA
     - Charleston, SC
     - Cheyenne, WY
@@ -28,7 +27,6 @@ design:
     - Virginia Beach, VA
   forced_connections: []
   forced_cores:
-    - Atlanta, GA
     - Boston, MA
     - Colorado Springs, CO
     - Dallas, TX
