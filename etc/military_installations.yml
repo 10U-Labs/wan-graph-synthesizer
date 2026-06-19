@@ -12,12 +12,14 @@ design:
     - Minot, ND
     - New York, NY
     - Portland, OR
+    - Seattle, WA
     - Tallahassee, FL
     - Virginia Beach, VA
   forced_connections: []
   forced_cores:
     - Atlanta, GA
     - Dulles, VA
+    - Seattle, WA
   max_core_count: 7
   min_core_count: 3
   prohibited_aggregations: []
