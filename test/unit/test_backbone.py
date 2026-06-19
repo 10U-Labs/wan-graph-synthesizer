@@ -102,19 +102,29 @@ def test_a_removed_pair_is_filled_by_the_next_nearest() -> None:
     assert edge_key("c1", "c5") in _backbone(frozenset({edge_key("c1", "c2")}))
 
 
-def test_core_short_of_its_target_wires_to_every_peer_it_can() -> None:
-    """A core left below its link target wires to every reachable peer it has.
+# Removing three of c1's four peers leaves it only c5, one link below the target of
+# three; the backbone must still render rather than collapsing to nothing.
+_THINNED = frozenset({edge_key("c1", "c2"), edge_key("c1", "c3"), edge_key("c1", "c4")})
 
-    Removing three of c1's four peers leaves it only c5, one link below the target
-    of three. The backbone still renders: c1 keeps that single link and the other
-    cores wire among themselves, rather than the whole backbone collapsing.
-    """
-    removed = frozenset({edge_key("c1", "c2"), edge_key("c1", "c3"), edge_key("c1", "c4")})
-    pairs = _backbone(removed)
-    assert pairs, "thinning one core below target must not blank the whole backbone"
-    assert _core_degrees(pairs)["c1"] == 1
-    assert edge_key("c1", "c5") in pairs
-    assert not (removed & set(pairs))
+
+def test_a_core_thinned_below_target_still_renders_a_backbone() -> None:
+    """Thinning one core below its link target does not blank the whole backbone."""
+    assert _backbone(_THINNED)
+
+
+def test_a_core_thinned_below_target_keeps_its_one_remaining_link() -> None:
+    """The thinned core keeps the single link it can still make."""
+    assert _core_degrees(_backbone(_THINNED))["c1"] == 1
+
+
+def test_a_core_thinned_below_target_wires_to_its_one_reachable_peer() -> None:
+    """That single link goes to c5, the only peer c1 has left."""
+    assert edge_key("c1", "c5") in _backbone(_THINNED)
+
+
+def test_a_thinned_backbone_never_re_adds_a_removed_pair() -> None:
+    """No removed pair sneaks back into the rendered backbone."""
+    assert not _THINNED & set(_backbone(_THINNED))
 
 
 def test_core_backbone_wires_what_it_can_when_a_core_is_unreachable() -> None:

@@ -63,7 +63,7 @@ def test_connected_components_groups_a_chain() -> None:
 def test_cluster_access_vertices_returns_no_clusters_when_too_few() -> None:
     """Fewer than the minimum points yields no clusters at all."""
     clusters, _sparse, _radius = cluster_access_vertices([access("a")])
-    assert clusters == []
+    assert not clusters
 
 
 def test_cluster_access_vertices_groups_a_dense_metro() -> None:
@@ -91,7 +91,7 @@ def test_cluster_access_vertices_groups_the_spread_out_kc_region() -> None:
 def test_cluster_access_vertices_leaves_no_kc_base_sparse() -> None:
     """Every KC base joins the cluster -- none is dropped as noise."""
     _clusters, sparse, _radius = cluster_access_vertices(KC_REGION, max_radius=150.0)
-    assert sparse == []
+    assert not sparse
 
 
 def test_cluster_access_vertices_keeps_distant_metros_separate() -> None:
@@ -106,14 +106,14 @@ def test_cluster_access_vertices_guard_blocks_a_continental_bridge() -> None:
     """Two lone points farther apart than max_radius stay sparse, never bridged."""
     vertices = [access("east", 40.0, -74.0), access("west", 37.0, -122.0)]
     clusters, _sparse, _radius = cluster_access_vertices(vertices, max_radius=MAX_RADIUS_MILES)
-    assert clusters == []
+    assert not clusters
 
 
 def test_cluster_access_vertices_filters_a_pair_below_min_points() -> None:
     """A lone mutual pair is dropped when min_points exceeds the pair size."""
     vertices = [access("a", 40.0, -100.0), access("b", 40.0, -100.3)]
     clusters, _sparse, _radius = cluster_access_vertices(vertices, min_points=3)
-    assert clusters == []
+    assert not clusters
 
 
 def test_cluster_access_vertices_keeps_a_pair_at_min_points_two() -> None:
