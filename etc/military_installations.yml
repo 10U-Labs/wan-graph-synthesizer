@@ -4,7 +4,7 @@ design:
   excluded: []
   excluded_connections: []
   forced_aggregations:
-    - Atlanta, GA
+    - Boston, MA
     - Cheyenne, WY
     - Dallas, TX
     - Dulles, VA
@@ -22,6 +22,7 @@ design:
   forced_connections: []
   forced_cores:
     - Atlanta, GA
+    - Dallas, TX
     - Dulles, VA
     - Los Angeles, CA
     - Seattle, WA
