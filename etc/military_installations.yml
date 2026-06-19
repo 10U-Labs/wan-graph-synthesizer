@@ -7,8 +7,6 @@ design:
       target: Dallas, TX
     - source: Dallas, TX
       target: Boston, MA
-    - source: Seattle, WA
-      target: Tallahassee, FL
     - source: Salt Lake City, UT
       target: Boston, MA
     - source: Seattle, WA
@@ -52,10 +50,10 @@ design:
     - Chicago, IL
     - Dallas, TX
     - Dulles, VA
+    - Jacksonville, FL
     - Los Angeles, CA
     - Salt Lake City, UT
     - Seattle, WA
-    - Tallahassee, FL
   max_core_count: 8
   min_core_count: 3
   prohibited_aggregations: []
