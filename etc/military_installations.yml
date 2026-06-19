@@ -7,14 +7,6 @@ design:
       target: Dallas, TX
     - source: Boston, MA
       target: Dallas, TX
-    - source: Seattle, WA
-      target: Dulles, VA
-    - source: Salt Lake City, UT
-      target: Boston, MA
-    - source: Seattle, WA
-      target: Tallahassee, FL
-    - source: Seattle, WA
-      target: Boston, MA
   forced_aggregations:
     - Albuquerque, NM
     - Boston, MA
@@ -36,6 +28,7 @@ design:
     - Salt Lake City, UT
     - Seattle, WA
     - Tallahassee, FL
+    - Tulsa, OK
     - Virginia Beach, VA
   forced_connections: []
   forced_cores:
