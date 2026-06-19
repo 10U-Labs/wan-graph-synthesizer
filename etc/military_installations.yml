@@ -16,6 +16,7 @@ design:
     - Virginia Beach, VA
   forced_connections: []
   forced_cores:
+    - Atlanta, GA
     - Dulles, VA
   max_core_count: 21
   min_core_count: 3
