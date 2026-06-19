@@ -49,19 +49,16 @@ def select_core_backbone_pairs(
     selected: set[tuple[str, str]] = set()
     for core in core_ids:
         distances = all_distances[core]
-        reachable = sorted(
-            (
-                other
-                for other in core_ids
-                if other != core
-                and edge_key(core, other) not in removed_pairs
-                and math.isfinite(distances.get(other, math.inf))
-            ),
-            key=lambda other, near=distances: (near[other], other),
+        nearest = sorted(
+            (distances[other], other)
+            for other in core_ids
+            if other != core
+            and edge_key(core, other) not in removed_pairs
+            and math.isfinite(distances.get(other, math.inf))
         )
-        if len(reachable) < target:
+        if len(nearest) < target:
             return None
-        selected.update(edge_key(core, other) for other in reachable[:target])
+        selected.update(edge_key(core, other) for _distance, other in nearest[:target])
     return sorted(selected)
 
 

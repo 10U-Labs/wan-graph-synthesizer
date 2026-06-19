@@ -112,13 +112,13 @@ tuning:
   cluster_min_radius_miles: 0.0
   # Compass sectors used to score a core's link spread.
   compass_octants: 8
-  # How many other cores each core wires to on the backbone: every core links to
-  # this many of its nearest reachable cores.
-  core_links_per_core: 3
   # Grow the core tier past min_core_count until every aggregation is within this
   # straight-line distance of a core (extra cores are added only where they bring
   # demand meaningfully closer). Raise it for fewer, farther cores; lower it for more.
   core_coverage_target_miles: 600.0
+  # How many other cores each core wires to on the backbone: every core links to
+  # this many of its nearest reachable cores.
+  core_links_per_core: 3
   # Peak bytes one enumerated core set costs (sizes the search to free RAM).
   core_set_peak_bytes: 160
   # Share of RAM the core enumeration may use at its peak.
