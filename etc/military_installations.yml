@@ -26,7 +26,13 @@ design:
     - Tucson, AZ
     - Tulsa, OK
     - Virginia Beach, VA
-  forced_connections: []
+  forced_connections:
+    - source: Los Angeles, CA
+      target: Kansas City, MO
+      type: core-core
+    - source: Dallas, TX
+      target: Dulles, VA
+      type: core-core
   forced_cores:
     - Boston, MA
     - Dallas, TX
