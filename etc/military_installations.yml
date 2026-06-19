@@ -65,6 +65,7 @@ tuning:
   cluster_min_points: 2
   cluster_min_radius_miles: 0.0
   compass_octants: 8
+  core_backbone_max_degree: 3
   core_backbone_min_degree: 3
   core_coverage_target_miles: 600.0
   core_set_peak_bytes: 160
