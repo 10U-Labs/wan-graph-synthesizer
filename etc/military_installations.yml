@@ -4,6 +4,7 @@ design:
   excluded: []
   excluded_connections: []
   forced_aggregations:
+    - Atlanta, GA
     - Los Angeles, CA
     - New York, NY
     - Portland, OR
