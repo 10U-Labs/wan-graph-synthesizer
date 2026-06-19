@@ -19,6 +19,7 @@ design:
   forced_cores:
     - Atlanta, GA
     - Dulles, VA
+    - Los Angeles, CA
     - Seattle, WA
   max_core_count: 7
   min_core_count: 3
