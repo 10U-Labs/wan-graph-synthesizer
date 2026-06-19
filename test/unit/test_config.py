@@ -194,7 +194,12 @@ def test_prohibited_aggregations_must_be_a_list_of_strings() -> None:
 
 def test_reads_tuning_min_points() -> None:
     """A tuning cluster_min_points value is read into the design params."""
-    assert _config({"tuning": {"cluster_min_points": 4}}).params.tuning.cluster_min_points == 4
+    assert _config({"tuning": {"cluster_min_points": 4}}).params.tuning.cluster.min_points == 4
+
+
+def test_reads_tuning_cluster_k() -> None:
+    """A tuning cluster_k value is read into the design params."""
+    assert _config({"tuning": {"cluster_k": 3}}).params.tuning.cluster.k == 3
 
 
 def test_reads_vertices_mapping() -> None:

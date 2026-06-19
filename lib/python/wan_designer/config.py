@@ -17,6 +17,7 @@ import yaml
 
 from wan_designer.model import (
     FORCED_CONNECTION_TYPES,
+    ClusterTuning,
     DesignPaths,
     DesignParams,
     EnumBudget,
@@ -155,12 +156,14 @@ def _tuning(tuning: dict[str, Any]) -> Tuning:
     """Resolve the tuning configuration into a :class:`Tuning`."""
     base = Tuning()
     return Tuning(
-        cluster_min_points=tuning.get("cluster_min_points", base.cluster_min_points),
-        cluster_radius_miles=(
-            tuning.get("cluster_min_radius_miles", base.cluster_radius_miles[0]),
-            tuning.get("cluster_max_radius_miles", base.cluster_radius_miles[1]),
+        cluster=ClusterTuning(
+            min_points=tuning.get("cluster_min_points", base.cluster.min_points),
+            radius_miles=(
+                tuning.get("cluster_min_radius_miles", base.cluster.radius_miles[0]),
+                tuning.get("cluster_max_radius_miles", base.cluster.radius_miles[1]),
+            ),
+            k=tuning.get("cluster_k", base.cluster.k),
         ),
-        cluster_k=tuning.get("cluster_k", base.cluster_k),
         compass_octants=tuning.get("compass_octants", base.compass_octants),
         core_links_per_core=tuning.get("core_links_per_core", base.core_links_per_core),
         core_coverage_target_miles=tuning.get(

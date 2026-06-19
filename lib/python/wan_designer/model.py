@@ -120,21 +120,30 @@ class EnumBudget:
 
 
 @dataclass(frozen=True)
+class ClusterTuning:
+    """Dials for scale-adaptive (mutual k-NN) clustering of access vertices.
+
+    Mirrored as function-argument defaults in ``clustering.py`` (which ``model``
+    cannot import without a cycle), so keep the two in step.
+    """
+
+    min_points: int = 2  # access vertices needed to seed a new aggregation
+    radius_miles: tuple[float, float] = (50.0, 250.0)  # (fallback floor, bridge-guard ceiling)
+    k: int | None = None  # mutual-neighbor count; None -> min_points
+
+
+@dataclass(frozen=True)
 class Tuning:
     """Algorithm dials for the optimizer.
 
     These defaults are the single source of truth; ``etc/joint.yml`` overrides
-    them. The clustering defaults are mirrored as function-argument defaults in
-    ``clustering.py`` (which ``model`` cannot import without a cycle), so keep the
-    two in step. ``core_links_per_core`` is how many other cores each core links to
-    on the backbone: every core wires to its nearest reachable cores, and the design
-    must meet that count (alongside ``access_aggregation_links``) as its core-tier
+    them. ``core_links_per_core`` is how many other cores each core links to on the
+    backbone: every core wires to its nearest reachable cores, and the design must
+    meet that count (alongside ``access_aggregation_links``) as its core-tier
     connectivity requirement.
     """
 
-    cluster_min_points: int = 2  # access vertices needed to seed a new aggregation
-    cluster_radius_miles: tuple[float, float] = (50.0, 250.0)  # (floor, ceiling) on cluster radius
-    cluster_k: int | None = None  # mutual-neighbor count; None -> cluster_min_points
+    cluster: ClusterTuning = field(default_factory=ClusterTuning)  # access-vertex clustering dials
     compass_octants: int = 8  # compass sectors used to score a core's link spread
     core_links_per_core: int = 3  # other cores each core wires to (its nearest reachable)
     core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one

@@ -890,10 +890,10 @@ def build_search_plan(
     }
     clusters, _sparse, _radius = cluster_access_vertices(
         inputs.access_vertices,
-        params.tuning.cluster_min_points,
-        params.tuning.cluster_radius_miles[0],
-        params.tuning.cluster_radius_miles[1],
-        params.tuning.cluster_k,
+        params.tuning.cluster.min_points,
+        params.tuning.cluster.radius_miles[0],
+        params.tuning.cluster.radius_miles[1],
+        params.tuning.cluster.k,
     )
     core_candidates = sorted(
         eligible_ids - aggregations.operator_forced,
