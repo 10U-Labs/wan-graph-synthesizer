@@ -2,11 +2,7 @@
 design:
   allow_roadm_aggregation: false
   excluded: []
-  excluded_connections:
-    - source: Seattle, WA
-      target: Dallas, TX
-    - source: Boston, MA
-      target: Dallas, TX
+  excluded_connections: []
   forced_aggregations:
     - Albuquerque, NM
     - Boston, MA
@@ -35,11 +31,12 @@ design:
     - Boston, MA
     - Dallas, TX
     - Dulles, VA
+    - Kansas City, MO
     - Los Angeles, CA
     - Salt Lake City, UT
     - Seattle, WA
     - Tallahassee, FL
-  max_core_count: 7
+  max_core_count: 8
   min_core_count: 3
   prohibited_aggregations: []
   resilience_augmentation: true
@@ -74,6 +71,6 @@ tuning:
   cluster_min_radius_miles: 0.0
   compass_octants: 8
   core_coverage_target_miles: 600.0
-  core_links_per_core: 4
+  core_links_per_core: 3
   core_set_peak_bytes: 160
   enum_memory_fraction: 0.6
