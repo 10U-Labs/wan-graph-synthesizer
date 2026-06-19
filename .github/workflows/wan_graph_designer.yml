@@ -145,6 +145,8 @@ on:
   pull_request:
     paths:
       - .github/workflows/wan_graph_designer.yml
+      - data/**
+      - etc/**
       - lib/**
       - requirements.txt
       - src/**
@@ -153,6 +155,8 @@ on:
     branches: [main]
     paths:
       - .github/workflows/wan_graph_designer.yml
+      - data/**
+      - etc/**
       - lib/**
       - requirements.txt
       - src/**
