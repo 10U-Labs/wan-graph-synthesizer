@@ -164,6 +164,9 @@ def _tuning(tuning: dict[str, Any]) -> Tuning:
         core_backbone_min_degree=tuning.get(
             "core_backbone_min_degree", base.core_backbone_min_degree
         ),
+        core_backbone_max_degree=tuning.get(
+            "core_backbone_max_degree", base.core_backbone_max_degree
+        ),
         core_coverage_target_miles=tuning.get(
             "core_coverage_target_miles", base.core_coverage_target_miles
         ),

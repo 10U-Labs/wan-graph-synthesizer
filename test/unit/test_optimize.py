@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import replace
 
 import pytest
@@ -27,6 +28,7 @@ from wan_designer.backbone import (
     BackboneConstraints,
     core_mesh_paths,
     select_core_backbone_pairs,
+    _thin_to_max_degree,
 )
 from wan_designer.optimize import (
     aggregation_core_paths,
@@ -295,6 +297,62 @@ def test_core_backbone_omits_a_removed_pair() -> None:
 def test_core_backbone_keeps_the_other_pairs_when_one_is_removed() -> None:
     """Pruning one pair drops exactly that link: nine of the ten mesh links remain."""
     assert len(_full_mesh(frozenset({edge_key("c1", "c5")}))) == 9
+
+
+def _core_degrees(pairs: list[tuple[str, str]]) -> dict[str, int]:
+    """Distinct-neighbor degree of every five-core vertex over ``pairs``."""
+    degrees = {core: 0 for core in _FIVE_CORES}
+    for left, right in pairs:
+        degrees[left] += 1
+        degrees[right] += 1
+    return degrees
+
+
+def _capped(max_degree: int) -> list[tuple[str, str]]:
+    """The five-core backbone thinned to ``max_degree`` links per core (asserted reachable)."""
+    pairs = select_core_backbone_pairs(_FIVE_CORES, _FIVE_CORE_DISTANCES, max_degree=max_degree)
+    assert pairs is not None
+    return pairs
+
+
+def test_core_backbone_cap_at_the_mesh_degree_keeps_the_full_mesh() -> None:
+    """A cap at the full-mesh degree (n-1) binds on no core, so all ten links stay."""
+    assert len(_capped(4)) == 10
+
+
+def test_core_backbone_cap_drops_the_longest_over_limit_links() -> None:
+    """Capping degree at three drops the longest over-limit link and leaves eight links."""
+    capped = _capped(3)
+    assert edge_key("c1", "c5") not in capped and len(capped) == 8
+
+
+def test_core_backbone_cap_holds_the_floor_for_the_least_connected_core() -> None:
+    """Thinning never drops a core below the floor of three backbone links."""
+    assert min(_core_degrees(_capped(3)).values()) == 3
+
+
+def test_core_backbone_cap_is_best_effort_above_the_floor() -> None:
+    """K5 cannot reach a cap of three everywhere, so one core stays at four (best-effort)."""
+    assert max(_core_degrees(_capped(3)).values()) == 4
+
+
+# Two K4 blocks joined by a single bridge link: the bridge endpoints sit one over a
+# cap of three, but dropping the bridge would split the backbone in two.
+_BRIDGE_CORES = ("a", "b", "c", "d", "e", "f", "g", "h")
+_BRIDGE_PAIRS = [
+    edge_key(left, right)
+    for block in (("a", "b", "c", "d"), ("e", "f", "g", "h"))
+    for left, right in itertools.combinations(block, 2)
+] + [edge_key("a", "e")]
+_BRIDGE_DISTANCES = _symmetric_distances(
+    {pair: (100.0 if pair == edge_key("a", "e") else 1.0) for pair in _BRIDGE_PAIRS}
+)
+
+
+def test_thinning_keeps_a_link_whose_loss_breaks_two_edge_connectivity() -> None:
+    """A bridge over the cap is kept: dropping it would disconnect the backbone."""
+    result = _thin_to_max_degree(_BRIDGE_CORES, _BRIDGE_PAIRS, _BRIDGE_DISTANCES, 3)
+    assert set(result) == set(_BRIDGE_PAIRS)
 
 
 def test_core_backbone_none_when_a_kept_core_pair_is_unreachable() -> None:

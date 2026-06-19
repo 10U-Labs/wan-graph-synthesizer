@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 
 from wan_designer.model import (
+    CORE_BACKBONE_MIN_DEGREE,
     Design,
     DesignMetrics,
     Vertex,
@@ -22,9 +23,9 @@ from wan_designer.graphs import (
 )
 
 
-# Every core must link to at least this many other cores -- but only once the core
-# tier is larger than the floor itself, since fewer cores cannot reach it.
-CORE_BACKBONE_MIN_DEGREE = 3
+# Every core must link to at least ``CORE_BACKBONE_MIN_DEGREE`` other cores (defined
+# in ``model``) -- but only once the core tier is larger than the floor itself,
+# since fewer cores cannot reach it.
 
 
 def backbone_degree_deficient(
@@ -269,6 +270,7 @@ def validate_design(
             for left, right in core_pairs
         ],
         "core_backbone_min_degree": min(backbone_degrees.values(), default=0),
+        "core_backbone_max_degree": max(backbone_degrees.values(), default=0),
         "cores_connect_to_three_others": not backbone_deficient,
         "core_backbone_degree_deficient": backbone_deficient,
         "core_backbone_two_edge_connected": core_backbone_two_edge_connected(design),

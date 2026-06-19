@@ -185,6 +185,11 @@ def test_backbone_reports_its_minimum_degree() -> None:
     assert _backbone_report(*_HEALTHY)["core_backbone_min_degree"] == 3
 
 
+def test_backbone_reports_its_maximum_degree() -> None:
+    """The report's max backbone degree reflects the most-connected core's links."""
+    assert _backbone_report(*_HEALTHY)["core_backbone_max_degree"] == 4
+
+
 def test_backbone_below_the_floor_fails_the_connect_rule() -> None:
     """Cores left with only two backbone links fail the connect-to-three rule."""
     assert _backbone_report(*_DEFICIENT)["cores_connect_to_three_others"] is False
