@@ -6,7 +6,7 @@ const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIB = "© OpenStreetMap contributors";
 
 // The map shown on first load, before the operator picks a tenant.
-const DEFAULT_MAP_ID = "joint";
+const DEFAULT_MAP_ID = "military_installations";
 
 // Vertex color and radius. CSP data centers are colored by kind; every other
 // drawn vertex is colored by its tier role. Transit/unused carrier PoPs are
