@@ -31,7 +31,7 @@ def select_core_backbone_pairs(
     all_distances: dict[str, dict[str, float]],
     removed_pairs: frozenset[tuple[str, str]] = frozenset(),
     links_per_core: int = 3,
-) -> list[tuple[str, str]] | None:
+) -> list[tuple[str, str]]:
     """Choose which core pairs get a logical backbone link.
 
     Every core links to its ``links_per_core`` nearest reachable cores (fewer when
@@ -41,9 +41,11 @@ def select_core_backbone_pairs(
     nearest peer. The per-core picks are unioned, so a core chosen by a farther peer
     can end with one more link than the target.
 
-    Returns ``None`` when some core cannot reach that many other cores -- the carrier
-    graph (or an operator removal) leaves the core tier too disconnected to wire the
-    backbone.
+    A core left with fewer reachable, non-removed peers than the target -- because
+    the operator pruned its links or the carrier graph cannot reach them -- wires to
+    every peer it can and no more. Thinning one core below the target therefore costs
+    only that core's missing links, never the rest of the backbone, so an operator may
+    deliberately isolate a core without blanking the whole core mesh.
     """
     target = min(links_per_core, len(core_ids) - 1)
     selected: set[tuple[str, str]] = set()
@@ -56,8 +58,6 @@ def select_core_backbone_pairs(
             and edge_key(core, other) not in removed_pairs
             and math.isfinite(distances.get(other, math.inf))
         )
-        if len(nearest) < target:
-            return None
         selected.update(edge_key(core, other) for _distance, other in nearest[:target])
     return sorted(selected)
 
@@ -85,8 +85,6 @@ def core_mesh_paths(
     pairs = select_core_backbone_pairs(
         core_ids, all_distances, constraints.removed_pairs, constraints.links_per_core
     )
-    if pairs is None:
-        return []
     uses: list[PathUse] = []
     for left, right in pairs:
         path = reconstruct_path(left, right, all_predecessors[left])

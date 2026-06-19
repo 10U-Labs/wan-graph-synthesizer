@@ -52,12 +52,10 @@ _FIVE_CORES = ("c1", "c2", "c3", "c4", "c5")
 def _backbone(
     removed: frozenset[tuple[str, str]] = frozenset(), links_per_core: int = 3
 ) -> list[tuple[str, str]]:
-    """The five-core backbone wiring each core to its nearest peers (asserted reachable)."""
-    pairs = select_core_backbone_pairs(
+    """The five-core backbone wiring each core to its nearest peers."""
+    return select_core_backbone_pairs(
         _FIVE_CORES, _FIVE_CORE_DISTANCES, removed, links_per_core
     )
-    assert pairs is not None
-    return pairs
 
 
 def _core_degrees(pairs: list[tuple[str, str]]) -> dict[str, int]:
@@ -104,11 +102,26 @@ def test_a_removed_pair_is_filled_by_the_next_nearest() -> None:
     assert edge_key("c1", "c5") in _backbone(frozenset({edge_key("c1", "c2")}))
 
 
-def test_core_backbone_none_when_a_core_cannot_reach_enough_peers() -> None:
-    """A core that cannot reach its target number of peers yields no selection."""
+def test_core_short_of_its_target_wires_to_every_peer_it_can() -> None:
+    """A core left below its link target wires to every reachable peer it has.
+
+    Removing three of c1's four peers leaves it only c5, one link below the target
+    of three. The backbone still renders: c1 keeps that single link and the other
+    cores wire among themselves, rather than the whole backbone collapsing.
+    """
+    removed = frozenset({edge_key("c1", "c2"), edge_key("c1", "c3"), edge_key("c1", "c4")})
+    pairs = _backbone(removed)
+    assert pairs, "thinning one core below target must not blank the whole backbone"
+    assert _core_degrees(pairs)["c1"] == 1
+    assert edge_key("c1", "c5") in pairs
+    assert not (removed & set(pairs))
+
+
+def test_core_backbone_wires_what_it_can_when_a_core_is_unreachable() -> None:
+    """An unreachable core blanks only its own links, not the whole backbone."""
     distances = _symmetric_distances({("c1", "c2"): 1.0})
     distances["c3"] = {"c3": 0.0}
-    assert select_core_backbone_pairs(("c1", "c2", "c3"), distances) is None
+    assert select_core_backbone_pairs(("c1", "c2", "c3"), distances) == [edge_key("c1", "c2")]
 
 
 _UNIT_MESH_EDGES = physical({
