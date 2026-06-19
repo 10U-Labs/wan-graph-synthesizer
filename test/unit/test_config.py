@@ -97,15 +97,15 @@ def test_reads_access_aggregation_links() -> None:
 
 
 def test_default_core_backbone_max_degree_is_none() -> None:
-    """The default config leaves the core backbone degree uncapped."""
-    assert default_config().params.tuning.core_backbone_max_degree is None
+    """The default config leaves the core backbone degree ceiling uncapped."""
+    assert default_config().params.tuning.core_backbone_degree[1] is None
 
 
 def test_reads_core_backbone_max_degree() -> None:
-    """A core_backbone_max_degree value is read from the tuning section."""
+    """A core_backbone_max_degree value is read into the degree ceiling."""
     assert _config(
         {"tuning": {"core_backbone_max_degree": 4}}
-    ).params.tuning.core_backbone_max_degree == 4
+    ).params.tuning.core_backbone_degree[1] == 4
 
 
 def test_reads_forced_cores() -> None:
