@@ -6,7 +6,7 @@ design:
   forced_aggregations: []
   forced_connections: []
   forced_cores: []
-  max_core_count: 5
+  max_core_count: 21
   min_core_count: 3
   prohibited_aggregations: []
   resilience_augmentation: true
