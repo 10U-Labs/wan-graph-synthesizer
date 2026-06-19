@@ -7,6 +7,10 @@ design:
       target: Dallas, TX
     - source: Dallas, TX
       target: Boston, MA
+    - source: Seattle, WA
+      target: Tallahassee, FL
+    - source: Salt Lake City, UT
+      target: Boston, MA
   forced_aggregations:
     - Albuquerque, NM
     - Boston, MA
