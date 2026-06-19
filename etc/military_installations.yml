@@ -3,7 +3,11 @@ design:
   allow_roadm_aggregation: false
   excluded: []
   excluded_connections: []
-  forced_aggregations: []
+  forced_aggregations:
+    - Los Angeles, CA
+    - New York, NY
+    - Portland, OR
+    - Virginia Beach, VA
   forced_connections: []
   forced_cores: []
   max_core_count: 21
