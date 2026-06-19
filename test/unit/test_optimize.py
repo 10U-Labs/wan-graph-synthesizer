@@ -621,13 +621,15 @@ def test_build_design_returns_none_when_a_forced_aggregation_cannot_route() -> N
 
 def test_resolve_pinned_ids_maps_a_known_name_to_its_id() -> None:
     """A known PoP name resolves to its vertex id."""
-    assert resolve_pinned_ids(("Denver, CO",), {"Denver, CO": "d"}, "force-core") == {"d"}
+    assert resolve_pinned_ids(("Denver, CO",), {"Denver, CO": "d"}, "forced_cores") == {"d"}
 
 
 def test_resolve_pinned_ids_rejects_an_unknown_name() -> None:
-    """An unknown PoP name is rejected rather than silently ignored."""
-    with pytest.raises(ValueError):
-        resolve_pinned_ids(("Nowhere",), {"Denver, CO": "d"}, "force-core")
+    """An unknown PoP name is rejected, naming its config field rather than a CLI flag."""
+    with pytest.raises(
+        ValueError, match=r"forced_cores entry not found in the Carrier graph: Nowhere"
+    ):
+        resolve_pinned_ids(("Nowhere",), {"Denver, CO": "d"}, "forced_cores")
 
 
 def test_reject_override_conflicts_rejects_excluding_a_forced_pop() -> None:
