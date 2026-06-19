@@ -5,6 +5,7 @@ design:
   excluded_connections: []
   forced_aggregations:
     - Albuquerque, NM
+    - Atlanta, GA
     - Boston, MA
     - Cheyenne, WY
     - Colorado Springs, CO
