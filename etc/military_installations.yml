@@ -46,14 +46,18 @@ inputs:
     AWS:
       - data/vertices/aws_govcloud.csv
       - data/vertices/aws_secret_east.csv
+      - data/vertices/aws_secret_west.csv
       - data/vertices/aws_top_secret_east.csv
+      - data/vertices/aws_top_secret_west.csv
     Azure:
       - data/vertices/azure_secret_east.csv
       - data/vertices/azure_secret_west.csv
     DCN: data/vertices/dcn.csv
     Lumen: data/vertices/lumen.csv
     Military Installations: data/vertices/military_installations.csv
-    OCI: data/vertices/oci_east.csv
+    OCI:
+      - data/vertices/oci_east.csv
+      - data/vertices/oci_west.csv
     VisionNet: data/vertices/vision_net.csv
 label: Military Installations
 tuning:
