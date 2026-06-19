@@ -2,48 +2,10 @@
 design:
   allow_roadm_aggregation: false
   excluded: []
-  excluded_connections:
-    - source: Seattle, WA
-      target: Dallas, TX
-    - source: Dallas, TX
-      target: Boston, MA
-    - source: Salt Lake City, UT
-      target: Boston, MA
-    - source: Seattle, WA
-      target: Boston, MA
-    - source: Seattle, WA
-      target: Dulles, VA
-    - source: Los Angeles, CA
-      target: Boston, MA
-  forced_aggregations:
-    - Boston, MA
-    - Cheyenne, WY
-    - Chicago, IL
-    - Colorado Springs, CO
-    - Dallas, TX
-    - Dulles, VA
-    - Great Falls, MT
-    - Jacksonville, FL
-    - Las Vegas, NV
-    - Los Angeles, CA
-    - McLean, VA
-    - Minot, ND
-    - New York, NY
-    - Portland, OR
-    - Salt Lake City, UT
-    - Seattle, WA
-    - Tallahassee, FL
-    - Virginia Beach, VA
+  excluded_connections: []
+  forced_aggregations: []
   forced_connections: []
-  forced_cores:
-    - Boston, MA
-    - Chicago, IL
-    - Dallas, TX
-    - Dulles, VA
-    - Jacksonville, FL
-    - Los Angeles, CA
-    - Salt Lake City, UT
-    - Seattle, WA
+  forced_cores: []
   max_core_count: 8
   min_core_count: 3
   prohibited_aggregations: []
@@ -74,7 +36,10 @@ inputs:
 label: Military Installations
 tuning:
   access_aggregation_links: 2
-  cluster_max_radius_miles: 70.0
+  # Continent-bridge guard (miles) on a mutual k-NN cluster link, not a tuning
+  # dial: above the spread-out regional groups (the Kansas City bases link at
+  # ~105 mi) yet well below cross-region distances, so far-flung metros never fuse.
+  cluster_max_radius_miles: 150.0
   cluster_min_points: 2
   cluster_min_radius_miles: 0.0
   compass_octants: 8

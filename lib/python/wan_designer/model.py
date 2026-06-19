@@ -133,7 +133,8 @@ class Tuning:
     """
 
     cluster_min_points: int = 2  # access vertices needed to seed a new aggregation
-    cluster_radius_miles: tuple[float, float] = (50.0, 250.0)  # (floor, ceiling) on derived radius
+    cluster_radius_miles: tuple[float, float] = (50.0, 250.0)  # (floor, ceiling) on cluster radius
+    cluster_k: int | None = None  # mutual-neighbor count; None -> cluster_min_points
     compass_octants: int = 8  # compass sectors used to score a core's link spread
     core_links_per_core: int = 3  # other cores each core wires to (its nearest reachable)
     core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one

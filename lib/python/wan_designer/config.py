@@ -160,6 +160,7 @@ def _tuning(tuning: dict[str, Any]) -> Tuning:
             tuning.get("cluster_min_radius_miles", base.cluster_radius_miles[0]),
             tuning.get("cluster_max_radius_miles", base.cluster_radius_miles[1]),
         ),
+        cluster_k=tuning.get("cluster_k", base.cluster_k),
         compass_octants=tuning.get("compass_octants", base.compass_octants),
         core_links_per_core=tuning.get("core_links_per_core", base.core_links_per_core),
         core_coverage_target_miles=tuning.get(

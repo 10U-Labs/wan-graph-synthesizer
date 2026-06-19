@@ -1,12 +1,15 @@
-"""Density clustering (DBSCAN) of access vertices into intentional aggregation clusters.
+"""Scale-adaptive clustering of access vertices into intentional aggregation clusters.
 
 Aggregation points are placed as the heads of genuine clusters -- groups of at
-least ``MIN_POINTS`` access vertices that sit close together -- so a new accredited
-facility is built only where it aggregates many geographically close access
-vertices. The neighborhood radius is derived from the data (the elbow of the sorted
-k-nearest-neighbor distances), not a hand-picked constant, then clamped to a
-sane metro-to-regional band so far-flung outliers cannot merge unrelated metros
-or shatter real ones.
+least ``MIN_POINTS`` access vertices that hang together geographically -- so a new
+accredited facility is built only where it aggregates real demand. Membership is
+decided *relatively*, by a mutual k-nearest-neighbor graph: two access vertices
+are linked only when each is among the other's ``k`` nearest, and clusters are the
+connected components of that graph. This adapts to local density -- a dense metro
+links at a few miles, a spread-out regional group (the Kansas City bases, ~85-105
+mi apart) links at its own wider scale -- so no single global radius has to be
+right everywhere at once. ``MAX_RADIUS_MILES`` survives only as a sanity guard
+that keeps a link from ever bridging unrelated regions across the continent.
 """
 
 from __future__ import annotations
@@ -14,11 +17,13 @@ from __future__ import annotations
 from wan_designer.model import Vertex, haversine_miles
 
 # Default algorithm dials, mirrored by the matching ``DesignParams`` fields so a
-# direct caller (and the test suite) need not pass them; ``etc/joint.yml`` drives
-# the real run. A cluster needs at least this many close access vertices (DBSCAN
-# minPts, N). The radius is clamped to a metro-to-regional band: the floor keeps a
-# single dense metro from fragmenting; the ceiling keeps a distant PoP (e.g. Boise,
-# ~276 mi from the Utah sites) from ever counting as that cluster's local head.
+# direct caller (and the test suite) need not pass them; ``etc/*.yml`` drives the
+# real run. A cluster needs at least this many access vertices (``MIN_POINTS``).
+# ``k`` (the mutual-neighbor count) defaults to ``MIN_POINTS``: raise it to pull
+# second-ring outliers into a cluster, lower it for tighter groups. ``MIN_RADIUS``
+# is only the fallback returned when there is nothing to cluster; ``MAX_RADIUS`` is
+# the continent-bridge guard -- a link longer than this is never formed, no matter
+# how mutual, so far-flung regions cannot fuse into one cluster.
 MIN_POINTS = 2
 MIN_RADIUS_MILES = 50.0
 MAX_RADIUS_MILES = 250.0
@@ -35,82 +40,53 @@ def pairwise_miles(vertices: list[Vertex]) -> list[list[float]]:
     return matrix
 
 
-def knee_value(sorted_values: list[float], fallback: float = MIN_RADIUS_MILES) -> float:
-    """The value at the elbow of an ascending curve (max distance from its chord).
-
-    Standard kneedle-style detection: the point of the sorted k-distance curve
-    that sits farthest from the straight line joining its first and last points
-    marks where distances start climbing steeply -- the density boundary.
-    """
-    count = len(sorted_values)
-    if count < 3:
-        return sorted_values[-1] if sorted_values else fallback
-    first, last = sorted_values[0], sorted_values[-1]
-    span = last - first
-    if span <= 0.0:
-        return first
-    best_index, best_gap = 0, -1.0
-    for index, value in enumerate(sorted_values):
-        # Vertical gap between the chord and the curve at this index.
-        chord = first + span * (index / (count - 1))
-        gap = chord - value
-        if gap > best_gap:
-            best_gap, best_index = gap, index
-    return sorted_values[best_index]
+def _nearest_indices(row: list[float], k: int) -> set[int]:
+    """The indices of the ``k`` nearest other points (positive distance, ties by index)."""
+    others = sorted(
+        (distance, index) for index, distance in enumerate(row) if distance > 0.0
+    )
+    return {index for _distance, index in others[:k]}
 
 
-def derive_radius(
-    matrix: list[list[float]],
-    min_points: int = MIN_POINTS,
-    min_radius: float = MIN_RADIUS_MILES,
-    max_radius: float = MAX_RADIUS_MILES,
-) -> float:
-    """Derive the DBSCAN radius from the k-distance elbow (k = ``min_points``)."""
-    count = len(matrix)
-    if count <= min_points:
-        return min_radius
-    k_distances: list[float] = []
-    for row in matrix:
-        others = sorted(distance for distance in row if distance > 0.0)
-        if len(others) >= min_points:
-            k_distances.append(others[min_points - 1])
-    if not k_distances:
-        return min_radius
-    k_distances.sort()
-    radius = knee_value(k_distances, min_radius)
-    return max(min_radius, min(max_radius, radius))
+def mutual_knn_neighbors(
+    matrix: list[list[float]], k: int, max_radius: float
+) -> list[set[int]]:
+    """Undirected adjacency of the mutual k-nearest-neighbor graph.
 
-
-def dbscan_labels(
-    matrix: list[list[float]], radius: float, min_points: int = MIN_POINTS
-) -> list[int]:
-    """Label each vertex with its cluster id, or -1 for noise (a sparse, lone vertex).
-
-    Standard DBSCAN: a vertex is a core point when at least ``min_points`` vertices
-    (itself included) lie within ``radius``; clusters grow by absorbing the
-    neighborhoods of core points. Border points join a touching cluster; vertices
-    in neither are noise.
+    ``j`` is a neighbor of ``i`` only when each is among the other's ``k`` nearest
+    *and* the two sit within ``max_radius`` of each other -- the guard that keeps a
+    mutual pair from bridging unrelated regions across the continent.
     """
     count = len(matrix)
-    neighbors = [
-        [j for j in range(count) if matrix[i][j] <= radius] for i in range(count)
-    ]
-    labels = [-1] * count
-    cluster = -1
-    for point in range(count):
-        if labels[point] != -1 or len(neighbors[point]) < min_points:
-            continue  # already assigned, or not a core point (left as noise)
-        cluster += 1
-        labels[point] = cluster
-        queue = [other for other in neighbors[point] if other != point]
-        while queue:
-            other = queue.pop()
-            if labels[other] != -1:
-                continue  # already absorbed by this or an earlier cluster
-            labels[other] = cluster
-            if len(neighbors[other]) >= min_points:  # a core point: grow outward
-                queue.extend(near for near in neighbors[other] if labels[near] == -1)
-    return labels
+    nearest = [_nearest_indices(matrix[i], k) for i in range(count)]
+    neighbors: list[set[int]] = [set() for _ in range(count)]
+    for i in range(count):
+        for j in nearest[i]:
+            if i in nearest[j] and matrix[i][j] <= max_radius:
+                neighbors[i].add(j)
+                neighbors[j].add(i)
+    return neighbors
+
+
+def connected_components(neighbors: list[set[int]]) -> list[list[int]]:
+    """Connected components of an undirected graph, each sorted, ordered by least index."""
+    seen = [False] * len(neighbors)
+    components: list[list[int]] = []
+    for start in range(len(neighbors)):
+        if seen[start]:
+            continue
+        component: list[int] = []
+        stack = [start]
+        seen[start] = True
+        while stack:
+            node = stack.pop()
+            component.append(node)
+            for other in neighbors[node]:
+                if not seen[other]:
+                    seen[other] = True
+                    stack.append(other)
+        components.append(sorted(component))
+    return components
 
 
 def cluster_access_vertices(
@@ -118,26 +94,34 @@ def cluster_access_vertices(
     min_points: int = MIN_POINTS,
     min_radius: float = MIN_RADIUS_MILES,
     max_radius: float = MAX_RADIUS_MILES,
+    k: int | None = None,
 ) -> tuple[list[list[str]], list[str], float]:
     """Group access vertices into clusters, returning (clusters, sparse_ids, radius).
 
-    ``clusters`` is a list of access-vertex id lists (each a dense group worth its
-    own aggregation heads); ``sparse_ids`` are lone vertices that belong to no
-    cluster and must reuse an existing facility; ``radius`` is the derived
-    neighborhood distance, reused downstream to decide which PoPs are local
-    enough to be a cluster's head.
+    ``clusters`` is a list of access-vertex id lists (each a connected component of
+    the mutual k-NN graph with at least ``min_points`` members, worth its own
+    aggregation heads); ``sparse_ids`` are vertices in no such component and must
+    reuse an existing facility; ``radius`` is a representative neighborhood distance
+    (the widest link inside any cluster, clamped to the band) kept for the contract
+    and diagnostics. ``k`` defaults to ``min_points``.
     """
-    if len(access_vertices) < min_points:
+    count = len(access_vertices)
+    if count < min_points:
         return [], [vertex.id for vertex in access_vertices], min_radius
+    k = min(k if k is not None else min_points, count - 1)
     matrix = pairwise_miles(access_vertices)
-    radius = derive_radius(matrix, min_points, min_radius, max_radius)
-    labels = dbscan_labels(matrix, radius, min_points)
-    clusters: dict[int, list[str]] = {}
+    neighbors = mutual_knn_neighbors(matrix, k, max_radius)
+    clusters: list[list[str]] = []
     sparse: list[str] = []
-    for vertex, label in zip(access_vertices, labels):
-        if label == -1:
-            sparse.append(vertex.id)
+    clustered: list[int] = []
+    for component in connected_components(neighbors):
+        if len(component) >= min_points:
+            clusters.append([access_vertices[i].id for i in component])
+            clustered.extend(component)
         else:
-            clusters.setdefault(label, []).append(vertex.id)
-    ordered = [clusters[key] for key in sorted(clusters)]
-    return ordered, sparse, radius
+            sparse.extend(access_vertices[i].id for i in component)
+    widest = max(
+        (matrix[i][j] for i in clustered for j in neighbors[i]), default=min_radius
+    )
+    radius = max(min_radius, min(max_radius, widest))
+    return clusters, sparse, radius
