@@ -5,13 +5,15 @@ design:
   excluded_connections: []
   forced_aggregations:
     - Atlanta, GA
+    - Dulles, VA
     - Los Angeles, CA
     - New York, NY
     - Portland, OR
     - Tallahassee, FL
     - Virginia Beach, VA
   forced_connections: []
-  forced_cores: []
+  forced_cores:
+    - Dulles, VA
   max_core_count: 21
   min_core_count: 3
   prohibited_aggregations: []
