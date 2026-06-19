@@ -47,13 +47,17 @@ inputs:
       - data/vertices/providers/providers.csv
       - data/vertices/aws_provider region.csv
       - data/vertices/aws_provider region.csv
+      - data/vertices/aws_provider region.csv
+      - data/vertices/aws_provider region.csv
     provider:
       - data/vertices/provider_provider region.csv
       - data/vertices/provider_provider region.csv
     DCN: data/vertices/dcn.csv
     Lumen: data/vertices/lumen.csv
     Military Installations: data/vertices/military_installations.csv
-    provider: data/vertices/providers/providers.csv
+    provider:
+      - data/vertices/providers/providers.csv
+      - data/vertices/providers/providers.csv
     VisionNet: data/vertices/vision_net.csv
 label: Military Installations
 tuning:
