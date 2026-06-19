@@ -24,3 +24,12 @@ def test_shipped_etc_config_renders_a_connected_design(wan_map_id: str) -> None:
     """Each shipped ``etc/`` WAN map renders to a connected design over the service."""
     payload = design_for_wan_map(ETC_DIR, wan_map_id, {})
     assert payload["validation"]["connected"] is True
+
+
+def test_military_installations_seats_the_forced_off_net_aggregations() -> None:
+    """Charleston, SC and Montgomery, AL seat as aggregations once force-pinned."""
+    payload = design_for_wan_map(ETC_DIR, "military_installations", {})
+    aggregations = {
+        vertex["name"] for vertex in payload["vertices"] if vertex["tier_role"] == "aggregation"
+    }
+    assert {"Charleston, SC", "Montgomery, AL"} <= aggregations
