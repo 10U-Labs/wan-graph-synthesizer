@@ -26,10 +26,15 @@ def test_shipped_etc_config_renders_a_connected_design(wan_map_id: str) -> None:
     assert payload["validation"]["connected"] is True
 
 
-def test_military_installations_seats_its_forced_aggregations() -> None:
-    """The cities force-pinned as aggregations seat as aggregations in the design."""
+def test_military_installations_auto_seats_a_kansas_city_aggregation() -> None:
+    """With no forced pins, the spread-out KC base cluster auto-anchors an aggregation.
+
+    Fort Leavenworth, Whiteman, Fort Riley, Fort Leonard Wood, and McConnell sit
+    85-105 mi apart -- a spread-out cluster the old single-radius DBSCAN (capped at
+    70 mi here) dropped as noise, so no aggregation was placed near them. The mutual
+    k-NN clustering groups them, seating Kansas City, MO (the central carrier PoP,
+    ~45 mi from the cluster's centroid) as the cluster's aggregation head -- without
+    a single forced pin in the config.
+    """
     payload = design_for_wan_map(ETC_DIR, "military_installations", {})
-    aggregations = {
-        vertex["name"] for vertex in payload["vertices"] if vertex["tier_role"] == "aggregation"
-    }
-    assert {"Charleston, SC", "Montgomery, AL", "Sacramento, CA"} <= aggregations
+    assert "Kansas City, MO" in payload["summary"]["aggregations"]
