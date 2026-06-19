@@ -18,7 +18,7 @@ design:
   forced_cores:
     - Atlanta, GA
     - Dulles, VA
-  max_core_count: 21
+  max_core_count: 7
   min_core_count: 3
   prohibited_aggregations: []
   resilience_augmentation: true
