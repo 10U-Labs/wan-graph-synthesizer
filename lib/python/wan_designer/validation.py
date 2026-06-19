@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import itertools
-
 from wan_designer.model import (
-    CORE_BACKBONE_MIN_DEGREE,
     Design,
     DesignMetrics,
     Vertex,
@@ -17,33 +14,32 @@ from wan_designer.model import (
 from wan_designer.graphs import (
     articulation_points,
     connected_components,
-    dijkstra,
     is_two_edge_connected,
     vertex_disjoint_paths_to_cores,
 )
 
 
-# Every core must link to at least ``CORE_BACKBONE_MIN_DEGREE`` other cores (defined
-# in ``model``) -- but only once the core tier is larger than the floor itself,
-# since fewer cores cannot reach it.
+# Every core must link to at least ``core_links_per_core`` other cores -- but only
+# once the core tier is larger than that target, since fewer cores cannot reach it.
 
 
 def backbone_degree_deficient(
     core_ids: tuple[str, ...],
     backbone_degrees: dict[str, int],
     vertices_by_id: dict[str, Vertex],
+    links_per_core: int,
 ) -> list[dict[str, object]]:
-    """Cores with too few backbone links, once there are more cores than the floor.
+    """Cores with fewer than ``links_per_core`` backbone links.
 
-    With ``CORE_BACKBONE_MIN_DEGREE`` or fewer cores the rule cannot be met (a core
-    has only that many peers), so the list is empty.
+    With ``links_per_core`` or fewer cores the target cannot be met (a core has only
+    that many peers), so the list is empty.
     """
-    if len(core_ids) <= CORE_BACKBONE_MIN_DEGREE:
+    if len(core_ids) <= links_per_core:
         return []
     return [
         {"id": core_id, "name": vertices_by_id[core_id].name, "degree": degree}
         for core_id, degree in sorted(backbone_degrees.items())
-        if degree < CORE_BACKBONE_MIN_DEGREE
+        if degree < links_per_core
     ]
 
 
@@ -174,19 +170,6 @@ def aggregations_without_core_redundancy(design: Design) -> list[str]:
             missing.append(aggregation_id)
     return missing
 
-def disconnected_core_pairs(design: Design) -> list[tuple[str, str]]:
-    """Core pairs that are not connected over the selected physical edges."""
-    adjacency = selected_physical_adjacency(design)
-    disconnected: list[tuple[str, str]] = []
-    for left, right in itertools.combinations(design.core_ids, 2):
-        if left not in adjacency:
-            disconnected.append((left, right))
-            continue
-        distances, _predecessors = dijkstra(adjacency, left)
-        if right not in distances:
-            disconnected.append((left, right))
-    return disconnected
-
 def core_backbone_pairs(design: Design) -> set[tuple[str, str]]:
     """The logical core-to-core backbone links, one per ``core_mesh`` path use."""
     return {
@@ -221,12 +204,17 @@ def access_attachment_counts(design: Design) -> dict[str, int]:
     return counts
 
 def validate_design(
-    vertices: list[Vertex], design: Design, access_aggregation_links: int = 2
+    vertices: list[Vertex],
+    design: Design,
+    access_aggregation_links: int = 2,
+    core_links_per_core: int = 3,
 ) -> ValidationReport:
     """Check a design against every hard structural requirement.
 
     ``access_aggregation_links`` is the number of aggregation facilities each access
     vertex is required to home to (the operator's configured redundancy level).
+    ``core_links_per_core`` is the number of other cores each core must link to on
+    the backbone.
     """
     vertices_by_id = {vertex.id: vertex for vertex in vertices}
     ids = included_vertex_ids(design)
@@ -236,10 +224,9 @@ def validate_design(
     articulations = articulation_points(ids, edges) if len(components) == 1 else set()
     attachments = access_attachment_counts(design)
     missing_core_redundancy = aggregations_without_core_redundancy(design)
-    core_pairs = disconnected_core_pairs(design)
     backbone_degrees = neighbor_degrees(set(design.core_ids), core_backbone_pairs(design))
     backbone_deficient = backbone_degree_deficient(
-        design.core_ids, backbone_degrees, vertices_by_id
+        design.core_ids, backbone_degrees, vertices_by_id, core_links_per_core
     )
 
     return {
@@ -264,14 +251,7 @@ def validate_design(
             {"id": vertex_id, "name": vertices_by_id[vertex_id].name}
             for vertex_id in missing_core_redundancy
         ],
-        "cores_full_mesh": not core_pairs,
-        "core_pairs_disconnected": [
-            {"source": vertices_by_id[left].name, "target": vertices_by_id[right].name}
-            for left, right in core_pairs
-        ],
-        "core_backbone_min_degree": min(backbone_degrees.values(), default=0),
-        "core_backbone_max_degree": max(backbone_degrees.values(), default=0),
-        "cores_connect_to_three_others": not backbone_deficient,
+        "cores_meet_backbone_link_target": not backbone_deficient,
         "core_backbone_degree_deficient": backbone_deficient,
         "core_backbone_two_edge_connected": core_backbone_two_edge_connected(design),
     }

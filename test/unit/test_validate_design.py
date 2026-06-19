@@ -1,7 +1,8 @@
 """Unit tests for the design validation checks.
 
 The two requirements under test: every aggregation must reach two distinct cores
-over vertex-disjoint paths, and the core tier must form a connected full mesh.
+over vertex-disjoint paths, and every core must wire to its configured number of
+nearest cores on the backbone.
 """
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ from wan_designer import (
     ValidationReport,
     Vertex,
     aggregations_without_core_redundancy,
-    disconnected_core_pairs,
     edge_key,
     validate_design,
 )
@@ -62,27 +62,13 @@ BOTTLENECK = build_design(
     physical_pairs=[("A", "Z"), ("Z", "C1"), ("Z", "C2"), ("C1", "C2")],
 )
 
-# Three cores but C3 is isolated from the rest of the selected fabric.
-BROKEN_MESH = build_design(
-    core_ids=("C1", "C2", "C3"),
-    aggregation_ids=(),
-    transit_ids=(),
-    physical_pairs=[("C1", "C2"), ("C3", "Q")],
-)
-
 GOOD_VERTICES = [make_pop(name) for name in ("A", "X", "Y", "C1", "C2")]
 BOTTLENECK_VERTICES = [make_pop(name) for name in ("A", "Z", "C1", "C2")]
-BROKEN_MESH_VERTICES = [make_pop(name) for name in ("C1", "C2", "C3", "Q")]
 
 
 def test_good_design_is_dual_homed() -> None:
     """Good design is dual homed."""
     assert validate_design(GOOD_VERTICES, GOOD)["aggregations_dual_homed_to_cores"] is True
-
-
-def test_good_design_has_full_mesh() -> None:
-    """Good design has full mesh."""
-    assert validate_design(GOOD_VERTICES, GOOD)["cores_full_mesh"] is True
 
 
 def test_good_design_has_no_missing_redundancy() -> None:
@@ -126,18 +112,6 @@ def test_bottleneck_names_the_failing_aggregation() -> None:
     assert aggregations_without_core_redundancy(BOTTLENECK) == ["A"]
 
 
-def test_broken_mesh_is_not_full_mesh() -> None:
-    """Broken mesh is not full mesh."""
-    report = validate_design(BROKEN_MESH_VERTICES, BROKEN_MESH)
-    assert report["cores_full_mesh"] is False
-
-
-def test_broken_mesh_reports_disconnected_pairs() -> None:
-    """Broken mesh reports disconnected pairs."""
-    pairs = disconnected_core_pairs(BROKEN_MESH)
-    assert ("C1", "C3") in pairs and ("C2", "C3") in pairs
-
-
 def _backbone_design(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> Design:
     """A design whose only routes are the given core-to-core backbone links."""
     return Design(
@@ -153,10 +127,14 @@ def _backbone_design(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) ->
     )
 
 
-def _backbone_report(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> ValidationReport:
+def _backbone_report(
+    core_ids: tuple[str, ...], pairs: list[tuple[str, str]], core_links_per_core: int = 3
+) -> ValidationReport:
     """Validate a core-only design defined by its backbone links."""
     return validate_design(
-        [make_pop(name) for name in core_ids], _backbone_design(core_ids, pairs)
+        [make_pop(name) for name in core_ids],
+        _backbone_design(core_ids, pairs),
+        core_links_per_core=core_links_per_core,
     )
 
 
@@ -166,44 +144,41 @@ _HEALTHY = (
     [("C1", "C2"), ("C2", "C3"), ("C3", "C4"), ("C4", "C5"), ("C5", "C1"),
      ("C1", "C3"), ("C2", "C4"), ("C3", "C5")],
 )
-# Five cores wired so C3, C4, and C5 keep only two backbone links -- below the floor.
+# Five cores wired so C3, C4, and C5 keep only two backbone links -- below the target.
 _DEFICIENT = (
     ("C1", "C2", "C3", "C4", "C5"),
     [("C1", "C2"), ("C1", "C3"), ("C1", "C4"), ("C2", "C4"), ("C2", "C5"), ("C3", "C5")],
 )
-# Three cores cannot reach a floor of three, so the connect-to-three rule is moot.
+# Three cores cannot reach a target of three, so the link-target rule is moot.
 _SMALL = (("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3"), ("C1", "C3")])
 
 
-def test_backbone_meeting_the_floor_satisfies_the_connect_rule() -> None:
-    """Five cores each wired to three or more others satisfy the connect-to-three rule."""
-    assert _backbone_report(*_HEALTHY)["cores_connect_to_three_others"] is True
+def test_backbone_meeting_the_target_satisfies_the_link_rule() -> None:
+    """Five cores each wired to three or more others meet the three-link target."""
+    assert _backbone_report(*_HEALTHY)["cores_meet_backbone_link_target"] is True
 
 
-def test_backbone_reports_its_minimum_degree() -> None:
-    """The report's min backbone degree reflects the least-connected core's links."""
-    assert _backbone_report(*_HEALTHY)["core_backbone_min_degree"] == 3
+def test_backbone_below_the_target_fails_the_link_rule() -> None:
+    """Cores left with only two backbone links fail the three-link target."""
+    assert _backbone_report(*_DEFICIENT)["cores_meet_backbone_link_target"] is False
 
 
-def test_backbone_reports_its_maximum_degree() -> None:
-    """The report's max backbone degree reflects the most-connected core's links."""
-    assert _backbone_report(*_HEALTHY)["core_backbone_max_degree"] == 4
+def test_link_target_is_configurable() -> None:
+    """The same cores meet a lowered target of two links each."""
+    assert _backbone_report(*_DEFICIENT, core_links_per_core=2)[
+        "cores_meet_backbone_link_target"
+    ] is True
 
 
-def test_backbone_below_the_floor_fails_the_connect_rule() -> None:
-    """Cores left with only two backbone links fail the connect-to-three rule."""
-    assert _backbone_report(*_DEFICIENT)["cores_connect_to_three_others"] is False
-
-
-def test_backbone_below_the_floor_names_the_deficient_cores() -> None:
-    """The deficient list names every core left under three backbone links."""
+def test_backbone_below_the_target_names_the_deficient_cores() -> None:
+    """The deficient list names every core left under the three-link target."""
     report = _backbone_report(*_DEFICIENT)
     assert {item["id"] for item in report["core_backbone_degree_deficient"]} == {"C3", "C4", "C5"}
 
 
-def test_three_cores_are_exempt_from_the_connect_rule() -> None:
-    """With only three cores the connect-to-three rule cannot apply, so it passes."""
-    assert _backbone_report(*_SMALL)["cores_connect_to_three_others"] is True
+def test_small_core_tier_is_exempt_from_the_link_rule() -> None:
+    """With only three cores the three-link target cannot apply, so it passes."""
+    assert _backbone_report(*_SMALL)["cores_meet_backbone_link_target"] is True
 
 
 def test_healthy_backbone_is_two_edge_connected() -> None:

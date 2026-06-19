@@ -38,10 +38,11 @@ A design is invalid unless all of the following hold.
    aggregation points (default two).
 2. Every aggregation point dual-homes to two distinct core vertices over
    vertex-disjoint paths.
-3. Core vertices form a full mesh: every pair of cores is connected over
-   the carrier graph.
+3. Every core vertex links to its `tuning.core_links_per_core` nearest
+   reachable cores on the backbone (fewer only when the core tier is
+   smaller than that target).
 4. There are at least three core vertices. More cores are allowed when
-   needed for feasibility, provided the full mesh still holds.
+   needed for feasibility.
 5. Only `aggregator` PoPs may serve as aggregation or core vertices.
    `roadm` PoPs are optical pass-through only and are never aggregation
    or core vertices.

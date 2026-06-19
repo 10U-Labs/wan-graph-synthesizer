@@ -252,7 +252,7 @@ def resolve_forced_links(
 
     Returns a :class:`ForcedLinks` of the core-core, aggregation-core, and
     access-aggregation links, plus the ``removed_core`` pairs the operator pruned
-    from the full mesh. Each endpoint must already be seated in the tier its edge
+    from the core backbone. Each endpoint must already be seated in the tier its edge
     type requires, or a ``ValueError`` names the offending connection.
     """
     name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
@@ -300,7 +300,7 @@ def apply_role_overrides(
     co-located carrier twin, so its force-pin resolves onto that twin here and lands
     in the forced aggregations like any other operator pin. ``forced_connections``
     are resolved to id-typed link sets against the seated tiers, and
-    ``excluded_connections`` to the core-core pairs pruned from the full mesh.
+    ``excluded_connections`` to the core-core pairs pruned from the core backbone.
     ``params.exclusions.prohibited_aggregation_names`` are barred from the aggregation
     tier (yet stay core-eligible) and land in ``RoleOverrides.prohibited_aggregation_ids``.
     """

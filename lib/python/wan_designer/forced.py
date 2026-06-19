@@ -3,7 +3,7 @@
 The overrides layer resolves the operator's forced connections into a
 :class:`~wan_designer.model.ForcedLinks` bundle; these helpers consume it while
 the optimizer routes a design, so the pinned edges are honored: core-core pairs
-pruned from the full mesh, aggregation-core links forced as routing sinks, and
+pruned from the backbone, aggregation-core links forced as routing sinks, and
 access-aggregation links pinned as homes. They depend only on the model, so the
 optimizer imports them without a cycle.
 """

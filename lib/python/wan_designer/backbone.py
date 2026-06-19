@@ -1,6 +1,6 @@
 """Select and route the core-to-core backbone.
 
-The backbone is the full core mesh -- every core links to every other -- minus any
+Every core links to its ``links_per_core`` nearest reachable cores, minus any
 core-core pairs the operator pruned in ``etc/*.yml``. These helpers are split from
 the optimizer so the backbone concern stays cohesive and the optimizer module
 stays bounded.
@@ -8,12 +8,11 @@ stays bounded.
 
 from __future__ import annotations
 
-import itertools
 import math
 from dataclasses import dataclass
 
-from wan_designer.model import CORE_BACKBONE_MIN_DEGREE, PathUse, PhysicalEdge, edge_key
-from wan_designer.graphs import is_two_edge_connected, reconstruct_path
+from wan_designer.model import PathUse, PhysicalEdge, edge_key
+from wan_designer.graphs import reconstruct_path
 
 
 def path_geometry_miles(
@@ -27,83 +26,51 @@ def path_geometry_miles(
     )
 
 
-def _thin_to_max_degree(
-    core_ids: tuple[str, ...],
-    pairs: list[tuple[str, str]],
-    all_distances: dict[str, dict[str, float]],
-    max_degree: int,
-) -> list[tuple[str, str]]:
-    """Drop the longest core-core links until each core is within ``max_degree``.
-
-    Greedy and deterministic: the highest-mileage links are removed first, but a
-    link is kept whenever removing it would push either endpoint below
-    :data:`CORE_BACKBONE_MIN_DEGREE` or break the backbone's 2-edge connectivity.
-    The result is a minimum-mileage, 2-edge-connected thinning of the full mesh.
-
-    Best-effort: when the floor, 2-edge connectivity, or degree parity make the cap
-    unreachable, some core may still exceed ``max_degree`` -- the achieved maximum
-    then surfaces in the validation report.
-    """
-    floor = CORE_BACKBONE_MIN_DEGREE
-    ids = set(core_ids)
-    edges = set(pairs)
-    degree: dict[str, int] = {}
-    for left, right in edges:
-        degree[left] = degree.get(left, 0) + 1
-        degree[right] = degree.get(right, 0) + 1
-    ordered = sorted(
-        edges, key=lambda pair: (all_distances[pair[0]][pair[1]], pair), reverse=True
-    )
-    for left, right in ordered:
-        if degree[left] <= max_degree and degree[right] <= max_degree:
-            continue
-        if degree[left] - 1 < floor or degree[right] - 1 < floor:
-            continue
-        if not is_two_edge_connected(ids, edges - {(left, right)}):
-            continue
-        edges.discard((left, right))
-        degree[left] -= 1
-        degree[right] -= 1
-    return sorted(edges)
-
-
 def select_core_backbone_pairs(
     core_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
     removed_pairs: frozenset[tuple[str, str]] = frozenset(),
-    max_degree: int | None = None,
+    links_per_core: int = 3,
 ) -> list[tuple[str, str]] | None:
     """Choose which core pairs get a logical backbone link.
 
-    The result is the full core mesh -- every pair of cores linked -- minus any
-    pair in ``removed_pairs`` (an operator-pruned core-core link from
-    ``etc/*.yml``). Removals are honored unconditionally, so the backbone may drop
-    below a full mesh or below 2-edge connectivity at the operator's discretion.
-    Returns ``None`` if some *kept* core pair is unreachable over the carrier graph
-    (the cores do not full-mesh); an unreachable pair that was removed is ignored.
+    Every core links to its ``links_per_core`` nearest reachable cores (fewer when
+    the core tier itself is smaller), measured over the carrier graph in
+    ``all_distances``. Any pair in ``removed_pairs`` -- an operator-pruned core-core
+    link from ``etc/*.yml`` -- is skipped, so the core fills that slot with its next
+    nearest peer. The per-core picks are unioned, so a core chosen by a farther peer
+    can end with one more link than the target.
 
-    When ``max_degree`` is set the surviving mesh is thinned so no core keeps more
-    than that many backbone links (see :func:`_thin_to_max_degree`).
+    Returns ``None`` when some core cannot reach that many other cores -- the carrier
+    graph (or an operator removal) leaves the core tier too disconnected to wire the
+    backbone.
     """
-    selected: list[tuple[str, str]] = []
-    for left, right in itertools.combinations(core_ids, 2):
-        pair = edge_key(left, right)
-        if pair in removed_pairs:
-            continue
-        if not math.isfinite(all_distances[left].get(right, math.inf)):
+    target = min(links_per_core, len(core_ids) - 1)
+    selected: set[tuple[str, str]] = set()
+    for core in core_ids:
+        distances = all_distances[core]
+        reachable = sorted(
+            (
+                other
+                for other in core_ids
+                if other != core
+                and edge_key(core, other) not in removed_pairs
+                and math.isfinite(distances.get(other, math.inf))
+            ),
+            key=lambda other, near=distances: (near[other], other),
+        )
+        if len(reachable) < target:
             return None
-        selected.append(pair)
-    if max_degree is not None:
-        return _thin_to_max_degree(core_ids, selected, all_distances, max_degree)
+        selected.update(edge_key(core, other) for other in reachable[:target])
     return sorted(selected)
 
 
 @dataclass(frozen=True)
 class BackboneConstraints:
-    """The core-backbone selection knobs: pruned core-core pairs and a degree cap."""
+    """The core-backbone selection knobs: pruned core-core pairs and the link count."""
 
     removed_pairs: frozenset[tuple[str, str]] = frozenset()
-    max_degree: int | None = None
+    links_per_core: int = 3
 
 
 def core_mesh_paths(
@@ -115,11 +82,11 @@ def core_mesh_paths(
 ) -> list[PathUse]:
     """Route a shortest path over each core-to-core backbone link.
 
-    The backbone is the full core mesh minus ``constraints.removed_pairs`` (see
-    :func:`select_core_backbone_pairs`).
+    The backbone wires each core to its ``constraints.links_per_core`` nearest cores,
+    minus ``constraints.removed_pairs`` (see :func:`select_core_backbone_pairs`).
     """
     pairs = select_core_backbone_pairs(
-        core_ids, all_distances, constraints.removed_pairs, constraints.max_degree
+        core_ids, all_distances, constraints.removed_pairs, constraints.links_per_core
     )
     if pairs is None:
         return []

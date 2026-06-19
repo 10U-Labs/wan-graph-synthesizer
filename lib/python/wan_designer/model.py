@@ -119,12 +119,6 @@ class EnumBudget:
     set_peak_bytes: int = 160  # peak bytes one enumerated core set costs
 
 
-# Every core must link to at least this many other cores. The single source of
-# truth shared by validation (the floor it checks) and the backbone (the floor a
-# ``core_backbone_max_degree`` thinning must hold each core at).
-CORE_BACKBONE_MIN_DEGREE = 3
-
-
 @dataclass(frozen=True)
 class Tuning:
     """Algorithm dials for the optimizer.
@@ -132,16 +126,16 @@ class Tuning:
     These defaults are the single source of truth; ``etc/joint.yml`` overrides
     them. The clustering defaults are mirrored as function-argument defaults in
     ``clustering.py`` (which ``model`` cannot import without a cycle), so keep the
-    two in step. ``core_backbone_degree`` is the ``(floor, ceiling)`` on a core's
-    backbone links: the floor (with ``access_aggregation_links``) is a minimum-
-    connectivity requirement the design must meet, while the ceiling is optional
-    and thins the full mesh when set (``None`` leaves it uncapped).
+    two in step. ``core_links_per_core`` is how many other cores each core links to
+    on the backbone: every core wires to its nearest reachable cores, and the design
+    must meet that count (alongside ``access_aggregation_links``) as its core-tier
+    connectivity requirement.
     """
 
     cluster_min_points: int = 2  # access vertices needed to seed a new aggregation
     cluster_radius_miles: tuple[float, float] = (50.0, 250.0)  # (floor, ceiling) on derived radius
     compass_octants: int = 8  # compass sectors used to score a core's link spread
-    core_backbone_degree: tuple[int, int | None] = (CORE_BACKBONE_MIN_DEGREE, None)  # min/max
+    core_links_per_core: int = 3  # other cores each core wires to (its nearest reachable)
     core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one
     access_aggregation_links: int = 2  # aggregation facilities each access vertex homes to
     enum_budget: EnumBudget = field(default_factory=EnumBudget)  # core-enumeration memory budget
@@ -196,7 +190,7 @@ class ForcedLinks:
     pair; ``aggregation`` holds each ``aggregation-core`` link as
     ``(aggregation_id, core_id)``; ``access`` holds each ``access-aggregation`` link
     as ``(access_id, aggregation_id)``. ``removed_core`` holds the ``core-core``
-    pairs the operator pruned from the otherwise-full core mesh, also as
+    pairs the operator pruned from the core backbone, also as
     :func:`edge_key` pairs. ``required_cores`` are the operator-forced core ids
     restricted to the eligible set; it is empty until the search plan refines it.
     """
@@ -254,11 +248,7 @@ class ValidationReport(TypedDict):
     access_vertices_with_required_aggregation_links: bool
     aggregations_dual_homed_to_cores: bool
     aggregations_missing_core_redundancy: list[dict[str, str]]
-    cores_full_mesh: bool
-    core_pairs_disconnected: list[dict[str, str]]
-    core_backbone_min_degree: int
-    core_backbone_max_degree: int
-    cores_connect_to_three_others: bool
+    cores_meet_backbone_link_target: bool
     core_backbone_degree_deficient: list[dict[str, object]]
     core_backbone_two_edge_connected: bool
 

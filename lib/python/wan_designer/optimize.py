@@ -194,11 +194,21 @@ def feasible_aggregation_ids(
     }
     return feasible | feasible_colocation_twins(core_ids, plan)
 
-def cores_mesh(core_ids: tuple[str, ...], all_distances: dict[str, dict[str, float]]) -> bool:
-    """True if every pair of cores is connected over the carrier graph."""
+def cores_have_backbone_peers(
+    core_ids: tuple[str, ...],
+    all_distances: dict[str, dict[str, float]],
+    links_per_core: int,
+) -> bool:
+    """True if every core can reach enough other cores to wire its backbone links."""
+    target = min(links_per_core, len(core_ids) - 1)
     return all(
-        math.isfinite(all_distances[left].get(right, math.inf))
-        for left, right in itertools.combinations(core_ids, 2)
+        sum(
+            1
+            for right in core_ids
+            if right != left and math.isfinite(all_distances[left].get(right, math.inf))
+        )
+        >= target
+        for left in core_ids
     )
 
 def cluster_diameter(members: list[Vertex]) -> float:
@@ -414,11 +424,14 @@ def evaluate_cores(
 ) -> tuple[list[AccessEdge], set[str]] | None:
     """Score a core set's feasibility and access homing without routing paths.
 
-    Returns None when the cores do not full-mesh, a forced aggregation cannot
-    dual-home, or some access vertex cannot reach two facilities. Routed paths are
-    deferred to the winning set, since they do not affect the strength ranking.
+    Returns None when a core cannot reach enough peers to wire its backbone links, a
+    forced aggregation cannot dual-home, or some access vertex cannot reach two
+    facilities. Routed paths are deferred to the winning set, since they do not
+    affect the strength ranking.
     """
-    if not cores_mesh(core_ids, inputs.all_distances):
+    if not cores_have_backbone_peers(
+        core_ids, inputs.all_distances, plan.tuning.core_links_per_core
+    ):
         return None
     if not forced_can_dual_home(core_ids, inputs, plan):
         return None
@@ -465,7 +478,7 @@ def routed_path_uses(
     core_set = set(core_ids)
     constraints = BackboneConstraints(
         removed_core_pairs(core_set, plan.forced_links),
-        max_degree=plan.tuning.core_backbone_degree[1],
+        links_per_core=plan.tuning.core_links_per_core,
     )
     path_uses = core_mesh_paths(
         core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
@@ -486,8 +499,9 @@ def build_design_for_cores(
 ) -> Design | None:
     """Assemble a full three-tier design for one fixed set of core PoPs.
 
-    Returns None if the cores cannot full-mesh, a forced aggregation cannot
-    dual-home to them, or some access vertex cannot reach two facilities.
+    Returns None if a core cannot reach enough peers to wire its backbone links, a
+    forced aggregation cannot dual-home to them, or some access vertex cannot reach
+    two facilities.
     """
     evaluation = evaluate_cores(core_ids, inputs, plan)
     if evaluation is None:
