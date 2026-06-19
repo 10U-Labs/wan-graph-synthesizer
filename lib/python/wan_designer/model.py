@@ -132,17 +132,16 @@ class Tuning:
     These defaults are the single source of truth; ``etc/joint.yml`` overrides
     them. The clustering defaults are mirrored as function-argument defaults in
     ``clustering.py`` (which ``model`` cannot import without a cycle), so keep the
-    two in step. ``core_backbone_min_degree`` and ``access_aggregation_links`` are
-    the two minimum-connectivity requirements the design must meet (per core, and
-    per access vertex). ``core_backbone_max_degree`` is the optional opposite: a
-    ceiling that thins the full core mesh (``None`` leaves it uncapped).
+    two in step. ``core_backbone_degree`` is the ``(floor, ceiling)`` on a core's
+    backbone links: the floor (with ``access_aggregation_links``) is a minimum-
+    connectivity requirement the design must meet, while the ceiling is optional
+    and thins the full mesh when set (``None`` leaves it uncapped).
     """
 
     cluster_min_points: int = 2  # access vertices needed to seed a new aggregation
     cluster_radius_miles: tuple[float, float] = (50.0, 250.0)  # (floor, ceiling) on derived radius
     compass_octants: int = 8  # compass sectors used to score a core's link spread
-    core_backbone_min_degree: int = CORE_BACKBONE_MIN_DEGREE  # min backbone links per core
-    core_backbone_max_degree: int | None = None  # cap on backbone links per core (None: uncapped)
+    core_backbone_degree: tuple[int, int | None] = (CORE_BACKBONE_MIN_DEGREE, None)  # min/max
     core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one
     access_aggregation_links: int = 2  # aggregation facilities each access vertex homes to
     enum_budget: EnumBudget = field(default_factory=EnumBudget)  # core-enumeration memory budget

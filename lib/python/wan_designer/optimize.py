@@ -465,7 +465,7 @@ def routed_path_uses(
     core_set = set(core_ids)
     constraints = BackboneConstraints(
         removed_core_pairs(core_set, plan.forced_links),
-        max_degree=plan.tuning.core_backbone_max_degree,
+        max_degree=plan.tuning.core_backbone_degree[1],
     )
     path_uses = core_mesh_paths(
         core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
