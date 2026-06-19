@@ -32,7 +32,7 @@ inputs:
 label: Military Installations
 tuning:
   access_aggregation_links: 2
-  cluster_max_radius_miles: 400.0
+  cluster_max_radius_miles: 300.0
   cluster_min_points: 2
   cluster_min_radius_miles: 0.0
   compass_octants: 8
