@@ -2,7 +2,11 @@
 design:
   allow_roadm_aggregation: false
   excluded: []
-  excluded_connections: []
+  excluded_connections:
+    - source: Seattle, WA
+      target: Dallas, TX
+    - source: Boston, MA
+      target: Dallas, TX
   forced_aggregations:
     - Albuquerque, NM
     - Boston, MA
