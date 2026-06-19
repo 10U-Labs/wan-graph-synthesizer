@@ -26,6 +26,7 @@ design:
   forced_connections: []
   forced_cores:
     - Atlanta, GA
+    - Boston, MA
     - Dallas, TX
     - Dulles, VA
     - Los Angeles, CA
