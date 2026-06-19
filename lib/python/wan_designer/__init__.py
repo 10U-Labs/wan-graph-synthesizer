@@ -42,7 +42,6 @@ from wan_designer.graphs import (
 from wan_designer.validation import (
     aggregations_without_core_redundancy,
     augment_physical_resilience,
-    disconnected_core_pairs,
     validate_design,
 )
 from wan_designer.optimize import optimize_three_tier_design
@@ -71,7 +70,6 @@ __all__ = [
     "carrier_role",
     "connected_components",
     "dijkstra",
-    "disconnected_core_pairs",
     "edge_key",
     "haversine_miles",
     "is_carrier_pop",

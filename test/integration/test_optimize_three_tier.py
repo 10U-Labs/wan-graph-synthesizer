@@ -130,14 +130,9 @@ def test_every_aggregation_dual_homed_to_cores() -> None:
     assert ARTIFACTS.validation["aggregations_dual_homed_to_cores"] is True
 
 
-def test_cores_form_full_mesh() -> None:
-    """Cores form full mesh."""
-    assert ARTIFACTS.validation["cores_full_mesh"] is True
-
-
-def test_cores_connect_to_at_least_three_others() -> None:
-    """Every core links to at least three others once there are more than three cores."""
-    assert ARTIFACTS.validation["cores_connect_to_three_others"] is True
+def test_cores_meet_the_backbone_link_target() -> None:
+    """Every core wires to its configured number of nearest cores on the backbone."""
+    assert ARTIFACTS.validation["cores_meet_backbone_link_target"] is True
 
 
 def test_access_vertices_dual_homed() -> None:

@@ -65,9 +65,9 @@ tuning:
   cluster_min_radius_miles: 0.0
   # Compass sectors used to score a core's link spread.
   compass_octants: 8
-  # Fewest other cores each core links to on the backbone. The full mesh is thinned
-  # to a minimum-mileage, 2-edge-connected subgraph that holds each core at this floor.
-  core_backbone_min_degree: 3
+  # How many other cores each core wires to on the backbone: every core links to
+  # this many of its nearest reachable cores.
+  core_links_per_core: 3
   # Peak bytes one enumerated core set costs (sizes the search to free RAM).
   core_set_peak_bytes: 160
   # Share of RAM the core enumeration may use at its peak.

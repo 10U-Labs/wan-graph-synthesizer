@@ -13,8 +13,6 @@ design:
   excluded_connections:
     - source: Los Angeles, CA
       target: Dulles, VA
-    - source: Atlanta, GA
-      target: Los Angeles, CA
   # PoPs pinned into the aggregation tier -- all carrier municipalities, never
   # installations. Richmond is pinned (not Norfolk, a single-homed ROADM leaf) so
   # southeast-Virginia demand homes into a PoP that can dual-home to two cores.
@@ -24,7 +22,6 @@ design:
   # to instead force a base as an aggregation, name the installation here. Great
   # Falls and Minot are ROADMs, so pinning them overrides allow_roadm_aggregation.
   forced_aggregations:
-    - Atlanta, GA
     - Cheyenne, WY
     - Chicago, IL
     - Dallas, TX
@@ -58,7 +55,6 @@ design:
   # PoPs pinned into the core tier. The search may still add cores past these to
   # satisfy min_core_count and coverage, but never drops a pinned one.
   forced_cores:
-    - Atlanta, GA
     - Dallas, TX
     - Dulles, VA
     - Los Angeles, CA
@@ -119,9 +115,9 @@ tuning:
   cluster_min_radius_miles: 0.0
   # Compass sectors used to score a core's link spread.
   compass_octants: 8
-  # Fewest other cores each core links to on the backbone. The full mesh is thinned
-  # to a minimum-mileage, 2-edge-connected subgraph that holds each core at this floor.
-  core_backbone_min_degree: 3
+  # How many other cores each core wires to on the backbone: every core links to
+  # this many of its nearest reachable cores.
+  core_links_per_core: 3
   # Grow the core tier past min_core_count until every aggregation is within this
   # straight-line distance of a core (extra cores are added only where they bring
   # demand meaningfully closer). Raise it for fewer, farther cores; lower it for more.

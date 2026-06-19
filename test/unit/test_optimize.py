@@ -35,7 +35,7 @@ from wan_designer.optimize import (
     complete_homes,
     core_combination_count,
     core_combinations,
-    cores_mesh,
+    cores_have_backbone_peers,
     cores_reachable_avoiding,
     dual_homes_to_pair,
     effective_forced_aggregations,
@@ -325,14 +325,14 @@ def test_dual_homes_to_pair_uses_cached_result() -> None:
     assert dual_homes_to_pair("g", ("c1", "c2"), inputs, cache) is True
 
 
-def test_cores_mesh_false_when_cores_disconnected() -> None:
-    """Cores mesh is false when two cores cannot reach each other."""
+def test_cores_have_backbone_peers_false_when_cores_disconnected() -> None:
+    """A core with no reachable peer cannot meet its backbone link target."""
     edges = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
     adjacency = build_adjacency(edges)
     distances, _predecessors = all_pairs_shortest(
         [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
     )
-    assert not cores_mesh(("a", "c"), distances)
+    assert not cores_have_backbone_peers(("a", "c"), distances, 3)
 
 
 MESH_EDGES = physical(

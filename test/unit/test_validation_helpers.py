@@ -16,7 +16,6 @@ from wan_designer.validation import (
     best_edge_to_add,
     design_badness,
     design_edge_set,
-    disconnected_core_pairs,
     included_vertex_ids,
     neighbor_degrees,
     vertex_role,
@@ -188,12 +187,6 @@ def test_best_edge_to_add_keeps_the_stronger_of_two_improvers() -> None:
     )
     key, _badness = best_edge_to_add(PATH4_VERTICES, edges, PATH4_DESIGN, (0, 2, 2))
     assert key == edge_key("a", "d")
-
-
-def test_disconnected_core_pairs_flags_core_without_edges() -> None:
-    """Disconnected core pairs flags core without edges."""
-    design = make_design([("c2", "x")], core_ids=("c1", "c2"))
-    assert disconnected_core_pairs(design) == [("c1", "c2")]
 
 
 def test_neighbor_degrees_ignores_external_endpoints() -> None:

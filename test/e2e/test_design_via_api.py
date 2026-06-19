@@ -62,14 +62,9 @@ def test_aggregations_are_dual_homed_to_cores(design: dict[str, Any]) -> None:
     assert design["validation"]["aggregations_dual_homed_to_cores"] is True
 
 
-def test_cores_form_full_mesh(design: dict[str, Any]) -> None:
-    """Cores form full mesh."""
-    assert design["validation"]["cores_full_mesh"] is True
-
-
-def test_cores_connect_to_at_least_three_others(design: dict[str, Any]) -> None:
-    """Every core links to at least three others once there are more than three cores."""
-    assert design["validation"]["cores_connect_to_three_others"] is True
+def test_cores_meet_the_backbone_link_target(design: dict[str, Any]) -> None:
+    """Every core wires to its configured number of nearest cores on the backbone."""
+    assert design["validation"]["cores_meet_backbone_link_target"] is True
 
 
 def test_access_vertices_are_dual_homed(design: dict[str, Any]) -> None:
