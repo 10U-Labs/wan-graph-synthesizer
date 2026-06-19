@@ -42,6 +42,7 @@ design:
     - Los Angeles, CA
     - Salt Lake City, UT
     - Seattle, WA
+    - Tallahassee, FL
   max_core_count: 8
   min_core_count: 3
   prohibited_aggregations: []
