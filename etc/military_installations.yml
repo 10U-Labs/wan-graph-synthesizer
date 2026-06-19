@@ -26,13 +26,7 @@ design:
     - Tucson, AZ
     - Tulsa, OK
     - Virginia Beach, VA
-  forced_connections:
-    - source: Los Angeles, CA
-      target: Kansas City, MO
-      type: core-core
-    - source: Dallas, TX
-      target: Dulles, VA
-      type: core-core
+  forced_connections: []
   forced_cores:
     - Boston, MA
     - Dallas, TX
@@ -77,6 +71,6 @@ tuning:
   cluster_min_radius_miles: 0.0
   compass_octants: 8
   core_coverage_target_miles: 600.0
-  core_links_per_core: 3
+  core_links_per_core: 4
   core_set_peak_bytes: 160
   enum_memory_fraction: 0.6
