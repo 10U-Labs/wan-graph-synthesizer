@@ -1,0 +1,256 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "wan-graph-designer",
+    "description": "Graphs as REST resources: carriers, providers, the carrier merge (substrate), and customers' WANs. Inputs are writable; computed graphs are read-only. One JSON format throughout.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/wan-graph-designer/carriers": {
+      "get": {
+        "summary": "List carriers.",
+        "responses": { "200": { "description": "The carriers." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CarriersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/carriers/{carrier}/vertices": {
+      "get": {
+        "summary": "A carrier's PoPs.",
+        "parameters": [
+          { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The carrier's vertices." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CarriersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/carriers/{carrier}/edges": {
+      "get": {
+        "summary": "A carrier's fiber.",
+        "parameters": [
+          { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The carrier's edges." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CarriersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/carriers/merge": {
+      "post": {
+        "summary": "Merge all carriers into the substrate (fast).",
+        "responses": { "200": { "description": "The substrate." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${MergeHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "options": {
+        "summary": "CORS preflight.",
+        "responses": { "200": { "description": "CORS." } },
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "requestTemplates": { "application/json": "{\"statusCode\": 200}" },
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'GET,POST,OPTIONS'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wan-graph-designer/carriers/merge/vertices": {
+      "get": {
+        "summary": "The substrate's vertices.",
+        "responses": { "200": { "description": "Substrate vertices." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${MergeHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/carriers/merge/edges": {
+      "get": {
+        "summary": "The substrate's edges.",
+        "responses": { "200": { "description": "Substrate edges." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${MergeHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/providers": {
+      "get": {
+        "summary": "List providers.",
+        "responses": { "200": { "description": "The providers." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${providersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/providers/{provider}/vertices": {
+      "get": {
+        "summary": "A provider's regions.",
+        "parameters": [
+          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The provider's regions." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${providersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers": {
+      "get": {
+        "summary": "List customers.",
+        "responses": { "200": { "description": "The customers." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/vertices": {
+      "get": {
+        "summary": "A customer WAN's vertices.",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The WAN's vertices." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/edges": {
+      "get": {
+        "summary": "A customer WAN's edges.",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The WAN's edges." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/core-nodes": {
+      "get": {
+        "summary": "A customer WAN's core tier.",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The core nodes." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/aggregation-points": {
+      "get": {
+        "summary": "A customer WAN's aggregation tier.",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The aggregation points." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/access-nodes": {
+      "get": {
+        "summary": "A customer WAN's access tier.",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The access nodes." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/wan": {
+      "post": {
+        "summary": "Create (optimize) the customer's WAN.",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "202": { "description": "Create started." },
+          "422": { "description": "No valid WAN is possible." }
+        },
+        "x-amazon-apigateway-integration": {
+          "uri": "${WanHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "get": {
+        "summary": "The customer's WAN and its status.",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The WAN." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${WanHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "options": {
+        "summary": "CORS preflight.",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "CORS." } },
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "requestTemplates": { "application/json": "{\"statusCode\": 200}" },
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'GET,POST,OPTIONS'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
