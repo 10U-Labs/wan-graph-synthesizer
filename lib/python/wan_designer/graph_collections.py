@@ -15,12 +15,14 @@ from wan_designer.model import PhysicalEdge, Vertex
 
 def vertices(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """The vertices of a computed customer WAN (each carries kind + tier_role)."""
-    return payload["vertices"]
+    result: list[dict[str, Any]] = payload["vertices"]
+    return result
 
 
 def edges(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """Every edge of a computed customer WAN: access homings plus carrier fiber."""
-    return payload["access_edges"] + payload["physical_edges"]
+    result: list[dict[str, Any]] = payload["access_edges"] + payload["physical_edges"]
+    return result
 
 
 def _tier(payload: dict[str, Any], tier_role: str) -> list[dict[str, Any]]:
