@@ -1,0 +1,21 @@
+provider "aws" {
+  region = "us-east-2"
+
+  default_tags {
+    tags = {
+      ManagedBy  = "OpenTofu"
+      Project    = "wan-graph-designer"
+      Repository = "10U-Labs/wan-graph-designer"
+      Stack      = "endpoints/wan"
+    }
+  }
+}
+
+data "terraform_remote_state" "storage" {
+  backend = "s3"
+  config = {
+    bucket = "10ulabs-terraform-state-us-east-2"
+    key    = "wan-graph-designer/common/storage/terraform.tfstate"
+    region = "us-east-2"
+  }
+}
