@@ -224,27 +224,30 @@ def cluster_local_heads(
     selected: set[str],
     pop_by_id: dict[str, Vertex],
     count: int = 2,
+    radius: float = math.inf,
 ) -> list[str]:
     """Up to ``count`` distinct feasible PoPs local to a cluster, its heads.
 
-    A PoP is local when it sits within the cluster's own extent -- its diameter,
-    the farthest distance between two members -- of at least one member, so a
-    head is never much farther from the cluster than the cluster is wide. Of the
-    locals, an already-selected facility (a forced aggregation, or a head placed
-    for an earlier cluster) is always preferred over a new build, so a cluster
-    sitting on a pin reuses it rather than standing up a redundant neighbor; the
-    cluster still opens a new head for any remaining slot. Within each group the
-    PoPs nearest the cluster as a whole (least total distance to its members)
-    win. A distant PoP (Boise, ~243 mi from the nearest Utah member, well beyond
-    that cluster's ~100 mi extent) is never built as the cluster's head; that
-    cluster's second home comes from reuse.
+    A PoP is local when it sits within the cluster's locality of at least one
+    member: the smaller of the cluster's own extent (its diameter, the farthest
+    distance between two members) and the clustering ``radius`` (the scale at which
+    the cluster coheres). Capping at ``radius`` matters for a spread-out cluster --
+    one whose members are far apart yet still a group -- so its head is a genuinely
+    nearby PoP rather than a distant facility that merely falls inside the cluster's
+    wide diameter. Of the locals, an already-selected facility (a forced
+    aggregation, or a head placed for an earlier cluster) is always preferred over a
+    new build, so a cluster sitting on a pin reuses it rather than standing up a
+    redundant neighbor; the cluster still opens a new head for any remaining slot.
+    Within each group the PoPs nearest the cluster as a whole (least total distance
+    to its members) win. A distant PoP (Boise, ~243 mi from the nearest Utah member)
+    is never built as the cluster's head; that cluster's second home comes from reuse.
     """
-    diameter = cluster_diameter(members)
+    locality = min(cluster_diameter(members), radius)
     reuse: list[tuple[float, str]] = []
     build: list[tuple[float, str]] = []
     for aggregation_id in feasible_ids:
         pop = pop_by_id[aggregation_id]
-        if min(haversine_miles(member, pop) for member in members) <= diameter:
+        if min(haversine_miles(member, pop) for member in members) <= locality:
             total = sum(haversine_miles(member, pop) for member in members)
             (reuse if aggregation_id in selected else build).append((total, aggregation_id))
     reuse.sort()
@@ -394,7 +397,9 @@ def assign_access(
     for members in plan.clusters:
         member_vertices = [access_by_id[member] for member in members]
         selected.update(
-            cluster_local_heads(member_vertices, feasible_ids, selected, pop_by_id, links)
+            cluster_local_heads(
+                member_vertices, feasible_ids, selected, pop_by_id, links, plan.cluster_radius
+            )
         )
 
     # Pass 2: home every vertex to its nearest ``links`` facilities, reusing the
@@ -621,6 +626,7 @@ class _SearchPlan:
     aggregations: _AggregationPlan
     strength_by_id: dict[str, float]
     clusters: list[list[str]] = field(default_factory=list)
+    cluster_radius: float = math.inf  # locality bound for a cluster's heads (see cluster_local_heads)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
     tuning: Tuning = field(default_factory=Tuning)  # the dials this plan was built from
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
@@ -888,7 +894,7 @@ def build_search_plan(
         pop_id: core_strength(pop_id, inputs, pop_by_id, max_degree, params.tuning.compass_octants)
         for pop_id in eligible_ids
     }
-    clusters, _sparse, _radius = cluster_access_vertices(
+    clusters, _sparse, cluster_radius = cluster_access_vertices(
         inputs.access_vertices,
         params.tuning.cluster.min_points,
         params.tuning.cluster.radius_miles[0],
@@ -910,6 +916,7 @@ def build_search_plan(
             inputs.eligible_aggregation_ids,
         ),
         strength_by_id, clusters=clusters,
+        cluster_radius=cluster_radius,
         tuning=params.tuning,
         forced_links=forced_links,
     )

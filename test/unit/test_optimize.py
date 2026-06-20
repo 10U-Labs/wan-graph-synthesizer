@@ -526,6 +526,26 @@ def test_cluster_local_heads_prefers_a_selected_facility_over_a_nearer_build() -
     assert heads == ["pin", "b1"]      # pin reused first, then the nearest new build
 
 
+# A spread-out cluster (members 2 deg apart, ~276 mi wide) with a selected facility
+# inside that wide diameter but far from every member, and a nearby build candidate.
+_SPREAD_MEMBERS = [access("a", 0.0, 0.0), access("b", 0.0, 2.0), access("c", 0.0, 4.0)]
+_SPREAD_POPS = {"reuse_far": pop("reuse_far", 0.0, 6.0), "build_near": pop("build_near", 0.0, 2.0)}
+
+
+def test_cluster_local_heads_reuses_an_in_diameter_facility_without_a_radius_cap() -> None:
+    """Without a radius cap, a selected facility inside the diameter is reused first."""
+    heads = cluster_local_heads(_SPREAD_MEMBERS, set(_SPREAD_POPS), {"reuse_far"}, _SPREAD_POPS)
+    assert heads == ["reuse_far", "build_near"]
+
+
+def test_cluster_local_heads_caps_locality_at_the_clustering_radius() -> None:
+    """A radius cap drops a distant in-diameter reuse so the cluster builds its near head."""
+    heads = cluster_local_heads(
+        _SPREAD_MEMBERS, set(_SPREAD_POPS), {"reuse_far"}, _SPREAD_POPS, radius=100.0
+    )
+    assert heads == ["build_near"]
+
+
 HOMES_POPS = {key: pop(key, 0.0, off) for key, off in (("x", 1.0), ("y", 2.0), ("z", 3.0))}
 
 
