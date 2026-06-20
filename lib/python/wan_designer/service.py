@@ -13,24 +13,20 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from wan_designer import stages
 from wan_designer.config import load_config
-from wan_designer.installations import realize_installations
-from wan_designer.offnet import load_off_net_sites, realize_off_net_sites
 from wan_designer.model import (
-    DesignPaths,
     DesignArtifacts,
     DesignParams,
+    DesignPaths,
     ForcedConnection,
-    PhysicalEdge,
     SourceFiles,
     carrier_role,
     is_carrier_pop,
 )
 from wan_designer.optimize import optimize_three_tier_design
-from wan_designer.overrides import apply_role_overrides, materialize_selected_colocation_twins
 from wan_designer.output import design_payload
-from wan_designer.parsing import load_carrier_edges, load_vertices
-from wan_designer.validation import augment_physical_resilience, validate_design
+from wan_designer.overrides import apply_role_overrides
 
 logger = logging.getLogger(__name__)
 
@@ -43,24 +39,10 @@ def run_design(
     excluded_connections: tuple[ForcedConnection, ...] = (),
 ) -> DesignArtifacts:
     """Load inputs, optimize the three-tier design, and validate it."""
-    vertices = load_vertices(list(paths.vertex_files))
-    if not vertices:
-        raise ValueError("No vertices found in the configured vertex files")
-    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
-    physical_edges: dict[tuple[str, str], PhysicalEdge] = {}
-    for edge_path in (paths.edge_path, *paths.regional_edge_paths):
-        physical_edges.update(load_carrier_edges(edge_path, carrier_pops))
-    realized = realize_installations(
-        vertices, physical_edges, frozenset(params.forced_aggregation_names)
+    vertices, physical_edges = stages.load_inputs(paths)
+    vertices, physical_edges = stages.dual_home(
+        vertices, physical_edges, params, paths.off_net_path
     )
-    vertices, physical_edges = realized.vertices, realized.physical_edges
-    off_net = realize_off_net_sites(
-        vertices,
-        physical_edges,
-        load_off_net_sites(paths.off_net_path) if paths.off_net_path else [],
-        frozenset(params.forced_core_names) | frozenset(params.forced_aggregation_names),
-    )
-    vertices, physical_edges = off_net.vertices, off_net.physical_edges
     roles = {pop.id: carrier_role(pop) for pop in vertices if is_carrier_pop(pop)}
     vertices, physical_edges, overrides = apply_role_overrides(
         vertices, physical_edges, params, forced_connections, excluded_connections
@@ -71,16 +53,8 @@ def run_design(
     )
     design = optimize_three_tier_design(vertices, physical_edges, roles, params, overrides)
     logger.info("Optimization done; validating the design")
-    vertices, physical_edges = materialize_selected_colocation_twins(
-        vertices, physical_edges, design
-    )
-    if augment:
-        design = augment_physical_resilience(vertices, physical_edges, design)
-    validation = validate_design(
-        vertices,
-        design,
-        params.tuning.access_aggregation_links,
-        params.tuning.core_links_per_core,
+    vertices, physical_edges, design, validation = stages.finalize(
+        vertices, physical_edges, design, params, augment
     )
     return DesignArtifacts(vertices, physical_edges, design, validation)
 
