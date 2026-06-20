@@ -84,6 +84,8 @@ inputs:
     - data/edges/dcn.csv
     - data/edges/vision_net.csv
     - data/edges/zayo.csv
+    - data/edges/cogent.csv
+    - data/edges/uniti.csv
   vertices:
     AWS:
       - data/vertices/aws_govcloud.csv
@@ -100,6 +102,8 @@ inputs:
     OCI:
       - data/vertices/oci_east.csv
       - data/vertices/oci_west.csv
+    Cogent: data/vertices/cogent.csv
+    Uniti: data/vertices/uniti.csv
     VisionNet: data/vertices/vision_net.csv
     Zayo: data/vertices/zayo.csv
 label: Military Installations

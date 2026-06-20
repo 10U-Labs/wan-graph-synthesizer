@@ -1,0 +1,162 @@
+source,target,source_page,note
+"Uniti Seattle, WA","Uniti Portland, OR",uniti 400G map p.14,uniti backbone
+"Uniti Portland, OR","Uniti Hillsboro, OR",uniti 400G map p.14,uniti backbone
+"Uniti Portland, OR","Uniti Boise, ID",uniti 400G map p.14,uniti backbone
+"Uniti Boise, ID","Uniti Twin Falls, ID",uniti 400G map p.14,uniti backbone
+"Uniti Twin Falls, ID","Uniti Salt Lake City, UT",uniti 400G map p.14,uniti backbone
+"Uniti Reno, NV","Uniti Sacramento, CA",uniti 400G map p.14,uniti backbone
+"Uniti Reno, NV","Uniti Salt Lake City, UT",uniti 400G map p.14,uniti backbone
+"Uniti Sacramento, CA","Uniti San Francisco, CA",uniti 400G map p.14,uniti backbone
+"Uniti San Francisco, CA","Uniti Palo Alto, CA",uniti 400G map p.14,uniti backbone
+"Uniti Palo Alto, CA","Uniti San Jose, CA",uniti 400G map p.14,uniti backbone
+"Uniti Sacramento, CA","Uniti Bakersfield, CA",uniti 400G map p.14,uniti backbone
+"Uniti Bakersfield, CA","Uniti Los Angeles, CA",uniti 400G map p.14,uniti backbone
+"Uniti San Jose, CA","Uniti Los Angeles, CA",uniti 400G map p.14,uniti backbone
+"Uniti Los Angeles, CA","Uniti San Diego, CA",uniti 400G map p.14,uniti backbone
+"Uniti Los Angeles, CA","Uniti Las Vegas, NV",uniti 400G map p.14,uniti backbone
+"Uniti Los Angeles, CA","Uniti Phoenix, AZ",uniti 400G map p.14,uniti backbone
+"Uniti Las Vegas, NV","Uniti Salt Lake City, UT",uniti 400G map p.14,uniti backbone
+"Uniti Las Vegas, NV","Uniti Phoenix, AZ",uniti 400G map p.14,uniti backbone
+"Uniti Phoenix, AZ","Uniti Tucson, AZ",uniti 400G map p.14,uniti backbone
+"Uniti Tucson, AZ","Uniti El Paso, TX",uniti 400G map p.14,uniti backbone
+"Uniti Salt Lake City, UT","Uniti Grand Junction, CO",uniti 400G map p.14,uniti backbone
+"Uniti Grand Junction, CO","Uniti Denver, CO",uniti 400G map p.14,uniti backbone
+"Uniti Denver, CO","Uniti Colorado Springs, CO",uniti 400G map p.14,uniti backbone
+"Uniti Colorado Springs, CO","Uniti Amarillo, TX",uniti 400G map p.14,uniti backbone
+"Uniti El Paso, TX","Uniti Carlsbad, NM",uniti 400G map p.14,uniti backbone
+"Uniti Carlsbad, NM","Uniti Odessa, TX",uniti 400G map p.14,uniti backbone
+"Uniti Odessa, TX","Uniti Midland, TX",uniti 400G map p.14,uniti backbone
+"Uniti Midland, TX","Uniti Dallas, TX",uniti 400G map p.14,uniti backbone
+"Uniti Minneapolis, MN","Uniti Chicago, IL",uniti 400G map p.14,uniti backbone
+"Uniti Minneapolis, MN","Uniti Des Moines, IA",uniti 400G map p.14,uniti backbone
+"Uniti Des Moines, IA","Uniti Davenport, IA",uniti 400G map p.14,uniti backbone
+"Uniti Davenport, IA","Uniti Chicago, IL",uniti 400G map p.14,uniti backbone
+"Uniti Des Moines, IA","Uniti Omaha, NE",uniti 400G map p.14,uniti backbone
+"Uniti Des Moines, IA","Uniti Chicago, IL",uniti 400G map p.14,uniti backbone
+"Uniti Omaha, NE","Uniti Lincoln, NE",uniti 400G map p.14,uniti backbone
+"Uniti Lincoln, NE","Uniti Kansas City, MO",uniti 400G map p.14,uniti backbone
+"Uniti Chicago, IL","Uniti Bloomington, IL",uniti 400G map p.14,uniti backbone
+"Uniti Bloomington, IL","Uniti St. Louis, MO",uniti 400G map p.14,uniti backbone
+"Uniti Kansas City, MO","Uniti Columbia, MO",uniti 400G map p.14,uniti backbone
+"Uniti Columbia, MO","Uniti St. Louis, MO",uniti 400G map p.14,uniti backbone
+"Uniti Kansas City, MO","Uniti St. Louis, MO",uniti 400G map p.14,uniti backbone
+"Uniti Kansas City, MO","Uniti Tulsa, OK",uniti 400G map p.14,uniti backbone
+"Uniti Tulsa, OK","Uniti Oklahoma City, OK",uniti 400G map p.14,uniti backbone
+"Uniti Oklahoma City, OK","Uniti Wichita Falls, TX",uniti 400G map p.14,uniti backbone
+"Uniti Wichita Falls, TX","Uniti Dallas, TX",uniti 400G map p.14,uniti backbone
+"Uniti Oklahoma City, OK","Uniti Dallas, TX",uniti 400G map p.14,uniti backbone
+"Uniti Amarillo, TX","Uniti Lubbock, TX",uniti 400G map p.14,uniti backbone
+"Uniti Lubbock, TX","Uniti Dallas, TX",uniti 400G map p.14,uniti backbone
+"Uniti Tulsa, OK","Uniti Little Rock, AR",uniti 400G map p.14,uniti backbone
+"Uniti Little Rock, AR","Uniti Memphis, TN",uniti 400G map p.14,uniti backbone
+"Uniti Dallas, TX","Uniti Shreveport, LA",uniti 400G map p.14,uniti backbone
+"Uniti Shreveport, LA","Uniti Jackson, MS",uniti 400G map p.14,uniti backbone
+"Uniti Jackson, MS","Uniti Birmingham, AL",uniti 400G map p.14,uniti backbone
+"Uniti Dallas, TX","Uniti Temple, TX",uniti 400G map p.14,uniti backbone
+"Uniti Temple, TX","Uniti San Antonio, TX",uniti 400G map p.14,uniti backbone
+"Uniti Dallas, TX","Uniti Houston, TX",uniti 400G map p.14,uniti backbone
+"Uniti Houston, TX","Uniti San Antonio, TX",uniti 400G map p.14,uniti backbone
+"Uniti San Antonio, TX","Uniti Laredo, TX",uniti 400G map p.14,uniti backbone
+"Uniti Laredo, TX","Uniti McAllen, TX",uniti 400G map p.14,uniti backbone
+"Uniti Houston, TX","Uniti New Orleans, LA",uniti 400G map p.14,uniti backbone
+"Uniti St. Louis, MO","Uniti Indianapolis, IN",uniti 400G map p.14,uniti backbone
+"Uniti St. Louis, MO","Uniti Memphis, TN",uniti 400G map p.14,uniti backbone
+"Uniti St. Louis, MO","Uniti Louisville, KY",uniti 400G map p.14,uniti backbone
+"Uniti Chicago, IL","Uniti Indianapolis, IN",uniti 400G map p.14,uniti backbone
+"Uniti Indianapolis, IN","Uniti Cincinnati, OH",uniti 400G map p.14,uniti backbone
+"Uniti Cincinnati, OH","Uniti Louisville, KY",uniti 400G map p.14,uniti backbone
+"Uniti Louisville, KY","Uniti Lexington, KY",uniti 400G map p.14,uniti backbone
+"Uniti Indianapolis, IN","Uniti Louisville, KY",uniti 400G map p.14,uniti backbone
+"Uniti Louisville, KY","Uniti Nashville, TN",uniti 400G map p.14,uniti backbone
+"Uniti Memphis, TN","Uniti Nashville, TN",uniti 400G map p.14,uniti backbone
+"Uniti Memphis, TN","Uniti Birmingham, AL",uniti 400G map p.14,uniti backbone
+"Uniti Nashville, TN","Uniti Knoxville, TN",uniti 400G map p.14,uniti backbone
+"Uniti Knoxville, TN","Uniti Bristol, TN",uniti 400G map p.14,uniti backbone
+"Uniti Nashville, TN","Uniti Birmingham, AL",uniti 400G map p.14,uniti backbone
+"Uniti Nashville, TN","Uniti Atlanta, GA",uniti 400G map p.14,uniti backbone
+"Uniti Birmingham, AL","Uniti Atlanta, GA",uniti 400G map p.14,uniti backbone
+"Uniti Chicago, IL","Uniti Toledo, OH",uniti 400G map p.14,uniti backbone
+"Uniti Toledo, OH","Uniti Cleveland, OH",uniti 400G map p.14,uniti backbone
+"Uniti Cleveland, OH","Uniti Buffalo, NY",uniti 400G map p.14,uniti backbone
+"Uniti Cleveland, OH","Uniti Pittsburgh, PA",uniti 400G map p.14,uniti backbone
+"Uniti Buffalo, NY","Uniti Albany, NY",uniti 400G map p.14,uniti backbone
+"Uniti Pittsburgh, PA","Uniti Philadelphia, PA",uniti 400G map p.14,uniti backbone
+"Uniti Philadelphia, PA","Uniti Washington, DC",uniti 400G map p.14,uniti backbone
+"Uniti Washington, DC","Uniti Ashburn, VA",uniti 400G map p.14,uniti backbone
+"Uniti Albany, NY","Uniti New York, NY",uniti 400G map p.14,uniti backbone
+"Uniti New York, NY","Uniti Newark, NJ",uniti 400G map p.14,uniti backbone
+"Uniti Newark, NJ","Uniti Wall, NJ",uniti 400G map p.14,uniti backbone
+"Uniti New York, NY","Uniti Philadelphia, PA",uniti 400G map p.14,uniti backbone
+"Uniti Washington, DC","Uniti Richmond, VA",uniti 400G map p.14,uniti backbone
+"Uniti Ashburn, VA","Uniti Richmond, VA",uniti 400G map p.14,uniti backbone
+"Uniti Richmond, VA","Uniti Virginia Beach, VA",uniti 400G map p.14,uniti backbone
+"Uniti Richmond, VA","Uniti Charlotte, NC",uniti 400G map p.14,uniti backbone
+"Uniti Bristol, TN","Uniti Richmond, VA",uniti 400G map p.14,uniti backbone
+"Uniti Charlotte, NC","Uniti Atlanta, GA",uniti 400G map p.14,uniti backbone
+"Uniti Atlanta, GA","Uniti Augusta, GA",uniti 400G map p.14,uniti backbone
+"Uniti Augusta, GA","Uniti Charleston, SC",uniti 400G map p.14,uniti backbone
+"Uniti Charleston, SC","Uniti Savannah, GA",uniti 400G map p.14,uniti backbone
+"Uniti Savannah, GA","Uniti Jacksonville, FL",uniti 400G map p.14,uniti backbone
+"Uniti Atlanta, GA","Uniti Tallahassee, FL",uniti 400G map p.14,uniti backbone
+"Uniti Tallahassee, FL","Uniti Jacksonville, FL",uniti 400G map p.14,uniti backbone
+"Uniti Jacksonville, FL","Uniti Orlando, FL",uniti 400G map p.14,uniti backbone
+"Uniti Orlando, FL","Uniti Tampa, FL",uniti 400G map p.14,uniti backbone
+"Uniti Tampa, FL","Uniti Miami, FL",uniti 400G map p.14,uniti backbone
+"Uniti Orlando, FL","Uniti Miami, FL",uniti 400G map p.14,uniti backbone
+"Uniti New Orleans, LA","Uniti Mobile, AL",uniti 400G map p.14,uniti backbone
+"Uniti Mobile, AL","Uniti Dothan, AL",uniti 400G map p.14,uniti backbone
+"Uniti Dothan, AL","Uniti Tallahassee, FL",uniti 400G map p.14,uniti backbone
+"Uniti Charlotte, NC","Uniti Augusta, GA",uniti 400G map p.14,uniti backbone
+"Uniti Albany, NY","Albany, NY",uniti 400G map p.14,uniti cross-connect
+"Uniti Ashburn, VA","Ashburn, VA",uniti 400G map p.14,uniti cross-connect
+"Uniti Atlanta, GA","Atlanta, GA",uniti 400G map p.14,uniti cross-connect
+"Uniti Augusta, GA","Augusta, GA",uniti 400G map p.14,uniti cross-connect
+"Uniti Birmingham, AL","Birmingham, AL",uniti 400G map p.14,uniti cross-connect
+"Uniti Boise, ID","Boise, ID",uniti 400G map p.14,uniti cross-connect
+"Uniti Buffalo, NY","Buffalo, NY",uniti 400G map p.14,uniti cross-connect
+"Uniti Charlotte, NC","Charlotte, NC",uniti 400G map p.14,uniti cross-connect
+"Uniti Chicago, IL","Chicago, IL",uniti 400G map p.14,uniti cross-connect
+"Uniti Cincinnati, OH","Cincinnati, OH",uniti 400G map p.14,uniti cross-connect
+"Uniti Cleveland, OH","Cleveland, OH",uniti 400G map p.14,uniti cross-connect
+"Uniti Dallas, TX","Dallas, TX",uniti 400G map p.14,uniti cross-connect
+"Uniti Davenport, IA","Davenport, IA",uniti 400G map p.14,uniti cross-connect
+"Uniti Denver, CO","Denver, CO",uniti 400G map p.14,uniti cross-connect
+"Uniti Des Moines, IA","Des Moines, IA",uniti 400G map p.14,uniti cross-connect
+"Uniti El Paso, TX","El Paso, TX",uniti 400G map p.14,uniti cross-connect
+"Uniti Houston, TX","Houston, TX",uniti 400G map p.14,uniti cross-connect
+"Uniti Indianapolis, IN","Indianapolis, IN",uniti 400G map p.14,uniti cross-connect
+"Uniti Jacksonville, FL","Jacksonville, FL",uniti 400G map p.14,uniti cross-connect
+"Uniti Kansas City, MO","Kansas City, MO",uniti 400G map p.14,uniti cross-connect
+"Uniti Laredo, TX","Laredo, TX",uniti 400G map p.14,uniti cross-connect
+"Uniti Las Vegas, NV","Las Vegas, NV",uniti 400G map p.14,uniti cross-connect
+"Uniti Los Angeles, CA","Los Angeles, CA",uniti 400G map p.14,uniti cross-connect
+"Uniti McAllen, TX","McAllen, TX",uniti 400G map p.14,uniti cross-connect
+"Uniti Memphis, TN","Memphis, TN",uniti 400G map p.14,uniti cross-connect
+"Uniti Miami, FL","Miami, FL",uniti 400G map p.14,uniti cross-connect
+"Uniti Minneapolis, MN","Minneapolis, MN",uniti 400G map p.14,uniti cross-connect
+"Uniti Nashville, TN","Nashville, TN",uniti 400G map p.14,uniti cross-connect
+"Uniti New York, NY","New York, NY",uniti 400G map p.14,uniti cross-connect
+"Uniti Newark, NJ","Newark, NJ",uniti 400G map p.14,uniti cross-connect
+"Uniti Oklahoma City, OK","Oklahoma City, OK",uniti 400G map p.14,uniti cross-connect
+"Uniti Omaha, NE","Omaha, NE",uniti 400G map p.14,uniti cross-connect
+"Uniti Orlando, FL","Orlando, FL",uniti 400G map p.14,uniti cross-connect
+"Uniti Philadelphia, PA","Philadelphia, PA",uniti 400G map p.14,uniti cross-connect
+"Uniti Phoenix, AZ","Phoenix, AZ",uniti 400G map p.14,uniti cross-connect
+"Uniti Pittsburgh, PA","Pittsburgh, PA",uniti 400G map p.14,uniti cross-connect
+"Uniti Portland, OR","Portland, OR",uniti 400G map p.14,uniti cross-connect
+"Uniti Reno, NV","Reno, NV",uniti 400G map p.14,uniti cross-connect
+"Uniti Richmond, VA","Richmond, VA",uniti 400G map p.14,uniti cross-connect
+"Uniti Sacramento, CA","Sacramento, CA",uniti 400G map p.14,uniti cross-connect
+"Uniti Salt Lake City, UT","Salt Lake City, UT",uniti 400G map p.14,uniti cross-connect
+"Uniti San Antonio, TX","San Antonio, TX",uniti 400G map p.14,uniti cross-connect
+"Uniti San Diego, CA","San Diego, CA",uniti 400G map p.14,uniti cross-connect
+"Uniti San Francisco, CA","San Francisco, CA",uniti 400G map p.14,uniti cross-connect
+"Uniti San Jose, CA","San Jose, CA",uniti 400G map p.14,uniti cross-connect
+"Uniti Seattle, WA","Seattle, WA",uniti 400G map p.14,uniti cross-connect
+"Uniti St. Louis, MO","St. Louis, MO",uniti 400G map p.14,uniti cross-connect
+"Uniti Tallahassee, FL","Tallahassee, FL",uniti 400G map p.14,uniti cross-connect
+"Uniti Tampa, FL","Tampa, FL",uniti 400G map p.14,uniti cross-connect
+"Uniti Toledo, OH","Toledo, OH",uniti 400G map p.14,uniti cross-connect
+"Uniti Tucson, AZ","Tucson, AZ",uniti 400G map p.14,uniti cross-connect
+"Uniti Tulsa, OK","Tulsa, OK",uniti 400G map p.14,uniti cross-connect
+"Uniti Wall, NJ","Wall, NJ",uniti 400G map p.14,uniti cross-connect

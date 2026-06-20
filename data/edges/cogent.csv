@@ -1,0 +1,280 @@
+source,target,source_page,note
+"Cogent Vancouver, BC","Cogent Seattle, WA",cogent overview map,cogent backbone
+"Cogent Vancouver, BC","Cogent Kamloops, BC",cogent overview map,cogent backbone
+"Cogent Kamloops, BC","Cogent Calgary, AB",cogent overview map,cogent backbone
+"Cogent Seattle, WA","Cogent Everett, WA",cogent overview map,cogent backbone
+"Cogent Seattle, WA","Cogent Tacoma, WA",cogent overview map,cogent backbone
+"Cogent Seattle, WA","Cogent Wenatchee, WA",cogent overview map,cogent backbone
+"Cogent Wenatchee, WA","Cogent Spokane, WA",cogent overview map,cogent backbone
+"Cogent Spokane, WA","Cogent Missoula, MT",cogent overview map,cogent backbone
+"Cogent Tacoma, WA","Cogent Portland, OR",cogent overview map,cogent backbone
+"Cogent Portland, OR","Cogent Bend, OR",cogent overview map,cogent backbone
+"Cogent Bend, OR","Cogent Boise, ID",cogent overview map,cogent backbone
+"Cogent Portland, OR","Cogent Medford, OR",cogent overview map,cogent backbone
+"Cogent Medford, OR","Cogent Oroville, CA",cogent overview map,cogent backbone
+"Cogent Oroville, CA","Cogent Sacramento, CA",cogent overview map,cogent backbone
+"Cogent Bend, OR","Cogent Reno, NV",cogent overview map,cogent backbone
+"Cogent Reno, NV","Cogent Sacramento, CA",cogent overview map,cogent backbone
+"Cogent Reno, NV","Cogent Salt Lake City, UT",cogent overview map,cogent backbone
+"Cogent Sacramento, CA","Cogent Stockton, CA",cogent overview map,cogent backbone
+"Cogent Stockton, CA","Cogent Oakland, CA",cogent overview map,cogent backbone
+"Cogent Oakland, CA","Cogent San Francisco, CA",cogent overview map,cogent backbone
+"Cogent San Francisco, CA","Cogent Santa Clara, CA",cogent overview map,cogent backbone
+"Cogent Santa Clara, CA","Cogent Livermore, CA",cogent overview map,cogent backbone
+"Cogent Livermore, CA","Cogent Stockton, CA",cogent overview map,cogent backbone
+"Cogent Stockton, CA","Cogent Fresno, CA",cogent overview map,cogent backbone
+"Cogent Fresno, CA","Cogent Bakersfield, CA",cogent overview map,cogent backbone
+"Cogent Bakersfield, CA","Cogent Burbank, CA",cogent overview map,cogent backbone
+"Cogent Santa Clara, CA","Cogent Los Osos, CA",cogent overview map,cogent backbone
+"Cogent Los Osos, CA","Cogent Santa Barbara, CA",cogent overview map,cogent backbone
+"Cogent Santa Barbara, CA","Cogent Ventura, CA",cogent overview map,cogent backbone
+"Cogent Ventura, CA","Cogent Los Angeles, CA",cogent overview map,cogent backbone
+"Cogent Burbank, CA","Cogent Los Angeles, CA",cogent overview map,cogent backbone
+"Cogent Los Angeles, CA","Cogent Rialto, CA",cogent overview map,cogent backbone
+"Cogent Rialto, CA","Cogent Palm Springs, CA",cogent overview map,cogent backbone
+"Cogent Los Angeles, CA","Cogent San Diego, CA",cogent overview map,cogent backbone
+"Cogent Rialto, CA","Cogent Las Vegas, NV",cogent overview map,cogent backbone
+"Cogent Palm Springs, CA","Cogent Phoenix, AZ",cogent overview map,cogent backbone
+"Cogent San Diego, CA","Cogent Phoenix, AZ",cogent overview map,cogent backbone
+"Cogent Calgary, AB","Cogent Winnipeg, MB",cogent overview map,cogent backbone
+"Cogent Missoula, MT","Cogent Billings, MT",cogent overview map,cogent backbone
+"Cogent Billings, MT","Cogent Bismarck, ND",cogent overview map,cogent backbone
+"Cogent Bismarck, ND","Cogent Belfield, ND",cogent overview map,cogent backbone
+"Cogent Belfield, ND","Cogent Billings, MT",cogent overview map,cogent backbone
+"Cogent Billings, MT","Cogent Cheyenne, WY",cogent overview map,cogent backbone
+"Cogent Boise, ID","Cogent Salt Lake City, UT",cogent overview map,cogent backbone
+"Cogent Salt Lake City, UT","Cogent Cheyenne, WY",cogent overview map,cogent backbone
+"Cogent Salt Lake City, UT","Cogent Las Vegas, NV",cogent overview map,cogent backbone
+"Cogent Salt Lake City, UT","Cogent Denver, CO",cogent overview map,cogent backbone
+"Cogent Cheyenne, WY","Cogent Denver, CO",cogent overview map,cogent backbone
+"Cogent Cheyenne, WY","Cogent Grand Island, NE",cogent overview map,cogent backbone
+"Cogent Denver, CO","Cogent Colorado Springs, CO",cogent overview map,cogent backbone
+"Cogent Colorado Springs, CO","Cogent Albuquerque, NM",cogent overview map,cogent backbone
+"Cogent Colorado Springs, CO","Cogent Wichita, KS",cogent overview map,cogent backbone
+"Cogent Las Vegas, NV","Cogent Phoenix, AZ",cogent overview map,cogent backbone
+"Cogent Phoenix, AZ","Cogent Tucson, AZ",cogent overview map,cogent backbone
+"Cogent Tucson, AZ","Cogent El Paso, TX",cogent overview map,cogent backbone
+"Cogent Phoenix, AZ","Cogent Las Cruces, NM",cogent overview map,cogent backbone
+"Cogent Albuquerque, NM","Cogent Las Cruces, NM",cogent overview map,cogent backbone
+"Cogent Las Cruces, NM","Cogent El Paso, TX",cogent overview map,cogent backbone
+"Cogent Albuquerque, NM","Cogent Amarillo, TX",cogent overview map,cogent backbone
+"Cogent Albuquerque, NM","Cogent Lubbock, TX",cogent overview map,cogent backbone
+"Cogent Winnipeg, MB","Cogent Fargo, ND",cogent overview map,cogent backbone
+"Cogent Fargo, ND","Cogent Bismarck, ND",cogent overview map,cogent backbone
+"Cogent Fargo, ND","Cogent St Cloud, MN",cogent overview map,cogent backbone
+"Cogent St Cloud, MN","Cogent Minneapolis, MN",cogent overview map,cogent backbone
+"Cogent Minneapolis, MN","Cogent Eau Claire, WI",cogent overview map,cogent backbone
+"Cogent Eau Claire, WI","Cogent Madison, WI",cogent overview map,cogent backbone
+"Cogent Madison, WI","Cogent Milwaukee, WI",cogent overview map,cogent backbone
+"Cogent Milwaukee, WI","Cogent Chicago, IL",cogent overview map,cogent backbone
+"Cogent Minneapolis, MN","Cogent Des Moines, IA",cogent overview map,cogent backbone
+"Cogent Grand Island, NE","Cogent Omaha, NE",cogent overview map,cogent backbone
+"Cogent Omaha, NE","Cogent Des Moines, IA",cogent overview map,cogent backbone
+"Cogent Omaha, NE","Cogent Lincoln, NE",cogent overview map,cogent backbone
+"Cogent Lincoln, NE","Cogent Kansas City, MO",cogent overview map,cogent backbone
+"Cogent Grand Island, NE","Cogent Lincoln, NE",cogent overview map,cogent backbone
+"Cogent Des Moines, IA","Cogent Chicago, IL",cogent overview map,cogent backbone
+"Cogent Des Moines, IA","Cogent Cedar Rapids, IA",cogent overview map,cogent backbone
+"Cogent Cedar Rapids, IA","Cogent Clinton, IA",cogent overview map,cogent backbone
+"Cogent Clinton, IA","Cogent Chicago, IL",cogent overview map,cogent backbone
+"Cogent Kansas City, MO","Cogent Des Moines, IA",cogent overview map,cogent backbone
+"Cogent Kansas City, MO","Cogent St. Louis, MO",cogent overview map,cogent backbone
+"Cogent Kansas City, MO","Cogent Wichita, KS",cogent overview map,cogent backbone
+"Cogent Kansas City, MO","Cogent Jefferson City, MO",cogent overview map,cogent backbone
+"Cogent Jefferson City, MO","Cogent St. Louis, MO",cogent overview map,cogent backbone
+"Cogent Chicago, IL","Cogent Bloomington, IL",cogent overview map,cogent backbone
+"Cogent Bloomington, IL","Cogent Springfield, IL",cogent overview map,cogent backbone
+"Cogent Springfield, IL","Cogent St. Louis, MO",cogent overview map,cogent backbone
+"Cogent Chicago, IL","Cogent Champaign, IL",cogent overview map,cogent backbone
+"Cogent Champaign, IL","Cogent Indianapolis, IN",cogent overview map,cogent backbone
+"Cogent Wichita, KS","Cogent Oklahoma City, OK",cogent overview map,cogent backbone
+"Cogent Oklahoma City, OK","Cogent Okarche, OK",cogent overview map,cogent backbone
+"Cogent Oklahoma City, OK","Cogent Tulsa, OK",cogent overview map,cogent backbone
+"Cogent Oklahoma City, OK","Cogent Amarillo, TX",cogent overview map,cogent backbone
+"Cogent Oklahoma City, OK","Cogent Dallas, TX",cogent overview map,cogent backbone
+"Cogent Amarillo, TX","Cogent Lubbock, TX",cogent overview map,cogent backbone
+"Cogent Tulsa, OK","Cogent Van Buren, AR",cogent overview map,cogent backbone
+"Cogent Van Buren, AR","Cogent Little Rock, AR",cogent overview map,cogent backbone
+"Cogent Little Rock, AR","Cogent Memphis, TN",cogent overview map,cogent backbone
+"Cogent El Paso, TX","Cogent Midland, TX",cogent overview map,cogent backbone
+"Cogent Midland, TX","Cogent Abilene, TX",cogent overview map,cogent backbone
+"Cogent Abilene, TX","Cogent Fort Worth, TX",cogent overview map,cogent backbone
+"Cogent Lubbock, TX","Cogent Abilene, TX",cogent overview map,cogent backbone
+"Cogent Fort Worth, TX","Cogent Bowie, TX",cogent overview map,cogent backbone
+"Cogent Bowie, TX","Cogent Oklahoma City, OK",cogent overview map,cogent backbone
+"Cogent Fort Worth, TX","Cogent Dallas, TX",cogent overview map,cogent backbone
+"Cogent Dallas, TX","Cogent Waco, TX",cogent overview map,cogent backbone
+"Cogent Waco, TX","Cogent Austin, TX",cogent overview map,cogent backbone
+"Cogent Austin, TX","Cogent San Antonio, TX",cogent overview map,cogent backbone
+"Cogent Dallas, TX","Cogent Bryan, TX",cogent overview map,cogent backbone
+"Cogent Bryan, TX","Cogent Houston, TX",cogent overview map,cogent backbone
+"Cogent San Antonio, TX","Cogent Houston, TX",cogent overview map,cogent backbone
+"Cogent Austin, TX","Cogent Houston, TX",cogent overview map,cogent backbone
+"Cogent San Antonio, TX","Cogent Corpus Christi, TX",cogent overview map,cogent backbone
+"Cogent Houston, TX","Cogent Corpus Christi, TX",cogent overview map,cogent backbone
+"Cogent Corpus Christi, TX","Cogent McAllen, TX",cogent overview map,cogent backbone
+"Cogent McAllen, TX","Cogent Monterrey, MX",cogent overview map,cogent backbone
+"Cogent Monterrey, MX","Cogent Queretaro, MX",cogent overview map,cogent backbone
+"Cogent Queretaro, MX","Cogent Mexico City, MX",cogent overview map,cogent backbone
+"Cogent Queretaro, MX","Cogent Guadalajara, MX",cogent overview map,cogent backbone
+"Cogent Dallas, TX","Cogent Shreveport, LA",cogent overview map,cogent backbone
+"Cogent Shreveport, LA","Cogent Jackson, MS",cogent overview map,cogent backbone
+"Cogent Houston, TX","Cogent Baton Rouge, LA",cogent overview map,cogent backbone
+"Cogent Baton Rouge, LA","Cogent New Orleans, LA",cogent overview map,cogent backbone
+"Cogent Jackson, MS","Cogent New Orleans, LA",cogent overview map,cogent backbone
+"Cogent Jackson, MS","Cogent Birmingham, AL",cogent overview map,cogent backbone
+"Cogent Chicago, IL","Cogent South Bend, IN",cogent overview map,cogent backbone
+"Cogent South Bend, IN","Cogent Toledo, OH",cogent overview map,cogent backbone
+"Cogent Toledo, OH","Cogent Cleveland, OH",cogent overview map,cogent backbone
+"Cogent Chicago, IL","Cogent Grand Rapids, MI",cogent overview map,cogent backbone
+"Cogent Grand Rapids, MI","Cogent Lansing, MI",cogent overview map,cogent backbone
+"Cogent Lansing, MI","Cogent Flint, MI",cogent overview map,cogent backbone
+"Cogent Flint, MI","Cogent Detroit, MI",cogent overview map,cogent backbone
+"Cogent Detroit, MI","Cogent Toledo, OH",cogent overview map,cogent backbone
+"Cogent Cleveland, OH","Cogent Erie, PA",cogent overview map,cogent backbone
+"Cogent Erie, PA","Cogent Buffalo, NY",cogent overview map,cogent backbone
+"Cogent Cleveland, OH","Cogent Akron, OH",cogent overview map,cogent backbone
+"Cogent Akron, OH","Cogent Pittsburgh, PA",cogent overview map,cogent backbone
+"Cogent Cleveland, OH","Cogent Columbus, OH",cogent overview map,cogent backbone
+"Cogent Columbus, OH","Cogent Cincinnati, OH",cogent overview map,cogent backbone
+"Cogent Indianapolis, IN","Cogent Cincinnati, OH",cogent overview map,cogent backbone
+"Cogent Indianapolis, IN","Cogent Louisville, KY",cogent overview map,cogent backbone
+"Cogent Louisville, KY","Cogent Lexington, KY",cogent overview map,cogent backbone
+"Cogent Cincinnati, OH","Cogent Lexington, KY",cogent overview map,cogent backbone
+"Cogent Columbus, OH","Cogent Charleston, WV",cogent overview map,cogent backbone
+"Cogent South Bend, IN","Cogent Indianapolis, IN",cogent overview map,cogent backbone
+"Cogent Buffalo, NY","Cogent Rochester, NY",cogent overview map,cogent backbone
+"Cogent Rochester, NY","Cogent Syracuse, NY",cogent overview map,cogent backbone
+"Cogent Syracuse, NY","Cogent Albany, NY",cogent overview map,cogent backbone
+"Cogent Buffalo, NY","Cogent Toronto, ON",cogent overview map,cogent backbone
+"Cogent Toronto, ON","Cogent Barrie, ON",cogent overview map,cogent backbone
+"Cogent Toronto, ON","Cogent Montreal, QC",cogent overview map,cogent backbone
+"Cogent Montreal, QC","Cogent Albany, NY",cogent overview map,cogent backbone
+"Cogent Albany, NY","Cogent Springfield, MA",cogent overview map,cogent backbone
+"Cogent Springfield, MA","Cogent Worcester, MA",cogent overview map,cogent backbone
+"Cogent Worcester, MA","Cogent Boston, MA",cogent overview map,cogent backbone
+"Cogent Boston, MA","Cogent Andover, MA",cogent overview map,cogent backbone
+"Cogent Boston, MA","Cogent Providence, RI",cogent overview map,cogent backbone
+"Cogent Providence, RI","Cogent Stamford, CT",cogent overview map,cogent backbone
+"Cogent Stamford, CT","Cogent New York, NY",cogent overview map,cogent backbone
+"Cogent Albany, NY","Cogent New York, NY",cogent overview map,cogent backbone
+"Cogent Binghamton, NY","Cogent Syracuse, NY",cogent overview map,cogent backbone
+"Cogent Binghamton, NY","Cogent Scranton, PA",cogent overview map,cogent backbone
+"Cogent Scranton, PA","Cogent Newark, NJ",cogent overview map,cogent backbone
+"Cogent New York, NY","Cogent Newark, NJ",cogent overview map,cogent backbone
+"Cogent Newark, NJ","Cogent Philadelphia, PA",cogent overview map,cogent backbone
+"Cogent Philadelphia, PA","Cogent Wilmington, DE",cogent overview map,cogent backbone
+"Cogent Wilmington, DE","Cogent Baltimore, MD",cogent overview map,cogent backbone
+"Cogent Baltimore, MD","Cogent Washington, DC",cogent overview map,cogent backbone
+"Cogent Pittsburgh, PA","Cogent Harrisburg, PA",cogent overview map,cogent backbone
+"Cogent Harrisburg, PA","Cogent Philadelphia, PA",cogent overview map,cogent backbone
+"Cogent Pittsburgh, PA","Cogent Martinsburg, WV",cogent overview map,cogent backbone
+"Cogent Martinsburg, WV","Cogent Ashburn, VA",cogent overview map,cogent backbone
+"Cogent Washington, DC","Cogent Ashburn, VA",cogent overview map,cogent backbone
+"Cogent Washington, DC","Cogent Fairfax, VA",cogent overview map,cogent backbone
+"Cogent Washington, DC","Cogent Richmond, VA",cogent overview map,cogent backbone
+"Cogent Richmond, VA","Cogent Virginia Beach, VA",cogent overview map,cogent backbone
+"Cogent Charleston, WV","Cogent Charlottesville, VA",cogent overview map,cogent backbone
+"Cogent Charlottesville, VA","Cogent Richmond, VA",cogent overview map,cogent backbone
+"Cogent Roanoke, VA","Cogent Charlottesville, VA",cogent overview map,cogent backbone
+"Cogent Richmond, VA","Cogent Raleigh, NC",cogent overview map,cogent backbone
+"Cogent St. Louis, MO","Cogent Nashville, TN",cogent overview map,cogent backbone
+"Cogent Nashville, TN","Cogent Memphis, TN",cogent overview map,cogent backbone
+"Cogent Nashville, TN","Cogent Knoxville, TN",cogent overview map,cogent backbone
+"Cogent Knoxville, TN","Cogent Atlanta, GA",cogent overview map,cogent backbone
+"Cogent Nashville, TN","Cogent Atlanta, GA",cogent overview map,cogent backbone
+"Cogent Nashville, TN","Cogent Huntsville, AL",cogent overview map,cogent backbone
+"Cogent Huntsville, AL","Cogent Birmingham, AL",cogent overview map,cogent backbone
+"Cogent Birmingham, AL","Cogent Atlanta, GA",cogent overview map,cogent backbone
+"Cogent Birmingham, AL","Cogent Montgomery, AL",cogent overview map,cogent backbone
+"Cogent Montgomery, AL","Cogent Mobile, AL",cogent overview map,cogent backbone
+"Cogent Mobile, AL","Cogent Atmore, AL",cogent overview map,cogent backbone
+"Cogent Atmore, AL","Cogent Pensacola, FL",cogent overview map,cogent backbone
+"Cogent Pensacola, FL","Cogent Tallahassee, FL",cogent overview map,cogent backbone
+"Cogent Mobile, AL","Cogent New Orleans, LA",cogent overview map,cogent backbone
+"Cogent Atlanta, GA","Cogent Charlotte, NC",cogent overview map,cogent backbone
+"Cogent Charlotte, NC","Cogent Winston Salem, NC",cogent overview map,cogent backbone
+"Cogent Winston Salem, NC","Cogent Raleigh, NC",cogent overview map,cogent backbone
+"Cogent Raleigh, NC","Cogent Hamlet, NC",cogent overview map,cogent backbone
+"Cogent Charlotte, NC","Cogent Hamlet, NC",cogent overview map,cogent backbone
+"Cogent Hamlet, NC","Cogent Myrtle Beach, SC",cogent overview map,cogent backbone
+"Cogent Myrtle Beach, SC","Cogent Charleston, SC",cogent overview map,cogent backbone
+"Cogent Atlanta, GA","Cogent Tallahassee, FL",cogent overview map,cogent backbone
+"Cogent Atlanta, GA","Cogent Jacksonville, FL",cogent overview map,cogent backbone
+"Cogent Tallahassee, FL","Cogent Jacksonville, FL",cogent overview map,cogent backbone
+"Cogent Jacksonville, FL","Cogent Orlando, FL",cogent overview map,cogent backbone
+"Cogent Orlando, FL","Cogent Tampa, FL",cogent overview map,cogent backbone
+"Cogent Tampa, FL","Cogent Fort Myers, FL",cogent overview map,cogent backbone
+"Cogent Fort Myers, FL","Cogent Miami, FL",cogent overview map,cogent backbone
+"Cogent Orlando, FL","Cogent West Palm Beach, FL",cogent overview map,cogent backbone
+"Cogent West Palm Beach, FL","Cogent Boca Raton, FL",cogent overview map,cogent backbone
+"Cogent Boca Raton, FL","Cogent Miami, FL",cogent overview map,cogent backbone
+"Cogent Charleston, SC","Cogent Jacksonville, FL",cogent overview map,cogent backbone
+"Cogent Akron, OH","Akron, OH",cogent overview map,cogent cross-connect
+"Cogent Albany, NY","Albany, NY",cogent overview map,cogent cross-connect
+"Cogent Albuquerque, NM","Albuquerque, NM",cogent overview map,cogent cross-connect
+"Cogent Ashburn, VA","Ashburn, VA",cogent overview map,cogent cross-connect
+"Cogent Atlanta, GA","Atlanta, GA",cogent overview map,cogent cross-connect
+"Cogent Austin, TX","Austin, TX",cogent overview map,cogent cross-connect
+"Cogent Baltimore, MD","Baltimore, MD",cogent overview map,cogent cross-connect
+"Cogent Billings, MT",Billings,cogent overview map,cogent cross-connect
+"Cogent Birmingham, AL","Birmingham, AL",cogent overview map,cogent cross-connect
+"Cogent Bismarck, ND",Bismarck,cogent overview map,cogent cross-connect
+"Cogent Boise, ID","Boise, ID",cogent overview map,cogent cross-connect
+"Cogent Boston, MA","Boston, MA",cogent overview map,cogent cross-connect
+"Cogent Buffalo, NY","Buffalo, NY",cogent overview map,cogent cross-connect
+"Cogent Charlotte, NC","Charlotte, NC",cogent overview map,cogent cross-connect
+"Cogent Cheyenne, WY","Cheyenne, WY",cogent overview map,cogent cross-connect
+"Cogent Chicago, IL","Chicago, IL",cogent overview map,cogent cross-connect
+"Cogent Cincinnati, OH","Cincinnati, OH",cogent overview map,cogent cross-connect
+"Cogent Cleveland, OH","Cleveland, OH",cogent overview map,cogent cross-connect
+"Cogent Columbus, OH","Columbus, OH",cogent overview map,cogent cross-connect
+"Cogent Corpus Christi, TX","Corpus Christi, TX",cogent overview map,cogent cross-connect
+"Cogent Dallas, TX","Dallas, TX",cogent overview map,cogent cross-connect
+"Cogent Denver, CO","Denver, CO",cogent overview map,cogent cross-connect
+"Cogent Des Moines, IA","Des Moines, IA",cogent overview map,cogent cross-connect
+"Cogent Detroit, MI","Detroit, MI",cogent overview map,cogent cross-connect
+"Cogent El Paso, TX","El Paso, TX",cogent overview map,cogent cross-connect
+"Cogent Fargo, ND",Fargo,cogent overview map,cogent cross-connect
+"Cogent Fort Worth, TX","Fort Worth, TX",cogent overview map,cogent cross-connect
+"Cogent Houston, TX","Houston, TX",cogent overview map,cogent cross-connect
+"Cogent Indianapolis, IN","Indianapolis, IN",cogent overview map,cogent cross-connect
+"Cogent Jacksonville, FL","Jacksonville, FL",cogent overview map,cogent cross-connect
+"Cogent Kansas City, MO","Kansas City, MO",cogent overview map,cogent cross-connect
+"Cogent Las Vegas, NV","Las Vegas, NV",cogent overview map,cogent cross-connect
+"Cogent Los Angeles, CA","Los Angeles, CA",cogent overview map,cogent cross-connect
+"Cogent Madison, WI","Madison, WI",cogent overview map,cogent cross-connect
+"Cogent McAllen, TX","McAllen, TX",cogent overview map,cogent cross-connect
+"Cogent Memphis, TN","Memphis, TN",cogent overview map,cogent cross-connect
+"Cogent Miami, FL","Miami, FL",cogent overview map,cogent cross-connect
+"Cogent Milwaukee, WI","Milwaukee, WI",cogent overview map,cogent cross-connect
+"Cogent Minneapolis, MN","Minneapolis, MN",cogent overview map,cogent cross-connect
+"Cogent Missoula, MT","Missoula, MT",cogent overview map,cogent cross-connect
+"Cogent Nashville, TN","Nashville, TN",cogent overview map,cogent cross-connect
+"Cogent New York, NY","New York, NY",cogent overview map,cogent cross-connect
+"Cogent Newark, NJ","Newark, NJ",cogent overview map,cogent cross-connect
+"Cogent Oklahoma City, OK","Oklahoma City, OK",cogent overview map,cogent cross-connect
+"Cogent Omaha, NE","Omaha, NE",cogent overview map,cogent cross-connect
+"Cogent Orlando, FL","Orlando, FL",cogent overview map,cogent cross-connect
+"Cogent Philadelphia, PA","Philadelphia, PA",cogent overview map,cogent cross-connect
+"Cogent Phoenix, AZ","Phoenix, AZ",cogent overview map,cogent cross-connect
+"Cogent Pittsburgh, PA","Pittsburgh, PA",cogent overview map,cogent cross-connect
+"Cogent Portland, OR","Portland, OR",cogent overview map,cogent cross-connect
+"Cogent Raleigh, NC","Raleigh, NC",cogent overview map,cogent cross-connect
+"Cogent Reno, NV","Reno, NV",cogent overview map,cogent cross-connect
+"Cogent Richmond, VA","Richmond, VA",cogent overview map,cogent cross-connect
+"Cogent Sacramento, CA","Sacramento, CA",cogent overview map,cogent cross-connect
+"Cogent Salt Lake City, UT","Salt Lake City, UT",cogent overview map,cogent cross-connect
+"Cogent San Antonio, TX","San Antonio, TX",cogent overview map,cogent cross-connect
+"Cogent San Diego, CA","San Diego, CA",cogent overview map,cogent cross-connect
+"Cogent San Francisco, CA","San Francisco, CA",cogent overview map,cogent cross-connect
+"Cogent Seattle, WA","Seattle, WA",cogent overview map,cogent cross-connect
+"Cogent South Bend, IN","South Bend, IN",cogent overview map,cogent cross-connect
+"Cogent St. Louis, MO","St. Louis, MO",cogent overview map,cogent cross-connect
+"Cogent Stamford, CT","Stamford, CT",cogent overview map,cogent cross-connect
+"Cogent Tallahassee, FL","Tallahassee, FL",cogent overview map,cogent cross-connect
+"Cogent Tampa, FL","Tampa, FL",cogent overview map,cogent cross-connect
+"Cogent Toledo, OH","Toledo, OH",cogent overview map,cogent cross-connect
+"Cogent Tucson, AZ","Tucson, AZ",cogent overview map,cogent cross-connect
+"Cogent Tulsa, OK","Tulsa, OK",cogent overview map,cogent cross-connect
+"Cogent Wichita, KS","Wichita, KS",cogent overview map,cogent cross-connect
