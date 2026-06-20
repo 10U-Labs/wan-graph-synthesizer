@@ -786,14 +786,15 @@ def test_effective_forced_aggregations_returns_operator_pins() -> None:
 
 
 def test_effective_forced_aggregations_seats_a_cored_pin_as_its_twin() -> None:
-    """A forced aggregation the search also cores is seated as its co-located twin."""
+    """A forced aggregation the search also cores seats its twin; an uncored pin stays plain."""
     plan = _SearchPlan(
         ["c1", "c2"],
         _AggregationPlan(frozenset({"c1"}), twin_to_core={"aggr_c1": "c1"}),
         {},
     )
-    assert effective_forced_aggregations(plan, ("c1", "c2")) == {"aggr_c1"}
-    assert effective_forced_aggregations(plan, ("c2", "c3")) == {"c1"}
+    assert effective_forced_aggregations(plan, ("c1", "c2")) == {"aggr_c1"} and (
+        effective_forced_aggregations(plan, ("c2", "c3")) == {"c1"}
+    )
 
 
 def test_effective_forced_aggregations_keeps_a_twinless_pin_plain() -> None:
@@ -806,7 +807,9 @@ def test_effective_forced_aggregations_keeps_a_twinless_pin_plain() -> None:
     assert effective_forced_aggregations(plan, ("spur", "x")) == {"spur"}
 
 
-def _cored_forced_aggregation_case() -> tuple[DesignInputs, _SearchPlan, dict]:
+def _cored_forced_aggregation_case() -> tuple[
+    DesignInputs, _SearchPlan, dict[tuple[str, str], PhysicalEdge]
+]:
     """A triangle whose corner ``a`` is forced as an aggregation and cored.
 
     Access vertex ``s`` sits on ``a``'s coordinates, so once ``a`` is a core its
@@ -826,36 +829,48 @@ def _cored_forced_aggregation_case() -> tuple[DesignInputs, _SearchPlan, dict]:
     return inputs, plan, edges
 
 
-def test_optimize_dual_roles_a_pure_forced_aggregation_selected_as_core() -> None:
-    """A forced aggregation the search cores seats its AGGR twin, not its bare id.
-
-    The facility lands in both tiers (CORE + AGGR): ``aggr_a`` is the seated
-    aggregation, ``a`` itself is not, and the tier breakdown counts one co-located
-    core -- so the counter and markers read it as dual-role rather than CORE-only.
-    """
-    inputs, plan, _edges = _cored_forced_aggregation_case()
-    result = assign_access(("a", "b"), inputs, plan)
-    assert result is not None
-    _access_edges, selected = result
-    assert "aggr_a" in selected
-    assert "a" not in selected
-    aggregation_ids = tuple(sorted(selected))
-    assert tier_breakdown(("a", "b"), aggregation_ids)["colocated_core_count"] == 1
-
-
-def test_optimize_homes_access_to_the_aggr_twin_not_the_core() -> None:
-    """The access vertex homes onto the AGGR twin, so its edge and marker read AGGR."""
+def _cored_forced_aggregation_homing() -> tuple[
+    Design, dict[tuple[str, str], PhysicalEdge]
+]:
+    """Home access over the cored-pin case and build the resulting design."""
     inputs, plan, edges = _cored_forced_aggregation_case()
     result = assign_access(("a", "b"), inputs, plan)
-    assert result is not None
+    if result is None:
+        raise AssertionError("assign_access returned None for the cored-pin case")
     access_edges, selected = result
-    targets = {edge.target for edge in access_edges}
-    assert "aggr_a" in targets
-    assert "a" not in targets
     design = Design(
         ("a", "b"), tuple(sorted(selected)), (), access_edges, set(), [],
         DesignMetrics(0.0, 0.0, 0.0),
     )
+    return design, edges
+
+
+def test_optimize_dual_roles_a_pure_forced_aggregation_selected_as_core() -> None:
+    """A forced aggregation the search cores seats its AGGR twin, not its bare id.
+
+    The facility lands in both tiers (CORE + AGGR): ``aggr_a`` is the seated
+    aggregation while ``a`` itself is not -- so it is dual-role, not CORE-only.
+    """
+    design, _edges = _cored_forced_aggregation_homing()
+    assert "aggr_a" in design.aggregation_ids and "a" not in design.aggregation_ids
+
+
+def test_tier_breakdown_counts_a_cored_forced_aggregation_as_colocated() -> None:
+    """The dual-roled pin is counted in the CORE+AGGR bucket, not as a bare core."""
+    design, _edges = _cored_forced_aggregation_homing()
+    assert tier_breakdown(design.core_ids, design.aggregation_ids)["colocated_core_count"] == 1
+
+
+def test_optimize_homes_access_to_the_aggr_twin_not_the_core() -> None:
+    """The access vertex homes onto the AGGR twin, so its edge reads AGGR not CORE."""
+    design, _edges = _cored_forced_aggregation_homing()
+    targets = {edge.target for edge in design.access_edges}
+    assert "aggr_a" in targets and "a" not in targets
+
+
+def test_vertex_role_reads_a_cored_forced_aggregations_twin_as_aggregation() -> None:
+    """The materialized twin renders as an aggregation, giving the AGGR marker."""
+    design, edges = _cored_forced_aggregation_homing()
     vertices, _edges = materialize_selected_colocation_twins(
         [pop("a"), pop("b"), pop("c")], edges, design
     )
