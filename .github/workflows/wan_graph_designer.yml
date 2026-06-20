@@ -117,13 +117,9 @@ jobs:
               lib/python/ "$handler"
           done
       - name: Detect copy-paste in tests
-        run: |
-          jscpd --pattern "test/**/*.py" --threshold 0 --reporters console \
-            --ignore "test/**/test_*_handler.py" test/
-          for test_file in test/unit/test_*_handler.py; do
-            jscpd --pattern "**/*.py" --threshold 0 --reporters console \
-              "$test_file"
-          done
+        run: >-
+          jscpd --pattern "test/**/*.py" --threshold 0 --reporters console
+          --ignore "test/**/test_endpoint_handlers.py" test/
   terraform:
     runs-on: ubuntu-24.04
     steps:

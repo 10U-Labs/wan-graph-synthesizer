@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from wan_designer.model import PhysicalEdge, Vertex
+from wan_designer.model import PhysicalEdge, Vertex, VertexInfo, edge_key
 
 
 def vertices(payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -42,6 +42,41 @@ def aggregation_points(payload: dict[str, Any]) -> list[dict[str, Any]]:
 def access_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """The demand vertices (installations + provider regions) homed into the design."""
     return _tier(payload, "access")
+
+
+def _load_vertex(vertex: dict[str, Any]) -> Vertex:
+    """Rebuild one ``Vertex`` (with its ``VertexInfo``) from serialized JSON."""
+    coords = vertex["coords"]
+    return Vertex(
+        id=vertex["id"],
+        name=vertex["name"],
+        tenant=vertex["tenant"],
+        kind=vertex["kind"],
+        coords=(float(coords[0]), float(coords[1])),
+        info=VertexInfo(**vertex["info"]),
+        shown_in_map=vertex["shown_in_map"],
+    )
+
+
+def load_input_graph(
+    payload: dict[str, Any],
+) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
+    """Rebuild a graph's vertices and physical edges from its stored JSON.
+
+    The inverse of :func:`input_graph`: the ``Vertex`` and ``PhysicalEdge``
+    dataclasses are reconstructed so the stored substrate can feed the optimizer.
+    """
+    vertices = [_load_vertex(vertex) for vertex in payload["vertices"]]
+    edges: dict[tuple[str, str], PhysicalEdge] = {}
+    for edge in payload["edges"]:
+        edges[edge_key(edge["source_id"], edge["target_id"])] = PhysicalEdge(
+            source=edge["source_id"],
+            target=edge["target_id"],
+            distance_miles=edge["distance_miles"],
+            source_page=edge["source_page"],
+            note=edge["note"],
+        )
+    return vertices, edges
 
 
 def input_graph(
