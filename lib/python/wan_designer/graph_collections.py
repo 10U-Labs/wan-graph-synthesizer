@@ -66,17 +66,17 @@ def load_input_graph(
     The inverse of :func:`input_graph`: the ``Vertex`` and ``PhysicalEdge``
     dataclasses are reconstructed so the stored substrate can feed the optimizer.
     """
-    vertices = [_load_vertex(vertex) for vertex in payload["vertices"]]
-    edges: dict[tuple[str, str], PhysicalEdge] = {}
+    loaded_vertices = [_load_vertex(vertex) for vertex in payload["vertices"]]
+    loaded_edges: dict[tuple[str, str], PhysicalEdge] = {}
     for edge in payload["edges"]:
-        edges[edge_key(edge["source_id"], edge["target_id"])] = PhysicalEdge(
+        loaded_edges[edge_key(edge["source_id"], edge["target_id"])] = PhysicalEdge(
             source=edge["source_id"],
             target=edge["target_id"],
             distance_miles=edge["distance_miles"],
             source_page=edge["source_page"],
             note=edge["note"],
         )
-    return vertices, edges
+    return loaded_vertices, loaded_edges
 
 
 def input_graph(
