@@ -124,6 +124,21 @@ jobs:
             jscpd --pattern "**/*.py" --threshold 0 --reporters console \
               "$test_file"
           done
+  terraform:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+      - name: Validate every stack
+        run: |
+          export TF_PLUGIN_CACHE_DIR=/tmp/tofu-plugins
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          for dir in $(find src -name backend.tf | xargs -n1 dirname | sort -u); do
+            echo "== $dir =="
+            tofu -chdir="$dir" init -backend=false -input=false
+            tofu -chdir="$dir" validate
+          done
   unit-test:
     needs: static-analysis
     runs-on: ubuntu-24.04
