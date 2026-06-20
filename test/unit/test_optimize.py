@@ -798,11 +798,7 @@ def test_effective_forced_aggregations_seats_a_cored_pin_as_its_twin() -> None:
 
 
 def test_effective_forced_aggregations_keeps_a_twinless_pin_plain() -> None:
-    """A pin with no co-located twin offered stays its plain id even when cored.
-
-    A core-ineligible facility is never dual-roled: with no ``aggr_`` twin built for
-    it, the pin seats under its own id rather than being over-twinned.
-    """
+    """A pin with no co-located twin offered stays its plain id, never over-twinned."""
     plan = _SearchPlan(["spur"], _AggregationPlan(frozenset({"spur"})), {})
     assert effective_forced_aggregations(plan, ("spur", "x")) == {"spur"}
 
@@ -810,11 +806,7 @@ def test_effective_forced_aggregations_keeps_a_twinless_pin_plain() -> None:
 def _cored_forced_aggregation_case() -> tuple[
     DesignInputs, _SearchPlan, dict[tuple[str, str], PhysicalEdge]
 ]:
-    """A triangle whose corner ``a`` is forced as an aggregation and cored.
-
-    Access vertex ``s`` sits on ``a``'s coordinates, so once ``a`` is a core its
-    co-located twin ``aggr_a`` is the cheapest aggregation for ``s`` to home onto.
-    """
+    """A triangle whose forced-aggregation corner ``a`` is also the cheapest core to home onto."""
     coords = {"a": (40.0, -100.0), "b": (41.0, -100.0), "c": (40.0, -101.0)}
     edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
     inputs = _inputs_from_edges(
@@ -846,11 +838,7 @@ def _cored_forced_aggregation_homing() -> tuple[
 
 
 def test_optimize_dual_roles_a_pure_forced_aggregation_selected_as_core() -> None:
-    """A forced aggregation the search cores seats its AGGR twin, not its bare id.
-
-    The facility lands in both tiers (CORE + AGGR): ``aggr_a`` is the seated
-    aggregation while ``a`` itself is not -- so it is dual-role, not CORE-only.
-    """
+    """A forced aggregation the search cores seats its AGGR twin (dual-role), not its bare id."""
     design, _edges = _cored_forced_aggregation_homing()
     assert "aggr_a" in design.aggregation_ids and "a" not in design.aggregation_ids
 
