@@ -83,6 +83,7 @@ inputs:
   regional_edges:
     - data/edges/dcn.csv
     - data/edges/vision_net.csv
+    - data/edges/zayo.csv
   vertices:
     AWS:
       - data/vertices/providers/providers.csv
@@ -100,6 +101,7 @@ inputs:
       - data/vertices/providers/providers.csv
       - data/vertices/providers/providers.csv
     VisionNet: data/vertices/vision_net.csv
+    Zayo: data/vertices/zayo.csv
 label: Military Installations
 tuning:
   access_aggregation_links: 2
