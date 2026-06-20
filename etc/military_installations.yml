@@ -15,7 +15,7 @@ design:
   forced_connections: []
   forced_cores:
     - "Dulles, VA"
-  max_core_count: 8
+  max_core_count: 7
   min_core_count: 3
   prohibited_aggregations: []
   resilience_augmentation: true
