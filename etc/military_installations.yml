@@ -4,10 +4,8 @@ design:
   excluded: []
   excluded_connections: []
   forced_aggregations:
-    - "Atlanta, GA"
     - "Cheyenne, WY"
     - "Colorado Springs, CO"
-    - "Dallas, TX"
     - "Dulles, VA"
     - "Great Falls, MT"
     - "Minot, ND"
