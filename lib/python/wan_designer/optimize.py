@@ -56,7 +56,14 @@ from wan_designer.graphs import (
 )
 from wan_designer.backbone import BackboneConstraints, core_mesh_paths, path_geometry_miles
 from wan_designer.clustering import cluster_access_vertices
-from wan_designer.overrides import colocated_twin, colocation_edges, twin_vertex_id
+from wan_designer.installations import FACILITY_ID_PREFIX
+from wan_designer.offnet import OFF_NET_ID_PREFIX
+from wan_designer.overrides import (
+    AGGR_TWIN_PREFIX,
+    colocated_twin,
+    colocation_edges,
+    twin_vertex_id,
+)
 from wan_designer.parsing import build_adjacency
 from wan_designer.search_plan import ClusterPlan, _AggregationPlan, _SearchPlan
 from wan_designer.strength import core_strength
@@ -312,19 +319,29 @@ def finalize_design(
         metrics=DesignMetrics(score, access_miles, physical_miles),
     )
 
+def _is_realized_twin(vertex_id: str) -> bool:
+    """A synthetic aggregation twin (co-location, installation, or off-net seat)."""
+    return vertex_id.startswith((AGGR_TWIN_PREFIX, FACILITY_ID_PREFIX, OFF_NET_ID_PREFIX))
+
+
 def effective_forced_aggregations(plan: _SearchPlan, core_ids: tuple[str, ...]) -> set[str]:
     """The aggregations every design must seat: the operator's pins.
 
-    A pin the search also cores is seated as its co-located ``AGGR`` twin (dual-role
-    CORE+AGGR) instead of collapsing onto the core; an uncored or core-ineligible pin
-    (no twin offered) keeps its plain id and homes as a normal aggregation.
+    A plain PoP the search also cores is seated as its co-located ``AGGR`` twin
+    (dual-role CORE+AGGR) instead of collapsing onto the core. A pin that is not
+    cored, is core-ineligible (no twin offered), or is itself a realized synthetic
+    twin (already the AGGR node -- never re-twinned) keeps its plain id.
     """
     core_set = set(core_ids)
     twins = plan.aggregations.twin_to_core
-    return {
-        twin_vertex_id(fid) if fid in core_set and twin_vertex_id(fid) in twins else fid
-        for fid in plan.aggregations.operator_forced
-    }
+    seated: set[str] = set()
+    for fid in plan.aggregations.operator_forced:
+        twin = twin_vertex_id(fid)
+        if fid in core_set and twin in twins and not _is_realized_twin(fid):
+            seated.add(twin)
+        else:
+            seated.add(fid)
+    return seated
 
 
 def forced_can_dual_home(
