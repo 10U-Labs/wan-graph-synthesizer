@@ -62,7 +62,7 @@ tuning:
   cluster_min_points: 2
   cluster_min_radius_miles: 0.0
   compass_octants: 8
-  core_coverage_target_miles: 300.0
+  core_coverage_target_miles: 200.0
   core_links_per_core: 3
   core_set_peak_bytes: 160
   enum_memory_fraction: 0.6
