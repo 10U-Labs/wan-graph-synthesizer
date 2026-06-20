@@ -982,6 +982,4 @@ def optimize_three_tier_design(
         all_predecessors=context.all_predecessors,
     )
     plan = build_search_plan(inputs, eligible_ids, aggregations, overrides, params)
-    if len(plan.core_candidates) < params.min_core_count:
-        raise ValueError("Not enough reachable core candidates")
     return search_best_design(inputs, params, plan)

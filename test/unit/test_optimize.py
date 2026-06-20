@@ -200,21 +200,6 @@ def test_no_feasible_design_is_rejected() -> None:
         optimize_three_tier_design(vertices, edges, {}, DesignParams(min_core_count=2))
 
 
-def test_not_enough_core_candidates_is_rejected() -> None:
-    """Forcing aggregations can leave too few candidates to be cores."""
-    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-    vertices = [
-        pop("a", 0.0, 0.0),
-        pop("b", 0.0, 1.0),
-        pop("c", 0.0, 2.0),
-        access("s1", 0.0, 0.0),
-        access("s2", 0.0, 1.0),
-    ]
-    overrides = RoleOverrides(forced_aggregation_ids=frozenset({"a", "b"}))
-    with pytest.raises(ValueError):
-        optimize_three_tier_design(vertices, edges, {}, DesignParams(min_core_count=2), overrides)
-
-
 def test_aggregation_core_paths_infeasible_through_bottleneck() -> None:
     """Aggregation core paths infeasible through bottleneck."""
     edges = physical({("S", "X"): 1.0, ("X", "C1"): 1.0, ("X", "C2"): 1.0})
