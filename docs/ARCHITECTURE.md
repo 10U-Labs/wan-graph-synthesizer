@@ -113,7 +113,7 @@ docs/tenets/tests/              # the four test tiers, per 10ulabs.com
 Reusable code lives in `lib/`; single-use code lives in its `src/` stack. The optimizer and the
 existing `design_payload` logic are unchanged — relocated into pipeline steps
 (`lib/python/wan_designer/stages.py`) and per-collection JSON serializers
-(`lib/python/wan_designer/graphs.py`), not rewritten.
+(`lib/python/wan_designer/graph_collections.py`), not rewritten.
 
 ## Out of scope (deferred)
 
