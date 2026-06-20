@@ -47,10 +47,8 @@ from wan_designer.optimize import (
     prune_unused_aggregations,
     optimize_three_tier_design,
     search_best_design,
-    ClusterPlan,
-    _AggregationPlan,
-    _SearchPlan,
 )
+from wan_designer.search_plan import ClusterPlan, _AggregationPlan, _SearchPlan
 from wan_designer.parsing import build_adjacency
 from wan_designer.output import tier_breakdown
 from wan_designer.overrides import (
