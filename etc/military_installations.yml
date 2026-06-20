@@ -8,8 +8,10 @@ design:
     - source: "Fort Worth, TX"
       target: "Seattle, WA"
   forced_aggregations:
+    - "Atlanta, GA"
     - "Cheyenne, WY"
     - "Colorado Springs, CO"
+    - "Dallas, TX"
     - "Dulles, VA"
     - "Great Falls, MT"
     - "Minot, ND"
@@ -18,6 +20,8 @@ design:
     - "Virginia Beach, VA"
   forced_connections: []
   forced_cores:
+    - "Atlanta, GA"
+    - "Dallas, TX"
     - "Dulles, VA"
   max_core_count: 7
   min_core_count: 3
