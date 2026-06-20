@@ -639,8 +639,8 @@ def test_resolve_pinned_ids_rejects_an_unknown_name() -> None:
         resolve_pinned_ids(("Nowhere",), {"Denver, CO": "d"}, "forced_cores")
 
 
-def test_reject_override_conflicts_rejects_excluding_a_forced_pop() -> None:
-    """A PoP that is both excluded and forced is rejected."""
+def test_reject_override_conflicts_rejects_prohibiting_a_forced_core() -> None:
+    """A PoP both forced as and prohibited from being a core is rejected."""
     with pytest.raises(ValueError):
         reject_override_conflicts({"a"}, set(), {"a"})
 
@@ -670,6 +670,27 @@ def test_apply_role_overrides_resolves_prohibited_aggregations() -> None:
         [pop("P"), pop("z")], physical({("P", "z"): 1.0}), params
     )
     assert overrides.prohibited_aggregation_ids == frozenset({"P"})
+
+
+def test_apply_role_overrides_resolves_prohibited_cores() -> None:
+    """A prohibited-core name resolves to its vertex id in the overrides."""
+    params = DesignParams(exclusions=RoleExclusions(prohibited_core_names=("P",)))
+    _vertices, _edges, overrides = apply_role_overrides(
+        [pop("P"), pop("z")], physical({("P", "z"): 1.0}), params
+    )
+    assert overrides.prohibited_core_ids == frozenset({"P"})
+
+
+def test_apply_role_overrides_allows_a_forced_aggregation_prohibited_from_core() -> None:
+    """A PoP may be both a forced aggregation and barred from the core tier."""
+    params = DesignParams(
+        forced_aggregation_names=("P",),
+        exclusions=RoleExclusions(prohibited_core_names=("P",)),
+    )
+    _vertices, _edges, overrides = apply_role_overrides(
+        [pop("P"), pop("z")], physical({("P", "z"): 1.0}), params
+    )
+    assert "P" in overrides.forced_aggregation_ids & overrides.prohibited_core_ids
 
 
 def test_apply_role_overrides_rejects_an_unknown_prohibited_name() -> None:
@@ -776,6 +797,15 @@ def test_optimize_honors_a_forced_core_override() -> None:
         DesignParams(min_core_count=2), RoleOverrides(forced_core_ids=frozenset({"P3"})),
     )
     assert "P3" in design.core_ids
+
+
+def test_optimize_bars_a_prohibited_core_from_the_core_tier() -> None:
+    """A prohibited-core override keeps that PoP out of the selected core tier."""
+    design = optimize_three_tier_design(
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {},
+        DesignParams(min_core_count=2), RoleOverrides(prohibited_core_ids=frozenset({"P3"})),
+    )
+    assert "P3" not in design.core_ids
 
 
 def test_effective_forced_aggregations_returns_operator_pins() -> None:

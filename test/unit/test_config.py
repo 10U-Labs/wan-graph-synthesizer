@@ -192,6 +192,26 @@ def test_prohibited_aggregations_must_be_a_list_of_strings() -> None:
         _config({"design": {"prohibited_aggregations": "Denver, CO"}})
 
 
+def test_default_has_no_prohibited_cores() -> None:
+    """The default config bars no PoP from the core tier."""
+    assert len(default_config().params.exclusions.prohibited_core_names) == 0
+
+
+def test_reads_prohibited_cores() -> None:
+    """A prohibited_cores list is read into the design params."""
+    design = {"prohibited_cores": ["Denver, CO", "Boise, ID"]}
+    assert _config({"design": design}).params.exclusions.prohibited_core_names == (
+        "Denver, CO",
+        "Boise, ID",
+    )
+
+
+def test_prohibited_cores_must_be_a_list_of_strings() -> None:
+    """A prohibited_cores value that is not a list of strings is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"prohibited_cores": "Denver, CO"}})
+
+
 def test_reads_tuning_min_points() -> None:
     """A tuning cluster_min_points value is read into the design params."""
     assert _config({"tuning": {"cluster_min_points": 4}}).params.tuning.cluster.min_points == 4
