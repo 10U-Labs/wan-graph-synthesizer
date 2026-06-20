@@ -68,9 +68,12 @@ def reject_override_conflicts(
             f"{sorted(forced_and_prohibited)}"
         )
 
+AGGR_TWIN_PREFIX = "aggr_"
+
+
 def twin_vertex_id(core_id: str) -> str:
     """The id of the co-located ``AGGR`` twin that shares a core's facility."""
-    return f"aggr_{core_id}"
+    return f"{AGGR_TWIN_PREFIX}{core_id}"
 
 def colocated_twin(core: Vertex) -> Vertex:
     """Build the co-located ``AGGR`` vertex that shares a core's coordinates."""
