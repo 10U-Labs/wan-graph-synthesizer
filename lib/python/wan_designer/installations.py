@@ -2,8 +2,9 @@
 
 An installation carries no fiber of its own, so unaided it can only be demand. An
 installation is promoted to an aggregation only when the operator explicitly forces
-it (its name appears in ``forced_aggregations``); it is never auto-selected and
-never a core. To let a forced installation serve as an aggregation point we stand
+it (its name appears in ``forced_aggregations``); it is never auto-selected, though
+once forced its twin may also win a core slot. To let a forced installation serve as
+an aggregation point we stand
 up a co-located carrier-PoP *twin* at its coordinates, wired by synthetic local
 fiber to the nearest existing carrier PoPs (see :mod:`wan_designer.local_fiber`).
 The twin's name matches the installation, so the operator's force-pin resolves onto
@@ -51,7 +52,7 @@ class RealizedInstallations:
     ``vertices`` and ``physical_edges`` are the graph augmented with one co-located
     twin PoP per realized installation and its synthetic backbone links;
     ``facility_ids`` are those twins' ids. Each twin is seated as a forced
-    aggregation via the operator's force-pin (it is never a core candidate).
+    aggregation via the operator's force-pin, and may also win a core slot.
     """
 
     vertices: list[Vertex]

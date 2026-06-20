@@ -797,15 +797,15 @@ def test_effective_forced_aggregations_returns_operator_pins() -> None:
     assert effective_forced_aggregations(_plan([], forced={"op"})) == {"op"}
 
 
-def test_build_search_plan_excludes_forced_aggregations_from_cores() -> None:
-    """A forced aggregation -- like a forced installation twin -- is never a core candidate."""
+def test_build_search_plan_includes_forced_aggregations_as_cores() -> None:
+    """A forced aggregation is still a core candidate -- a site may be both."""
     edges = physical({("fac", "p"): 1.0, ("p", "c"): 1.0, ("fac", "c"): 1.0})
     inputs = _inputs_from_edges(["fac", "p", "c"], edges, {"fac", "p", "c"})
     plan = build_search_plan(
         inputs, {"fac", "p", "c"}, _AggregationPlan(frozenset({"fac"})), RoleOverrides(),
         DesignParams(),
     )
-    assert "fac" not in plan.core_candidates
+    assert "fac" in plan.core_candidates
 
 
 def test_prune_unused_aggregations_drops_a_zero_access_anchor() -> None:

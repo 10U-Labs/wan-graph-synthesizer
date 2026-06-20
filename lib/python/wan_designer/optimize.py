@@ -566,9 +566,10 @@ class _AggregationPlan:
 
     ``operator_forced`` are the operator's pinned aggregations, always seated. A
     forced installation's co-located twin is one of these, so installations enter
-    the aggregation tier only by operator force and never as cores. The remaining
-    fields carry the optional co-located twins the search may seat so a core also
-    serves as an aggregation: each twin id to its core, each core's reach-around set,
+    the aggregation tier only by operator force; an operator pin may, however, also
+    win a core slot. The remaining fields carry the optional co-located twins the
+    search may seat so a core also serves as an aggregation: each twin id to its
+    core, each core's reach-around set,
     and the twin vertices whose coordinates (their core's) drive access homing.
     """
 
@@ -893,10 +894,10 @@ def build_search_plan(
 ) -> _SearchPlan:
     """Compute vertex strengths, access-vertex clusters, and core candidates.
 
-    Required cores are the operator-forced cores. Operator-pinned aggregations are
-    excluded from the free core candidates; since a forced installation's twin is an
-    operator-pinned aggregation, installations are aggregation-only and never core
-    candidates. Every other eligible PoP is a candidate, ranked nationally by strength.
+    Required cores are the operator-forced cores. Every eligible PoP is a core
+    candidate, ranked nationally by strength -- including operator-pinned aggregations
+    and their synthetic twins, so a forced aggregation (an installation, an off-net
+    seat, any pin) may also win a core slot and a single site may serve as both.
     The operator's resolved forced-connection links ride along for the routing stage.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
@@ -913,7 +914,7 @@ def build_search_plan(
         params.tuning.cluster.k,
     )
     core_candidates = sorted(
-        eligible_ids - aggregations.operator_forced,
+        eligible_ids,
         key=lambda pop_id: (-strength_by_id[pop_id], pop_id),
     )
     forced_links = replace(

@@ -75,11 +75,6 @@ def test_forced_roadm_is_seated_though_roadm_aggregation_is_disabled() -> None:
     assert "P3" in FORCED_ROADM.design.aggregation_ids
 
 
-def test_forced_aggregation_is_not_also_made_a_core() -> None:
-    """Forcing a PoP onto the aggregation tier never lands it in the core tier."""
-    assert "P3" not in FORCED.design.core_ids
-
-
 def test_forced_pop_is_placed_in_the_core_tier() -> None:
     """A PoP named on the force-core list is honored as a core."""
     assert "P4" in FORCED_CORE.design.core_ids
@@ -151,12 +146,6 @@ def test_forced_installation_is_seated_as_an_aggregation(tmp_path: Path) -> None
     """A forced installation's facility twin lands on the aggregation tier."""
     design = _justified_artifacts(tmp_path).design
     assert any(aggregation.startswith("fac_") for aggregation in design.aggregation_ids)
-
-
-def test_installation_facility_is_never_a_core(tmp_path: Path) -> None:
-    """A forced installation's twin is aggregation-only -- it never reaches the core tier."""
-    design = _justified_artifacts(tmp_path).design
-    assert not any(core.startswith("fac_") for core in design.core_ids)
 
 
 def test_justified_design_dual_homes_every_aggregation(tmp_path: Path) -> None:
