@@ -3,9 +3,18 @@ design:
   allow_roadm_aggregation: false
   excluded: []
   excluded_connections: []
-  forced_aggregations: []
+  forced_aggregations:
+    - "Cheyenne, WY"
+    - "Colorado Springs, CO"
+    - "Dulles, VA"
+    - "Great Falls, MT"
+    - "Minot, ND"
+    - "Portland, OR"
+    - "Salt Lake City, UT"
+    - "Virginia Beach, VA"
   forced_connections: []
-  forced_cores: []
+  forced_cores:
+    - "Dulles, VA"
   max_core_count: 8
   min_core_count: 3
   prohibited_aggregations: []
