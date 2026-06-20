@@ -2,17 +2,7 @@
 design:
   allow_roadm_aggregation: false
   excluded: []
-  excluded_connections:
-    - source: "Dulles, VA"
-      target: "Seattle, WA"
-    - source: "Atlanta, GA"
-      target: "Seattle, WA"
-    - source: "Dallas, TX"
-      target: "Seattle, WA"
-    - source: "Atlanta, GA"
-      target: "San Bernardino, CA"
-    - source: "Dulles, VA"
-      target: "San Bernardino, CA"
+  excluded_connections: []
   forced_aggregations:
     - "Cheyenne, WY"
     - "Dulles, VA"
@@ -63,6 +53,6 @@ tuning:
   cluster_min_radius_miles: 0.0
   compass_octants: 8
   core_coverage_target_miles: 200.0
-  core_links_per_core: 3
+  core_links_per_core: 4
   core_set_peak_bytes: 160
   enum_memory_fraction: 0.6
