@@ -42,6 +42,7 @@ from wan_designer.optimize import (
     enumeration_limit,
     feasible_aggregation_ids,
     feasible_colocation_twins,
+    forced_can_dual_home,
     nearest_pop_id,
     prune_unused_aggregations,
     optimize_three_tier_design,
@@ -51,6 +52,7 @@ from wan_designer.optimize import (
     _SearchPlan,
 )
 from wan_designer.parsing import build_adjacency
+from wan_designer.output import tier_breakdown
 from wan_designer.overrides import (
     apply_role_overrides,
     colocated_twin,
@@ -59,6 +61,7 @@ from wan_designer.overrides import (
     reject_override_conflicts,
     resolve_pinned_ids,
 )
+from wan_designer.validation import vertex_role
 from wan_designer.strength import vertex_straightness
 
 pop = fixtures.carrier_pop
@@ -778,8 +781,92 @@ def test_optimize_honors_a_forced_core_override() -> None:
 
 
 def test_effective_forced_aggregations_returns_operator_pins() -> None:
-    """The only hard-required aggregations are the operator's pins."""
-    assert effective_forced_aggregations(_plan([], forced={"op"})) == {"op"}
+    """A pin the search does not core stays seated under its plain id."""
+    assert effective_forced_aggregations(_plan([], forced={"op"}), ()) == {"op"}
+
+
+def test_effective_forced_aggregations_seats_a_cored_pin_as_its_twin() -> None:
+    """A forced aggregation the search also cores is seated as its co-located twin."""
+    plan = _SearchPlan(
+        ["c1", "c2"],
+        _AggregationPlan(frozenset({"c1"}), twin_to_core={"aggr_c1": "c1"}),
+        {},
+    )
+    assert effective_forced_aggregations(plan, ("c1", "c2")) == {"aggr_c1"}
+    assert effective_forced_aggregations(plan, ("c2", "c3")) == {"c1"}
+
+
+def test_effective_forced_aggregations_keeps_a_twinless_pin_plain() -> None:
+    """A pin with no co-located twin offered stays its plain id even when cored.
+
+    A core-ineligible facility is never dual-roled: with no ``aggr_`` twin built for
+    it, the pin seats under its own id rather than being over-twinned.
+    """
+    plan = _SearchPlan(["spur"], _AggregationPlan(frozenset({"spur"})), {})
+    assert effective_forced_aggregations(plan, ("spur", "x")) == {"spur"}
+
+
+def _cored_forced_aggregation_case() -> tuple[DesignInputs, _SearchPlan, dict]:
+    """A triangle whose corner ``a`` is forced as an aggregation and cored.
+
+    Access vertex ``s`` sits on ``a``'s coordinates, so once ``a`` is a core its
+    co-located twin ``aggr_a`` is the cheapest aggregation for ``s`` to home onto.
+    """
+    coords = {"a": (40.0, -100.0), "b": (41.0, -100.0), "c": (40.0, -101.0)}
+    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
+    inputs = _inputs_from_edges(
+        ["a", "b", "c"], edges, {"a", "b", "c"},
+        access_vertices=[access("s", 40.0, -100.0)], coords=coords,
+    )
+    plan = build_search_plan(
+        inputs, {"a", "b", "c"}, _AggregationPlan(frozenset({"a"})),
+        RoleOverrides(forced_aggregation_ids=frozenset({"a"})),
+        DesignParams(min_core_count=2),
+    )
+    return inputs, plan, edges
+
+
+def test_optimize_dual_roles_a_pure_forced_aggregation_selected_as_core() -> None:
+    """A forced aggregation the search cores seats its AGGR twin, not its bare id.
+
+    The facility lands in both tiers (CORE + AGGR): ``aggr_a`` is the seated
+    aggregation, ``a`` itself is not, and the tier breakdown counts one co-located
+    core -- so the counter and markers read it as dual-role rather than CORE-only.
+    """
+    inputs, plan, _edges = _cored_forced_aggregation_case()
+    result = assign_access(("a", "b"), inputs, plan)
+    assert result is not None
+    _access_edges, selected = result
+    assert "aggr_a" in selected
+    assert "a" not in selected
+    aggregation_ids = tuple(sorted(selected))
+    assert tier_breakdown(("a", "b"), aggregation_ids)["colocated_core_count"] == 1
+
+
+def test_optimize_homes_access_to_the_aggr_twin_not_the_core() -> None:
+    """The access vertex homes onto the AGGR twin, so its edge and marker read AGGR."""
+    inputs, plan, edges = _cored_forced_aggregation_case()
+    result = assign_access(("a", "b"), inputs, plan)
+    assert result is not None
+    access_edges, selected = result
+    targets = {edge.target for edge in access_edges}
+    assert "aggr_a" in targets
+    assert "a" not in targets
+    design = Design(
+        ("a", "b"), tuple(sorted(selected)), (), access_edges, set(), [],
+        DesignMetrics(0.0, 0.0, 0.0),
+    )
+    vertices, _edges = materialize_selected_colocation_twins(
+        [pop("a"), pop("b"), pop("c")], edges, design
+    )
+    twin = next(vertex for vertex in vertices if vertex.id == "aggr_a")
+    assert vertex_role("aggr_a", design, twin) == "aggregation"
+
+
+def test_forced_can_dual_home_accepts_a_cored_pin_via_its_twin() -> None:
+    """A cored pin dual-homes through its twin's reach-around, not a bare-id path."""
+    inputs, plan, _edges = _cored_forced_aggregation_case()
+    assert forced_can_dual_home(("a", "b"), inputs, plan)
 
 
 def test_build_search_plan_includes_forced_aggregations_as_cores() -> None:

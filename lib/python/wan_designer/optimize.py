@@ -313,14 +313,30 @@ def finalize_design(
         metrics=DesignMetrics(score, access_miles, physical_miles),
     )
 
-def effective_forced_aggregations(plan: _SearchPlan) -> set[str]:
+def effective_forced_aggregations(
+    plan: _SearchPlan, core_ids: tuple[str, ...]
+) -> set[str]:
     """The aggregations every design must seat: the operator's pins.
+
+    A pin the search also wins a core slot is seated as its co-located ``AGGR`` twin
+    rather than its bare id, so a single facility forced as an aggregation but chosen
+    as a core dual-roles (CORE+AGGR) instead of collapsing onto the core. A pin that
+    is not a selected core, or is core-ineligible (no twin offered), keeps its plain
+    id and homes as a normal aggregation.
 
     Installation facilities are preferred heads rather than hard requirements (see
     :func:`assign_access`), so they are not gated here -- a justified installation
     that cannot dual-home to a given core set simply is not seated for that set.
     """
-    return set(plan.aggregations.operator_forced)
+    core_set = set(core_ids)
+    seated: set[str] = set()
+    for forced_id in plan.aggregations.operator_forced:
+        twin = twin_vertex_id(forced_id)
+        if forced_id in core_set and twin in plan.aggregations.twin_to_core:
+            seated.add(twin)
+        else:
+            seated.add(forced_id)
+    return seated
 
 
 def forced_can_dual_home(
@@ -328,12 +344,24 @@ def forced_can_dual_home(
     inputs: DesignInputs,
     plan: _SearchPlan,
 ) -> bool:
-    """True if every forced aggregation can dual-home to two of the cores."""
+    """True if every forced aggregation can dual-home to two of the cores.
+
+    A pin that is itself a selected core dual-homes through its co-located twin --
+    its own core over the cross-connect plus a remote core reachable around it -- so
+    its feasibility is the twin's reach-around (:func:`feasible_colocation_twins`),
+    not the bare-id disjoint-path test, which would route the facility to itself.
+    """
     pairs = core_pairs(core_ids)
-    return all(
-        aggregation_dual_homes(forced_id, pairs, inputs, plan.feasibility_cache)
-        for forced_id in effective_forced_aggregations(plan)
-    )
+    core_set = set(core_ids)
+    feasible_twins = feasible_colocation_twins(core_ids, plan)
+    for forced_id in plan.aggregations.operator_forced:
+        twin = twin_vertex_id(forced_id)
+        if forced_id in core_set and twin in plan.aggregations.twin_to_core:
+            if twin not in feasible_twins:
+                return False
+        elif not aggregation_dual_homes(forced_id, pairs, inputs, plan.feasibility_cache):
+            return False
+    return True
 
 def prune_unused_aggregations(
     selected: set[str], access_edges: list[AccessEdge], pinned: frozenset[str]
@@ -377,7 +405,8 @@ def assign_access(
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     pop_by_id.update(plan.aggregations.twin_vertices)
     access_by_id = {access.id: access for access in inputs.access_vertices}
-    selected: set[str] = set(effective_forced_aggregations(plan))
+    seated_forced = effective_forced_aggregations(plan, core_ids)
+    selected: set[str] = set(seated_forced)
     # Seed the targets of operator-forced access links so cluster heads and later
     # homes reuse a pinned facility rather than building a redundant neighbor
     # beside it (and so homing no longer depends on the order vertices are seen).
@@ -418,7 +447,7 @@ def assign_access(
         for access_id, aggregations in homes.items()
         for aggregation_id in aggregations
     ]
-    selected = prune_unused_aggregations(selected, access_edges, plan.aggregations.operator_forced)
+    selected = prune_unused_aggregations(selected, access_edges, frozenset(seated_forced))
     return access_edges, selected
 
 def evaluate_cores(
