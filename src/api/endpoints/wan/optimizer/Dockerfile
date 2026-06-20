@@ -15,6 +15,8 @@ COPY src/api/endpoints/wan/optimizer/ /app/optimizer/
 
 RUN pip install --no-cache-dir boto3 PyYAML
 
-ENV PYTHONPATH=/app/lib/python
+ENV PYTHONPATH=/app/lib/python:/app/optimizer
 
-ENTRYPOINT ["python", "/app/optimizer/entrypoint.py"]
+# Call main() directly (rather than running the file as __main__) so the module
+# stays import-clean for unit tests with no uncoverable __main__ guard.
+ENTRYPOINT ["python", "-c", "import entrypoint; entrypoint.main()"]
