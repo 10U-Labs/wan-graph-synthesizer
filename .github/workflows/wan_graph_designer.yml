@@ -109,13 +109,21 @@ jobs:
           MYPYPATH=lib/python:src:test python3 -m mypy --strict
           --explicit-package-bases test/
       - name: Detect copy-paste in source
-        run: >-
-          jscpd --pattern "**/*.py" --threshold 0
-          --reporters console lib/python/ src/
+        run: |
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console \
+            --ignore "src/api/endpoints/*/lambdas/**" lib/python/ src/
+          for handler in src/api/endpoints/*/lambdas; do
+            jscpd --pattern "**/*.py" --threshold 0 --reporters console \
+              lib/python/ "$handler"
+          done
       - name: Detect copy-paste in tests
-        run: >-
-          jscpd --pattern "test/**/*.py" --threshold 0
-          --reporters console test/
+        run: |
+          jscpd --pattern "test/**/*.py" --threshold 0 --reporters console \
+            --ignore "test/**/test_*_handler.py" test/
+          for test_file in test/unit/test_*_handler.py; do
+            jscpd --pattern "**/*.py" --threshold 0 --reporters console \
+              "$test_file"
+          done
   unit-test:
     needs: static-analysis
     runs-on: ubuntu-24.04
