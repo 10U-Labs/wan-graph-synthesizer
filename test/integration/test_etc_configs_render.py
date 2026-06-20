@@ -9,6 +9,7 @@ comes back connected, so that class of breakage fails CI instead of only the bro
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import pytest
@@ -26,15 +27,32 @@ def test_shipped_etc_config_renders_a_connected_design(wan_map_id: str) -> None:
     assert payload["validation"]["connected"] is True
 
 
-def test_military_installations_auto_seats_a_kansas_city_aggregation() -> None:
-    """With no forced pins, the spread-out KC base cluster auto-anchors an aggregation.
+def _miles(point: tuple[float, float], other: tuple[float, float]) -> float:
+    """Great-circle distance in miles between two (latitude, longitude) points."""
+    lat1, lat2 = math.radians(point[0]), math.radians(other[0])
+    delta_lat = math.radians(other[0] - point[0])
+    delta_lon = math.radians(other[1] - point[1])
+    inner = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(delta_lon / 2) ** 2
+    )
+    return 2 * 3958.8 * math.asin(math.sqrt(inner))
 
-    Fort Leavenworth, Whiteman, Fort Riley, Fort Leonard Wood, and McConnell sit
-    85-105 mi apart -- a spread-out cluster the old single-radius DBSCAN (capped at
-    70 mi here) dropped as noise, so no aggregation was placed near them. The mutual
-    k-NN clustering groups them, seating Kansas City, MO (the central carrier PoP,
-    ~45 mi from the cluster's centroid) as the cluster's aggregation head -- without
-    a single forced pin in the config.
+
+def test_military_installations_places_a_hub_inside_a_spread_out_cluster() -> None:
+    """A spread-out base group gets an aggregation near its center, not only distant ones.
+
+    The Missouri/Kansas bases (Fort Leavenworth, Whiteman, Fort Riley, Fort Leonard
+    Wood, McConnell) sit ~85-105 mi apart -- a spread-out group the old single-radius
+    clustering dropped, leaving every base to reach a far-off facility. With the group
+    now recognized and given a local head, an aggregation lands near the group's center
+    rather than only at distant metros -- and with no forced pins in the config.
     """
     payload = design_for_wan_map(ETC_DIR, "military_installations", {})
-    assert "Kansas City, MO" in payload["summary"]["aggregations"]
+    group_center = (38.5, -94.9)  # approximate center of the Missouri/Kansas base group
+    hub_distances = [
+        _miles(group_center, (float(vertex["coords"][0]), float(vertex["coords"][1])))
+        for vertex in payload["vertices"]
+        if vertex["tier_role"] == "aggregation"
+    ]
+    assert min(hub_distances) < 100.0

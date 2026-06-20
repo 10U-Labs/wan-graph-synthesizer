@@ -220,9 +220,8 @@ def cluster_diameter(members: list[Vertex]) -> float:
 
 def cluster_local_heads(
     members: list[Vertex],
-    feasible_ids: set[str],
+    feasible_pops: list[Vertex],
     selected: set[str],
-    pop_by_id: dict[str, Vertex],
     count: int = 2,
     radius: float = math.inf,
 ) -> list[str]:
@@ -245,11 +244,10 @@ def cluster_local_heads(
     locality = min(cluster_diameter(members), radius)
     reuse: list[tuple[float, str]] = []
     build: list[tuple[float, str]] = []
-    for aggregation_id in feasible_ids:
-        pop = pop_by_id[aggregation_id]
+    for pop in feasible_pops:
         if min(haversine_miles(member, pop) for member in members) <= locality:
             total = sum(haversine_miles(member, pop) for member in members)
-            (reuse if aggregation_id in selected else build).append((total, aggregation_id))
+            (reuse if pop.id in selected else build).append((total, pop.id))
     reuse.sort()
     build.sort()
     return [aggregation_id for _total, aggregation_id in (reuse + build)[:count]]
@@ -394,11 +392,12 @@ def assign_access(
     # Homing is left to pass 2 so a peripheral member of a sprawling cluster
     # homes to whichever selected facility is actually nearest, not to a distant
     # common head chosen for the cluster as a whole.
-    for members in plan.clusters:
+    feasible_pops = [pop_by_id[aggregation_id] for aggregation_id in feasible_ids]
+    for members in plan.cluster_plan.clusters:
         member_vertices = [access_by_id[member] for member in members]
         selected.update(
             cluster_local_heads(
-                member_vertices, feasible_ids, selected, pop_by_id, links, plan.cluster_radius
+                member_vertices, feasible_pops, selected, links, plan.cluster_plan.radius
             )
         )
 
@@ -612,21 +611,33 @@ def with_colocation_twins(
 
 
 @dataclass(frozen=True)
+class ClusterPlan:
+    """Access-vertex clusters plus the radius bounding each cluster's head locality.
+
+    The clusters come from density-clustering the access vertices once (geography is
+    core-independent); ``radius`` is the scale at which they cohere, used to keep a
+    cluster's head genuinely nearby (see :func:`cluster_local_heads`).
+    """
+
+    clusters: list[list[str]] = field(default_factory=list)
+    radius: float = math.inf
+
+
+@dataclass(frozen=True)
 class _SearchPlan:
     """Pre-computed context shared across every candidate core set.
 
-    ``clusters`` comes from density-clustering the access vertices once (geography
-    is core-independent); each cluster's heads are then chosen relative to its
-    own extent. ``feasibility_cache`` memoizes per-pair vertex-disjoint
-    reachability so the search avoids re-running max-flows for every core set.
-    ``aggregations`` carries the operator pins and the optional core twins.
+    ``cluster_plan`` holds the access-vertex clusters (each cluster's heads are
+    chosen relative to its own extent) and their locality radius.
+    ``feasibility_cache`` memoizes per-pair vertex-disjoint reachability so the
+    search avoids re-running max-flows for every core set. ``aggregations`` carries
+    the operator pins and the optional core twins.
     """
 
     core_candidates: list[str]
     aggregations: _AggregationPlan
     strength_by_id: dict[str, float]
-    clusters: list[list[str]] = field(default_factory=list)
-    cluster_radius: float = math.inf  # locality bound for a cluster's heads (see cluster_local_heads)
+    cluster_plan: ClusterPlan = field(default_factory=ClusterPlan)
     feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
     tuning: Tuning = field(default_factory=Tuning)  # the dials this plan was built from
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
@@ -915,8 +926,8 @@ def build_search_plan(
             aggregations, core_candidates, pop_by_id, inputs.adjacency,
             inputs.eligible_aggregation_ids,
         ),
-        strength_by_id, clusters=clusters,
-        cluster_radius=cluster_radius,
+        strength_by_id,
+        cluster_plan=ClusterPlan(clusters, cluster_radius),
         tuning=params.tuning,
         forced_links=forced_links,
     )
