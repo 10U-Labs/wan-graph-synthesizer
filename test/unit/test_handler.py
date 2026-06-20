@@ -9,9 +9,10 @@ from typing import Any
 import pytest
 
 import fixtures
-from api import handler
 from wan_designer import graph_collections as gc
 from wan_designer.output import design_payload
+
+from api import handler
 
 
 class _NoSuchKey(Exception):
