@@ -60,7 +60,8 @@ def reject_override_conflicts(
     core_clash = forced_core & prohibited_core
     if core_clash:
         raise ValueError(
-            f"PoPs cannot be both forced onto and prohibited from the core tier: {sorted(core_clash)}"
+            "PoPs cannot be both forced onto and prohibited from the core tier: "
+            f"{sorted(core_clash)}"
         )
     aggregation_clash = forced_aggregation & prohibited_aggregation
     if aggregation_clash:
@@ -331,9 +332,10 @@ def apply_role_overrides(
     from the core / aggregation tier and land in ``RoleOverrides.prohibited_core_ids`` /
     ``prohibited_aggregation_ids`` (the two bars are independent).
     """
-    vertices, physical_edges, forced_core, operator_forced, prohibited_core, prohibited_aggregation = (
-        _resolve_operator_pins(vertices, physical_edges, params)
-    )
+    (
+        vertices, physical_edges, forced_core, operator_forced,
+        prohibited_core, prohibited_aggregation,
+    ) = _resolve_operator_pins(vertices, physical_edges, params)
     overrides = RoleOverrides(
         forced_core_ids=frozenset(forced_core),
         forced_aggregation_ids=frozenset(operator_forced),
