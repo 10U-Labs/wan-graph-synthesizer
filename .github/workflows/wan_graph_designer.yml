@@ -59,7 +59,7 @@ jobs:
             assert-no-inline-directives \
             assert-no-linter-config-files \
             assert-one-assert-per-pytest \
-            fastapi httpx2 mypy pylint pytest pyyaml types-PyYAML uvicorn yamllint
+            boto3 boto3-stubs fastapi httpx2 mypy pylint pytest pyyaml types-PyYAML uvicorn yamllint
           npm install -g jscpd
       - name: Lint YAML
         run: |
@@ -130,7 +130,7 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Install tools
-        run: pip install fastapi httpx2 pytest pytest-cov pyyaml
+        run: pip install boto3 fastapi httpx2 pytest pytest-cov pyyaml
       - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:src python3 -m pytest
