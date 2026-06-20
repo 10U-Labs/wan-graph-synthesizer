@@ -28,7 +28,7 @@ import itertools
 import logging
 import math
 import os
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 
 from wan_designer.model import (
     AccessEdge,
@@ -36,8 +36,6 @@ from wan_designer.model import (
     DesignInputs,
     DesignMetrics,
     DesignParams,
-    ForcedLinks,
-    Tuning,
     Vertex,
     PathUse,
     PhysicalEdge,
@@ -60,6 +58,7 @@ from wan_designer.backbone import BackboneConstraints, core_mesh_paths, path_geo
 from wan_designer.clustering import cluster_access_vertices
 from wan_designer.overrides import colocated_twin, colocation_edges, twin_vertex_id
 from wan_designer.parsing import build_adjacency
+from wan_designer.search_plan import ClusterPlan, _AggregationPlan, _SearchPlan
 from wan_designer.strength import core_strength
 
 logger = logging.getLogger(__name__)
@@ -313,30 +312,19 @@ def finalize_design(
         metrics=DesignMetrics(score, access_miles, physical_miles),
     )
 
-def effective_forced_aggregations(
-    plan: _SearchPlan, core_ids: tuple[str, ...]
-) -> set[str]:
+def effective_forced_aggregations(plan: _SearchPlan, core_ids: tuple[str, ...]) -> set[str]:
     """The aggregations every design must seat: the operator's pins.
 
-    A pin the search also wins a core slot is seated as its co-located ``AGGR`` twin
-    rather than its bare id, so a single facility forced as an aggregation but chosen
-    as a core dual-roles (CORE+AGGR) instead of collapsing onto the core. A pin that
-    is not a selected core, or is core-ineligible (no twin offered), keeps its plain
-    id and homes as a normal aggregation.
-
-    Installation facilities are preferred heads rather than hard requirements (see
-    :func:`assign_access`), so they are not gated here -- a justified installation
-    that cannot dual-home to a given core set simply is not seated for that set.
+    A pin the search also cores is seated as its co-located ``AGGR`` twin (dual-role
+    CORE+AGGR) instead of collapsing onto the core; an uncored or core-ineligible pin
+    (no twin offered) keeps its plain id and homes as a normal aggregation.
     """
     core_set = set(core_ids)
-    seated: set[str] = set()
-    for forced_id in plan.aggregations.operator_forced:
-        twin = twin_vertex_id(forced_id)
-        if forced_id in core_set and twin in plan.aggregations.twin_to_core:
-            seated.add(twin)
-        else:
-            seated.add(forced_id)
-    return seated
+    twins = plan.aggregations.twin_to_core
+    return {
+        twin_vertex_id(fid) if fid in core_set and twin_vertex_id(fid) in twins else fid
+        for fid in plan.aggregations.operator_forced
+    }
 
 
 def forced_can_dual_home(
@@ -346,22 +334,12 @@ def forced_can_dual_home(
 ) -> bool:
     """True if every forced aggregation can dual-home to two of the cores.
 
-    A pin that is itself a selected core dual-homes through its co-located twin --
-    its own core over the cross-connect plus a remote core reachable around it -- so
-    its feasibility is the twin's reach-around (:func:`feasible_colocation_twins`),
-    not the bare-id disjoint-path test, which would route the facility to itself.
+    Each pin is checked in its seated form (a cored pin as its co-located twin), and
+    :func:`feasible_aggregation_ids` already vets both plain aggregations and twins --
+    so a cored pin is vetted through its twin, never a bare-id path to itself.
     """
-    pairs = core_pairs(core_ids)
-    core_set = set(core_ids)
-    feasible_twins = feasible_colocation_twins(core_ids, plan)
-    for forced_id in plan.aggregations.operator_forced:
-        twin = twin_vertex_id(forced_id)
-        if forced_id in core_set and twin in plan.aggregations.twin_to_core:
-            if twin not in feasible_twins:
-                return False
-        elif not aggregation_dual_homes(forced_id, pairs, inputs, plan.feasibility_cache):
-            return False
-    return True
+    feasible = feasible_aggregation_ids(core_ids, inputs, plan)
+    return effective_forced_aggregations(plan, core_ids) <= feasible
 
 def prune_unused_aggregations(
     selected: set[str], access_edges: list[AccessEdge], pinned: frozenset[str]
@@ -405,8 +383,7 @@ def assign_access(
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     pop_by_id.update(plan.aggregations.twin_vertices)
     access_by_id = {access.id: access for access in inputs.access_vertices}
-    seated_forced = effective_forced_aggregations(plan, core_ids)
-    selected: set[str] = set(seated_forced)
+    selected: set[str] = set(effective_forced_aggregations(plan, core_ids))
     # Seed the targets of operator-forced access links so cluster heads and later
     # homes reuse a pinned facility rather than building a redundant neighbor
     # beside it (and so homing no longer depends on the order vertices are seen).
@@ -447,7 +424,9 @@ def assign_access(
         for access_id, aggregations in homes.items()
         for aggregation_id in aggregations
     ]
-    selected = prune_unused_aggregations(selected, access_edges, frozenset(seated_forced))
+    selected = prune_unused_aggregations(
+        selected, access_edges, frozenset(effective_forced_aggregations(plan, core_ids))
+    )
     return access_edges, selected
 
 def evaluate_cores(
@@ -589,25 +568,6 @@ def validate_pop_graph(
         names = ", ".join(vertex.name for vertex in carrier_pops if vertex.id in missing_pops)
         raise ValueError(f"Carrier PoPs missing from physical edge graph: {names}")
 
-@dataclass(frozen=True)
-class _AggregationPlan:
-    """The aggregations a design may seat.
-
-    ``operator_forced`` are the operator's pinned aggregations, always seated. A
-    forced installation's co-located twin is one of these, so installations enter
-    the aggregation tier only by operator force; an operator pin may, however, also
-    win a core slot. The remaining fields carry the optional co-located twins the
-    search may seat so a core also serves as an aggregation: each twin id to its
-    core, each core's reach-around set,
-    and the twin vertices whose coordinates (their core's) drive access homing.
-    """
-
-    operator_forced: frozenset[str] = frozenset()
-    twin_to_core: dict[str, str] = field(default_factory=dict)
-    reach_avoiding: dict[str, set[str]] = field(default_factory=dict)
-    twin_vertices: dict[str, Vertex] = field(default_factory=dict)
-
-
 def with_colocation_twins(
     aggregations: _AggregationPlan,
     core_candidates: list[str],
@@ -639,43 +599,6 @@ def with_colocation_twins(
         twin_vertices=twin_vertices,
     )
 
-
-@dataclass(frozen=True)
-class ClusterPlan:
-    """Access-vertex clusters plus the radius bounding each cluster's head locality.
-
-    The clusters come from density-clustering the access vertices once (geography is
-    core-independent); ``radius`` is the scale at which they cohere, used to keep a
-    cluster's head genuinely nearby (see :func:`cluster_local_heads`).
-    """
-
-    clusters: list[list[str]] = field(default_factory=list)
-    radius: float = math.inf
-
-
-@dataclass(frozen=True)
-class _SearchPlan:
-    """Pre-computed context shared across every candidate core set.
-
-    ``cluster_plan`` holds the access-vertex clusters (each cluster's heads are
-    chosen relative to its own extent) and their locality radius.
-    ``feasibility_cache`` memoizes per-pair vertex-disjoint reachability so the
-    search avoids re-running max-flows for every core set. ``aggregations`` carries
-    the operator pins and the optional core twins.
-    """
-
-    core_candidates: list[str]
-    aggregations: _AggregationPlan
-    strength_by_id: dict[str, float]
-    cluster_plan: ClusterPlan = field(default_factory=ClusterPlan)
-    feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
-    tuning: Tuning = field(default_factory=Tuning)  # the dials this plan was built from
-    forced_links: ForcedLinks = field(default_factory=ForcedLinks)
-
-    @property
-    def required_cores(self) -> frozenset[str]:
-        """The operator-forced cores fixed into every candidate set."""
-        return self.forced_links.required_cores
 
 def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
