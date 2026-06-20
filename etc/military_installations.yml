@@ -2,11 +2,7 @@
 design:
   allow_roadm_aggregation: false
   excluded: []
-  excluded_connections:
-    - source: "Chicago, IL"
-      target: "San Bernardino, CA"
-    - source: "Fort Worth, TX"
-      target: "Seattle, WA"
+  excluded_connections: []
   forced_aggregations:
     - "Atlanta, GA"
     - "Cheyenne, WY"
