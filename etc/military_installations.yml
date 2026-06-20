@@ -15,7 +15,6 @@ design:
       target: "San Bernardino, CA"
   forced_aggregations:
     - "Cheyenne, WY"
-    - "Colorado Springs, CO"
     - "Dulles, VA"
     - "Great Falls, MT"
     - "Minot, ND"
@@ -25,8 +24,6 @@ design:
     - "Virginia Beach, VA"
   forced_connections: []
   forced_cores:
-    - "Atlanta, GA"
-    - "Dallas, TX"
     - "Dulles, VA"
   max_core_count: 99
   min_core_count: 3
