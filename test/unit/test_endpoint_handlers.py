@@ -30,7 +30,7 @@ def _load(endpoint: str, monkeypatch: pytest.MonkeyPatch, **env: str) -> Any:
     return module
 
 
-_READERS = [
+_READERS: list[dict[str, Any]] = [
     {
         "endpoint": "carriers",
         "list_keys": ["carriers/lumen.json", "carriers/zayo.json"],
@@ -295,10 +295,10 @@ def test_wan_404_when_no_customer(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_wan_caches_clients(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A POST then a GET build the S3 and ECS clients once each, not again."""
+    """Two creates build the S3 and ECS clients once each, then reuse them."""
     module = _wan(monkeypatch)
     post = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
     with patch("boto3.client", side_effect=_wan_clients({}, [])) as mock_client:
         module.lambda_handler(post, None)
-        module.lambda_handler({"pathParameters": {"customer": "f-35"}}, None)
+        module.lambda_handler(post, None)
     assert mock_client.call_count == 2

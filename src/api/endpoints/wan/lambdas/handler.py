@@ -19,11 +19,18 @@ _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 
 
-def _client(service: str) -> Any:
-    """Return the cached client for an AWS service, creating it on first use."""
-    if service not in _CLIENTS:
-        _CLIENTS[service] = boto3.client(service, region_name="us-east-2")
-    return _CLIENTS[service]
+def _s3() -> Any:
+    """Return the cached S3 client, creating it on first use."""
+    if "s3" not in _CLIENTS:
+        _CLIENTS["s3"] = boto3.client("s3", region_name="us-east-2")
+    return _CLIENTS["s3"]
+
+
+def _ecs() -> Any:
+    """Return the cached ECS client, creating it on first use."""
+    if "ecs" not in _CLIENTS:
+        _CLIENTS["ecs"] = boto3.client("ecs", region_name="us-east-2")
+    return _CLIENTS["ecs"]
 
 
 def clear_clients() -> None:
@@ -44,10 +51,10 @@ def _status_key(customer: str) -> str:
 def _start_create(customer: str) -> None:
     """Mark the WAN as creating and launch the Fargate optimizer task."""
     marker = json.dumps({"status": "creating", "customer": customer}).encode()
-    _client("s3").put_object(
+    _s3().put_object(
         Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer), Body=marker
     )
-    _client("ecs").run_task(
+    _ecs().run_task(
         cluster=os.environ["CLUSTER_ARN"],
         taskDefinition=os.environ["TASK_DEFINITION_ARN"],
         capacityProviderStrategy=[{"capacityProvider": "FARGATE_SPOT", "weight": 1}],
@@ -69,7 +76,7 @@ def _start_create(customer: str) -> None:
 
 def _read_status(customer: str) -> dict[str, Any]:
     """Serve a customer's WAN status: 422 when failed, 404 before any create."""
-    client = _client("s3")
+    client = _s3()
     try:
         body = client.get_object(
             Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer)
