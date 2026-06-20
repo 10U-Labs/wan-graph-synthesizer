@@ -11,6 +11,8 @@ design:
       target: "Seattle, WA"
     - source: "Atlanta, GA"
       target: "San Bernardino, CA"
+    - source: "Dulles, VA"
+      target: "San Bernardino, CA"
   forced_aggregations:
     - "Cheyenne, WY"
     - "Colorado Springs, CO"
