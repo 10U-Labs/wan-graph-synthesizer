@@ -46,6 +46,7 @@ from wan_designer.optimize import (
     prune_unused_aggregations,
     optimize_three_tier_design,
     search_best_design,
+    ClusterPlan,
     _AggregationPlan,
     _SearchPlan,
 )
@@ -100,7 +101,7 @@ def _plan(
         candidates,
         _AggregationPlan(frozenset(forced or set())),
         strength or {},
-        clusters=clusters or [],
+        cluster_plan=ClusterPlan(clusters or []),
         tuning=Tuning(access_aggregation_links=access_aggregation_links),
     )
 
@@ -497,21 +498,21 @@ def test_cluster_local_heads_excludes_a_distant_pop() -> None:
     """A PoP beyond the cluster's extent is not chosen as a head."""
     members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
     by_id = {"near": pop("near", 0.0, 0.05), "far": pop("far", 0.0, 9.0)}
-    assert "far" not in cluster_local_heads(members, set(by_id), set(), by_id)
+    assert "far" not in cluster_local_heads(members, list(by_id.values()), set())
 
 
 def test_cluster_local_heads_caps_at_two() -> None:
     """A cluster takes at most two heads even when more PoPs are local."""
     members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
     by_id = {key: pop(key, 0.0, off) for key, off in (("x", 0.0), ("y", 0.1), ("z", 0.2))}
-    assert len(cluster_local_heads(members, set(by_id), set(), by_id)) == 2
+    assert len(cluster_local_heads(members, list(by_id.values()), set())) == 2
 
 
 def test_cluster_local_heads_caps_at_the_configured_count() -> None:
     """A cluster takes up to the configured number of heads when more PoPs are local."""
     members = [access("a", 0.0, 0.0), access("b", 0.0, 0.1), access("c", 0.0, 0.2)]
     by_id = {key: pop(key, 0.0, off) for key, off in (("x", 0.0), ("y", 0.1), ("z", 0.2))}
-    assert len(cluster_local_heads(members, set(by_id), set(), by_id, count=3)) == 3
+    assert len(cluster_local_heads(members, list(by_id.values()), set(), count=3)) == 3
 
 
 def test_cluster_local_heads_prefers_a_selected_facility_over_a_nearer_build() -> None:
@@ -522,7 +523,7 @@ def test_cluster_local_heads_prefers_a_selected_facility_over_a_nearer_build() -
         "b1": pop("b1", 0.0, 0.1),     # central: lower total distance than the pin
         "b2": pop("b2", 0.0, 0.08),    # also nearer the cluster as a whole than the pin
     }
-    heads = cluster_local_heads(members, set(by_id), {"pin"}, by_id)
+    heads = cluster_local_heads(members, list(by_id.values()), {"pin"})
     assert heads == ["pin", "b1"]      # pin reused first, then the nearest new build
 
 
@@ -534,14 +535,14 @@ _SPREAD_POPS = {"reuse_far": pop("reuse_far", 0.0, 6.0), "build_near": pop("buil
 
 def test_cluster_local_heads_reuses_an_in_diameter_facility_without_a_radius_cap() -> None:
     """Without a radius cap, a selected facility inside the diameter is reused first."""
-    heads = cluster_local_heads(_SPREAD_MEMBERS, set(_SPREAD_POPS), {"reuse_far"}, _SPREAD_POPS)
+    heads = cluster_local_heads(_SPREAD_MEMBERS, list(_SPREAD_POPS.values()), {"reuse_far"})
     assert heads == ["reuse_far", "build_near"]
 
 
 def test_cluster_local_heads_caps_locality_at_the_clustering_radius() -> None:
     """A radius cap drops a distant in-diameter reuse so the cluster builds its near head."""
     heads = cluster_local_heads(
-        _SPREAD_MEMBERS, set(_SPREAD_POPS), {"reuse_far"}, _SPREAD_POPS, radius=100.0
+        _SPREAD_MEMBERS, list(_SPREAD_POPS.values()), {"reuse_far"}, radius=100.0
     )
     assert heads == ["build_near"]
 
