@@ -1,3 +1,13 @@
+output "lambda_function_arn" {
+  description = "ARN of the wan dispatching Lambda."
+  value       = aws_lambda_function.handler.arn
+}
+
+output "lambda_function_name" {
+  description = "Name of the wan dispatching Lambda."
+  value       = aws_lambda_function.handler.function_name
+}
+
 output "ecr_repository_url" {
   description = "ECR repo the build_image workflow pushes the optimizer image to."
   value       = aws_ecr_repository.optimizer.repository_url

@@ -7,7 +7,7 @@ terraform {
     use_lockfile = true
   }
 
-  required_version = ">= 1.14"
+  required_version = ">= 1.6"
 
   required_providers {
     aws = {
