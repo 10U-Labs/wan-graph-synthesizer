@@ -48,24 +48,25 @@ def resolve_pinned_ids(
 def reject_override_conflicts(
     forced_core: set[str],
     forced_aggregation: set[str],
-    excluded: set[str],
+    prohibited_core: AbstractSet[str] = frozenset(),
     prohibited_aggregation: AbstractSet[str] = frozenset(),
 ) -> None:
-    """Reject contradictory role pins.
+    """Reject contradictory tier pins.
 
-    An excluded PoP cannot also be a forced core or aggregation, and a PoP cannot be
-    both forced onto and prohibited from the aggregation tier. Prohibiting a forced
-    *core* is allowed -- that is the core-yes/aggregation-no combination the knob exists
-    for.
+    A PoP cannot be both forced onto and prohibited from the same tier. The two tier
+    bars are independent, so forcing a PoP as a core while prohibiting it from the
+    aggregation tier (or vice versa) is allowed.
     """
-    clash = excluded & (forced_core | forced_aggregation)
-    if clash:
-        raise ValueError(f"PoPs cannot be both excluded and forced: {sorted(clash)}")
-    forced_and_prohibited = forced_aggregation & prohibited_aggregation
-    if forced_and_prohibited:
+    core_clash = forced_core & prohibited_core
+    if core_clash:
+        raise ValueError(
+            f"PoPs cannot be both forced onto and prohibited from the core tier: {sorted(core_clash)}"
+        )
+    aggregation_clash = forced_aggregation & prohibited_aggregation
+    if aggregation_clash:
         raise ValueError(
             "PoPs cannot be both forced onto and prohibited from the aggregation tier: "
-            f"{sorted(forced_and_prohibited)}"
+            f"{sorted(aggregation_clash)}"
         )
 
 AGGR_TWIN_PREFIX = "aggr_"
@@ -141,25 +142,32 @@ def _resolve_operator_pins(
     """Resolve operator pins and split any operator co-location.
 
     Returns the (possibly augmented) graph plus the forced-core, operator-forced
-    aggregation, excluded, and prohibited-aggregation id sets. A PoP pinned as both a
-    core and an aggregation is split into a ``CORE`` vertex and a ``AGGR`` twin, and it
-    is the twin's id that lands in the operator-forced aggregations. Prohibited
-    aggregations resolve to plain carrier-PoP ids (never co-located).
+    aggregation, prohibited-core, and prohibited-aggregation id sets. A PoP pinned as both
+    a core and an aggregation is split into a ``CORE`` vertex and a ``AGGR`` twin, and it
+    is the twin's id that lands in the operator-forced aggregations. Prohibited PoPs
+    resolve to plain carrier-PoP ids (never co-located).
     """
     name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
     forced_core = resolve_pinned_ids(params.forced_core_names, name_to_id, "forced_cores")
     forced_aggregation = resolve_pinned_ids(
         params.forced_aggregation_names, name_to_id, "forced_aggregations"
     )
-    excluded = resolve_pinned_ids(params.exclusions.excluded_names, name_to_id, "excluded")
-    prohibited = resolve_pinned_ids(
+    prohibited_core = resolve_pinned_ids(
+        params.exclusions.prohibited_core_names, name_to_id, "prohibited_cores"
+    )
+    prohibited_aggregation = resolve_pinned_ids(
         params.exclusions.prohibited_aggregation_names, name_to_id, "prohibited_aggregations"
     )
-    reject_override_conflicts(forced_core, forced_aggregation, excluded, prohibited)
+    reject_override_conflicts(
+        forced_core, forced_aggregation, prohibited_core, prohibited_aggregation
+    )
     colocated = forced_core & forced_aggregation
     vertices, physical_edges, twin_by_core = split_colocated(vertices, physical_edges, colocated)
     operator_forced = (forced_aggregation - colocated) | set(twin_by_core.values())
-    return vertices, physical_edges, forced_core, operator_forced, excluded, prohibited
+    return (
+        vertices, physical_edges, forced_core, operator_forced,
+        prohibited_core, prohibited_aggregation,
+    )
 
 
 def materialize_selected_colocation_twins(
@@ -319,17 +327,18 @@ def apply_role_overrides(
     in the forced aggregations like any other operator pin. ``forced_connections``
     are resolved to id-typed link sets against the seated tiers, and
     ``excluded_connections`` to the core-core pairs pruned from the core backbone.
-    ``params.exclusions.prohibited_aggregation_names`` are barred from the aggregation
-    tier (yet stay core-eligible) and land in ``RoleOverrides.prohibited_aggregation_ids``.
+    ``params.exclusions.prohibited_core_names`` / ``prohibited_aggregation_names`` are barred
+    from the core / aggregation tier and land in ``RoleOverrides.prohibited_core_ids`` /
+    ``prohibited_aggregation_ids`` (the two bars are independent).
     """
-    vertices, physical_edges, forced_core, operator_forced, excluded, prohibited = (
+    vertices, physical_edges, forced_core, operator_forced, prohibited_core, prohibited_aggregation = (
         _resolve_operator_pins(vertices, physical_edges, params)
     )
     overrides = RoleOverrides(
         forced_core_ids=frozenset(forced_core),
         forced_aggregation_ids=frozenset(operator_forced),
-        excluded_ids=frozenset(excluded),
-        prohibited_aggregation_ids=frozenset(prohibited),
+        prohibited_core_ids=frozenset(prohibited_core),
+        prohibited_aggregation_ids=frozenset(prohibited_aggregation),
         forced_links=resolve_forced_links(
             forced_connections, vertices, forced_core, operator_forced, excluded_connections
         ),

@@ -169,15 +169,16 @@ class ForcedConnection:
 
 @dataclass(frozen=True)
 class RoleExclusions:
-    """Operator pins that bar a PoP from a role, by PoP display name.
+    """Operator pins that bar a PoP from a tier, by PoP display name.
 
-    ``excluded_names`` bar a PoP from every selected role (core, aggregation, and
-    access home); ``prohibited_aggregation_names`` bar it from the aggregation tier
-    only -- it stays eligible to be a core. The overrides layer resolves both to
-    vertex ids.
+    ``prohibited_core_names`` bar a PoP from the core tier; ``prohibited_aggregation_names``
+    bar it from the aggregation tier. The two bars are independent -- a PoP barred from one
+    can still take the other; a PoP barred from both is excluded entirely. The overrides
+    layer resolves both to vertex ids. (There is no "access" bar: access is inherent to
+    non-PoP demand, not a tier the optimizer assigns to a carrier PoP.)
     """
 
-    excluded_names: tuple[str, ...] = ()
+    prohibited_core_names: tuple[str, ...] = ()
     prohibited_aggregation_names: tuple[str, ...] = ()
 
 @dataclass(frozen=True)
@@ -218,10 +219,10 @@ class RoleOverrides:
     ``forced_core_ids`` and ``forced_aggregation_ids`` are the ids fixed into
     the core and aggregation tiers; a PoP pinned as both is co-located and has
     already been split into a distinct ``CORE`` vertex (kept here) and ``AGGR``
-    vertex (whose id is what lands in ``forced_aggregation_ids``). ``excluded_ids``
-    are barred from being a core, an aggregation, or an access home;
-    ``prohibited_aggregation_ids`` are barred from the aggregation tier only (no free
-    aggregation and no co-located twin) yet stay eligible to be a core.
+    vertex (whose id is what lands in ``forced_aggregation_ids``). ``prohibited_core_ids``
+    are barred from the core tier; ``prohibited_aggregation_ids`` are barred from the
+    aggregation tier (no free aggregation and no co-located twin). The two bars are
+    independent; a PoP in both is excluded entirely.
 
     A forced installation is realized as a co-located carrier twin before pins are
     resolved, so its force-pin lands in ``forced_aggregation_ids`` like any other.
@@ -230,7 +231,7 @@ class RoleOverrides:
 
     forced_core_ids: frozenset[str] = frozenset()
     forced_aggregation_ids: frozenset[str] = frozenset()
-    excluded_ids: frozenset[str] = frozenset()
+    prohibited_core_ids: frozenset[str] = frozenset()
     prohibited_aggregation_ids: frozenset[str] = frozenset()
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
 

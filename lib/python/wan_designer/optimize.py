@@ -932,13 +932,14 @@ def optimize_three_tier_design(
     eligible_ids = compute_eligible_ids(
         context.carrier_pops, roles, context.adjacency, params.allow_roadm_aggregation
     )
-    eligible_ids = (
-        eligible_ids | operator_forced | overrides.forced_core_ids
-    ) - overrides.excluded_ids
-    if len(eligible_ids) < max(2, params.min_core_count):
-        raise ValueError("Not enough eligible Carrier aggregation/core PoPs")
-    # Prohibited PoPs stay core candidates but leave the aggregation tier entirely:
-    # no free aggregation here, and no co-located twin (see ``build_search_plan``).
+    eligible_ids = eligible_ids | operator_forced | overrides.forced_core_ids
+    # The two tier bars are independent: a prohibited-core PoP can still be an
+    # aggregation, and a prohibited-aggregation PoP can still be a core. Each tier
+    # draws from the shared pool minus its own bar (no free aggregation and no
+    # co-located twin for a prohibited aggregation; see ``build_search_plan``).
+    core_eligible_ids = eligible_ids - overrides.prohibited_core_ids
+    if len(core_eligible_ids) < max(2, params.min_core_count):
+        raise ValueError("Not enough eligible Carrier core PoPs")
     eligible_aggregation_ids = eligible_ids - overrides.prohibited_aggregation_ids
 
     inputs = DesignInputs(
@@ -950,5 +951,5 @@ def optimize_three_tier_design(
         all_distances=context.all_distances,
         all_predecessors=context.all_predecessors,
     )
-    plan = build_search_plan(inputs, eligible_ids, aggregations, overrides, params)
+    plan = build_search_plan(inputs, core_eligible_ids, aggregations, overrides, params)
     return search_best_design(inputs, params, plan)
