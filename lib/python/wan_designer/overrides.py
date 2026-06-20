@@ -226,19 +226,33 @@ def _core_core_pair(
     return edge_key(left, right)
 
 
+def _excluded_core_endpoint(name: str, name_to_id: dict[str, str]) -> str:
+    """Resolve an excluded core-core endpoint, requiring only a carrier PoP."""
+    if name not in name_to_id:
+        raise ValueError(f"excluded-connection core not found in the Carrier graph: {name}")
+    return name_to_id[name]
+
+
+def _removed_core_pair(
+    connection: ForcedConnection, name_to_id: dict[str, str]
+) -> tuple[str, str]:
+    """Resolve an excluded core-core connection's two endpoints to an edge key."""
+    left = _excluded_core_endpoint(connection.source, name_to_id)
+    right = _excluded_core_endpoint(connection.target, name_to_id)
+    return edge_key(left, right)
+
+
 def _removed_core_links(
     connections: tuple[ForcedConnection, ...],
     name_to_id: dict[str, str],
-    forced_core: set[str],
 ) -> frozenset[tuple[str, str]]:
-    """Resolve operator-pruned core-core pairs to edge keys, validating both endpoints.
+    """Resolve operator-pruned core-core pairs to edge keys.
 
-    Each endpoint must be a forced core (you can only prune a link between cores you
-    pinned), so an off-tier endpoint raises a ``ValueError`` naming the connection.
+    Each endpoint need only be a carrier PoP (an unknown name raises a ``ValueError``);
+    the pair is pruned only when the optimizer seats both as cores, otherwise it is a
+    no-op. Pinning the endpoints as forced cores is not required.
     """
-    return frozenset(
-        _core_core_pair(connection, name_to_id, forced_core) for connection in connections
-    )
+    return frozenset(_removed_core_pair(connection, name_to_id) for connection in connections)
 
 
 def resolve_forced_links(
@@ -252,8 +266,9 @@ def resolve_forced_links(
 
     Returns a :class:`ForcedLinks` of the core-core, aggregation-core, and
     access-aggregation links, plus the ``removed_core`` pairs the operator pruned
-    from the core backbone. Each endpoint must already be seated in the tier its edge
-    type requires, or a ``ValueError`` names the offending connection.
+    from the core backbone. Each forced endpoint must already be seated in the tier its
+    edge type requires, or a ``ValueError`` names the offending connection; a pruned
+    ``removed_core`` endpoint need only be a carrier PoP.
     """
     name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
     access_name_to_id = {
@@ -282,7 +297,7 @@ def resolve_forced_links(
         core=frozenset(core_links),
         aggregation=frozenset(aggregation_links),
         access=frozenset(access_links),
-        removed_core=_removed_core_links(excluded_connections, name_to_id, forced_core),
+        removed_core=_removed_core_links(excluded_connections, name_to_id),
     )
 
 

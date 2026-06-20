@@ -56,11 +56,19 @@ def test_excluded_core_core_resolves_to_a_removed_pair() -> None:
     assert links.removed_core == frozenset({edge_key("P0", "P1")})
 
 
-def test_excluded_core_core_endpoint_not_forced_is_rejected() -> None:
-    """An excluded core-core endpoint that is not a forced core is rejected."""
+def test_excluded_core_core_endpoint_need_not_be_forced() -> None:
+    """An excluded core-core pair resolves even when neither endpoint is forced."""
+    links = resolve_forced_links(
+        (), VERTICES, set(), set(), (ForcedConnection("core-core", "P0", "P1"),)
+    )
+    assert links.removed_core == frozenset({edge_key("P0", "P1")})
+
+
+def test_excluded_core_core_unknown_endpoint_is_rejected() -> None:
+    """An excluded core-core endpoint absent from the Carrier graph is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            (), VERTICES, {"P0"}, set(), (ForcedConnection("core-core", "P0", "P1"),)
+            (), VERTICES, set(), set(), (ForcedConnection("core-core", "Nowhere", "P1"),)
         )
 
 
