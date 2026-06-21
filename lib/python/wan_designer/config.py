@@ -28,23 +28,27 @@ from wan_designer.model import (
 
 DEFAULT_CONFIG_PATH = Path("etc/joint.yml")
 DEFAULT_VERTICES = {
-    "AFLCMC": "data/vertices/aflcmc.csv",
-    "AFNWC/NI": "data/vertices/afnwc_ni.csv",
+    "AFLCMC": "data/vertices/customers/aflcmc.csv",
+    "AFNWC/NI": "data/vertices/customers/afnwc_ni.csv",
     "Providers": [
         "data/vertices/providers/providers.csv",
-        "data/vertices/aws_provider region.csv",
-        "data/vertices/aws_provider region.csv",
-        "data/vertices/providers/providers.csv",
+        "data/vertices/providers region.csv",
+        "data/vertices/providers region.csv",
+        "data/vertices/providers region.csv",
+        "data/vertices/providers region.csv",
     ],
     "provider": [
-        "data/vertices/provider_provider region.csv",
-        "data/vertices/provider_provider region.csv",
+        "data/vertices/providers region.csv",
+        "data/vertices/providers region.csv",
     ],
-    "DCN": "data/vertices/dcn.csv",
-    "F-35": "data/vertices/f_35.csv",
-    "Lumen": "data/vertices/lumen.csv",
-    "provider": "data/vertices/providers/providers.csv",
-    "VisionNet": "data/vertices/vision_net.csv",
+    "DCN": "data/vertices/carriers/dcn.csv",
+    "F-35": "data/vertices/customers/f_35.csv",
+    "Lumen": "data/vertices/carriers/lumen.csv",
+    "provider": [
+        "data/vertices/providers/providers.csv",
+        "data/vertices/providers/providers.csv",
+    ],
+    "VisionNet": "data/vertices/carriers/vision_net.csv",
 }
 DEFAULT_CARRIER_EDGES = "data/edges/lumen.csv"
 DEFAULT_REGIONAL_EDGES = ["data/edges/dcn.csv", "data/edges/vision_net.csv"]
