@@ -14,8 +14,8 @@ from wan_designer.forced import (
     forced_cores_for_aggregation,
     removed_core_pairs,
 )
-from wan_graph.model import ForcedConnection, ForcedLinks, edge_key
 from wan_designer.overrides import resolve_forced_links
+from wan_graph.model import ForcedConnection, ForcedLinks, edge_key
 
 pop = fixtures.carrier_pop
 access = fixtures.access_vertex
