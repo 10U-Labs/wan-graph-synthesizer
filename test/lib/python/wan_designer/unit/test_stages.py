@@ -7,14 +7,14 @@ from pathlib import Path
 import fixtures
 from data_inputs import load_off_net_sites
 from wan_designer.stages import dual_home, finalize
-from wan_graph.model import DesignParams
+from wan_graph.model import DesignParams, DesignPaths
 
 
 def test_dual_home_returns_a_graph_without_off_net(tmp_path: Path) -> None:
     """dual_home attaches demand when no off-net file is configured."""
     vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
     vertices, physical_edges = fixtures.load_design_inputs(
-        fixtures.DesignPaths(vertex_files, edges)
+        DesignPaths(vertex_files, edges)
     )
     homed_vertices, homed_edges = dual_home(
         vertices, physical_edges, fixtures.ring_params(), []
