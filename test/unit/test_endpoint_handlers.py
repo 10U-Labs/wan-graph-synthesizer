@@ -73,7 +73,7 @@ _READERS: list[dict[str, Any]] = [
     },
     {
         "endpoint": "customers",
-        "list_keys": ["customers/f-35/wan.json", "customers/joint/wan.json"],
+        "list_keys": ["customers/f-35/config.json", "customers/joint/config.json"],
         "ids": ["f-35", "joint"],
         "stored_key": "customers/f-35/wan.json",
         "stored": {
