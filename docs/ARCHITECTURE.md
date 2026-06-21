@@ -138,7 +138,8 @@ shared state bucket `10ulabs-terraform-state-us-east-2`, and GitHub OIDC.
   bucket (`storage/`).
 - `src/api/endpoints/` — one folder per resource: `carriers`, `csps`,
   `customers`, `merge`, `wan` (with `wan/optimizer/` for the container).
-- `src/www/` — the static UI.
+- `src/www/spa/` — the static single-page UI (synced to the site root);
+  `src/www/api/` — the OpenAPI spec (deployed separately).
 - `docs/tenets/tests/` — the four test tiers, per `10ulabs.com`.
 
 Reusable code lives in `lib/`; single-use code lives in its `src/` stack. The

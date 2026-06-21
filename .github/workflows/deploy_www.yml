@@ -18,7 +18,7 @@ jobs:
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
       - name: Sync the site to 10ulabs.com/wan-graph-designer/
         run: |
-          aws s3 sync src/www/ s3://www-10ulabs-com/wan-graph-designer/ \
+          aws s3 sync src/www/spa/ s3://www-10ulabs-com/wan-graph-designer/ \
             --delete --exclude "api/*"
       - name: Invalidate the website CloudFront path
         run: |
@@ -32,5 +32,5 @@ name: Deploy website
   push:
     branches: [main]
     paths:
-      - src/www/**
+      - src/www/spa/**
   workflow_dispatch: {}
