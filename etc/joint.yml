@@ -1,88 +1,48 @@
 ---
-# Canonical three-tier WAN design configuration. Operator choices live here, not
-# in source: change the design by editing this file. CLI flags override these.
+# Canonical three-tier WAN design. Operator choices live here, not in source.
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
-design:
-  # Allow mapbook ROADM vertices to be selected as aggregation/core points.
-  allow_roadm_aggregation: false
-  # PoPs barred from every selected role.
-  excluded: []
-  # Core-core backbone links the operator prunes. Both endpoints must be forced
-  # cores. (type defaults to core-core, the only kind a link can be removed as.)
-  excluded_connections: []
-  # PoPs pinned into the aggregation tier -- all carrier municipalities, never
-  # installations. Richmond is pinned (not Norfolk, a single-homed ROADM leaf) so
-  # southeast-Virginia demand homes into a PoP that can dual-home to two cores.
-  # Cheyenne, Great Falls, and Minot are the municipalities nearest the three ICBM
-  # wings (F.E. Warren, Malmstrom, Minot AFB): forcing the carrier PoP gives each
-  # wing's demand a local aggregation while the installation itself stays demand --
-  # to instead force a base as an aggregation, name the installation here. Great
-  # Falls and Minot are ROADMs, so pinning them overrides allow_roadm_aggregation.
-  forced_aggregations:
-    - Cheyenne, WY
-    - Chicago, IL
-    - Dallas, TX
-    - Dulles, VA
-    - Great Falls, MT
-    - Las Vegas, NV
-    - Los Angeles, CA
-    - Manassas, VA
-    - Minot, ND
-    - New York, NY
-    - Portland, OR
-    - Salt Lake City, UT
-    - San Antonio, TX
-    - Tallahassee, FL
-  # Operator-forced edges pinned into the design, keyed by source, target, and the
-  # edge type (core-core, aggregation-core, or access-aggregation). Each endpoint
-  # must already be pinned into the tier its edge type requires.
-  forced_connections:
-    - source: Minot, ND
-      target: Salt Lake City, UT
-      type: aggregation-core
-    - source: Hanscom AFB
-      target: New York, NY
-      type: access-aggregation
-    - source: Burlington ANGB
-      target: New York, NY
-      type: access-aggregation
-    - source: F.E. Warren AFB
-      target: Salt Lake City, UT
-      type: access-aggregation
-  # PoPs pinned into the core tier. The search may still add cores past these to
-  # satisfy min_core_count and coverage, but never drops a pinned one.
-  forced_cores:
-    - Dallas, TX
-    - Dulles, VA
-    - Los Angeles, CA
-    - Salt Lake City, UT
-  # Maximum number of core PoPs. Coverage growth past the floor never seats more
-  # cores than this ceiling, so the backbone stays bounded.
-  max_core_count: 5
-  # Minimum number of core PoPs. The search adds more cores only when feasibility
-  # requires it; it never drops below this floor.
-  min_core_count: 3
-  # PoPs barred from the aggregation tier yet still eligible as cores (unlike
-  # `excluded`, which bars every role). Empty: every forced core is now also
-  # dual-roled as a co-located aggregation, so none are aggregation-barred.
-  prohibited_aggregations: []
-  # Add extra physical Carrier edges to reduce articulation or degree risk.
-  resilience_augmentation: true
+# The three redundancy degrees are required; carriers come from the merged substrate.
+access_homing_degree: 2
+aggregation_homing_degree: 2
+core_mesh_degree: 3
+core_node_count:
+  max: 5
+  min: 3
+forced_aggregation_points:
+  - Cheyenne, WY
+  - Chicago, IL
+  - Dallas, TX
+  - Dulles, VA
+  - Great Falls, MT
+  - Las Vegas, NV
+  - Los Angeles, CA
+  - Manassas, VA
+  - Minot, ND
+  - New York, NY
+  - Portland, OR
+  - Salt Lake City, UT
+  - San Antonio, TX
+  - Tallahassee, FL
+forced_connections:
+  - source: Minot, ND
+    target: Salt Lake City, UT
+    type: aggregation-core
+  - source: Hanscom AFB
+    target: New York, NY
+    type: access-aggregation
+  - source: Burlington ANGB
+    target: New York, NY
+    type: access-aggregation
+  - source: F.E. Warren AFB
+    target: Salt Lake City, UT
+    type: access-aggregation
+forced_core_nodes:
+  - Dallas, TX
+  - Dulles, VA
+  - Los Angeles, CA
+  - Salt Lake City, UT
 inputs:
-  # Physical Lumen backbone edges between carrier PoPs.
-  carrier_edges: data/edges/lumen.csv
-  # Off-net seats: non-PoP locations the operator may force as cores/aggregations,
-  # reached by synthetic local fiber to the nearest carrier PoPs. Dulles lives here.
-  off_net: data/vertices/utilities/off_net.csv
-  # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
-  regional_edges:
-    - data/edges/dcn.csv
-    - data/edges/vision_net.csv
-  # Vertices split into one CSV per tenant; the tenant is the mapping key
-  # (the per-tenant CSVs carry no tenant column).
-  vertices:
-    AFLCMC: data/vertices/customers/aflcmc.csv
-    AFNWC/NI: data/vertices/customers/afnwc_ni.csv
+  csps:
     AWS:
       - data/vertices/csps/aws/aws_govcloud.csv
       - data/vertices/csps/aws/aws_secret_east.csv
@@ -90,37 +50,21 @@ inputs:
     Azure:
       - data/vertices/csps/azure/azure_secret_east.csv
       - data/vertices/csps/azure/azure_secret_west.csv
-    DCN: data/vertices/carriers/dcn.csv
-    F-35: data/vertices/customers/f_35.csv
-    Lumen: data/vertices/carriers/lumen.csv
     OCI: data/vertices/csps/oci/oci_east.csv
-    VisionNet: data/vertices/carriers/vision_net.csv
-# Display label surfaced by the REST API's /api/wan-maps endpoint.
-label: Joint
-tuning:
-  # Aggregation facilities every access vertex homes to (its redundancy level). The
-  # design fails validation if any access vertex reaches fewer than this many.
-  access_aggregation_links: 2
-  # Continent-bridge guard (miles) on a mutual k-NN cluster link, not a tuning dial.
-  # Clusters now form by relative density (each member is among the other's nearest),
-  # so this only bounds how far one link may reach -- keep it generous so genuine
-  # regional groups still link while cross-continent fusion stays impossible.
+  locations:
+    AFLCMC: data/vertices/customers/aflcmc.csv
+    AFNWC/NI: data/vertices/customers/afnwc_ni.csv
+    F-35: data/vertices/customers/f_35.csv
+  off_net: data/vertices/utilities/off_net.csv
+knobs:
   cluster_max_radius_miles: 500.0
-  # A cluster needs at least this many access vertices to seed an aggregation; it
-  # also defaults the mutual-neighbor count k (raise cluster_k to pull in outliers).
   cluster_min_points: 2
-  # Fallback radius (miles) reported when there is nothing to cluster.
   cluster_min_radius_miles: 0.0
-  # Compass sectors used to score a core's link spread.
   compass_octants: 8
-  # Grow the core tier past min_core_count until every aggregation is within this
-  # straight-line distance of a core (extra cores are added only where they bring
-  # demand meaningfully closer). Raise it for fewer, farther cores; lower it for more.
   core_coverage_target_miles: 600.0
-  # How many other cores each core wires to on the backbone: every core links to
-  # this many of its nearest reachable cores.
-  core_links_per_core: 3
-  # Peak bytes one enumerated core set costs (sizes the search to free RAM).
   core_set_peak_bytes: 160
-  # Share of RAM the core enumeration may use at its peak.
   enum_memory_fraction: 0.6
+label: Joint
+prohibited_aggregation_points: []
+prohibited_connections: []
+prohibited_core_nodes: []

@@ -74,7 +74,7 @@ _READERS: list[dict[str, Any]] = [
     },
     {
         "endpoint": "customers",
-        "list_keys": ["customers/f-35/config.json", "customers/joint/config.json"],
+        "list_keys": ["customers/f-35/label.json", "customers/joint/label.json"],
         "ids": [{"id": "f-35", "label": "f-35"}, {"id": "joint", "label": "joint"}],
         "stored_key": "customers/f-35/wan.json",
         "stored": {
@@ -290,7 +290,7 @@ def test_write_cascades_to_dependents(
     """A PUT (re)creates the dependent graphs for every customer."""
     module = _writer(cfg, monkeypatch)
     invocations: list[dict[str, Any]] = []
-    store = {"customers/a/config.json": b"{}", "customers/b/config.json": b"{}"}
+    store = {"customers/a/label.json": b"{}", "customers/b/label.json": b"{}"}
     with patch("boto3.client", side_effect=_write_clients(store, invocations)):
         module.lambda_handler(_write_event(cfg, "vertices", []), None)
     assert len(invocations) == cfg["invokes"]
@@ -356,12 +356,12 @@ def _customer_put(collection: str, body: Any) -> dict[str, Any]:
     }
 
 
-def test_customers_list_surfaces_each_config_label(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The customers collection returns each customer's display label from its config."""
+def test_customers_list_surfaces_each_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The customers collection returns each customer's display label document."""
     module = _customer(monkeypatch)
     objects = {
-        "customers/f-35-redundant/config.json": json.dumps({"label": "F-35 (redundant)"}).encode(),
-        "customers/joint/config.json": json.dumps({"label": "Joint"}).encode(),
+        "customers/f-35-redundant/label.json": json.dumps({"label": "F-35 (redundant)"}).encode(),
+        "customers/joint/label.json": json.dumps({"label": "Joint"}).encode(),
     }
     with patch("boto3.client", return_value=fake_s3(objects)):
         response = module.lambda_handler({}, None)
@@ -372,9 +372,9 @@ def test_customers_list_surfaces_each_config_label(monkeypatch: pytest.MonkeyPat
 
 
 def test_customers_list_falls_back_to_id_without_a_label(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A customer whose config carries no label is listed with its id as the label."""
+    """A customer whose label document is empty is listed with its id as the label."""
     module = _customer(monkeypatch)
-    with patch("boto3.client", return_value=fake_s3({"customers/joint/config.json": b"{}"})):
+    with patch("boto3.client", return_value=fake_s3({"customers/joint/label.json": b"{}"})):
         response = module.lambda_handler({}, None)
     assert json.loads(response["body"]) == [{"id": "joint", "label": "joint"}]
 
@@ -382,8 +382,8 @@ def test_customers_list_falls_back_to_id_without_a_label(monkeypatch: pytest.Mon
 def test_customer_get_serves_an_input_document(monkeypatch: pytest.MonkeyPatch) -> None:
     """A GET on an input collection returns the whole stored document."""
     module = _customer(monkeypatch)
-    stored = {"customers/f-35/installations.json": json.dumps({"vertices": [{"id": "S"}]}).encode()}
-    event = {"pathParameters": {"customer": "f-35"}, "path": "/x/customers/f-35/installations"}
+    stored = {"customers/f-35/locations.json": json.dumps({"vertices": [{"id": "S"}]}).encode()}
+    event = {"pathParameters": {"customer": "f-35"}, "path": "/x/customers/f-35/locations"}
     with patch("boto3.client", side_effect=_write_clients(stored, [])):
         response = module.lambda_handler(event, None)
     assert json.loads(response["body"]) == {"vertices": [{"id": "S"}]}
@@ -411,8 +411,8 @@ def test_customer_put_recreates_the_wan(monkeypatch: pytest.MonkeyPatch) -> None
     module = _customer(monkeypatch)
     invocations: list[dict[str, Any]] = []
     with patch("boto3.client", side_effect=_write_clients({}, invocations)):
-        module.lambda_handler(_customer_put("config", {}), None)
-        module.lambda_handler(_customer_put("config", {}), None)
+        module.lambda_handler(_customer_put("forced-core-nodes", []), None)
+        module.lambda_handler(_customer_put("forced-core-nodes", []), None)
     assert len(invocations) == 2
 
 

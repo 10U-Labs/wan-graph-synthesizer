@@ -40,7 +40,6 @@ def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
         params=None,
         forced_connections=(),
         excluded_connections=(),
-        resilience_augmentation=True,
     )
     payload = {
         "vertices": [{"id": "P", "tier_role": "core"}],
@@ -48,7 +47,7 @@ def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
         "physical_edges": [],
     }
     monkeypatch.setattr(module, "load_input_graph", lambda _p: (graph, {}))
-    monkeypatch.setattr(module, "config_from_data", lambda _d: config)
+    monkeypatch.setattr(module, "app_config_from_parts", lambda _p: config)
     monkeypatch.setattr(module, "dual_home", lambda *_a: (graph, {}))
     monkeypatch.setattr(module, "apply_role_overrides", lambda *_a: (graph, {}, object()))
     monkeypatch.setattr(module, "optimize_three_tier_design", lambda *_a: object())
@@ -56,15 +55,15 @@ def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(module, "design_payload", lambda *_a: payload)
 
 
-def _inputs() -> dict[str, bytes]:
-    """The four input objects the entrypoint reads (content unused; pipeline stubbed)."""
+def _inputs(module: Any) -> dict[str, bytes]:
+    """Every object the entrypoint reads (content unused; pipeline stubbed)."""
     keys = [
         "merge/substrate.json",
-        "customers/f-35/installations.json",
+        "customers/f-35/locations.json",
         "customers/f-35/csp-regions.json",
         "customers/f-35/off-net.json",
-        "customers/f-35/config.json",
     ]
+    keys += [f"customers/f-35/{resource}.json" for resource in module._CONFIG_RESOURCES]
     return {key: b"{}" for key in keys}
 
 
@@ -77,7 +76,7 @@ def _run_main(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) 
             raise ValueError("No feasible design")
 
         monkeypatch.setattr(module, "optimize_three_tier_design", _raise)
-    objects = _inputs()
+    objects = _inputs(module)
     with patch("boto3.client", return_value=fake_s3(objects)):
         module.main()
     return objects

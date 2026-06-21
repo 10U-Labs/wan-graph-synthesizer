@@ -134,20 +134,24 @@ class ClusterTuning:
 
 @dataclass(frozen=True)
 class Tuning:
-    """Algorithm dials for the optimizer.
+    """Algorithm dials plus the three required redundancy degrees.
 
-    These defaults are the single source of truth; ``etc/joint.yml`` overrides
-    them. ``core_links_per_core`` is how many other cores each core links to on the
-    backbone: every core wires to its nearest reachable cores, and the design must
-    meet that count (alongside ``access_aggregation_links``) as its core-tier
-    connectivity requirement.
+    The three degrees are operator requirements the design must meet, each its own
+    REST resource (``core-mesh-degree`` / ``aggregation-homing-degree`` /
+    ``access-homing-degree``) with no default at the config layer; the values here
+    are construction fallbacks only. ``core_links_per_core`` is how many other cores
+    each core links to on the backbone; ``aggregation_homing_degree`` is how many
+    cores each aggregation homes to; ``access_aggregation_links`` is how many
+    aggregations each access vertex homes to. The remaining fields are the algorithm
+    dials exposed together as the ``knobs`` resource.
     """
 
     cluster: ClusterTuning = field(default_factory=ClusterTuning)  # access-vertex clustering dials
     compass_octants: int = 8  # compass sectors used to score a core's link spread
-    core_links_per_core: int = 3  # other cores each core wires to (its nearest reachable)
+    core_links_per_core: int = 3  # other cores each core wires to (core-mesh-degree)
+    aggregation_homing_degree: int = 2  # cores each aggregation homes to (aggregation-homing-degree)
     core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one
-    access_aggregation_links: int = 2  # aggregation facilities each access vertex homes to
+    access_aggregation_links: int = 2  # aggregations each access vertex homes to (access-homing-degree)
     enum_budget: EnumBudget = field(default_factory=EnumBudget)  # core-enumeration memory budget
 
 # The three edge types a forced connection may pin, named as in ``README.md``.
@@ -187,7 +191,6 @@ class DesignParams:
 
     min_core_count: int = 3  # minimum cores; the search adds more only if needed
     max_core_count: int | None = None  # ceiling on cores; None leaves the tier uncapped
-    allow_roadm_aggregation: bool = False
     forced_core_names: tuple[str, ...] = ()  # PoPs pinned as cores by the operator
     forced_aggregation_names: tuple[str, ...] = ()  # PoPs pinned as aggregations
     exclusions: RoleExclusions = field(default_factory=RoleExclusions)  # role bars
@@ -318,10 +321,6 @@ def is_justified_aggregation(vertex: Vertex) -> bool:
     up as aggregation facilities, so it never applies to backbone PoPs.
     """
     return not is_carrier_pop(vertex) and vertex.info.justified_aggregation
-
-def carrier_role(vertex: Vertex) -> str:
-    """The optimizer role of a carrier PoP: transit-only ROADMs are ``roadm``."""
-    return "roadm" if vertex.kind == KIND_ROADM else "aggregator"
 
 def edge_key(left: str, right: str) -> tuple[str, str]:
     """Return the two PoP ids as an order-independent edge key."""

@@ -23,7 +23,6 @@ from wan_graph.model import (
     VertexInfo,
     PhysicalEdge,
     SourceFiles,
-    carrier_role,
     edge_key,
     is_carrier_pop,
     slugify,
@@ -245,7 +244,6 @@ def load_design_inputs(
 def run_design(
     paths: DesignPaths,
     params: DesignParams,
-    augment: bool,
     forced_connections: tuple[ForcedConnection, ...] = (),
     excluded_connections: tuple[ForcedConnection, ...] = (),
 ) -> DesignArtifacts:
@@ -258,45 +256,40 @@ def run_design(
     vertices, physical_edges = load_design_inputs(paths)
     off_net_sites = load_off_net_sites(paths.off_net_path) if paths.off_net_path else []
     vertices, physical_edges = dual_home(vertices, physical_edges, params, off_net_sites)
-    roles = {pop.id: carrier_role(pop) for pop in vertices if is_carrier_pop(pop)}
     vertices, physical_edges, overrides = apply_role_overrides(
         vertices, physical_edges, params, forced_connections, excluded_connections
     )
-    design = optimize_three_tier_design(vertices, physical_edges, roles, params, overrides)
+    design = optimize_three_tier_design(vertices, physical_edges, params, overrides)
     vertices, physical_edges, design, validation = finalize(
-        vertices, physical_edges, design, params, augment
+        vertices, physical_edges, design, params
     )
     return DesignArtifacts(vertices, physical_edges, design, validation)
 
 
-def _ring_inputs() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
-    """The ring vertices, physical edges, and default all-aggregator carrier roles."""
-    vertices = ring_vertices()
-    edges = ring_physical_edges()
-    roles = {vertex.id: carrier_role(vertex) for vertex in vertices if is_carrier_pop(vertex)}
-    return vertices, edges, roles
+def _ring_inputs() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
+    """The ring vertices and physical edges."""
+    return ring_vertices(), ring_physical_edges()
 
 
 def ring_artifacts() -> DesignArtifacts:
     """Run the optimizer over the in-memory ring and bundle the artifacts."""
-    vertices, edges, roles = _ring_inputs()
-    design = optimize_three_tier_design(vertices, edges, roles, ring_params())
+    vertices, edges = _ring_inputs()
+    design = optimize_three_tier_design(vertices, edges, ring_params())
     vertices, edges = materialize_selected_colocation_twins(vertices, edges, design)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 
 
-RingInputs = tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]
+RingInputs = tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]
 
 
 def ring_inputs_with_roadm(roadm_id: str) -> RingInputs:
-    """Ring inputs with one PoP recast as a transit-only ROADM (carrier role ``roadm``)."""
-    vertices, edges, _roles = _ring_inputs()
+    """Ring inputs with one PoP recast as a transit-only ROADM."""
+    vertices, edges = _ring_inputs()
     vertices = [
         dataclasses.replace(vertex, kind=KIND_ROADM) if vertex.id == roadm_id else vertex
         for vertex in vertices
     ]
-    roles = {vertex.id: carrier_role(vertex) for vertex in vertices if is_carrier_pop(vertex)}
-    return vertices, edges, roles
+    return vertices, edges
 
 
 def _forced_artifacts(
@@ -310,9 +303,9 @@ def _forced_artifacts(
     means the artifacts reflect genuinely honored force-core/force-aggregation
     requests rather than emergent selections.
     """
-    vertices, edges, roles = inputs if inputs is not None else _ring_inputs()
+    vertices, edges = inputs if inputs is not None else _ring_inputs()
     vertices, edges, overrides = apply_role_overrides(vertices, edges, params, forced_connections)
-    design = optimize_three_tier_design(vertices, edges, roles, params, overrides)
+    design = optimize_three_tier_design(vertices, edges, params, overrides)
     vertices, edges = materialize_selected_colocation_twins(vertices, edges, design)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 
@@ -325,12 +318,10 @@ def forced_aggregation_artifacts(name: str) -> DesignArtifacts:
 def forced_roadm_aggregation_artifacts(name: str) -> DesignArtifacts:
     """Ring artifacts forcing a transit-only ROADM onto the aggregation tier.
 
-    ``allow_roadm_aggregation`` stays false, so a ROADM is otherwise ineligible; the
-    pin must override that gate -- the mechanism the Joint Great Falls/Minot pins use.
+    ROADMs are eligible like any other point now, and a force always wins regardless
+    -- the mechanism the Joint Great Falls/Minot pins use.
     """
-    params = DesignParams(
-        min_core_count=2, allow_roadm_aggregation=False, forced_aggregation_names=(name,)
-    )
+    params = DesignParams(min_core_count=2, forced_aggregation_names=(name,))
     return _forced_artifacts(params, ring_inputs_with_roadm(name))
 
 

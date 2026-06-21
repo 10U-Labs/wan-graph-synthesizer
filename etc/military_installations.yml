@@ -1,38 +1,30 @@
 ---
-design:
-  allow_roadm_aggregation: false
-  excluded: []
-  excluded_connections: []
-  forced_aggregations:
-    - "Cheyenne, WY"
-    - "Dulles, VA"
-    - "Great Falls, MT"
-    - "Los Angeles, CA"
-    - "Minot, ND"
-    - "New York, NY"
-    - "Portland, OR"
-    - "Salt Lake City, UT"
-    - "Virginia Beach, VA"
-  forced_connections: []
-  forced_cores:
-    - "Cheyenne, WY"
-    - "Dulles, VA"
-    - "Los Angeles, CA"
-    - "Salt Lake City, UT"
-  max_core_count: 999
-  min_core_count: 3
-  prohibited_aggregations: []
-  resilience_augmentation: true
+# Military-installations WAN design across every carrier's fiber.
+# Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
+access_homing_degree: 2
+aggregation_homing_degree: 2
+core_mesh_degree: 3
+core_node_count:
+  max: 999
+  min: 3
+forced_aggregation_points:
+  - Cheyenne, WY
+  - Dulles, VA
+  - Great Falls, MT
+  - Los Angeles, CA
+  - Minot, ND
+  - New York, NY
+  - Portland, OR
+  - Salt Lake City, UT
+  - Virginia Beach, VA
+forced_connections: []
+forced_core_nodes:
+  - Cheyenne, WY
+  - Dulles, VA
+  - Los Angeles, CA
+  - Salt Lake City, UT
 inputs:
-  carrier_edges: data/edges/lumen.csv
-  off_net: data/vertices/utilities/off_net.csv
-  regional_edges:
-    - data/edges/dcn.csv
-    - data/edges/vision_net.csv
-    - data/edges/zayo.csv
-    - data/edges/cogent.csv
-    - data/edges/uniti.csv
-  vertices:
+  csps:
     AWS:
       - data/vertices/csps/aws/aws_govcloud.csv
       - data/vertices/csps/aws/aws_secret_east.csv
@@ -42,27 +34,21 @@ inputs:
     Azure:
       - data/vertices/csps/azure/azure_secret_east.csv
       - data/vertices/csps/azure/azure_secret_west.csv
-    DCN: data/vertices/carriers/dcn.csv
-    Lumen: data/vertices/carriers/lumen.csv
-    Military Installations: data/vertices/customers/military_installations.csv
     OCI:
       - data/vertices/csps/oci/oci_east.csv
       - data/vertices/csps/oci/oci_west.csv
-    Cogent: data/vertices/carriers/cogent.csv
-    Uniti: data/vertices/carriers/uniti.csv
-    VisionNet: data/vertices/carriers/vision_net.csv
-    Zayo: data/vertices/carriers/zayo.csv
-label: Military Installations
-tuning:
-  access_aggregation_links: 2
-  # Continent-bridge guard (miles) on a mutual k-NN cluster link, not a tuning
-  # dial: above the spread-out regional groups (the Kansas City bases link at
-  # ~105 mi) yet well below cross-region distances, so far-flung metros never fuse.
+  locations:
+    Military Installations: data/vertices/customers/military_installations.csv
+  off_net: data/vertices/utilities/off_net.csv
+knobs:
   cluster_max_radius_miles: 150.0
   cluster_min_points: 2
   cluster_min_radius_miles: 0.0
   compass_octants: 8
   core_coverage_target_miles: 200.0
-  core_links_per_core: 3
   core_set_peak_bytes: 160
   enum_memory_fraction: 0.6
+label: Military Installations
+prohibited_aggregation_points: []
+prohibited_connections: []
+prohibited_core_nodes: []

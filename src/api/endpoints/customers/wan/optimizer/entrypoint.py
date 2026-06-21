@@ -28,14 +28,29 @@ from wan_graph.graph_collections import (
 from wan_graph.model import (
     DesignArtifacts,
     SourceFiles,
-    carrier_role,
-    is_carrier_pop,
 )
-from wan_designer.config import config_from_data
+from wan_designer.config import app_config_from_parts
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.output import design_payload
 from wan_designer.overrides import apply_role_overrides
 from wan_designer.stages import dual_home, finalize
+
+# The customer config resources, each its own stored document, assembled back into a
+# single AppConfig. The three degrees are required; the rest default when empty.
+_CONFIG_RESOURCES = (
+    "forced-core-nodes",
+    "forced-aggregation-points",
+    "forced-connections",
+    "prohibited-core-nodes",
+    "prohibited-aggregation-points",
+    "prohibited-connections",
+    "core-node-count",
+    "core-mesh-degree",
+    "aggregation-homing-degree",
+    "access-homing-degree",
+    "knobs",
+    "label",
+)
 
 
 def _read_json(client: Any, key: str) -> Any:
@@ -56,8 +71,8 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
     carrier_pops, physical_edges = load_input_graph(
         _read_json(client, "merge/substrate.json")
     )
-    installs, _ = load_input_graph(
-        _read_json(client, f"customers/{customer}/installations.json")
+    locations, _ = load_input_graph(
+        _read_json(client, f"customers/{customer}/locations.json")
     )
     regions, _ = load_input_graph(
         _read_json(client, f"customers/{customer}/csp-regions.json")
@@ -65,10 +80,13 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
     off_net, _ = load_input_graph(
         _read_json(client, f"customers/{customer}/off-net.json")
     )
-    config = config_from_data(_read_json(client, f"customers/{customer}/config.json"))
-    graph = carrier_pops + installs + regions
+    parts = {
+        resource: _read_json(client, f"customers/{customer}/{resource}.json")
+        for resource in _CONFIG_RESOURCES
+    }
+    config = app_config_from_parts(parts)
+    graph = carrier_pops + locations + regions
     graph, physical_edges = dual_home(graph, physical_edges, config.params, off_net)
-    roles = {pop.id: carrier_role(pop) for pop in graph if is_carrier_pop(pop)}
     graph, physical_edges, overrides = apply_role_overrides(
         graph,
         physical_edges,
@@ -76,11 +94,9 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
         config.forced_connections,
         config.excluded_connections,
     )
-    design = optimize_three_tier_design(
-        graph, physical_edges, roles, config.params, overrides
-    )
+    design = optimize_three_tier_design(graph, physical_edges, config.params, overrides)
     graph, physical_edges, design, validation = finalize(
-        graph, physical_edges, design, config.params, config.resilience_augmentation
+        graph, physical_edges, design, config.params
     )
     payload = design_payload(
         SourceFiles((), Path("store")),

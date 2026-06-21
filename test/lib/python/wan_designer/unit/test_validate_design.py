@@ -72,7 +72,7 @@ def test_good_design_is_dual_homed() -> None:
 
 def test_good_design_has_no_missing_redundancy() -> None:
     """Good design has no missing redundancy."""
-    assert not aggregations_without_core_redundancy(GOOD)
+    assert not aggregations_without_core_redundancy(GOOD, 2)
 
 
 # An access vertex "s" homed to three aggregations, for the configurable-count check.
@@ -108,7 +108,7 @@ def test_bottleneck_is_not_dual_homed() -> None:
 
 def test_bottleneck_names_the_failing_aggregation() -> None:
     """Bottleneck names the failing aggregation."""
-    assert aggregations_without_core_redundancy(BOTTLENECK) == ["A"]
+    assert aggregations_without_core_redundancy(BOTTLENECK, 2) == ["A"]
 
 
 def _backbone_design(core_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> Design:

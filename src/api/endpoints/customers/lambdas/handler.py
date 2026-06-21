@@ -3,13 +3,13 @@
     GET    /wan-graph-designer/customers                              -> [{id, label}]
     GET    /wan-graph-designer/customers/{c}/vertices|edges           -> the WAN graph
     GET    /wan-graph-designer/customers/{c}/core-nodes|...           -> the WAN tiers
-    GET    /wan-graph-designer/customers/{c}/installations|csp-regions|config -> inputs
-    PUT    /wan-graph-designer/customers/{c}/installations|csp-regions|config -> set input
+    GET    /wan-graph-designer/customers/{c}/locations|forced-core-nodes|... -> an input
+    PUT    /wan-graph-designer/customers/{c}/locations|forced-core-nodes|... -> set input
     DELETE /wan-graph-designer/customers/{c}                          -> remove the customer
 
-The computed collections come from the published ``wan.json``; the inputs are their
-own documents (the optimizer reads them). A PUT persists the input and re-creates
-this customer's WAN. Self-contained (stdlib + boto3); single-file Lambda.
+The computed collections come from the published ``wan.json``; each operator input is
+its own document (the optimizer reads them all). A PUT persists the input and
+re-creates this customer's WAN. Self-contained (stdlib + boto3); single-file Lambda.
 """
 
 import json
@@ -21,12 +21,27 @@ import boto3
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 _WAN_COLLECTIONS = ("vertices", "edges", "core-nodes", "aggregation-points", "access-nodes")
-_INPUTS = {
-    "installations": "installations.json",
-    "csp-regions": "csp-regions.json",
-    "off-net": "off-net.json",
-    "config": "config.json",
-}
+# Each operator input is its own resource, stored as ``<collection>.json``. The former
+# ``config`` document is decomposed into the per-concern resources below.
+_INPUTS = frozenset({
+    "locations",
+    "csp-regions",
+    "off-net",
+    "forced-core-nodes",
+    "forced-aggregation-points",
+    "forced-connections",
+    "prohibited-core-nodes",
+    "prohibited-aggregation-points",
+    "prohibited-connections",
+    "core-node-count",
+    "core-mesh-degree",
+    "aggregation-homing-degree",
+    "access-homing-degree",
+    "knobs",
+    "label",
+})
+# Customers are enumerated by this marker document (every customer has a label).
+_CUSTOMER_MARKER = "label.json"
 
 
 def _s3() -> Any:
@@ -54,10 +69,10 @@ def _response(status: int, body: Any) -> dict[str, Any]:
 
 
 def _customers(client: Any) -> list[dict[str, str]]:
-    """List the customers (those with a config) as ``{id, label}`` entries for the UI.
+    """List the customers (those with a label) as ``{id, label}`` entries for the UI.
 
-    The display label is the customer config's ``label`` (e.g. ``F-35 (redundant)``),
-    falling back to the id when the config does not set one.
+    The display label is the customer's ``label`` document (e.g. ``F-35 (redundant)``),
+    falling back to the id when it is unset.
     """
     listing = client.list_objects_v2(
         Bucket=os.environ["STORE_BUCKET"], Prefix="customers/"
@@ -65,11 +80,11 @@ def _customers(client: Any) -> list[dict[str, str]]:
     customers = []
     for item in listing.get("Contents", []):
         key = item["Key"]
-        if not key.endswith("/config.json"):
+        if not key.endswith(f"/{_CUSTOMER_MARKER}"):
             continue
-        customer = key.removeprefix("customers/").removesuffix("/config.json")
-        config = _read_object(client, key) or {}
-        customers.append({"id": customer, "label": config.get("label") or customer})
+        customer = key.removeprefix("customers/").removesuffix(f"/{_CUSTOMER_MARKER}")
+        label = _read_object(client, key) or {}
+        customers.append({"id": customer, "label": label.get("label") or customer})
     return customers
 
 
@@ -109,7 +124,7 @@ def _get(client: Any, customer: str | None, event: dict[str, Any]) -> dict[str, 
     if collection in _WAN_COLLECTIONS:
         return _serve(client, customer, f"customers/{customer}/wan.json", collection)
     if collection in _INPUTS:
-        return _serve(client, customer, f"customers/{customer}/{_INPUTS[collection]}")
+        return _serve(client, customer, f"customers/{customer}/{collection}.json")
     return _response(404, {"error": collection})
 
 
@@ -118,7 +133,7 @@ def _put(client: Any, customer: str, event: dict[str, Any]) -> dict[str, Any]:
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in _INPUTS:
         return _response(404, {"error": collection})
-    key = f"customers/{customer}/{_INPUTS[collection]}"
+    key = f"customers/{customer}/{collection}.json"
     body = json.dumps(json.loads(event["body"])).encode()
     client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=body)
     _cascade(customer)

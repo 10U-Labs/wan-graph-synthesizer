@@ -28,14 +28,23 @@ LOCAL_FIBER_RADIUS_MILES = 300.0
 
 
 def nearest_carrier_pops(
-    vertex: Vertex, carrier_pops: list[Vertex], links: int, max_radius: float
+    vertex: Vertex, carrier_pops: list[Vertex], links: int, max_radius: float | None
 ) -> list[Vertex]:
-    """The up-to-``links`` nearest carrier PoPs within ``max_radius`` of ``vertex``."""
+    """The up-to-``links`` nearest carrier PoPs, capped at ``max_radius`` if given.
+
+    ``max_radius`` of ``None`` removes the distance cap: the nearest ``links`` PoPs
+    are returned regardless of distance. This honours an operator force even where our
+    public data records no nearby fiber -- fiber exists everywhere, we just lack it.
+    """
     ranked = sorted(
         ((haversine_miles(vertex, pop), pop) for pop in carrier_pops),
         key=lambda item: (item[0], item[1].id),
     )
-    return [pop for distance, pop in ranked[:links] if distance <= max_radius]
+    return [
+        pop
+        for distance, pop in ranked[:links]
+        if max_radius is None or distance <= max_radius
+    ]
 
 
 def unique_twin_id(base: str, used_ids: set[str]) -> str:
@@ -55,16 +64,18 @@ def build_local_fiber_twin(
     *,
     note: str,
     shown_in_map: bool,
+    max_radius: float | None = LOCAL_FIBER_RADIUS_MILES,
 ) -> tuple[Vertex, dict[tuple[str, str], PhysicalEdge]] | None:
     """A co-located carrier-PoP twin for ``site`` plus its local-fiber edges.
 
     Returns the ``KIND_POP`` twin and its synthetic links to the nearest carrier
-    PoPs, or ``None`` when fewer than :data:`LOCAL_FIBER_MIN_LINKS` PoPs lie within
-    :data:`LOCAL_FIBER_RADIUS_MILES` (the site cannot be biconnected into the
-    backbone).
+    PoPs. ``max_radius`` caps how far a synthetic link may reach; pass ``None`` to
+    remove the cap so an operator-forced site is always seated, wired to its nearest
+    PoPs regardless of distance. Returns ``None`` only when fewer than
+    :data:`LOCAL_FIBER_MIN_LINKS` carrier PoPs are available to wire to.
     """
     neighbors = nearest_carrier_pops(
-        site, carrier_pops, LOCAL_FIBER_LINKS, LOCAL_FIBER_RADIUS_MILES
+        site, carrier_pops, LOCAL_FIBER_LINKS, max_radius
     )
     if len(neighbors) < LOCAL_FIBER_MIN_LINKS:
         return None

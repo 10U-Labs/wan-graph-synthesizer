@@ -32,19 +32,10 @@ def test_dual_home_realizes_a_forced_off_net_site(tmp_path: Path) -> None:
     assert any(vertex.id.startswith("offnet_") for vertex in homed_vertices)
 
 
-def test_finalize_validates_without_augmentation() -> None:
+def test_finalize_validates_a_design() -> None:
     """finalize validates a design and reports it connected."""
     art = fixtures.ring_artifacts()
     _vertices, _edges, _design, validation = finalize(
-        art.vertices, art.physical_edges, art.design, fixtures.ring_params(), False
-    )
-    assert validation["connected"] is True
-
-
-def test_finalize_validates_with_augmentation() -> None:
-    """finalize augments physical resilience and still validates connected."""
-    art = fixtures.ring_artifacts()
-    _vertices, _edges, _design, validation = finalize(
-        art.vertices, art.physical_edges, art.design, fixtures.ring_params(), True
+        art.vertices, art.physical_edges, art.design, fixtures.ring_params()
     )
     assert validation["connected"] is True

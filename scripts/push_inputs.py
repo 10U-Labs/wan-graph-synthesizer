@@ -1,7 +1,8 @@
 """Seed the wan-graph-designer API from the git-authored data/ + etc/ inputs.
 
 Carriers (PoPs + fiber) and CSPs (regions) are pushed as graphs; each customer's
-installations, CSP-region selection, and design config are pushed as its inputs.
+locations, CSP-region selection, and per-concern config resources are pushed as its
+inputs.
 A write triggers the API's auto-create cascade (substrate merge + WAN creates).
 The HTTPS PUT endpoint is the only write path; this client is one caller of it.
 
@@ -85,44 +86,53 @@ def push_csps(api: str) -> None:
         _put(api, f"csps/{provider}/vertices", input_graph(vertices, {})["vertices"])
 
 
-def _customer_inputs(config: dict[str, Any]) -> tuple[list[Any], list[Any]]:
-    """Split a config's vertices into (installations, csp-regions) by tenant."""
-    carriers = set(_carrier_names())
-    installs: list[tuple[str, Path]] = []
-    regions: list[tuple[str, Path]] = []
-    for tenant, value in config.get("inputs", {}).get("vertices", {}).items():
+def _tenant_vertices(mapping: dict[str, Any]) -> list[Any]:
+    """Load a ``{tenant: csv-or-list}`` mapping into a flat list of vertices."""
+    files: list[tuple[str, Path]] = []
+    for tenant, value in mapping.items():
         for raw in value if isinstance(value, list) else [value]:
-            path = REPO_ROOT / raw
-            if path.stem in carriers:
-                continue
-            target = regions if tenant.lower() in CSP_PROVIDERS else installs
-            target.append((tenant, path))
-    return (
-        load_vertices(installs) if installs else [],
-        load_vertices(regions) if regions else [],
-    )
+            files.append((tenant, REPO_ROOT / raw))
+    return load_vertices(files) if files else []
 
 
-def _customer_off_net(config: dict[str, Any]) -> list[Any]:
-    """The customer's off-net candidate seats (forced cores/aggs reached locally)."""
-    raw = config.get("inputs", {}).get("off_net")
-    return load_off_net_sites(REPO_ROOT / raw) if raw else []
+def _degree_doc(value: Any) -> dict[str, Any]:
+    """Wrap a required redundancy degree as its ``{"degree": int}`` document."""
+    return {"degree": value}
 
 
 def push_customers(api: str) -> None:
-    """Push each customer's installations, CSP regions, off-net seats, and config."""
+    """Push each customer's inputs: locations, CSP regions, off-net, and every config resource."""
     for path in sorted(ETC.glob("*.yml")):
         config = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        installs, regions = _customer_inputs(config)
-        off_net = _customer_off_net(config)
-        design = {key: value for key, value in config.items() if key != "inputs"}
         cid = _slug(path.stem)
-        print(f"customer {cid}: {len(installs)} installs, {len(regions)} regions, "
+        inputs = config.get("inputs", {})
+        locations = _tenant_vertices(inputs.get("locations", {}))
+        regions = _tenant_vertices(inputs.get("csps", {}))
+        off_net_path = inputs.get("off_net")
+        off_net = load_off_net_sites(REPO_ROOT / off_net_path) if off_net_path else []
+        print(f"customer {cid}: {len(locations)} locations, {len(regions)} regions, "
               f"{len(off_net)} off-net")
-        _put(api, f"customers/{cid}/installations", input_graph(installs, {}))
+        _put(api, f"customers/{cid}/locations", input_graph(locations, {}))
         _put(api, f"customers/{cid}/csp-regions", input_graph(regions, {}))
         _put(api, f"customers/{cid}/off-net", input_graph(off_net, {}))
-        _put(api, f"customers/{cid}/config", design)
+        _put(api, f"customers/{cid}/forced-core-nodes", config.get("forced_core_nodes", []))
+        _put(api, f"customers/{cid}/forced-aggregation-points",
+             config.get("forced_aggregation_points", []))
+        _put(api, f"customers/{cid}/forced-connections", config.get("forced_connections", []))
+        _put(api, f"customers/{cid}/prohibited-core-nodes",
+             config.get("prohibited_core_nodes", []))
+        _put(api, f"customers/{cid}/prohibited-aggregation-points",
+             config.get("prohibited_aggregation_points", []))
+        _put(api, f"customers/{cid}/prohibited-connections",
+             config.get("prohibited_connections", []))
+        _put(api, f"customers/{cid}/core-node-count", config.get("core_node_count", {}))
+        _put(api, f"customers/{cid}/core-mesh-degree", _degree_doc(config["core_mesh_degree"]))
+        _put(api, f"customers/{cid}/aggregation-homing-degree",
+             _degree_doc(config["aggregation_homing_degree"]))
+        _put(api, f"customers/{cid}/access-homing-degree",
+             _degree_doc(config["access_homing_degree"]))
+        _put(api, f"customers/{cid}/knobs", config.get("knobs", {}))
+        _put(api, f"customers/{cid}/label", {"label": config.get("label", "")})
 
 
 def main() -> None:

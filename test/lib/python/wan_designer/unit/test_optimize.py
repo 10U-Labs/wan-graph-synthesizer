@@ -25,6 +25,7 @@ from wan_graph.model import (
 from wan_designer.optimize import (
     aggregation_core_paths,
     aggregation_haul_miles,
+    aggregation_homes,
     all_pairs_shortest,
     assign_access,
     best_design_at_size,
@@ -37,12 +38,11 @@ from wan_designer.optimize import (
     core_combinations,
     cores_have_backbone_peers,
     cores_reachable_avoiding,
-    dual_homes_to_pair,
     effective_forced_aggregations,
     enumeration_limit,
     feasible_aggregation_ids,
     feasible_colocation_twins,
-    forced_can_dual_home,
+    forced_aggregations_can_home,
     nearest_pop_id,
     prune_unused_aggregations,
     optimize_three_tier_design,
@@ -122,14 +122,14 @@ TRIANGLE_VERTICES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
 def test_min_core_count_below_two_is_rejected() -> None:
     """A minimum core count below two is rejected."""
     with pytest.raises(ValueError):
-        optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(min_core_count=1))
+        optimize_three_tier_design(TRIANGLE_VERTICES, TRIANGLE, DesignParams(min_core_count=1))
 
 
 def test_max_core_count_below_min_is_rejected() -> None:
     """A maximum core count below the minimum is rejected."""
     with pytest.raises(ValueError):
         optimize_three_tier_design(
-            TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(min_core_count=3, max_core_count=2)
+            TRIANGLE_VERTICES, TRIANGLE, DesignParams(min_core_count=3, max_core_count=2)
         )
 
 
@@ -137,7 +137,7 @@ def test_forced_cores_exceeding_max_core_count_is_rejected() -> None:
     """Pinning more cores than the cap allows is rejected: the pins cannot be dropped."""
     with pytest.raises(ValueError):
         optimize_three_tier_design(
-            TRIANGLE_VERTICES, TRIANGLE, {},
+            TRIANGLE_VERTICES, TRIANGLE,
             DesignParams(min_core_count=2, max_core_count=2),
             RoleOverrides(forced_core_ids=frozenset({"a", "b", "c"})),
         )
@@ -147,7 +147,7 @@ def test_unknown_pop_ids_are_rejected() -> None:
     """Unknown pop ids are rejected."""
     with pytest.raises(ValueError):
         optimize_three_tier_design(
-            [pop("a"), pop("b")], physical({("a", "c"): 1.0}), {}, DesignParams()
+            [pop("a"), pop("b")], physical({("a", "c"): 1.0}), DesignParams()
         )
 
 
@@ -155,7 +155,7 @@ def test_pop_without_edges_is_rejected() -> None:
     """Pop without edges is rejected."""
     with pytest.raises(ValueError):
         optimize_three_tier_design(
-            [pop("a"), pop("b"), pop("c")], physical({("a", "b"): 1.0}), {}, DesignParams()
+            [pop("a"), pop("b"), pop("c")], physical({("a", "b"): 1.0}), DesignParams()
         )
 
 
@@ -163,14 +163,14 @@ def test_not_enough_eligible_pops_is_rejected() -> None:
     """Not enough eligible pops is rejected."""
     with pytest.raises(ValueError):
         optimize_three_tier_design(
-            [pop("a"), pop("b")], physical({("a", "b"): 1.0}), {}, DesignParams()
+            [pop("a"), pop("b")], physical({("a", "b"): 1.0}), DesignParams()
         )
 
 
 def test_optimizes_ring_to_a_feasible_design() -> None:
     """Optimizes ring to a feasible design with at least the minimum cores."""
     design = optimize_three_tier_design(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {}, fixtures.ring_params()
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), fixtures.ring_params()
     )
     assert len(design.core_ids) >= 2
 
@@ -178,7 +178,7 @@ def test_optimizes_ring_to_a_feasible_design() -> None:
 def test_min_core_count_is_the_floor_when_feasible() -> None:
     """A design feasible at the floor uses exactly the minimum cores, no more."""
     design = optimize_three_tier_design(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {}, DesignParams(min_core_count=3)
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), DesignParams(min_core_count=3)
     )
     assert len(design.core_ids) == 3
 
@@ -186,7 +186,7 @@ def test_min_core_count_is_the_floor_when_feasible() -> None:
 def test_core_tier_grows_past_the_floor_to_seat_more_forced_cores() -> None:
     """With more cores pinned than the floor, the tier grows to seat them all."""
     design = optimize_three_tier_design(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {},
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(),
         DesignParams(min_core_count=2),
         RoleOverrides(forced_core_ids=frozenset({"P1", "P3", "P5"})),
     )
@@ -198,13 +198,13 @@ def test_no_feasible_design_is_rejected() -> None:
     edges = physical({("x1", "b1"): 1.0, ("b1", "y1"): 1.0, ("x2", "b2"): 1.0, ("b2", "y2"): 1.0})
     vertices = [pop(name) for name in ("x1", "b1", "y1", "x2", "b2", "y2")]
     with pytest.raises(ValueError):
-        optimize_three_tier_design(vertices, edges, {}, DesignParams(min_core_count=2))
+        optimize_three_tier_design(vertices, edges, DesignParams(min_core_count=2))
 
 
 def test_aggregation_core_paths_infeasible_through_bottleneck() -> None:
     """Aggregation core paths infeasible through bottleneck."""
     edges = physical({("S", "X"): 1.0, ("X", "C1"): 1.0, ("X", "C2"): 1.0})
-    _distance, paths = aggregation_core_paths("S", ("C1", "C2"), build_adjacency(edges), edges)
+    _distance, paths = aggregation_core_paths("S", ("C1", "C2"), build_adjacency(edges), edges, 2)
     assert not paths
 
 
@@ -221,7 +221,7 @@ def test_aggregation_homes_to_the_two_nearest_cores_by_miles() -> None:
         ("S", "B"): 1.0, ("B", "C2"): 1.0,
     })
     _distance, paths = aggregation_core_paths(
-        "S", ("C1", "C2", "C3"), build_adjacency(edges), edges
+        "S", ("C1", "C2", "C3"), build_adjacency(edges), edges, 2
     )
     assert {use.target for use in paths} == {"C1", "C2"}
 
@@ -283,33 +283,44 @@ def _twin_plan(reach: set[str]) -> _SearchPlan:
 
 def test_feasible_colocation_twins_offers_a_reachable_core_twin() -> None:
     """A selected core that can reach another core around itself offers its twin."""
-    assert feasible_colocation_twins(("c1", "c2"), _twin_plan({"c2"})) == {"aggr_c1"}
+    assert feasible_colocation_twins(("c1", "c2"), _twin_plan({"c2"}), 2) == {"aggr_c1"}
 
 
 def test_feasible_colocation_twins_skips_an_unselected_cores_twin() -> None:
     """A core that is not in the set offers no twin, even if it could reach around."""
-    assert feasible_colocation_twins(("c2", "c3"), _twin_plan({"c2"})) == set()
+    assert feasible_colocation_twins(("c2", "c3"), _twin_plan({"c2"}), 2) == set()
 
 
 def test_feasible_colocation_twins_skips_a_twin_that_loses_redundancy() -> None:
     """A selected core whose only reach-around lands off the core set offers no twin."""
-    assert feasible_colocation_twins(("c1", "c2"), _twin_plan({"x"})) == set()
+    assert feasible_colocation_twins(("c1", "c2"), _twin_plan({"x"}), 2) == set()
 
 
-def test_dual_homes_to_pair_memoizes_feasibility() -> None:
-    """Dual homes to pair records its computed feasibility in the cache."""
+def test_feasible_colocation_twins_offers_every_twin_at_homing_degree_one() -> None:
+    """At homing degree 1 a selected core's twin needs no reach-around to qualify."""
+    assert feasible_colocation_twins(("c1", "c2"), _twin_plan({"x"}), 1) == {"aggr_c1"}
+
+
+def test_aggregation_homes_memoizes_feasibility() -> None:
+    """aggregation_homes records its computed feasibility in the cache."""
     edges = physical({("g", "c1"): 1.0, ("g", "c2"): 1.0, ("c1", "c2"): 1.0})
     inputs = _inputs_from_edges(["g", "c1", "c2"], edges, {"g", "c1", "c2"})
-    cache: dict[tuple[str, str, str], bool] = {}
-    dual_homes_to_pair("g", ("c1", "c2"), inputs, cache)
-    assert cache[("g", "c1", "c2")] is True
+    cache: dict[tuple[str, tuple[str, ...], int], bool] = {}
+    aggregation_homes("g", ("c1", "c2"), 2, inputs, cache)
+    assert cache[("g", ("c1", "c2"), 2)] is True
 
 
-def test_dual_homes_to_pair_uses_cached_result() -> None:
-    """Dual homes to pair trusts a cached verdict over the live graph."""
+def test_aggregation_homes_uses_cached_result() -> None:
+    """aggregation_homes trusts a cached verdict over the live graph."""
     inputs = _inputs_from_edges(["g", "c1", "c2"], physical({("g", "c1"): 1.0}), {"g"})
-    cache = {("g", "c1", "c2"): True}
-    assert dual_homes_to_pair("g", ("c1", "c2"), inputs, cache) is True
+    cache = {("g", ("c1", "c2"), 2): True}
+    assert aggregation_homes("g", ("c1", "c2"), 2, inputs, cache) is True
+
+
+def test_aggregation_homes_at_degree_one_needs_only_one_core() -> None:
+    """At homing degree 1 a single reachable core is enough to home."""
+    inputs = _inputs_from_edges(["g", "c1", "c2"], physical({("g", "c1"): 1.0}), {"g"})
+    assert aggregation_homes("g", ("c1", "c2"), 1, inputs, {}) is True
 
 
 def test_cores_have_backbone_peers_false_when_cores_disconnected() -> None:
@@ -719,7 +730,7 @@ def test_apply_role_overrides_splits_a_co_located_pop() -> None:
 def test_optimize_lets_a_core_also_serve_as_an_aggregation() -> None:
     """On a small graph the search dual-roles a core through its co-located twin."""
     design = optimize_three_tier_design(
-        TRIANGLE_VERTICES, TRIANGLE, {}, DesignParams(min_core_count=2)
+        TRIANGLE_VERTICES, TRIANGLE, DesignParams(min_core_count=2)
     )
     twinned = {agg[len("aggr_"):] for agg in design.aggregation_ids if agg.startswith("aggr_")}
     assert twinned & set(design.core_ids)
@@ -733,7 +744,7 @@ def test_optimize_keeps_a_single_twin_for_an_operator_colocation() -> None:
     vertices, edges, overrides = apply_role_overrides(
         fixtures.ring_vertices(), fixtures.ring_physical_edges(), params
     )
-    design = optimize_three_tier_design(vertices, edges, {}, params, overrides)
+    design = optimize_three_tier_design(vertices, edges, params, overrides)
     assert design.aggregation_ids.count("aggr_P0") == 1
 
 
@@ -772,7 +783,7 @@ def test_materialize_selected_colocation_twins_ignores_a_core_without_a_twin() -
 def test_optimize_honors_a_forced_core_override() -> None:
     """A forced-core override is fixed into the selected core tier."""
     design = optimize_three_tier_design(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {},
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(),
         DesignParams(min_core_count=2), RoleOverrides(forced_core_ids=frozenset({"P3"})),
     )
     assert "P3" in design.core_ids
@@ -864,10 +875,10 @@ def test_vertex_role_reads_a_cored_forced_aggregations_twin_as_aggregation() -> 
     assert vertex_role("aggr_a", design, twin) == "aggregation"
 
 
-def test_forced_can_dual_home_accepts_a_cored_pin_via_its_twin() -> None:
-    """A cored pin dual-homes through its twin's reach-around, not a bare-id path."""
+def test_forced_aggregations_can_home_accepts_a_cored_pin_via_its_twin() -> None:
+    """A cored pin homes through its twin's reach-around, not a bare-id path."""
     inputs, plan, _edges = _cored_forced_aggregation_case()
-    assert forced_can_dual_home(("a", "b"), inputs, plan)
+    assert forced_aggregations_can_home(("a", "b"), inputs, plan)
 
 
 def test_build_search_plan_includes_forced_aggregations_as_cores() -> None:

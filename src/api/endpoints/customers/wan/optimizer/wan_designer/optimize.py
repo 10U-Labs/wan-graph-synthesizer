@@ -40,7 +40,6 @@ from wan_graph.model import (
     PathUse,
     PhysicalEdge,
     RoleOverrides,
-    edge_key,
     haversine_miles,
     is_carrier_pop,
 )
@@ -57,7 +56,7 @@ from wan_designer.graphs import (
 )
 from wan_designer.backbone import BackboneConstraints, core_mesh_paths, path_geometry_miles
 from wan_designer.clustering import cluster_access_vertices
-from wan_designer.installations import FACILITY_ID_PREFIX
+from wan_designer.on_net_fabrication import ON_NET_ID_PREFIX
 from wan_designer.offnet import OFF_NET_ID_PREFIX
 from wan_designer.overrides import (
     AGGR_TWIN_PREFIX,
@@ -76,15 +75,16 @@ def aggregation_core_paths(
     core_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
+    homes: int,
     required_cores: frozenset[str] = frozenset(),
 ) -> tuple[float, list[PathUse]]:
-    """Route an aggregation to two distinct cores over vertex-disjoint paths.
+    """Route an aggregation to ``homes`` distinct cores over vertex-disjoint paths.
 
     ``required_cores`` are operator-forced cores this aggregation must home to;
-    each is forced to anchor one of the two routed paths.
+    each is forced to anchor one of the routed paths.
     """
     total, paths = vertex_disjoint_paths_to_cores(
-        adjacency, aggregation_id, core_ids, 2, required_cores
+        adjacency, aggregation_id, core_ids, homes, required_cores
     )
     if not paths:
         return math.inf, []
@@ -106,38 +106,29 @@ class _DesignDraft:
     selected_aggregation_ids: set[str]
     path_uses: list[PathUse]
 
-def core_pairs(core_ids: tuple[str, ...]) -> list[tuple[str, str]]:
-    """The two-core combinations of a core set, each as an ordered key."""
-    return [edge_key(left, right) for left, right in itertools.combinations(core_ids, 2)]
-
-def dual_homes_to_pair(
+def aggregation_homes(
     aggregation_id: str,
-    pair: tuple[str, str],
+    core_ids: tuple[str, ...],
+    homes: int,
     inputs: DesignInputs,
-    cache: dict[tuple[str, str, str], bool],
+    cache: dict[tuple[str, tuple[str, ...], int], bool],
 ) -> bool:
-    """True if the aggregation has vertex-disjoint paths to both cores of a pair.
+    """True if the aggregation reaches ``homes`` distinct cores over disjoint paths.
 
-    Results are memoized per (aggregation, core pair). Feasibility to a trio is
-    the OR over its three pairs, so each pair's max-flow is computed only once
-    and reused across every trio that contains it.
+    A single vertex-disjoint max-flow over the whole core set finds up to ``homes``
+    paths to distinct cores, so this answers feasibility for any homing degree:
+    degree 1 needs one reachable core, degree 2 needs two over vertex-disjoint paths.
+    Memoized per (aggregation, core set, degree).
     """
-    key = (aggregation_id, pair[0], pair[1])
+    key = (aggregation_id, core_ids, homes)
     cached = cache.get(key)
     if cached is None:
-        cost, _paths = vertex_disjoint_paths_to_cores(inputs.adjacency, aggregation_id, pair, 2)
-        cached = math.isfinite(cost)
+        _cost, paths = vertex_disjoint_paths_to_cores(
+            inputs.adjacency, aggregation_id, core_ids, homes
+        )
+        cached = len(paths) >= homes
         cache[key] = cached
     return cached
-
-def aggregation_dual_homes(
-    aggregation_id: str,
-    pairs: list[tuple[str, str]],
-    inputs: DesignInputs,
-    cache: dict[tuple[str, str, str], bool],
-) -> bool:
-    """True if the aggregation can dual-home to two cores of the given set."""
-    return any(dual_homes_to_pair(aggregation_id, pair, inputs, cache) for pair in pairs)
 
 def cores_reachable_avoiding(
     pop_id: str,
@@ -163,19 +154,23 @@ def cores_reachable_avoiding(
                 frontier.append(neighbor)
     return reached
 
-def feasible_colocation_twins(core_ids: tuple[str, ...], plan: _SearchPlan) -> set[str]:
-    """Twin ids whose own core is selected and that keep two-distinct-core redundancy.
+def feasible_colocation_twins(
+    core_ids: tuple[str, ...], plan: _SearchPlan, homes: int
+) -> set[str]:
+    """Twin ids whose own core is selected and that keep their homing redundancy.
 
-    A core's twin is offered as an aggregation only when its core is in the set and
-    another core is reachable around it, so the twin keeps two vertex-disjoint paths
-    to two distinct cores -- itself over the cross-connect and the remote core beyond.
+    A core's twin reaches its own core for free over the cross-connect, so it needs
+    ``homes - 1`` further distinct cores reachable around it (bypassing the shared
+    core) to keep ``homes`` vertex-disjoint paths to distinct cores. Exact for the
+    supported degrees (1 and 2): at degree 1 every selected core's twin qualifies.
     """
     core_set = set(core_ids)
     twins = plan.aggregations
     return {
         twin_id
         for twin_id, core_id in twins.twin_to_core.items()
-        if core_id in core_set and twins.reach_avoiding[core_id] & core_set
+        if core_id in core_set
+        and len(twins.reach_avoiding[core_id] & core_set) >= homes - 1
     }
 
 def feasible_aggregation_ids(
@@ -185,20 +180,20 @@ def feasible_aggregation_ids(
 ) -> set[str]:
     """Eligible aggregations that can dual-home to two of the given cores.
 
-    Includes the co-located twin of any selected core that can still dual-home (see
+    Includes the co-located twin of any selected core that can still home (see
     :func:`feasible_colocation_twins`), so the search may let a core also serve as an
     aggregation. Only feasibility is computed here -- routed paths are reconstructed
     once for the winning core set -- because the design is ranked solely on last-mile
     mileage and core strength, neither of which depends on those paths.
     """
-    pairs = core_pairs(core_ids)
+    homes = plan.tuning.aggregation_homing_degree
     candidates = inputs.eligible_aggregation_ids - set(core_ids)
     feasible = {
         aggregation_id
         for aggregation_id in candidates
-        if aggregation_dual_homes(aggregation_id, pairs, inputs, plan.feasibility_cache)
+        if aggregation_homes(aggregation_id, core_ids, homes, inputs, plan.feasibility_cache)
     }
-    return feasible | feasible_colocation_twins(core_ids, plan)
+    return feasible | feasible_colocation_twins(core_ids, plan, homes)
 
 def cores_have_backbone_peers(
     core_ids: tuple[str, ...],
@@ -321,7 +316,7 @@ def finalize_design(
 
 def _is_realized_twin(vertex_id: str) -> bool:
     """A synthetic aggregation twin (co-location, installation, or off-net seat)."""
-    return vertex_id.startswith((AGGR_TWIN_PREFIX, FACILITY_ID_PREFIX, OFF_NET_ID_PREFIX))
+    return vertex_id.startswith((AGGR_TWIN_PREFIX, ON_NET_ID_PREFIX, OFF_NET_ID_PREFIX))
 
 
 def effective_forced_aggregations(plan: _SearchPlan, core_ids: tuple[str, ...]) -> set[str]:
@@ -344,12 +339,12 @@ def effective_forced_aggregations(plan: _SearchPlan, core_ids: tuple[str, ...]) 
     return seated
 
 
-def forced_can_dual_home(
+def forced_aggregations_can_home(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
 ) -> bool:
-    """True if every forced aggregation can dual-home to two of the cores.
+    """True if every forced aggregation can home to the required number of cores.
 
     Each pin is checked in its seated form (a cored pin as its co-located twin), and
     :func:`feasible_aggregation_ids` already vets both plain aggregations and twins --
@@ -454,15 +449,15 @@ def evaluate_cores(
     """Score a core set's feasibility and access homing without routing paths.
 
     Returns None when a core cannot reach enough peers to wire its backbone links, a
-    forced aggregation cannot dual-home, or some access vertex cannot reach two
-    facilities. Routed paths are deferred to the winning set, since they do not
-    affect the strength ranking.
+    forced aggregation cannot home to the required cores, or some access vertex cannot
+    reach its facilities. Routed paths are deferred to the winning set, since they do
+    not affect the strength ranking.
     """
     if not cores_have_backbone_peers(
         core_ids, inputs.all_distances, plan.tuning.core_links_per_core
     ):
         return None
-    if not forced_can_dual_home(core_ids, inputs, plan):
+    if not forced_aggregations_can_home(core_ids, inputs, plan):
         return None
     return assign_access(core_ids, inputs, plan)
 
@@ -512,10 +507,11 @@ def routed_path_uses(
     path_uses = core_mesh_paths(
         core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
     )
+    homes = plan.tuning.aggregation_homing_degree
     for aggregation_id in sorted(selected):
         adjacency = twin_routing_adjacency(aggregation_id, inputs, plan)
         _cost, uses = aggregation_core_paths(
-            aggregation_id, core_ids, adjacency, physical_edges,
+            aggregation_id, core_ids, adjacency, physical_edges, homes,
             forced_cores_for_aggregation(aggregation_id, core_set, plan.forced_links),
         )
         path_uses.extend(uses)
@@ -543,20 +539,18 @@ def build_design_for_cores(
 
 def compute_eligible_ids(
     carrier_pops: list[Vertex],
-    roles: dict[str, str],
     adjacency: dict[str, list[tuple[str, float]]],
-    allow_roadm_aggregation: bool,
 ) -> set[str]:
     """Carrier PoPs that may serve as core or aggregation vertices.
 
-    A PoP needs at least two physical links to ever be dual-homed to two
-    cores, so degree-one PoPs (spurs) are excluded regardless of role.
+    A PoP needs at least two physical links to ever route redundantly, so degree-one
+    PoPs (spurs) are excluded. Transit-only ROADM PoPs are eligible like any other
+    point -- the design may pick anything, so role no longer gates eligibility.
     """
     return {
         pop.id
         for pop in carrier_pops
-        if (allow_roadm_aggregation or roles.get(pop.id, "aggregator") == "aggregator")
-        and len(adjacency.get(pop.id, [])) >= 2
+        if len(adjacency.get(pop.id, [])) >= 2
     }
 
 def all_pairs_shortest(
@@ -905,7 +899,6 @@ def build_search_plan(
 def optimize_three_tier_design(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-    roles: dict[str, str],
     params: DesignParams,
     overrides: RoleOverrides | None = None,
 ) -> Design:
@@ -929,9 +922,7 @@ def optimize_three_tier_design(
     context = graph_context(vertices, physical_edges)
     operator_forced = overrides.forced_aggregation_ids
     aggregations = _AggregationPlan(operator_forced)
-    eligible_ids = compute_eligible_ids(
-        context.carrier_pops, roles, context.adjacency, params.allow_roadm_aggregation
-    )
+    eligible_ids = compute_eligible_ids(context.carrier_pops, context.adjacency)
     eligible_ids = eligible_ids | operator_forced | overrides.forced_core_ids
     # The two tier bars are independent: a prohibited-core PoP can still be an
     # aggregation, and a prohibited-aggregation PoP can still be a core. Each tier
