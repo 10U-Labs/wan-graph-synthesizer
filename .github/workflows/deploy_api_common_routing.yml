@@ -1,0 +1,36 @@
+---
+concurrency:
+  cancel-in-progress: false
+  group: deploy-api-common-routing
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+      - name: Apply the routing stack
+        run: |
+          cd src/api/common/routing
+          tofu init -input=false
+          tofu apply -auto-approve -input=false
+name: Deploy API common routing
+'on':
+  push:
+    branches: [main]
+    paths:
+      - src/api/common/routing/**
+      - src/www/api/openapi.json
+      - lib/opentofu/common/**
+  workflow_dispatch: {}

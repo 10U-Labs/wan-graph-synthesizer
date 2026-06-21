@@ -1,0 +1,37 @@
+---
+concurrency:
+  cancel-in-progress: false
+  group: build-optimizer-image
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region us-east-2 \
+            | docker login --username AWS --password-stdin \
+              781581267945.dkr.ecr.us-east-2.amazonaws.com
+      - name: Build and push the optimizer image
+        run: |
+          REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-designer-optimizer
+          docker build -f src/api/endpoints/wan/optimizer/Dockerfile \
+            -t "$REPO:latest" .
+          docker push "$REPO:latest"
+name: Build optimizer image
+'on':
+  push:
+    branches: [main]
+    paths:
+      - src/api/endpoints/wan/optimizer/**
+      - lib/python/**
+  workflow_dispatch: {}
