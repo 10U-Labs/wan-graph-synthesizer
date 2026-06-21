@@ -15,21 +15,17 @@ jobs:
         with:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      - name: Optimizer tasks and logs
+      - name: Stopped task reasons
         run: |
-          echo "=== RUNNING tasks ==="
-          aws ecs list-tasks --cluster wan-graph-designer \
-            --desired-status RUNNING --output json
-          echo "=== recent STOPPED tasks (stop reason) ==="
           for arn in $(aws ecs list-tasks --cluster wan-graph-designer \
             --desired-status STOPPED --output text --query 'taskArns[:5]'); do
             aws ecs describe-tasks --cluster wan-graph-designer --tasks "$arn" \
-              --query 'tasks[0].{stopCode:stopCode,reason:stoppedReason,\
-                containers:containers[0].{exit:exitCode,reason:reason}}' \
-              --output json
+              --query 'tasks[0].[stopCode,stoppedReason,containers[0].exitCode]' \
+              --output text
           done
-          echo "=== optimizer logs (last 30m) ==="
-          aws logs tail /ecs/wan-graph-designer-optimizer --since 30m \
+      - name: Optimizer logs
+        run: |
+          aws logs tail /ecs/wan-graph-designer-optimizer --since 40m \
             --format short || echo "no log group/streams yet"
 name: Diagnose optimizer
 'on':
