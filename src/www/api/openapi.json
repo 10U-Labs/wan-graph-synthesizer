@@ -29,6 +29,18 @@
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
+      },
+      "put": {
+        "summary": "Replace a carrier's PoPs (cascades a rebuild).",
+        "parameters": [
+          { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The carrier's vertices were replaced." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CarriersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
       }
     },
     "/wan-graph-designer/carriers/{carrier}/edges": {
@@ -38,6 +50,32 @@
           { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The carrier's edges." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CarriersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "put": {
+        "summary": "Replace a carrier's fiber (cascades a rebuild).",
+        "parameters": [
+          { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The carrier's edges were replaced." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CarriersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/carriers/{carrier}": {
+      "delete": {
+        "summary": "Remove a carrier (cascades a rebuild).",
+        "parameters": [
+          { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The carrier was removed." } },
         "x-amazon-apigateway-integration": {
           "uri": "${CarriersHandlerArn}",
           "httpMethod": "POST",

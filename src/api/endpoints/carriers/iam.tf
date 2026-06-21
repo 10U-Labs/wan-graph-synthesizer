@@ -16,8 +16,8 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-resource "aws_iam_role_policy" "store_read" {
-  name = "StoreRead"
+resource "aws_iam_role_policy" "store_access" {
+  name = "StoreAccess"
   role = aws_iam_role.lambda.id
 
   policy = jsonencode({
@@ -25,13 +25,18 @@ resource "aws_iam_role_policy" "store_read" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["s3:GetObject"]
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
         Resource = ["${data.terraform_remote_state.storage.outputs.bucket_arn}/*"]
       },
       {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = [data.terraform_remote_state.storage.outputs.bucket_arn]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = local.cascade_function_arns
       }
     ]
   })

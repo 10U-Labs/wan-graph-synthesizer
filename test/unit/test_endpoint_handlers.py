@@ -16,7 +16,7 @@ import pytest
 
 from module_utils import create_lambda_loader
 from repo_utils import REPO_ROOT
-from s3_store_mock import fake_ecs, fake_s3
+from s3_store_mock import fake_ecs, fake_lambda, fake_s3
 
 
 def _load(endpoint: str, monkeypatch: pytest.MonkeyPatch, **env: str) -> Any:
@@ -211,6 +211,81 @@ def test_merge_caches_the_s3_client(monkeypatch: pytest.MonkeyPatch) -> None:
         module.lambda_handler({"httpMethod": "POST"}, None)
         module.lambda_handler({"path": "/x/carriers/merge/vertices"}, None)
     assert mock_client.call_count == 1
+
+
+def _carrier(monkeypatch: pytest.MonkeyPatch) -> Any:
+    """Load the carriers handler with the cascade target functions configured."""
+    return _load("carriers", monkeypatch, MERGE_FUNCTION="merge-fn", WAN_FUNCTION="wan-fn")
+
+
+def _carrier_clients(objects: dict[str, bytes], invocations: list[dict[str, Any]]) -> Any:
+    """A boto3.client side effect handing back the S3 and Lambda fakes by service."""
+    fakes = {"s3": fake_s3(objects), "lambda": fake_lambda(invocations)}
+    return lambda service, **_kwargs: fakes[service]
+
+
+def _put_event(carrier: str, collection: str, body: Any) -> dict[str, Any]:
+    """A carrier collection PUT event."""
+    return {
+        "httpMethod": "PUT",
+        "pathParameters": {"carrier": carrier},
+        "path": f"/x/carriers/{carrier}/{collection}",
+        "body": json.dumps(body),
+    }
+
+
+def test_carrier_put_persists_the_collection(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT stores the new collection in the carrier's graph."""
+    module = _carrier(monkeypatch)
+    objects: dict[str, bytes] = {}
+    with patch("boto3.client", side_effect=_carrier_clients(objects, [])):
+        module.lambda_handler(_put_event("lumen", "vertices", [{"id": "P"}]), None)
+    assert json.loads(objects["carriers/lumen.json"])["vertices"] == [{"id": "P"}]
+
+
+def test_carrier_put_preserves_other_collections(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT keeps the carrier's other collection (read-modify-write)."""
+    module = _carrier(monkeypatch)
+    objects = {"carriers/lumen.json": json.dumps({"edges": [{"e": 1}]}).encode()}
+    with patch("boto3.client", side_effect=_carrier_clients(objects, [])):
+        module.lambda_handler(_put_event("lumen", "vertices", [{"id": "P"}]), None)
+    assert json.loads(objects["carriers/lumen.json"])["edges"] == [{"e": 1}]
+
+
+def test_carrier_put_cascades_to_merge_and_customers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT rebuilds the substrate and each customer's WAN (merge + one per customer)."""
+    module = _carrier(monkeypatch)
+    invocations: list[dict[str, Any]] = []
+    clients = _carrier_clients({"customers/f-35/config.json": b"{}"}, invocations)
+    with patch("boto3.client", side_effect=clients):
+        module.lambda_handler(_put_event("lumen", "edges", []), None)
+    assert len(invocations) == 2
+
+
+def test_carrier_put_404_for_unknown_collection(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT to an unknown sub-collection is a 404."""
+    module = _carrier(monkeypatch)
+    with patch("boto3.client", side_effect=_carrier_clients({}, [])):
+        response = module.lambda_handler(_put_event("lumen", "bogus", []), None)
+    assert response["statusCode"] == 404
+
+
+def test_carrier_delete_removes_the_object(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A DELETE removes the carrier object (and cascades a rebuild)."""
+    module = _carrier(monkeypatch)
+    objects = {"carriers/lumen.json": b"{}"}
+    event = {"httpMethod": "DELETE", "pathParameters": {"carrier": "lumen"}}
+    with patch("boto3.client", side_effect=_carrier_clients(objects, [])):
+        module.lambda_handler(event, None)
+    assert "carriers/lumen.json" not in objects
+
+
+def test_carrier_write_404_when_no_carrier(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-GET request without a carrier is a 404."""
+    module = _carrier(monkeypatch)
+    with patch("boto3.client", side_effect=_carrier_clients({}, [])):
+        response = module.lambda_handler({"httpMethod": "DELETE"}, None)
+    assert response["statusCode"] == 404
 
 
 def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
