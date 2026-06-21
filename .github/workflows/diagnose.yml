@@ -15,18 +15,28 @@ jobs:
         with:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      - name: Stopped task reasons
+      - name: Running tasks
         run: |
+          echo "RUNNING task arns:"
+          aws ecs list-tasks --cluster wan-graph-designer \
+            --desired-status RUNNING --output text --query 'taskArns'
           for arn in $(aws ecs list-tasks --cluster wan-graph-designer \
-            --desired-status STOPPED --output text --query 'taskArns[:5]'); do
+            --desired-status RUNNING --output text --query 'taskArns'); do
             aws ecs describe-tasks --cluster wan-graph-designer --tasks "$arn" \
-              --query 'tasks[0].[stopCode,stoppedReason,containers[0].exitCode]' \
-              --output text
+              --query 'tasks[0].[lastStatus,startedAt]' --output text
           done
-      - name: Optimizer logs
+      - name: Latest optimizer log events
         run: |
-          aws logs tail /ecs/wan-graph-designer-optimizer --since 40m \
-            --format short || echo "no log group/streams yet"
+          STREAM=$(aws logs describe-log-streams \
+            --log-group-name /ecs/wan-graph-designer-optimizer \
+            --order-by LastEventTime --descending --max-items 1 \
+            --query 'logStreams[0].logStreamName' --output text 2>/dev/null)
+          echo "stream: $STREAM"
+          aws logs get-log-events \
+            --log-group-name /ecs/wan-graph-designer-optimizer \
+            --log-stream-name "$STREAM" --limit 60 \
+            --query 'events[*].message' --output text 2>/dev/null \
+            || echo "no events"
 name: Diagnose optimizer
 'on':
   workflow_dispatch: {}
