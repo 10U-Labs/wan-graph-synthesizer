@@ -157,6 +157,32 @@
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
+      },
+      "put": {
+        "summary": "Replace a provider's regions (cascades a rebuild).",
+        "parameters": [
+          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The provider's regions were replaced." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${providersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/providers/{provider}": {
+      "delete": {
+        "summary": "Remove a provider (cascades a rebuild).",
+        "parameters": [
+          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The provider was removed." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${providersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
       }
     },
     "/wan-graph-designer/customers": {
