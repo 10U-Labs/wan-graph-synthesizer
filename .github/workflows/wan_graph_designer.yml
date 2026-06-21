@@ -3,25 +3,6 @@ concurrency:
   cancel-in-progress: true
   group: design-${{ github.head_ref || github.ref_name }}
 jobs:
-  e2e-test:
-    needs: integration-test
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Restore pip cache
-        uses: actions/cache@v5
-        with:
-          key: >-
-            pip-design-test-${{ hashFiles('.github/workflows/wan_graph_designer.yml') }}
-          path: ~/.cache/pip
-          restore-keys: |
-            pip-design-test-
-      - name: Install tools
-        run: pip install fastapi httpx2 pytest pyyaml
-      - name: Run e2e tests
-        run: >-
-          PYTHONPATH=.:lib/python:src python3 -m pytest
-          test/e2e/ --verbose --pythonwarnings=error
   integration-test:
     needs: unit-test
     runs-on: ubuntu-24.04
@@ -36,7 +17,7 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Install tools
-        run: pip install fastapi httpx2 pytest pyyaml
+        run: pip install pytest pyyaml
       - name: Run integration tests
         run: >-
           PYTHONPATH=.:lib/python:src python3 -m pytest
@@ -59,7 +40,7 @@ jobs:
             assert-no-inline-directives \
             assert-no-linter-config-files \
             assert-one-assert-per-pytest \
-            boto3 boto3-stubs fastapi httpx2 mypy pylint pytest pyyaml types-PyYAML uvicorn yamllint
+            boto3 boto3-stubs mypy pylint pytest pyyaml types-PyYAML yamllint
           npm install -g jscpd
       - name: Lint YAML
         run: |
@@ -93,7 +74,7 @@ jobs:
       - name: Run pylint on source
         run: >-
           PYTHONPATH=.:lib/python:src python3 -m pylint
-          lib/python/wan_designer/ src/api/ src/serve.py
+          lib/python/wan_designer/ src/api/
           --fail-on=C,R,W --fail-under=10.0
       - name: Run pylint on tests
         run: >-
@@ -149,7 +130,7 @@ jobs:
           restore-keys: |
             pip-design-test-
       - name: Install tools
-        run: pip install boto3 fastapi httpx2 pytest pytest-cov pyyaml
+        run: pip install boto3 pytest pytest-cov pyyaml
       - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:src python3 -m pytest
@@ -166,7 +147,6 @@ on:
       - .github/workflows/wan_graph_designer.yml
       - data/**
       - lib/**
-      - requirements.txt
       - src/**
       - test/**
   push:
@@ -175,7 +155,6 @@ on:
       - .github/workflows/wan_graph_designer.yml
       - data/**
       - lib/**
-      - requirements.txt
       - src/**
       - test/**
   workflow_dispatch:

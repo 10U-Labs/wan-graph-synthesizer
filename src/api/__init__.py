@@ -1,5 +1,6 @@
 """REST API for the three-tier WAN designer.
 
-Atomic, resource-split FastAPI endpoints that each serve a slice of one
-compute-on-demand design (see :mod:`wan_designer.service`).
+One AWS Lambda handler per resource (``endpoints/<resource>/lambdas/handler.py``),
+deployed by the OpenTofu stack beside it; the WAN itself is built by the Fargate
+optimizer task under ``endpoints/wan/``.
 """

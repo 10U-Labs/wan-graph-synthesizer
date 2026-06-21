@@ -1,5 +1,0 @@
-# Runtime dependencies for the self-hosted WAN Graph Designer web app.
-# Install with: pip install -r requirements.txt
-fastapi
-pyyaml
-uvicorn

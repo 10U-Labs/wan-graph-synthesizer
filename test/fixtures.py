@@ -12,8 +12,6 @@ import io
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
 from wan_designer.model import (
     KIND_ROADM,
     DesignArtifacts,
@@ -34,8 +32,6 @@ from wan_designer.offnet import OFF_NET_KIND, OFF_NET_TENANT
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.overrides import apply_role_overrides, materialize_selected_colocation_twins
 from wan_designer.validation import validate_design
-
-from api.app import build_app
 
 VERTEX_HEADER = ["name", "latitude", "longitude", "kind", "shown_in_map", "description"]
 
@@ -205,24 +201,6 @@ def write_solvable_inputs(directory: Path) -> tuple[tuple[tuple[str, Path], ...]
     return vertex_files, edges_path
 
 
-def write_solvable_config(directory: Path, min_core_count: int | None = None) -> Path:
-    """Write a config naming the solvable per-tenant vertices and edges; return its path."""
-    vertex_files, edges_path = write_solvable_inputs(directory)
-    lines = []
-    if min_core_count is not None:
-        lines += ["design:", f"  min_core_count: {min_core_count}"]
-    lines += [
-        "inputs:",
-        f"  carrier_edges: {edges_path}",
-        "  regional_edges: []",
-        "  vertices:",
-    ]
-    lines += [f"    {tenant}: {path}" for tenant, path in vertex_files]
-    config_path = directory / "joint.yml"
-    config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return config_path
-
-
 def physical_edges_from(
     pairs: dict[tuple[str, str], float],
 ) -> dict[tuple[str, str], PhysicalEdge]:
@@ -374,12 +352,3 @@ def write_off_net_solvable_inputs(directory: Path) -> tuple[DesignPaths, str]:
 def sample_sources() -> SourceFiles:
     """Provenance paths for output rendering tests."""
     return SourceFiles((Path("vertices/lumen.csv"),), Path("edges.csv"))
-
-
-def api_client(directory: Path) -> TestClient:
-    """Build a TestClient over the app: a solvable 'joint' config plus a static UI."""
-    write_solvable_config(directory, min_core_count=2)
-    static_dir = directory / "www"
-    static_dir.mkdir()
-    (static_dir / "index.html").write_text("<html>ok</html>", encoding="utf-8")
-    return TestClient(build_app(directory, static_dir))
