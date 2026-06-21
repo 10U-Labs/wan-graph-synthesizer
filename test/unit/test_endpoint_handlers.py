@@ -74,7 +74,7 @@ _READERS: list[dict[str, Any]] = [
     {
         "endpoint": "customers",
         "list_keys": ["customers/f-35/config.json", "customers/joint/config.json"],
-        "ids": ["f-35", "joint"],
+        "ids": [{"id": "f-35", "label": "f-35"}, {"id": "joint", "label": "joint"}],
         "stored_key": "customers/f-35/wan.json",
         "stored": {
             "vertices": [],
@@ -353,6 +353,29 @@ def _customer_put(collection: str, body: Any) -> dict[str, Any]:
         "path": f"/x/customers/f-35/{collection}",
         "body": json.dumps(body),
     }
+
+
+def test_customers_list_surfaces_each_config_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The customers collection returns each customer's display label from its config."""
+    module = _customer(monkeypatch)
+    objects = {
+        "customers/f-35-redundant/config.json": json.dumps({"label": "F-35 (redundant)"}).encode(),
+        "customers/joint/config.json": json.dumps({"label": "Joint"}).encode(),
+    }
+    with patch("boto3.client", return_value=fake_s3(objects)):
+        response = module.lambda_handler({}, None)
+    assert json.loads(response["body"]) == [
+        {"id": "f-35-redundant", "label": "F-35 (redundant)"},
+        {"id": "joint", "label": "Joint"},
+    ]
+
+
+def test_customers_list_falls_back_to_id_without_a_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A customer whose config carries no label is listed with its id as the label."""
+    module = _customer(monkeypatch)
+    with patch("boto3.client", return_value=fake_s3({"customers/joint/config.json": b"{}"})):
+        response = module.lambda_handler({}, None)
+    assert json.loads(response["body"]) == [{"id": "joint", "label": "joint"}]
 
 
 def test_customer_get_serves_an_input_document(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,6 +1,6 @@
 """Customers endpoint: read a computed WAN and read/write a customer's inputs.
 
-    GET    /wan-graph-designer/customers                              -> customer ids
+    GET    /wan-graph-designer/customers                              -> [{id, label}]
     GET    /wan-graph-designer/customers/{c}/vertices|edges           -> the WAN graph
     GET    /wan-graph-designer/customers/{c}/core-nodes|...           -> the WAN tiers
     GET    /wan-graph-designer/customers/{c}/installations|provider-regions|config -> inputs
@@ -53,16 +53,24 @@ def _response(status: int, body: Any) -> dict[str, Any]:
     return {"statusCode": status, "headers": dict(_HEADERS), "body": json.dumps(body)}
 
 
-def _customer_ids(client: Any) -> list[str]:
-    """List the customers that have a config (objects under customers/.../config.json)."""
+def _customers(client: Any) -> list[dict[str, str]]:
+    """List the customers (those with a config) as ``{id, label}`` entries for the UI.
+
+    The display label is the customer config's ``label`` (e.g. ``F-35 (redundant)``),
+    falling back to the id when the config does not set one.
+    """
     listing = client.list_objects_v2(
         Bucket=os.environ["STORE_BUCKET"], Prefix="customers/"
     )
-    return [
-        item["Key"].removeprefix("customers/").removesuffix("/config.json")
-        for item in listing.get("Contents", [])
-        if item["Key"].endswith("/config.json")
-    ]
+    customers = []
+    for item in listing.get("Contents", []):
+        key = item["Key"]
+        if not key.endswith("/config.json"):
+            continue
+        customer = key.removeprefix("customers/").removesuffix("/config.json")
+        config = _read_object(client, key) or {}
+        customers.append({"id": customer, "label": config.get("label") or customer})
+    return customers
 
 
 def _read_object(client: Any, key: str) -> Any:
@@ -96,7 +104,7 @@ def _cascade(customer: str) -> None:
 def _get(client: Any, customer: str | None, event: dict[str, Any]) -> dict[str, Any]:
     """Serve the customers collection, a WAN collection, or an input document."""
     if not customer:
-        return _response(200, _customer_ids(client))
+        return _response(200, _customers(client))
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection in _WAN_COLLECTIONS:
         return _serve(client, customer, f"customers/{customer}/wan.json", collection)

@@ -230,20 +230,20 @@ function select(link, mapId) {
 async function init() {
   const tenants = document.getElementById("tenants");
   const customers = await getJSON(`${API_BASE}/customers`);
-  const entries = customers.map((customerId) => {
+  const entries = customers.map(({ id, label }) => {
     const link = document.createElement("a");
     link.href = "#";
-    link.textContent = customerId;
+    link.textContent = label;
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      select(link, customerId);
+      select(link, id);
     });
     tenants.appendChild(link);
-    return { link, customerId };
+    return { link, id };
   });
-  const start = entries.find((entry) => entry.customerId === DEFAULT_MAP_ID) || entries[0];
+  const start = entries.find((entry) => entry.id === DEFAULT_MAP_ID) || entries[0];
   if (start) {
-    await select(start.link, start.customerId);
+    await select(start.link, start.id);
   }
 }
 

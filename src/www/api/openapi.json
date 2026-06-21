@@ -197,7 +197,7 @@
     "/wan-graph-designer/customers": {
       "get": {
         "summary": "List customers.",
-        "responses": { "200": { "description": "The customers." } },
+        "responses": { "200": { "description": "The customers, each as an {id, label} entry." } },
         "x-amazon-apigateway-integration": {
           "uri": "${CustomersHandlerArn}",
           "httpMethod": "POST",
