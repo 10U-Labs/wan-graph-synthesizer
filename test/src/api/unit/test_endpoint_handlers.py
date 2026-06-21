@@ -14,9 +14,9 @@ from unittest.mock import patch
 
 import pytest
 
-from module_utils import create_lambda_loader
 from repo_utils import REPO_ROOT
-from s3_store_mock import fake_ecs, fake_lambda, fake_s3
+from test_module_utils import create_lambda_loader
+from test_s3_store_mock import fake_ecs, fake_lambda, fake_s3
 
 
 def _load(endpoint: str, monkeypatch: pytest.MonkeyPatch, **env: str) -> Any:

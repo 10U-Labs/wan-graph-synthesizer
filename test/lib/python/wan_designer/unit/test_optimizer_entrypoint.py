@@ -13,9 +13,9 @@ from unittest.mock import patch
 
 import pytest
 
-from module_utils import load_module_from_path
 from repo_utils import REPO_ROOT
-from s3_store_mock import fake_s3
+from test_module_utils import load_module_from_path
+from test_s3_store_mock import fake_s3
 from wan_designer.model import Vertex
 
 _PATH = REPO_ROOT / "src" / "api" / "endpoints" / "wan" / "optimizer" / "entrypoint.py"
