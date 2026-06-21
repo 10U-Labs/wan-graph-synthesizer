@@ -21,7 +21,8 @@ jobs:
       - name: Run integration tests
         run: >-
           PYTHONPATH=.:lib/python:src python3 -m pytest
-          test/integration/ --verbose --pythonwarnings=error
+          test/lib/python/wan_designer/integration/
+          --verbose --pythonwarnings=error
   static-analysis:
     runs-on: ubuntu-24.04
     steps:
@@ -134,7 +135,8 @@ jobs:
       - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:src python3 -m pytest
-          test/unit/ --verbose --pythonwarnings=error
+          test/lib/python/wan_designer/unit/ test/src/api/unit/
+          --verbose --pythonwarnings=error
           --cov=wan_designer
           --cov=api
           --cov-branch
