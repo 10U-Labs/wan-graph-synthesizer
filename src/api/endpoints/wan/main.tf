@@ -64,6 +64,13 @@ resource "aws_ecs_cluster" "this" {
   name = "wan-graph-designer"
 }
 
+# Associate Fargate Spot (and on-demand) so run_task's FARGATE_SPOT capacity
+# provider strategy is valid; without this, run_task fails and a WAN create hangs.
+resource "aws_ecs_cluster_capacity_providers" "this" {
+  cluster_name       = aws_ecs_cluster.this.name
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+}
+
 resource "aws_cloudwatch_log_group" "optimizer" {
   name              = "/ecs/wan-graph-designer-optimizer"
   retention_in_days = 14
@@ -106,8 +113,8 @@ resource "aws_iam_role_policy" "task_s3" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
+      Effect = "Allow"
+      Action = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
       Resource = [
         data.terraform_remote_state.storage.outputs.bucket_arn,
         "${data.terraform_remote_state.storage.outputs.bucket_arn}/*",

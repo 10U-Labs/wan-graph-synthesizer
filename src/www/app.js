@@ -5,8 +5,11 @@
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIB = "© OpenStreetMap contributors";
 
-// The map shown on first load, before the operator picks a tenant.
-const DEFAULT_MAP_ID = "military_installations";
+// The REST API: a customer's WAN is served as vertices + edges collections.
+const API_BASE = "https://api.10ulabs.com/wan-graph-designer";
+
+// The customer shown on first load, before the operator picks one.
+const DEFAULT_MAP_ID = "military-installations";
 
 // Vertex color and radius. CSP data centers are colored by kind; every other
 // drawn vertex is colored by its tier role. Transit/unused carrier PoPs are
@@ -168,11 +171,6 @@ function drawEdges(edges, byId, style) {
   }
 }
 
-// Split the routed core/aggregation paths by purpose for distinct styling.
-function pathsByPurpose(pathUses, purpose) {
-  return pathUses.filter((use) => use.purpose === purpose);
-}
-
 async function getJSON(path) {
   const response = await fetch(path);
   if (!response.ok) {
@@ -181,40 +179,39 @@ async function getJSON(path) {
   return response.json();
 }
 
-// Show the design's tier tallies in the top-right of the bar. CORE (standalone
-// cores) and CORE+AGGR (dual-role cores) appear only when the design has any;
-// AGGR counts standalone aggregations only, so a dual-role core is never
-// double-counted across the CORE+AGGR and AGGR tallies.
-function showCounts(summary) {
+// Show the WAN's tier tallies in the top-right of the bar, counted from the
+// served vertices (each carries its tier_role and whether it was included).
+function showCounts(vertices) {
   const counts = document.getElementById("counts");
-  const parts = [];
-  if (summary.standalone_core_count) {
-    parts.push(`CORE ${summary.standalone_core_count}`);
+  const tally = { core: 0, aggregation: 0, access: 0 };
+  for (const vertex of vertices) {
+    if (vertex.included !== false && tally[vertex.tier_role] !== undefined) {
+      tally[vertex.tier_role] += 1;
+    }
   }
-  if (summary.colocated_core_count) {
-    parts.push(`CORE+AGGR ${summary.colocated_core_count}`);
-  }
-  parts.push(`AGGR ${summary.standalone_aggregation_count}`);
-  parts.push(`ACCESS ${summary.access_vertex_count}`);
-  counts.textContent = parts.join(" ");
+  counts.textContent = `CORE ${tally.core} AGGR ${tally.aggregation} ACCESS ${tally.access}`;
 }
 
-async function render(mapId) {
+async function render(customerId) {
   clear();
-  const [vertices, edges, summary] = await Promise.all([
-    getJSON(`/api/wan-maps/${mapId}/vertices`),
-    getJSON(`/api/wan-maps/${mapId}/edges`),
-    getJSON(`/api/wan-maps/${mapId}/summary`),
-  ]);
-  showCounts(summary);
+  let vertices;
+  let edges;
+  try {
+    [vertices, edges] = await Promise.all([
+      getJSON(`${API_BASE}/customers/${customerId}/vertices`),
+      getJSON(`${API_BASE}/customers/${customerId}/edges`),
+    ]);
+  } catch (error) {
+    document.getElementById("counts").textContent = "WAN not built yet";
+    return;
+  }
+  showCounts(vertices);
 
   const byId = indexById(vertices);
-  drawEdges(pathsByPurpose(edges.path_uses, "core_mesh"), byId, EDGE_STYLE.backbone);
-  drawEdges(
-    pathsByPurpose(edges.path_uses, "aggregation_to_core"),
-    byId, EDGE_STYLE.aggregation,
-  );
-  drawEdges(edges.access_edges, byId, EDGE_STYLE.access);
+  const physical = edges.filter((edge) => edge.edge_kind === "carrier_physical");
+  const access = edges.filter((edge) => edge.edge_kind === "access_to_aggregation");
+  drawEdges(physical, byId, EDGE_STYLE.backbone);
+  drawEdges(access, byId, EDGE_STYLE.access);
   const points = drawVertices(vertices);
 
   if (points.length) {
@@ -232,21 +229,21 @@ function select(link, mapId) {
 
 async function init() {
   const tenants = document.getElementById("tenants");
-  const wanMaps = await getJSON("/api/wan-maps");
-  const entries = wanMaps.map((wanMap) => {
+  const customers = await getJSON(`${API_BASE}/customers`);
+  const entries = customers.map((customerId) => {
     const link = document.createElement("a");
     link.href = "#";
-    link.textContent = wanMap.label;
+    link.textContent = customerId;
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      select(link, wanMap.id);
+      select(link, customerId);
     });
     tenants.appendChild(link);
-    return { link, wanMap };
+    return { link, customerId };
   });
-  const start = entries.find((entry) => entry.wanMap.id === DEFAULT_MAP_ID) || entries[0];
+  const start = entries.find((entry) => entry.customerId === DEFAULT_MAP_ID) || entries[0];
   if (start) {
-    await select(start.link, start.wanMap.id);
+    await select(start.link, start.customerId);
   }
 }
 

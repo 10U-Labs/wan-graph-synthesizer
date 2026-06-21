@@ -1,0 +1,36 @@
+---
+concurrency:
+  cancel-in-progress: false
+  group: deploy-www
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Sync the site to 10ulabs.com/wan-graph-designer/
+        run: |
+          aws s3 sync src/www/ s3://www-10ulabs-com/wan-graph-designer/ \
+            --delete --exclude "api/*"
+      - name: Invalidate the website CloudFront path
+        run: |
+          DIST=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?contains(Aliases.Items, \
+              '10ulabs.com')].Id | [0]" --output text)
+          aws cloudfront create-invalidation --distribution-id "$DIST" \
+            --paths "/wan-graph-designer/*"
+name: Deploy website
+'on':
+  push:
+    branches: [main]
+    paths:
+      - src/www/**
+  workflow_dispatch: {}
