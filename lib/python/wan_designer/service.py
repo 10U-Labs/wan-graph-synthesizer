@@ -24,6 +24,7 @@ from wan_designer.model import (
     carrier_role,
     is_carrier_pop,
 )
+from wan_designer.offnet import load_off_net_sites
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.output import design_payload
 from wan_designer.overrides import apply_role_overrides
@@ -40,8 +41,9 @@ def run_design(
 ) -> DesignArtifacts:
     """Load inputs, optimize the three-tier design, and validate it."""
     vertices, physical_edges = stages.load_inputs(paths)
+    off_net_sites = load_off_net_sites(paths.off_net_path) if paths.off_net_path else []
     vertices, physical_edges = stages.dual_home(
-        vertices, physical_edges, params, paths.off_net_path
+        vertices, physical_edges, params, off_net_sites
     )
     roles = {pop.id: carrier_role(pop) for pop in vertices if is_carrier_pop(pop)}
     vertices, physical_edges, overrides = apply_role_overrides(

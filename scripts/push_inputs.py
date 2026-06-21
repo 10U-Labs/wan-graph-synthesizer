@@ -20,6 +20,7 @@ import yaml
 
 from repo_utils import REPO_ROOT
 from wan_designer.graph_collections import input_graph
+from wan_designer.offnet import load_off_net_sites
 from wan_designer.parsing import load_carrier_edges, load_vertices
 
 DEFAULT_API = "https://api.10ulabs.com/wan-graph-designer"
@@ -101,16 +102,25 @@ def _customer_inputs(config: dict[str, Any]) -> tuple[list[Any], list[Any]]:
     )
 
 
+def _customer_off_net(config: dict[str, Any]) -> list[Any]:
+    """The customer's off-net candidate seats (forced cores/aggs reached locally)."""
+    raw = config.get("inputs", {}).get("off_net")
+    return load_off_net_sites(REPO_ROOT / raw) if raw else []
+
+
 def push_customers(api: str) -> None:
-    """Push each customer's installations, CSP regions, and design config."""
+    """Push each customer's installations, CSP regions, off-net seats, and config."""
     for path in sorted(ETC.glob("*.yml")):
         config = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         installs, regions = _customer_inputs(config)
+        off_net = _customer_off_net(config)
         design = {key: value for key, value in config.items() if key != "inputs"}
         cid = _slug(path.stem)
-        print(f"customer {cid}: {len(installs)} installations, {len(regions)} regions")
+        print(f"customer {cid}: {len(installs)} installs, {len(regions)} regions, "
+              f"{len(off_net)} off-net")
         _put(api, f"customers/{cid}/installations", input_graph(installs, {}))
         _put(api, f"customers/{cid}/csp-regions", input_graph(regions, {}))
+        _put(api, f"customers/{cid}/off-net", input_graph(off_net, {}))
         _put(api, f"customers/{cid}/config", design)
 
 

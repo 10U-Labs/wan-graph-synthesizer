@@ -62,9 +62,12 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
     regions, _ = load_input_graph(
         _read_json(client, f"customers/{customer}/csp-regions.json")
     )
+    off_net, _ = load_input_graph(
+        _read_json(client, f"customers/{customer}/off-net.json")
+    )
     config = config_from_data(_read_json(client, f"customers/{customer}/config.json"))
     graph = carrier_pops + installs + regions
-    graph, physical_edges = dual_home(graph, physical_edges, config.params, None)
+    graph, physical_edges = dual_home(graph, physical_edges, config.params, off_net)
     roles = {pop.id: carrier_role(pop) for pop in graph if is_carrier_pop(pop)}
     graph, physical_edges, overrides = apply_role_overrides(
         graph,

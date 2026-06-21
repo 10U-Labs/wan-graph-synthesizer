@@ -62,6 +62,7 @@ def _inputs() -> dict[str, bytes]:
         "merge/substrate.json",
         "customers/f-35/installations.json",
         "customers/f-35/csp-regions.json",
+        "customers/f-35/off-net.json",
         "customers/f-35/config.json",
     ]
     return {key: b"{}" for key in keys}

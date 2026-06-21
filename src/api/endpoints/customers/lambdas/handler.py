@@ -24,6 +24,7 @@ _WAN_COLLECTIONS = ("vertices", "edges", "core-nodes", "aggregation-points", "ac
 _INPUTS = {
     "installations": "installations.json",
     "csp-regions": "csp-regions.json",
+    "off-net": "off-net.json",
     "config": "config.json",
 }
 
