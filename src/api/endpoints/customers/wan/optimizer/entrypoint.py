@@ -17,7 +17,6 @@ from typing import Any
 
 import boto3
 
-from wan_designer.config import config_from_data
 from wan_graph.graph_collections import (
     access_nodes,
     aggregation_points,
@@ -32,6 +31,7 @@ from wan_graph.model import (
     carrier_role,
     is_carrier_pop,
 )
+from wan_designer.config import config_from_data
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.output import design_payload
 from wan_designer.overrides import apply_role_overrides

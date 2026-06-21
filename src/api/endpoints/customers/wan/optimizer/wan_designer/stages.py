@@ -7,7 +7,6 @@ The optimizer entrypoint composes these over the JSON-loaded graph:
 
 from __future__ import annotations
 
-from wan_designer.installations import realize_installations
 from wan_graph.model import (
     Design,
     DesignParams,
@@ -15,6 +14,7 @@ from wan_graph.model import (
     ValidationReport,
     Vertex,
 )
+from wan_designer.installations import realize_installations
 from wan_designer.offnet import realize_off_net_sites
 from wan_designer.overrides import materialize_selected_colocation_twins
 from wan_designer.validation import augment_physical_resilience, validate_design

@@ -77,7 +77,9 @@ jobs:
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/customers/wan/optimizer
           python3 -m pylint
-          lib/python/wan_graph/ src/api/ scripts/data_inputs.py
+          lib/python/wan_graph/ src/api/
+          src/api/endpoints/customers/wan/optimizer/wan_designer/
+          scripts/data_inputs.py
           --fail-on=C,R,W --fail-under=10.0
       - name: Run pylint on tests
         run: >-
