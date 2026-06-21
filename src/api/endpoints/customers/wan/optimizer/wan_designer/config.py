@@ -53,11 +53,10 @@ DEFAULT_REGIONAL_EDGES = ["data/edges/dcn.csv", "data/edges/vision_net.csv"]
 
 @dataclass(frozen=True)
 class AppConfig:
-    """A fully resolved configuration: file paths, design params, augment flag."""
+    """A fully resolved configuration: file paths, design params, pinned edges."""
 
     paths: DesignPaths
     params: DesignParams
-    resilience_augmentation: bool
     label: str = ""
     forced_connections: tuple[ForcedConnection, ...] = ()
     excluded_connections: tuple[ForcedConnection, ...] = ()
@@ -77,6 +76,22 @@ def _str_list(data: dict[str, Any], key: str, default: list[str]) -> tuple[str, 
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError(f"config key '{key}' must be a list of strings")
     return tuple(value)
+
+
+def _required_int(data: dict[str, Any], key: str) -> int:
+    """Return a required integer config value, rejecting an absent or non-int value.
+
+    The three redundancy degrees (``core-mesh-degree``,
+    ``aggregation-homing-degree``, ``access-homing-degree``) have no default: every
+    customer must state each one, so a missing key is an error rather than a
+    silently-filled fallback.
+    """
+    if key not in data:
+        raise ValueError(f"config key '{key}' is required and has no default")
+    value = data[key]
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"config key '{key}' must be an integer")
+    return value
 
 
 def _connection_list(
@@ -166,13 +181,12 @@ def _tuning(tuning: dict[str, Any]) -> Tuning:
             k=tuning.get("cluster_k", base.cluster.k),
         ),
         compass_octants=tuning.get("compass_octants", base.compass_octants),
-        core_links_per_core=tuning.get("core_links_per_core", base.core_links_per_core),
+        core_links_per_core=_required_int(tuning, "core_links_per_core"),
+        aggregation_homing_degree=_required_int(tuning, "aggregation_homing_degree"),
         core_coverage_target_miles=tuning.get(
             "core_coverage_target_miles", base.core_coverage_target_miles
         ),
-        access_aggregation_links=tuning.get(
-            "access_aggregation_links", base.access_aggregation_links
-        ),
+        access_aggregation_links=_required_int(tuning, "access_aggregation_links"),
         enum_budget=EnumBudget(
             memory_fraction=tuning.get("enum_memory_fraction", base.enum_budget.memory_fraction),
             set_peak_bytes=tuning.get("core_set_peak_bytes", base.enum_budget.set_peak_bytes),
@@ -186,9 +200,6 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
     return DesignParams(
         min_core_count=design.get("min_core_count", base.min_core_count),
         max_core_count=design.get("max_core_count", base.max_core_count),
-        allow_roadm_aggregation=design.get(
-            "allow_roadm_aggregation", base.allow_roadm_aggregation
-        ),
         forced_core_names=_str_list(design, "forced_cores", []),
         forced_aggregation_names=_str_list(design, "forced_aggregations", []),
         exclusions=RoleExclusions(
@@ -209,8 +220,55 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
     return AppConfig(
         paths=_paths(_mapping(data, "inputs")),
         params=_params(design, _mapping(data, "tuning")),
-        resilience_augmentation=design.get("resilience_augmentation", True),
         label=str(data.get("label", "")),
         forced_connections=_forced_connections(design),
         excluded_connections=_excluded_connections(design),
     )
+
+
+def _degree(parts: dict[str, Any], resource: str) -> int:
+    """Read a required ``{"degree": int}`` document for a redundancy resource."""
+    if resource not in parts:
+        raise ValueError(f"required customer resource '{resource}' is missing")
+    doc = parts[resource]
+    if not isinstance(doc, dict) or "degree" not in doc:
+        raise ValueError(f"resource '{resource}' must be an object with a 'degree' integer")
+    value = doc["degree"]
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"resource '{resource}' degree must be an integer")
+    return value
+
+
+def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
+    """Assemble an :class:`AppConfig` from the per-resource customer documents.
+
+    Each operator concern is its own stored document (``forced-core-nodes``,
+    ``prohibited-connections``, ``core-mesh-degree``, ``knobs``, ...). This reshapes
+    those documents into the canonical mapping :func:`config_from_data` expects and
+    delegates to it, so all parsing and validation stays in one place. The three
+    redundancy degrees are required -- a missing one raises in :func:`_degree`.
+    ``paths`` is left at its defaults: the deployed optimizer reads its substrate
+    from the merged carriers, not from these documents.
+    """
+    count = _mapping(parts, "core-node-count")
+    design: dict[str, Any] = {
+        "forced_cores": parts.get("forced-core-nodes", []),
+        "forced_aggregations": parts.get("forced-aggregation-points", []),
+        "prohibited_cores": parts.get("prohibited-core-nodes", []),
+        "prohibited_aggregations": parts.get("prohibited-aggregation-points", []),
+        "forced_connections": parts.get("forced-connections", []),
+        "excluded_connections": parts.get("prohibited-connections", []),
+    }
+    if "min" in count:
+        design["min_core_count"] = count["min"]
+    if "max" in count:
+        design["max_core_count"] = count["max"]
+    tuning = {
+        **_mapping(parts, "knobs"),
+        "core_links_per_core": _degree(parts, "core-mesh-degree"),
+        "aggregation_homing_degree": _degree(parts, "aggregation-homing-degree"),
+        "access_aggregation_links": _degree(parts, "access-homing-degree"),
+    }
+    label = parts.get("label", {})
+    label_text = label.get("label", "") if isinstance(label, dict) else str(label)
+    return config_from_data({"design": design, "tuning": tuning, "label": label_text})

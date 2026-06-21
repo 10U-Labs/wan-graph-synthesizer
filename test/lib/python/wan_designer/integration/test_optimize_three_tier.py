@@ -66,11 +66,11 @@ def test_forced_pop_is_placed_in_the_aggregation_tier() -> None:
     assert "P3" in FORCED.design.aggregation_ids
 
 
-def test_forced_roadm_is_seated_though_roadm_aggregation_is_disabled() -> None:
-    """A pinned ROADM is honored as an aggregation even with allow_roadm_aggregation false.
+def test_forced_roadm_is_seated_as_an_aggregation() -> None:
+    """A pinned ROADM is honored as an aggregation.
 
-    This is the mechanism the Joint Great Falls and Minot pins rely on: both are
-    ROADMs, and the operator pin must override the ROADM-aggregation gate.
+    ROADMs are eligible like any other point now, and a force always wins regardless;
+    this is the mechanism the Joint Great Falls and Minot ROADM pins rely on.
     """
     assert "P3" in FORCED_ROADM.design.aggregation_ids
 
@@ -139,7 +139,7 @@ def _justified_artifacts(directory: Path) -> DesignArtifacts:
     """Optimize over the ring of justified installations with A1 forced as an aggregation."""
     paths = fixtures.write_justified_solvable_inputs(directory)
     params = DesignParams(min_core_count=2, forced_aggregation_names=("A1",))
-    return run_design(paths, params, False)
+    return run_design(paths, params)
 
 
 def test_forced_installation_is_seated_as_an_aggregation(tmp_path: Path) -> None:
@@ -164,7 +164,7 @@ def test_forced_off_net_site_is_seated_as_an_aggregation(tmp_path: Path) -> None
     """A forced off-net site's local-fiber twin lands on the aggregation tier."""
     paths, name = fixtures.write_off_net_solvable_inputs(tmp_path)
     design = run_design(
-        paths, DesignParams(min_core_count=2, forced_aggregation_names=(name,)), False
+        paths, DesignParams(min_core_count=2, forced_aggregation_names=(name,))
     ).design
     assert any(aggregation.startswith("offnet_") for aggregation in design.aggregation_ids)
 
@@ -173,6 +173,6 @@ def test_off_net_design_dual_homes_every_aggregation(tmp_path: Path) -> None:
     """An off-net aggregation twin dual-homes to two cores like any other aggregation."""
     paths, name = fixtures.write_off_net_solvable_inputs(tmp_path)
     artifacts = run_design(
-        paths, DesignParams(min_core_count=2, forced_aggregation_names=(name,)), False
+        paths, DesignParams(min_core_count=2, forced_aggregation_names=(name,))
     )
     assert artifacts.validation["aggregations_dual_homed_to_cores"] is True

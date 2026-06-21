@@ -52,16 +52,18 @@ class _SearchPlan:
 
     ``cluster_plan`` holds the access-vertex clusters (each cluster's heads are
     chosen relative to its own extent) and their locality radius.
-    ``feasibility_cache`` memoizes per-pair vertex-disjoint reachability so the
-    search avoids re-running max-flows for every core set. ``aggregations`` carries
-    the operator pins and the optional core twins.
+    ``feasibility_cache`` memoizes vertex-disjoint homing reachability per
+    (aggregation, core set, homing degree) so the search avoids re-running max-flows.
+    ``aggregations`` carries the operator pins and the optional core twins.
     """
 
     core_candidates: list[str]
     aggregations: _AggregationPlan
     strength_by_id: dict[str, float]
     cluster_plan: ClusterPlan = field(default_factory=ClusterPlan)
-    feasibility_cache: dict[tuple[str, str, str], bool] = field(default_factory=dict)
+    feasibility_cache: dict[tuple[str, tuple[str, ...], int], bool] = field(
+        default_factory=dict
+    )
     tuning: Tuning = field(default_factory=Tuning)  # the dials this plan was built from
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
 

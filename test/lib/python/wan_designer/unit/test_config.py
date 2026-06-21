@@ -7,18 +7,29 @@ from typing import Any
 
 import pytest
 
-from wan_designer.config import AppConfig, config_from_data
+from wan_designer.config import AppConfig, app_config_from_parts, config_from_data
 from wan_graph.model import ForcedConnection
 
 
+# The three redundancy degrees are required (no default); inject them so each test
+# can focus on the field under test without restating them.
+_REQUIRED_DEGREES = {
+    "core_links_per_core": 3,
+    "aggregation_homing_degree": 2,
+    "access_aggregation_links": 2,
+}
+
+
 def _config(data: dict[str, Any]) -> AppConfig:
-    """Resolve a single in-memory config mapping for one test case."""
-    return config_from_data(data)
+    """Resolve a single in-memory config mapping (with required degrees) for one test."""
+    merged = dict(data)
+    merged["tuning"] = {**_REQUIRED_DEGREES, **data.get("tuning", {})}
+    return config_from_data(merged)
 
 
 def default_config() -> AppConfig:
-    """The built-in configuration: an empty mapping resolved to all defaults."""
-    return config_from_data({})
+    """The built-in configuration: required degrees only, everything else defaulted."""
+    return _config({})
 
 
 def test_default_min_core_count() -> None:
@@ -58,11 +69,6 @@ def test_default_off_net_path_is_none() -> None:
 def test_reads_off_net_path() -> None:
     """An inputs.off_net value is read into the design paths."""
     assert _config({"inputs": {"off_net": "off.csv"}}).paths.off_net_path == Path("off.csv")
-
-
-def test_default_resilience_augmentation_on() -> None:
-    """Resilience augmentation defaults on."""
-    assert default_config().resilience_augmentation is True
 
 
 def test_default_label_is_empty() -> None:
@@ -253,9 +259,17 @@ def test_rejects_non_mapping_vertices() -> None:
         _config({"inputs": {"vertices": "single.csv"}})
 
 
-def test_reads_resilience_augmentation_off() -> None:
-    """Resilience augmentation can be turned off in the design section."""
-    assert _config({"design": {"resilience_augmentation": False}}).resilience_augmentation is False
+def test_missing_required_degree_is_rejected() -> None:
+    """A config whose tuning omits a required redundancy degree is rejected."""
+    with pytest.raises(ValueError):
+        config_from_data({"tuning": {"core_links_per_core": 3, "access_aggregation_links": 2}})
+
+
+def test_reads_aggregation_homing_degree() -> None:
+    """An aggregation_homing_degree value is read into the tuning."""
+    assert _config(
+        {"tuning": {"aggregation_homing_degree": 1}}
+    ).params.tuning.aggregation_homing_degree == 1
 
 
 def test_section_must_be_a_mapping() -> None:
@@ -268,3 +282,60 @@ def test_forced_cores_must_be_a_list() -> None:
     """A non-list forced_cores value is rejected."""
     with pytest.raises(ValueError):
         _config({"design": {"forced_cores": "Atlanta, GA"}})
+
+
+def _parts(**overrides: Any) -> dict[str, Any]:
+    """A full set of per-resource customer documents for the assembler."""
+    parts: dict[str, Any] = {
+        "forced-core-nodes": [],
+        "forced-aggregation-points": [],
+        "forced-connections": [],
+        "prohibited-core-nodes": [],
+        "prohibited-aggregation-points": [],
+        "prohibited-connections": [],
+        "core-node-count": {"min": 3, "max": 5},
+        "core-mesh-degree": {"degree": 3},
+        "aggregation-homing-degree": {"degree": 2},
+        "access-homing-degree": {"degree": 1},
+        "knobs": {"compass_octants": 8},
+        "label": {"label": "Joint"},
+    }
+    parts.update(overrides)
+    return parts
+
+
+def test_app_config_from_parts_assembles_degrees_and_label() -> None:
+    """The assembler reads the three degrees and the label from their documents."""
+    config = app_config_from_parts(_parts())
+    assert config.params.tuning.core_links_per_core == 3
+    assert config.params.tuning.aggregation_homing_degree == 2
+    assert config.params.tuning.access_aggregation_links == 1
+    assert config.label == "Joint"
+
+
+def test_app_config_from_parts_reads_core_node_count() -> None:
+    """The assembler reads min and max core count from the core-node-count document."""
+    config = app_config_from_parts(_parts())
+    assert config.params.min_core_count == 3
+    assert config.params.max_core_count == 5
+
+
+def test_app_config_from_parts_requires_each_degree() -> None:
+    """A missing degree document is rejected by the assembler."""
+    parts = _parts()
+    del parts["aggregation-homing-degree"]
+    with pytest.raises(ValueError):
+        app_config_from_parts(parts)
+
+
+def test_app_config_from_parts_parses_connections() -> None:
+    """Forced and prohibited connection documents are parsed into the config."""
+    parts = _parts(
+        **{
+            "forced-connections": [{"source": "A", "target": "B", "type": "core-core"}],
+            "prohibited-connections": [{"source": "C", "target": "D"}],
+        }
+    )
+    config = app_config_from_parts(parts)
+    assert config.forced_connections == (ForcedConnection("core-core", "A", "B"),)
+    assert config.excluded_connections == (ForcedConnection("core-core", "C", "D"),)

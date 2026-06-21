@@ -58,14 +58,14 @@ def _carrier_ids(client: Any) -> list[str]:
 
 
 def _customer_ids(client: Any) -> list[str]:
-    """List the customers that have a config (objects under customers/.../config.json)."""
+    """List the customers (objects under customers/.../label.json, the marker doc)."""
     listing = client.list_objects_v2(
         Bucket=os.environ["STORE_BUCKET"], Prefix="customers/"
     )
     return [
-        item["Key"].removeprefix("customers/").removesuffix("/config.json")
+        item["Key"].removeprefix("customers/").removesuffix("/label.json")
         for item in listing.get("Contents", [])
-        if item["Key"].endswith("/config.json")
+        if item["Key"].endswith("/label.json")
     ]
 
 

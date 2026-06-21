@@ -275,13 +275,13 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/installations": {
+    "/wan-graph-designer/customers/{customer}/locations": {
       "get": {
-        "summary": "A customer's installations (input).",
+        "summary": "A customer's demand locations (input).",
         "parameters": [
           { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The installations." } },
+        "responses": { "200": { "description": "The locations." } },
         "x-amazon-apigateway-integration": {
           "uri": "${CustomersHandlerArn}",
           "httpMethod": "POST",
@@ -289,11 +289,11 @@
         }
       },
       "put": {
-        "summary": "Replace a customer's installations (re-creates the WAN).",
+        "summary": "Replace a customer's demand locations (re-creates the WAN).",
         "parameters": [
           { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The installations were replaced." } },
+        "responses": { "200": { "description": "The locations were replaced." } },
         "x-amazon-apigateway-integration": {
           "uri": "${CustomersHandlerArn}",
           "httpMethod": "POST",
@@ -353,30 +353,172 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/config": {
+    "/wan-graph-designer/customers/{customer}/forced-core-nodes": {
       "get": {
-        "summary": "A customer's design config (input).",
-        "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "The config." } },
-        "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
-          "httpMethod": "POST",
-          "type": "aws_proxy"
-        }
+        "summary": "A customer's forced core nodes (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The forced core nodes." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's design config (re-creates the WAN).",
-        "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "The config was replaced." } },
-        "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
-          "httpMethod": "POST",
-          "type": "aws_proxy"
-        }
+        "summary": "Replace a customer's forced core nodes (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The forced core nodes were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/forced-aggregation-points": {
+      "get": {
+        "summary": "A customer's forced aggregation points (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The forced aggregation points." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's forced aggregation points (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The forced aggregation points were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/forced-connections": {
+      "get": {
+        "summary": "A customer's forced connections (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The forced connections." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's forced connections (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The forced connections were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/prohibited-core-nodes": {
+      "get": {
+        "summary": "A customer's prohibited core nodes (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The prohibited core nodes." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's prohibited core nodes (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The prohibited core nodes were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/prohibited-aggregation-points": {
+      "get": {
+        "summary": "A customer's prohibited aggregation points (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The prohibited aggregation points." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's prohibited aggregation points (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The prohibited aggregation points were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/prohibited-connections": {
+      "get": {
+        "summary": "A customer's prohibited connections (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The prohibited connections." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's prohibited connections (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The prohibited connections were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/core-node-count": {
+      "get": {
+        "summary": "A customer's core node count, min and max (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The core node count." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's core node count (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The core node count was replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/core-mesh-degree": {
+      "get": {
+        "summary": "A customer's core mesh degree (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The core mesh degree." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's core mesh degree (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The core mesh degree was replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/aggregation-homing-degree": {
+      "get": {
+        "summary": "A customer's aggregation homing degree (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The aggregation homing degree." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's aggregation homing degree (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The aggregation homing degree was replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/access-homing-degree": {
+      "get": {
+        "summary": "A customer's access homing degree (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The access homing degree." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's access homing degree (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The access homing degree was replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/knobs": {
+      "get": {
+        "summary": "A customer's algorithm knobs (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The knobs." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's algorithm knobs (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The knobs were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/label": {
+      "get": {
+        "summary": "A customer's display label (input).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The label." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a customer's display label (re-creates the WAN).",
+        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The label was replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
     "/wan-graph-designer/customers/{customer}": {

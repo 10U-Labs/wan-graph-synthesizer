@@ -35,7 +35,7 @@ def test_apply_role_overrides_allows_a_forced_aggregation_prohibited_from_core()
 def test_optimize_bars_a_prohibited_core_from_the_core_tier() -> None:
     """A prohibited-core override keeps that PoP out of the selected core tier."""
     design = optimize_three_tier_design(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), {},
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(),
         DesignParams(min_core_count=2), RoleOverrides(prohibited_core_ids=frozenset({"P3"})),
     )
     assert "P3" not in design.core_ids
