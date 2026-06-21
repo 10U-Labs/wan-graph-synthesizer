@@ -25,7 +25,7 @@ design:
   resilience_augmentation: true
 inputs:
   carrier_edges: data/edges/lumen.csv
-  off_net: data/vertices/off_net.csv
+  off_net: data/vertices/utilities/off_net.csv
   regional_edges:
     - data/edges/dcn.csv
     - data/edges/vision_net.csv
@@ -34,24 +34,24 @@ inputs:
     - data/edges/uniti.csv
   vertices:
     AWS:
-      - data/vertices/aws_govcloud.csv
-      - data/vertices/aws_secret_east.csv
-      - data/vertices/aws_secret_west.csv
-      - data/vertices/aws_top_secret_east.csv
-      - data/vertices/aws_top_secret_west.csv
+      - data/vertices/csps/aws/aws_govcloud.csv
+      - data/vertices/csps/aws/aws_secret_east.csv
+      - data/vertices/csps/aws/aws_secret_west.csv
+      - data/vertices/csps/aws/aws_top_secret_east.csv
+      - data/vertices/csps/aws/aws_top_secret_west.csv
     Azure:
-      - data/vertices/azure_secret_east.csv
-      - data/vertices/azure_secret_west.csv
-    DCN: data/vertices/dcn.csv
-    Lumen: data/vertices/lumen.csv
-    Military Installations: data/vertices/military_installations.csv
+      - data/vertices/csps/azure/azure_secret_east.csv
+      - data/vertices/csps/azure/azure_secret_west.csv
+    DCN: data/vertices/carriers/dcn.csv
+    Lumen: data/vertices/carriers/lumen.csv
+    Military Installations: data/vertices/customers/military_installations.csv
     OCI:
-      - data/vertices/oci_east.csv
-      - data/vertices/oci_west.csv
-    Cogent: data/vertices/cogent.csv
-    Uniti: data/vertices/uniti.csv
-    VisionNet: data/vertices/vision_net.csv
-    Zayo: data/vertices/zayo.csv
+      - data/vertices/csps/oci/oci_east.csv
+      - data/vertices/csps/oci/oci_west.csv
+    Cogent: data/vertices/carriers/cogent.csv
+    Uniti: data/vertices/carriers/uniti.csv
+    VisionNet: data/vertices/carriers/vision_net.csv
+    Zayo: data/vertices/carriers/zayo.csv
 label: Military Installations
 tuning:
   access_aggregation_links: 2

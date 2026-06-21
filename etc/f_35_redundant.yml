@@ -38,7 +38,7 @@ inputs:
   carrier_edges: data/edges/lumen.csv
   # Off-net seats: non-PoP locations the operator may force as cores/aggregations,
   # reached by synthetic local fiber to the nearest carrier PoPs. Dulles lives here.
-  off_net: data/vertices/off_net.csv
+  off_net: data/vertices/utilities/off_net.csv
   # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
   regional_edges:
     - data/edges/dcn.csv
@@ -46,14 +46,14 @@ inputs:
   # F-35 only: the AFLCMC and AFNWC/NI tenant files are intentionally omitted.
   vertices:
     AWS:
-      - data/vertices/aws_secret_east.csv
+      - data/vertices/csps/aws/aws_secret_east.csv
     Azure:
-      - data/vertices/azure_secret_east.csv
-    DCN: data/vertices/dcn.csv
-    F-35: data/vertices/f_35.csv
-    Lumen: data/vertices/lumen.csv
-    # OCI: data/vertices/oci.csv
-    VisionNet: data/vertices/vision_net.csv
+      - data/vertices/csps/azure/azure_secret_east.csv
+    DCN: data/vertices/carriers/dcn.csv
+    F-35: data/vertices/customers/f_35.csv
+    Lumen: data/vertices/carriers/lumen.csv
+    # OCI: data/vertices/csps/oci/oci_east.csv
+    VisionNet: data/vertices/carriers/vision_net.csv
 # Display label surfaced by the REST API's /api/wan-maps endpoint.
 label: F-35 (redundant)
 tuning:

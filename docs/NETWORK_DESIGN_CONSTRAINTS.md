@@ -13,13 +13,16 @@ mapbook is authoritative for how PoPs connect to each other.
 It is transcribed into the edge files under `data/edges/`, which list
 which PoPs are directly connected.
 
-Vertices live in `data/vertices/`, one CSV per tenant (the tenant is the
-file). A carrier PoP's `kind` is its role on the backbone: `PoP`
-(aggregation-capable) or `ROADM` (transit only). The demand sites are the
-remaining tenant files -- the F-35 installations, the Sentinel program
+Vertices live in `data/vertices/`, one CSV per tenant, grouped by source:
+`carriers/` (the backbone PoPs), `customers/` (the demand sites),
+`csps/{aws,azure,oci}/` (the cloud regions), and `utilities/` (off-net
+sites reached by local fiber). A carrier PoP's `kind` is its role on the
+backbone: `PoP` (aggregation-capable) or `ROADM` (transit only). The demand
+sites under `customers/` are the F-35 installations, the Sentinel program
 locations (`afnwc_ni.csv`), the additional CONUS installations
-(`aflcmc.csv`), and the cloud Secret/CUI/Top Secret regions -- each row
-tagged with its `kind`.
+(`aflcmc.csv`), and the broad `military_installations.csv` set; the cloud
+Secret/CUI/Top Secret regions live under `csps/` -- each row tagged with
+its `kind`.
 
 ### The mapbook has no distances
 

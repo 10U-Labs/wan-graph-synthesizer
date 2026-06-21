@@ -28,23 +28,27 @@ from wan_designer.model import (
 
 DEFAULT_CONFIG_PATH = Path("etc/joint.yml")
 DEFAULT_VERTICES = {
-    "AFLCMC": "data/vertices/aflcmc.csv",
-    "AFNWC/NI": "data/vertices/afnwc_ni.csv",
+    "AFLCMC": "data/vertices/customers/aflcmc.csv",
+    "AFNWC/NI": "data/vertices/customers/afnwc_ni.csv",
     "AWS": [
-        "data/vertices/aws_govcloud.csv",
-        "data/vertices/aws_secret_east.csv",
-        "data/vertices/aws_secret_west.csv",
-        "data/vertices/aws_top_secret.csv",
+        "data/vertices/csps/aws/aws_govcloud.csv",
+        "data/vertices/csps/aws/aws_secret_east.csv",
+        "data/vertices/csps/aws/aws_secret_west.csv",
+        "data/vertices/csps/aws/aws_top_secret_east.csv",
+        "data/vertices/csps/aws/aws_top_secret_west.csv",
     ],
     "Azure": [
-        "data/vertices/azure_secret_east.csv",
-        "data/vertices/azure_secret_west.csv",
+        "data/vertices/csps/azure/azure_secret_east.csv",
+        "data/vertices/csps/azure/azure_secret_west.csv",
     ],
-    "DCN": "data/vertices/dcn.csv",
-    "F-35": "data/vertices/f_35.csv",
-    "Lumen": "data/vertices/lumen.csv",
-    "OCI": "data/vertices/oci.csv",
-    "VisionNet": "data/vertices/vision_net.csv",
+    "DCN": "data/vertices/carriers/dcn.csv",
+    "F-35": "data/vertices/customers/f_35.csv",
+    "Lumen": "data/vertices/carriers/lumen.csv",
+    "OCI": [
+        "data/vertices/csps/oci/oci_east.csv",
+        "data/vertices/csps/oci/oci_west.csv",
+    ],
+    "VisionNet": "data/vertices/carriers/vision_net.csv",
 }
 DEFAULT_CARRIER_EDGES = "data/edges/lumen.csv"
 DEFAULT_REGIONAL_EDGES = ["data/edges/dcn.csv", "data/edges/vision_net.csv"]

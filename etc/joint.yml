@@ -73,7 +73,7 @@ inputs:
   carrier_edges: data/edges/lumen.csv
   # Off-net seats: non-PoP locations the operator may force as cores/aggregations,
   # reached by synthetic local fiber to the nearest carrier PoPs. Dulles lives here.
-  off_net: data/vertices/off_net.csv
+  off_net: data/vertices/utilities/off_net.csv
   # Regional carrier (DCN, VisionNet) backbone edges stitched onto Lumen.
   regional_edges:
     - data/edges/dcn.csv
@@ -81,20 +81,20 @@ inputs:
   # Vertices split into one CSV per tenant; the tenant is the mapping key
   # (the per-tenant CSVs carry no tenant column).
   vertices:
-    AFLCMC: data/vertices/aflcmc.csv
-    AFNWC/NI: data/vertices/afnwc_ni.csv
+    AFLCMC: data/vertices/customers/aflcmc.csv
+    AFNWC/NI: data/vertices/customers/afnwc_ni.csv
     AWS:
-      - data/vertices/aws_govcloud.csv
-      - data/vertices/aws_secret_east.csv
-      - data/vertices/aws_top_secret_east.csv
+      - data/vertices/csps/aws/aws_govcloud.csv
+      - data/vertices/csps/aws/aws_secret_east.csv
+      - data/vertices/csps/aws/aws_top_secret_east.csv
     Azure:
-      - data/vertices/azure_secret_east.csv
-      - data/vertices/azure_secret_west.csv
-    DCN: data/vertices/dcn.csv
-    F-35: data/vertices/f_35.csv
-    Lumen: data/vertices/lumen.csv
-    OCI: data/vertices/oci_east.csv
-    VisionNet: data/vertices/vision_net.csv
+      - data/vertices/csps/azure/azure_secret_east.csv
+      - data/vertices/csps/azure/azure_secret_west.csv
+    DCN: data/vertices/carriers/dcn.csv
+    F-35: data/vertices/customers/f_35.csv
+    Lumen: data/vertices/carriers/lumen.csv
+    OCI: data/vertices/csps/oci/oci_east.csv
+    VisionNet: data/vertices/carriers/vision_net.csv
 # Display label surfaced by the REST API's /api/wan-maps endpoint.
 label: Joint
 tuning:

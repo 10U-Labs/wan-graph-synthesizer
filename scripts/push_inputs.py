@@ -60,7 +60,9 @@ def push_carriers(api: str) -> None:
     edges from its fiber file (shaped against the combined PoPs for names).
     """
     carriers = _carrier_names()
-    all_pops = load_vertices([(c, DATA / "vertices" / f"{c}.csv") for c in carriers])
+    all_pops = load_vertices(
+        [(c, DATA / "vertices" / "carriers" / f"{c}.csv") for c in carriers]
+    )
     by_tenant: dict[str, list[Any]] = {}
     for vertex in all_pops:
         by_tenant.setdefault(vertex.tenant, []).append(vertex)
@@ -76,7 +78,7 @@ def push_carriers(api: str) -> None:
 def push_csps(api: str) -> None:
     """Push each cloud provider's regions (all its region files combined)."""
     for provider in CSP_PROVIDERS:
-        files = sorted((DATA / "vertices").glob(f"{provider}_*.csv"))
+        files = sorted((DATA / "vertices" / "csps" / provider).glob("*.csv"))
         if not files:
             continue
         vertices = load_vertices([(provider.upper(), path) for path in files])

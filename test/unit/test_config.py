@@ -38,7 +38,8 @@ def test_default_max_core_count_is_none() -> None:
 
 def test_default_vertex_files() -> None:
     """The default config maps each tenant to its per-tenant vertices CSV."""
-    assert ("Lumen", Path("data/vertices/lumen.csv")) in default_config().paths.vertex_files
+    lumen = ("Lumen", Path("data/vertices/carriers/lumen.csv"))
+    assert lumen in default_config().paths.vertex_files
 
 
 def test_default_regional_edges() -> None:
