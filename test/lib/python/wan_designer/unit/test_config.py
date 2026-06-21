@@ -304,20 +304,25 @@ def _parts(**overrides: Any) -> dict[str, Any]:
     return parts
 
 
-def test_app_config_from_parts_assembles_degrees_and_label() -> None:
-    """The assembler reads the three degrees and the label from their documents."""
-    config = app_config_from_parts(_parts())
-    assert config.params.tuning.core_links_per_core == 3
-    assert config.params.tuning.aggregation_homing_degree == 2
-    assert config.params.tuning.access_aggregation_links == 1
-    assert config.label == "Joint"
+def test_app_config_from_parts_assembles_the_three_degrees() -> None:
+    """The assembler reads all three redundancy degrees from their documents."""
+    tuning = app_config_from_parts(_parts()).params.tuning
+    assert (
+        tuning.core_links_per_core,
+        tuning.aggregation_homing_degree,
+        tuning.access_aggregation_links,
+    ) == (3, 2, 1)
+
+
+def test_app_config_from_parts_reads_the_label() -> None:
+    """The assembler reads the display label from the label document."""
+    assert app_config_from_parts(_parts()).label == "Joint"
 
 
 def test_app_config_from_parts_reads_core_node_count() -> None:
     """The assembler reads min and max core count from the core-node-count document."""
-    config = app_config_from_parts(_parts())
-    assert config.params.min_core_count == 3
-    assert config.params.max_core_count == 5
+    params = app_config_from_parts(_parts()).params
+    assert (params.min_core_count, params.max_core_count) == (3, 5)
 
 
 def test_app_config_from_parts_requires_each_degree() -> None:
@@ -337,5 +342,7 @@ def test_app_config_from_parts_parses_connections() -> None:
         }
     )
     config = app_config_from_parts(parts)
-    assert config.forced_connections == (ForcedConnection("core-core", "A", "B"),)
-    assert config.excluded_connections == (ForcedConnection("core-core", "C", "D"),)
+    assert (config.forced_connections, config.excluded_connections) == (
+        (ForcedConnection("core-core", "A", "B"),),
+        (ForcedConnection("core-core", "C", "D"),),
+    )
