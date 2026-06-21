@@ -23,6 +23,7 @@ from dataclasses import dataclass
 
 from wan_designer.local_fiber import (
     LOCAL_FIBER_MIN_LINKS,
+    LocalFiberTwinSpec,
     build_local_fiber_twin,
     unique_twin_id,
 )
@@ -93,7 +94,7 @@ def fabricate_missing_on_net_nodes(
         twin_id = unique_twin_id(f"{ON_NET_ID_PREFIX}{location.id}", used_ids)
         built = build_local_fiber_twin(
             location, twin_id, carrier_pops,
-            note=ON_NET_EDGE_NOTE, shown_in_map=False, max_radius=None,
+            LocalFiberTwinSpec(note=ON_NET_EDGE_NOTE, shown_in_map=False, max_radius=None),
         )
         if built is None:
             logger.info(

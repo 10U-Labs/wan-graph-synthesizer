@@ -149,9 +149,9 @@ class Tuning:
     cluster: ClusterTuning = field(default_factory=ClusterTuning)  # access-vertex clustering dials
     compass_octants: int = 8  # compass sectors used to score a core's link spread
     core_links_per_core: int = 3  # other cores each core wires to (core-mesh-degree)
-    aggregation_homing_degree: int = 2  # cores each aggregation homes to (aggregation-homing-degree)
+    aggregation_homing_degree: int = 2  # cores each aggregation homes to
     core_coverage_target_miles: float = 600.0  # grow cores until every aggregation is this near one
-    access_aggregation_links: int = 2  # aggregations each access vertex homes to (access-homing-degree)
+    access_aggregation_links: int = 2  # aggregations each access vertex homes to
     enum_budget: EnumBudget = field(default_factory=EnumBudget)  # core-enumeration memory budget
 
 # The three edge types a forced connection may pin, named as in ``README.md``.

@@ -23,6 +23,7 @@ from wan_graph.model import (
     haversine_miles,
 )
 from wan_designer.optimize import (
+    AggregationHoming,
     aggregation_core_paths,
     aggregation_haul_miles,
     aggregation_homes,
@@ -204,7 +205,9 @@ def test_no_feasible_design_is_rejected() -> None:
 def test_aggregation_core_paths_infeasible_through_bottleneck() -> None:
     """Aggregation core paths infeasible through bottleneck."""
     edges = physical({("S", "X"): 1.0, ("X", "C1"): 1.0, ("X", "C2"): 1.0})
-    _distance, paths = aggregation_core_paths("S", ("C1", "C2"), build_adjacency(edges), edges, 2)
+    _distance, paths = aggregation_core_paths(
+        "S", ("C1", "C2"), build_adjacency(edges), edges, AggregationHoming(2)
+    )
     assert not paths
 
 
@@ -221,7 +224,7 @@ def test_aggregation_homes_to_the_two_nearest_cores_by_miles() -> None:
         ("S", "B"): 1.0, ("B", "C2"): 1.0,
     })
     _distance, paths = aggregation_core_paths(
-        "S", ("C1", "C2", "C3"), build_adjacency(edges), edges, 2
+        "S", ("C1", "C2", "C3"), build_adjacency(edges), edges, AggregationHoming(2)
     )
     assert {use.target for use in paths} == {"C1", "C2"}
 

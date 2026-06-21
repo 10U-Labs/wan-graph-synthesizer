@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from wan_designer.local_fiber import (
     LOCAL_FIBER_MIN_LINKS,
     LOCAL_FIBER_RADIUS_MILES,
+    LocalFiberTwinSpec,
     build_local_fiber_twin,
     unique_twin_id,
 )
@@ -76,7 +77,8 @@ def realize_off_net_sites(
             raise ValueError(f"off-net site name is also a carrier PoP: {site.name}")
         twin_id = unique_twin_id(f"{OFF_NET_ID_PREFIX}{site.id}", used_ids)
         built = build_local_fiber_twin(
-            site, twin_id, carrier_pops, note=OFF_NET_EDGE_NOTE, shown_in_map=True
+            site, twin_id, carrier_pops,
+            LocalFiberTwinSpec(note=OFF_NET_EDGE_NOTE, shown_in_map=True),
         )
         if built is None:
             raise ValueError(

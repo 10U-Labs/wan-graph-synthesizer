@@ -26,19 +26,25 @@ def _fabricate(*extra: Vertex, forced: frozenset[str] = frozenset()) -> Fabricat
 
 def test_fabricates_a_forced_twin() -> None:
     """A forced location near carrier PoPs gets a co-located on-net twin."""
-    result = _fabricate(fixtures.justified_installation("luke", 0.0, 0.5), forced=frozenset({"luke"}))
+    result = _fabricate(
+        fixtures.justified_installation("luke", 0.0, 0.5), forced=frozenset({"luke"})
+    )
     assert result.on_net_ids == frozenset({"fac_luke"})
 
 
 def test_fabrication_adds_backbone_edges() -> None:
     """The fabricated twin gains synthetic links to its nearest carrier PoPs."""
-    result = _fabricate(fixtures.justified_installation("luke", 0.0, 0.5), forced=frozenset({"luke"}))
+    result = _fabricate(
+        fixtures.justified_installation("luke", 0.0, 0.5), forced=frozenset({"luke"})
+    )
     assert len(result.physical_edges) == 3
 
 
 def test_fabricated_twin_is_a_carrier_pop() -> None:
     """The twin is a carrier PoP, so it flows through the backbone machinery."""
-    result = _fabricate(fixtures.justified_installation("luke", 0.0, 0.5), forced=frozenset({"luke"}))
+    result = _fabricate(
+        fixtures.justified_installation("luke", 0.0, 0.5), forced=frozenset({"luke"})
+    )
     assert is_carrier_pop(next(v for v in result.vertices if v.id == "fac_luke")) is True
 
 

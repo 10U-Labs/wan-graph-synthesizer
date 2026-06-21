@@ -70,21 +70,28 @@ from wan_designer.strength import core_strength
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class AggregationHoming:
+    """How an aggregation must home: the degree and any operator-required cores."""
+
+    degree: int
+    required_cores: frozenset[str] = frozenset()
+
+
 def aggregation_core_paths(
     aggregation_id: str,
     core_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-    homes: int,
-    required_cores: frozenset[str] = frozenset(),
+    homing: AggregationHoming,
 ) -> tuple[float, list[PathUse]]:
-    """Route an aggregation to ``homes`` distinct cores over vertex-disjoint paths.
+    """Route an aggregation to ``homing.degree`` distinct cores over disjoint paths.
 
-    ``required_cores`` are operator-forced cores this aggregation must home to;
+    ``homing.required_cores`` are operator-forced cores this aggregation must home to;
     each is forced to anchor one of the routed paths.
     """
     total, paths = vertex_disjoint_paths_to_cores(
-        adjacency, aggregation_id, core_ids, homes, required_cores
+        adjacency, aggregation_id, core_ids, homing.degree, homing.required_cores
     )
     if not paths:
         return math.inf, []
@@ -510,9 +517,11 @@ def routed_path_uses(
     homes = plan.tuning.aggregation_homing_degree
     for aggregation_id in sorted(selected):
         adjacency = twin_routing_adjacency(aggregation_id, inputs, plan)
+        homing = AggregationHoming(
+            homes, forced_cores_for_aggregation(aggregation_id, core_set, plan.forced_links)
+        )
         _cost, uses = aggregation_core_paths(
-            aggregation_id, core_ids, adjacency, physical_edges, homes,
-            forced_cores_for_aggregation(aggregation_id, core_set, plan.forced_links),
+            aggregation_id, core_ids, adjacency, physical_edges, homing
         )
         path_uses.extend(uses)
     return path_uses

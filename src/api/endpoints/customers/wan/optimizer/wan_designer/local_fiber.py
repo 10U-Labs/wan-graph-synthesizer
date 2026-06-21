@@ -14,6 +14,8 @@ installation and off-net seating layers.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from wan_graph.model import (
     KIND_POP,
     PhysicalEdge,
@@ -25,6 +27,19 @@ from wan_graph.model import (
 LOCAL_FIBER_LINKS = 3
 LOCAL_FIBER_MIN_LINKS = 2
 LOCAL_FIBER_RADIUS_MILES = 300.0
+
+
+@dataclass(frozen=True)
+class LocalFiberTwinSpec:
+    """How to seat a local-fiber twin: edge note, map visibility, and reach cap.
+
+    ``max_radius`` of ``None`` removes the distance cap so an operator-forced site is
+    always seated, wired to its nearest carrier PoPs regardless of distance.
+    """
+
+    note: str
+    shown_in_map: bool
+    max_radius: float | None = LOCAL_FIBER_RADIUS_MILES
 
 
 def nearest_carrier_pops(
@@ -61,21 +76,16 @@ def build_local_fiber_twin(
     site: Vertex,
     twin_id: str,
     carrier_pops: list[Vertex],
-    *,
-    note: str,
-    shown_in_map: bool,
-    max_radius: float | None = LOCAL_FIBER_RADIUS_MILES,
+    spec: LocalFiberTwinSpec,
 ) -> tuple[Vertex, dict[tuple[str, str], PhysicalEdge]] | None:
     """A co-located carrier-PoP twin for ``site`` plus its local-fiber edges.
 
     Returns the ``KIND_POP`` twin and its synthetic links to the nearest carrier
-    PoPs. ``max_radius`` caps how far a synthetic link may reach; pass ``None`` to
-    remove the cap so an operator-forced site is always seated, wired to its nearest
-    PoPs regardless of distance. Returns ``None`` only when fewer than
-    :data:`LOCAL_FIBER_MIN_LINKS` carrier PoPs are available to wire to.
+    PoPs, or ``None`` only when fewer than :data:`LOCAL_FIBER_MIN_LINKS` carrier PoPs
+    are available to wire to (``spec.max_radius`` of ``None`` lifts the distance cap).
     """
     neighbors = nearest_carrier_pops(
-        site, carrier_pops, LOCAL_FIBER_LINKS, max_radius
+        site, carrier_pops, LOCAL_FIBER_LINKS, spec.max_radius
     )
     if len(neighbors) < LOCAL_FIBER_MIN_LINKS:
         return None
@@ -86,7 +96,7 @@ def build_local_fiber_twin(
         kind=KIND_POP,
         coords=site.coords,
         info=site.info,
-        shown_in_map=shown_in_map,
+        shown_in_map=spec.shown_in_map,
     )
     edges: dict[tuple[str, str], PhysicalEdge] = {}
     for pop in neighbors:
@@ -95,6 +105,6 @@ def build_local_fiber_twin(
             source=key[0],
             target=key[1],
             distance_miles=haversine_miles(twin, pop),
-            note=note,
+            note=spec.note,
         )
     return twin, edges
