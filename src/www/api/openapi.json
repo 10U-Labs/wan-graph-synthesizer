@@ -266,6 +266,98 @@
         }
       }
     },
+    "/wan-graph-designer/customers/{customer}/installations": {
+      "get": {
+        "summary": "A customer's installations (input).",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The installations." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "put": {
+        "summary": "Replace a customer's installations (re-creates the WAN).",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The installations were replaced." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/csp-regions": {
+      "get": {
+        "summary": "A customer's selected CSP regions (input).",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The CSP regions." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "put": {
+        "summary": "Replace a customer's CSP regions (re-creates the WAN).",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The CSP regions were replaced." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}/config": {
+      "get": {
+        "summary": "A customer's design config (input).",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The config." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "put": {
+        "summary": "Replace a customer's design config (re-creates the WAN).",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The config was replaced." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/customers/{customer}": {
+      "delete": {
+        "summary": "Remove a customer and all its inputs and outputs.",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The customer was removed." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
     "/wan-graph-designer/customers/{customer}/wan": {
       "post": {
         "summary": "Create (optimize) the customer's WAN.",

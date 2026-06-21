@@ -340,6 +340,85 @@ def test_carrier_put_preserves_other_collections(monkeypatch: pytest.MonkeyPatch
     assert json.loads(objects["carriers/lumen.json"])["edges"] == [{"e": 1}]
 
 
+def _customer(monkeypatch: pytest.MonkeyPatch) -> Any:
+    """Load the customers handler with the WAN-create function configured."""
+    return _load("customers", monkeypatch, WAN_FUNCTION="wan-fn")
+
+
+def _customer_put(collection: str, body: Any) -> dict[str, Any]:
+    """A customer input-document PUT event."""
+    return {
+        "httpMethod": "PUT",
+        "pathParameters": {"customer": "f-35"},
+        "path": f"/x/customers/f-35/{collection}",
+        "body": json.dumps(body),
+    }
+
+
+def test_customer_get_serves_an_input_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A GET on an input collection returns the whole stored document."""
+    module = _customer(monkeypatch)
+    stored = {"customers/f-35/installations.json": json.dumps({"vertices": [{"id": "S"}]}).encode()}
+    event = {"pathParameters": {"customer": "f-35"}, "path": "/x/customers/f-35/installations"}
+    with patch("boto3.client", side_effect=_write_clients(stored, [])):
+        response = module.lambda_handler(event, None)
+    assert json.loads(response["body"]) == {"vertices": [{"id": "S"}]}
+
+
+def test_customer_put_persists_an_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT stores the input document under its own key."""
+    module = _customer(monkeypatch)
+    objects: dict[str, bytes] = {}
+    with patch("boto3.client", side_effect=_write_clients(objects, [])):
+        module.lambda_handler(_customer_put("csp-regions", {"vertices": []}), None)
+    assert "customers/f-35/csp-regions.json" in objects
+
+
+def test_customer_put_404_for_unknown_collection(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT to a non-input collection is a 404."""
+    module = _customer(monkeypatch)
+    with patch("boto3.client", side_effect=_write_clients({}, [])):
+        response = module.lambda_handler(_customer_put("vertices", {}), None)
+    assert response["statusCode"] == 404
+
+
+def test_customer_put_recreates_the_wan(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each input PUT re-creates the WAN (two PUTs reuse the cached client)."""
+    module = _customer(monkeypatch)
+    invocations: list[dict[str, Any]] = []
+    with patch("boto3.client", side_effect=_write_clients({}, invocations)):
+        module.lambda_handler(_customer_put("config", {}), None)
+        module.lambda_handler(_customer_put("config", {}), None)
+    assert len(invocations) == 2
+
+
+def test_customer_delete_removes_every_object(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A DELETE removes all of the customer's stored objects."""
+    module = _customer(monkeypatch)
+    objects = {"customers/f-35/config.json": b"{}", "customers/f-35/wan.json": b"{}"}
+    event = {"httpMethod": "DELETE", "pathParameters": {"customer": "f-35"}}
+    with patch("boto3.client", side_effect=_write_clients(objects, [])):
+        module.lambda_handler(event, None)
+    assert not objects
+
+
+def test_customer_delete_with_no_objects_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Deleting a customer with nothing stored still succeeds."""
+    module = _customer(monkeypatch)
+    event = {"httpMethod": "DELETE", "pathParameters": {"customer": "ghost"}}
+    with patch("boto3.client", side_effect=_write_clients({}, [])):
+        response = module.lambda_handler(event, None)
+    assert response["statusCode"] == 200
+
+
+def test_customer_write_404_when_no_customer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-GET request without a customer is a 404."""
+    module = _customer(monkeypatch)
+    with patch("boto3.client", side_effect=_write_clients({}, [])):
+        response = module.lambda_handler({"httpMethod": "PUT"}, None)
+    assert response["statusCode"] == 404
+
+
 def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
     """Load the wan handler with the create task's environment configured."""
     return _load(
