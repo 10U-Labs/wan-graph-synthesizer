@@ -18,9 +18,7 @@ carrier PoP (the pin would be ambiguous).
 
 from __future__ import annotations
 
-import csv
 from dataclasses import dataclass
-from pathlib import Path
 
 from wan_designer.local_fiber import (
     LOCAL_FIBER_MIN_LINKS,
@@ -28,15 +26,12 @@ from wan_designer.local_fiber import (
     build_local_fiber_twin,
     unique_twin_id,
 )
-from wan_designer.model import (
+from wan_graph.model import (
     PhysicalEdge,
     Vertex,
     is_carrier_pop,
-    slugify,
 )
 
-OFF_NET_TENANT = "Off-net"
-OFF_NET_KIND = "Off-net site"
 OFF_NET_ID_PREFIX = "offnet_"
 OFF_NET_EDGE_NOTE = "synthetic off-net local-fiber link"
 
@@ -53,30 +48,6 @@ class RealizedOffNet:
     vertices: list[Vertex]
     physical_edges: dict[tuple[str, str], PhysicalEdge]
     seat_ids: frozenset[str]
-
-
-def load_off_net_sites(path: Path) -> list[Vertex]:
-    """Load off-net candidate sites from a ``name,latitude,longitude`` CSV.
-
-    These are lookup records used only to synthesize twins for forced seats; they are
-    never merged into the main vertex pool and so generate no demand.
-    """
-    if not path.exists():
-        raise ValueError(f"Off-net site file does not exist: {path}")
-    sites: list[Vertex] = []
-    with path.open(newline="", encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            name = row["name"].strip()
-            sites.append(
-                Vertex(
-                    id=slugify(name),
-                    name=name,
-                    tenant=OFF_NET_TENANT,
-                    kind=OFF_NET_KIND,
-                    coords=(float(row["latitude"]), float(row["longitude"])),
-                )
-            )
-    return sites
 
 
 def realize_off_net_sites(

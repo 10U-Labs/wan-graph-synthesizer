@@ -7,7 +7,7 @@ from dataclasses import replace
 import pytest
 
 import fixtures
-from wan_designer.model import (
+from wan_graph.model import (
     AccessEdge,
     Design,
     DesignInputs,
@@ -49,7 +49,7 @@ from wan_designer.optimize import (
     search_best_design,
 )
 from wan_designer.search_plan import ClusterPlan, _AggregationPlan, _SearchPlan
-from wan_designer.parsing import build_adjacency
+from wan_designer.graphs import build_adjacency
 from wan_designer.output import tier_breakdown
 from wan_designer.overrides import (
     apply_role_overrides,

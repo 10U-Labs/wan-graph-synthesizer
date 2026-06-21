@@ -16,7 +16,7 @@ import pytest
 from repo_utils import REPO_ROOT
 from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
-from wan_designer.model import Vertex
+from wan_graph.model import Vertex
 
 _PATH = REPO_ROOT / "src/api/endpoints/customers/wan/optimizer/entrypoint.py"
 

@@ -18,10 +18,9 @@ from typing import Any
 
 import yaml
 
+from data_inputs import load_carrier_edges, load_off_net_sites, load_vertices
 from repo_utils import REPO_ROOT
-from wan_designer.graph_collections import input_graph
-from wan_designer.offnet import load_off_net_sites
-from wan_designer.parsing import load_carrier_edges, load_vertices
+from wan_graph.graph_collections import input_graph
 
 DEFAULT_API = "https://api.10ulabs.com/wan-graph-designer"
 DATA = REPO_ROOT / "data"

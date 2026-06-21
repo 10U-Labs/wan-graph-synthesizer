@@ -18,7 +18,7 @@ from typing import Any
 import boto3
 
 from wan_designer.config import config_from_data
-from wan_designer.graph_collections import (
+from wan_graph.graph_collections import (
     access_nodes,
     aggregation_points,
     core_nodes,
@@ -26,7 +26,7 @@ from wan_designer.graph_collections import (
     load_input_graph,
     vertices,
 )
-from wan_designer.model import (
+from wan_graph.model import (
     DesignArtifacts,
     SourceFiles,
     carrier_role,

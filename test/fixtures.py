@@ -12,7 +12,7 @@ import io
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-from wan_designer.model import (
+from wan_graph.model import (
     KIND_ROADM,
     DesignArtifacts,
     DesignParams,
@@ -28,9 +28,16 @@ from wan_designer.model import (
     is_carrier_pop,
     slugify,
 )
-from wan_designer.offnet import OFF_NET_KIND, OFF_NET_TENANT
+from data_inputs import (
+    OFF_NET_KIND,
+    OFF_NET_TENANT,
+    load_carrier_edges,
+    load_off_net_sites,
+    load_vertices,
+)
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.overrides import apply_role_overrides, materialize_selected_colocation_twins
+from wan_designer.stages import dual_home, finalize
 from wan_designer.validation import validate_design
 
 VERTEX_HEADER = ["name", "latitude", "longitude", "kind", "shown_in_map", "description"]
@@ -215,6 +222,51 @@ def physical_edges_from(
 def ring_params() -> DesignParams:
     """Design parameters that solve the ring with a two-core tier."""
     return DesignParams(min_core_count=2)
+
+
+def load_design_inputs(
+    paths: DesignPaths,
+) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
+    """Load vertices and carrier fiber from CSV paths.
+
+    Lives in test support, not the shipped library: production reads the JSON
+    substrate via ``load_input_graph``; only the suite drives a design from CSVs.
+    """
+    vertices = load_vertices(list(paths.vertex_files))
+    if not vertices:
+        raise ValueError("No vertices found in the configured vertex files")
+    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
+    physical_edges: dict[tuple[str, str], PhysicalEdge] = {}
+    for edge_path in (paths.edge_path, *paths.regional_edge_paths):
+        physical_edges.update(load_carrier_edges(edge_path, carrier_pops))
+    return vertices, physical_edges
+
+
+def run_design(
+    paths: DesignPaths,
+    params: DesignParams,
+    augment: bool,
+    forced_connections: tuple[ForcedConnection, ...] = (),
+    excluded_connections: tuple[ForcedConnection, ...] = (),
+) -> DesignArtifacts:
+    """Drive the whole pipeline from CSV paths -- the suite's design driver.
+
+    Mirrors the steps the Fargate entrypoint runs inline (dual-home -> overrides ->
+    optimize -> finalize); kept in test support because no shipped code drives a
+    design from raw files.
+    """
+    vertices, physical_edges = load_design_inputs(paths)
+    off_net_sites = load_off_net_sites(paths.off_net_path) if paths.off_net_path else []
+    vertices, physical_edges = dual_home(vertices, physical_edges, params, off_net_sites)
+    roles = {pop.id: carrier_role(pop) for pop in vertices if is_carrier_pop(pop)}
+    vertices, physical_edges, overrides = apply_role_overrides(
+        vertices, physical_edges, params, forced_connections, excluded_connections
+    )
+    design = optimize_three_tier_design(vertices, physical_edges, roles, params, overrides)
+    vertices, physical_edges, design, validation = finalize(
+        vertices, physical_edges, design, params, augment
+    )
+    return DesignArtifacts(vertices, physical_edges, design, validation)
 
 
 def _ring_inputs() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:

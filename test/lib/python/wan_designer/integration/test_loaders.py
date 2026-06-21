@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 import fixtures
-from wan_designer import Vertex, is_carrier_pop, load_carrier_edges, load_vertices
+from data_inputs import load_carrier_edges, load_vertices
+from wan_graph.model import Vertex, is_carrier_pop
 
 
 @pytest.fixture(name="vertices", scope="module")

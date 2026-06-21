@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 
 import fixtures
-from wan_designer import Vertex, is_carrier_pop, is_justified_aggregation
-from wan_designer.parsing import build_adjacency, load_carrier_edges, load_vertices
+from data_inputs import load_carrier_edges, load_vertices
+from wan_designer.graphs import build_adjacency
+from wan_graph.model import Vertex, is_carrier_pop, is_justified_aggregation
 
 def carrier_names(vertices: list[Vertex]) -> set[str]:
     """Names of the carrier PoP vertices."""

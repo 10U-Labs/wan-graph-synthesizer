@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from wan_designer.model import (
+from wan_graph.model import (
     Design,
     DesignMetrics,
     Vertex,

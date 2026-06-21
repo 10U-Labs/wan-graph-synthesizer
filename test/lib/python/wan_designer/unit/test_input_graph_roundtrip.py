@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from wan_designer.graph_collections import input_graph, load_input_graph
-from wan_designer.model import PhysicalEdge, Vertex, VertexInfo, edge_key
+from wan_graph.graph_collections import input_graph, load_input_graph
+from wan_graph.model import PhysicalEdge, Vertex, VertexInfo, edge_key
 
 
 def _vertex() -> Vertex:

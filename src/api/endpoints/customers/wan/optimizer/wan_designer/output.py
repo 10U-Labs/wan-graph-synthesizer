@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from dataclasses import asdict
 from typing import Any
 
-from wan_designer.model import (
+from wan_graph.model import (
     Design,
     DesignArtifacts,
     SourceFiles,

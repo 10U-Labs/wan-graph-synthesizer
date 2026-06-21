@@ -7,7 +7,7 @@ import math
 from collections import deque
 from dataclasses import dataclass
 
-from wan_designer.model import edge_key
+from wan_graph.model import PhysicalEdge, edge_key
 
 
 def dijkstra(
@@ -307,3 +307,16 @@ def articulation_points(vertex_ids: set[str], edges: set[tuple[str, str]]) -> se
             dfs(vertex_id)
 
     return points
+
+
+def build_adjacency(
+    edges: dict[tuple[str, str], PhysicalEdge],
+) -> dict[str, list[tuple[str, float]]]:
+    """Build a sorted weighted adjacency map from the physical edges."""
+    adjacency: dict[str, list[tuple[str, float]]] = {}
+    for (left, right), edge in edges.items():
+        adjacency.setdefault(left, []).append((right, edge.distance_miles))
+        adjacency.setdefault(right, []).append((left, edge.distance_miles))
+    for neighbors in adjacency.values():
+        neighbors.sort()
+    return adjacency

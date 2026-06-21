@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from wan_designer.model import PathUse, PhysicalEdge, edge_key
+from wan_graph.model import PathUse, PhysicalEdge, edge_key
 from wan_designer.graphs import reconstruct_path
 
 

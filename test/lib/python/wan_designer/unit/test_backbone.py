@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import fixtures
-from wan_designer.model import (
+from wan_graph.model import (
     PathUse,
     edge_key,
 )
@@ -13,7 +13,7 @@ from wan_designer.backbone import (
     select_core_backbone_pairs,
 )
 from wan_designer.optimize import all_pairs_shortest
-from wan_designer.parsing import build_adjacency
+from wan_designer.graphs import build_adjacency
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from

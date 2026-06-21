@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import fixtures
 from wan_designer.installations import RealizedInstallations, realize_installations
-from wan_designer.model import Vertex, is_carrier_pop
+from wan_graph.model import Vertex, is_carrier_pop
 
 
 def _pops() -> list[Vertex]:

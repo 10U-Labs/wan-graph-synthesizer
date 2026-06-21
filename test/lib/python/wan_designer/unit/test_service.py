@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 import fixtures
-from wan_designer.model import DesignParams, DesignPaths
-from wan_designer.service import run_design
+from wan_graph.model import DesignParams, DesignPaths
+from fixtures import run_design
 
 
 def test_run_design_without_augmentation(tmp_path: Path) -> None:

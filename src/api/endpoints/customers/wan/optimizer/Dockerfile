@@ -3,9 +3,9 @@
 # pushes it to the wan-graph-designer-optimizer ECR repo.
 #
 # The entrypoint reads the customer's inputs + the substrate from the S3 store,
-# runs the pipeline (combine/home/constrain/optimize/validate via
-# lib/python/wan_designer), and writes the WAN JSON back to the store -- or
-# records a 422 reason if no valid WAN exists.
+# runs the pipeline (home/constrain/optimize/validate via the wan_designer design
+# engine beside it, over the wan_graph interchange in lib/python), and writes the
+# WAN JSON back to the store -- or records a 422 reason if no valid WAN exists.
 FROM python:3.13-slim
 
 WORKDIR /app

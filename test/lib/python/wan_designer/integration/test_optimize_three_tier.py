@@ -9,8 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import fixtures
-from wan_designer.model import DesignArtifacts, DesignParams, ForcedConnection, edge_key
-from wan_designer.service import run_design
+from wan_graph.model import DesignArtifacts, DesignParams, ForcedConnection, edge_key
+from fixtures import run_design
 from wan_designer.validation import core_backbone_pairs
 
 ARTIFACTS = fixtures.ring_artifacts()

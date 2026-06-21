@@ -1,10 +1,10 @@
-"""Load the WAN designer configuration from a YAML file.
+"""Resolve the WAN designer configuration from an already-parsed mapping.
 
-Everything the operator tunes -- the input/output paths, the role pins and
-exclusions, the core count, and the algorithm dials -- lives in one YAML file
-(``etc/joint.yml`` by default) instead of being baked into the source. Any key
-the file omits falls back to the matching built-in default, so a partial (even
-empty) file still yields a valid configuration.
+Everything the operator tunes -- the input paths, the role pins and exclusions,
+the core count, and the algorithm dials -- arrives as one parsed mapping (the
+customer's stored config JSON). Any key it omits falls back to the matching
+built-in default, so a partial (even empty) mapping still yields a valid
+configuration.
 """
 
 from __future__ import annotations
@@ -13,9 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from wan_designer.model import (
+from wan_graph.model import (
     FORCED_CONNECTION_TYPES,
     ClusterTuning,
     DesignPaths,
@@ -26,7 +24,6 @@ from wan_designer.model import (
     Tuning,
 )
 
-DEFAULT_CONFIG_PATH = Path("etc/joint.yml")
 DEFAULT_VERTICES = {
     "AFLCMC": "data/vertices/customers/aflcmc.csv",
     "AFNWC/NI": "data/vertices/customers/afnwc_ni.csv",
@@ -203,7 +200,11 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
 
 
 def config_from_data(data: dict[str, Any]) -> AppConfig:
-    """Resolve an already-parsed config mapping into a :class:`AppConfig`."""
+    """Resolve an already-parsed config mapping into a :class:`AppConfig`.
+
+    Any key the mapping omits falls back to the matching built-in default, so a
+    partial (even empty) mapping still yields a valid configuration.
+    """
     design = _mapping(data, "design")
     return AppConfig(
         paths=_paths(_mapping(data, "inputs")),
@@ -213,17 +214,3 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
         forced_connections=_forced_connections(design),
         excluded_connections=_excluded_connections(design),
     )
-
-
-def default_config() -> AppConfig:
-    """The built-in configuration used when no config file is supplied."""
-    return config_from_data({})
-
-
-def load_config(path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
-    """Parse the YAML config at ``path`` into a resolved :class:`AppConfig`."""
-    try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as exc:
-        raise ValueError(f"invalid YAML in {path}: {exc}") from exc
-    return config_from_data(raw if isinstance(raw, dict) else {})

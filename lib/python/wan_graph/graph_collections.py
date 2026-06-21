@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from wan_designer.model import PhysicalEdge, Vertex, VertexInfo, edge_key
+from wan_graph.model import PhysicalEdge, Vertex, VertexInfo, edge_key
 
 
 def vertices(payload: dict[str, Any]) -> list[dict[str, Any]]:

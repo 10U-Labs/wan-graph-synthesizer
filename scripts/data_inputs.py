@@ -1,11 +1,18 @@
-"""Load the vertices CSV and the carrier edge CSVs into the data model."""
+"""Read the git-authored CSV inputs into the graph data model.
+
+The inputs script (:mod:`push_inputs`) turns the raw per-tenant vertex CSVs, the
+carrier fiber-edge CSVs, and the off-net candidate CSV into :class:`wan_graph.model`
+objects, which it then serializes to JSON for the API. This module owns that
+CSV-reading step; the optimizer endpoint never parses raw files -- it consumes the
+JSON these readers feed.
+"""
 
 from __future__ import annotations
 
 import csv
 from pathlib import Path
 
-from wan_designer.model import (
+from wan_graph.model import (
     PhysicalEdge,
     Vertex,
     VertexInfo,
@@ -13,6 +20,9 @@ from wan_designer.model import (
     haversine_miles,
     slugify,
 )
+
+OFF_NET_TENANT = "Off-net"
+OFF_NET_KIND = "Off-net site"
 
 
 def load_vertices(vertex_files: list[tuple[str, Path]]) -> list[Vertex]:
@@ -63,6 +73,7 @@ def load_vertices(vertex_files: list[tuple[str, Path]]) -> list[Vertex]:
                 )
     return vertices
 
+
 def load_carrier_edges(
     path: Path, carrier_pops: list[Vertex]
 ) -> dict[tuple[str, str], PhysicalEdge]:
@@ -100,14 +111,26 @@ def load_carrier_edges(
 
     return edges
 
-def build_adjacency(
-    edges: dict[tuple[str, str], PhysicalEdge],
-) -> dict[str, list[tuple[str, float]]]:
-    """Build a sorted weighted adjacency map from the physical edges."""
-    adjacency: dict[str, list[tuple[str, float]]] = {}
-    for (left, right), edge in edges.items():
-        adjacency.setdefault(left, []).append((right, edge.distance_miles))
-        adjacency.setdefault(right, []).append((left, edge.distance_miles))
-    for neighbors in adjacency.values():
-        neighbors.sort()
-    return adjacency
+
+def load_off_net_sites(path: Path) -> list[Vertex]:
+    """Load off-net candidate sites from a ``name,latitude,longitude`` CSV.
+
+    These are lookup records used only to synthesize twins for forced seats; they are
+    never merged into the main vertex pool and so generate no demand.
+    """
+    if not path.exists():
+        raise ValueError(f"Off-net site file does not exist: {path}")
+    sites: list[Vertex] = []
+    with path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            name = row["name"].strip()
+            sites.append(
+                Vertex(
+                    id=slugify(name),
+                    name=name,
+                    tenant=OFF_NET_TENANT,
+                    kind=OFF_NET_KIND,
+                    coords=(float(row["latitude"]), float(row["longitude"])),
+                )
+            )
+    return sites

@@ -6,17 +6,14 @@ import math
 
 import pytest
 
-from wan_designer import (
-    connected_components,
+from wan_designer.graphs import (
     articulation_points,
+    connected_components,
     dijkstra,
-    edge_key,
-    haversine_miles,
+    path_edge_keys,
     reconstruct_path,
-    slugify,
-    Vertex,
 )
-from wan_designer.graphs import path_edge_keys
+from wan_graph.model import Vertex, edge_key, haversine_miles, slugify
 
 
 def make_vertex(vertex_id: str, lat: float, lon: float) -> Vertex:

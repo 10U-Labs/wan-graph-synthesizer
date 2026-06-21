@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import fixtures
-from wan_designer import graph_collections as gc
+from wan_graph import graph_collections as gc
 from wan_designer.output import design_payload
 
 

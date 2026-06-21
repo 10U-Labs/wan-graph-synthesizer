@@ -7,16 +7,15 @@ nearest cores on the backbone.
 
 from __future__ import annotations
 
-from wan_designer import (
+from wan_designer.validation import aggregations_without_core_redundancy, validate_design
+from wan_graph.model import (
     AccessEdge,
     Design,
     DesignMetrics,
     PathUse,
     ValidationReport,
     Vertex,
-    aggregations_without_core_redundancy,
     edge_key,
-    validate_design,
 )
 
 

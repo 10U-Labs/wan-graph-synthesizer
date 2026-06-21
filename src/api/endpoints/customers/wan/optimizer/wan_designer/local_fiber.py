@@ -14,7 +14,7 @@ installation and off-net seating layers.
 
 from __future__ import annotations
 
-from wan_designer.model import (
+from wan_graph.model import (
     KIND_POP,
     PhysicalEdge,
     Vertex,

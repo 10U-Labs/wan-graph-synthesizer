@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from wan_designer.model import DesignInputs, Vertex, haversine_miles
+from wan_graph.model import DesignInputs, Vertex, haversine_miles
 from wan_designer.graphs import reconstruct_path
 
 

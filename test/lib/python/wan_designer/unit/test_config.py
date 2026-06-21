@@ -7,18 +7,18 @@ from typing import Any
 
 import pytest
 
-from wan_designer.config import (
-    AppConfig,
-    config_from_data,
-    default_config,
-    load_config,
-)
-from wan_designer.model import ForcedConnection
+from wan_designer.config import AppConfig, config_from_data
+from wan_graph.model import ForcedConnection
 
 
 def _config(data: dict[str, Any]) -> AppConfig:
     """Resolve a single in-memory config mapping for one test case."""
     return config_from_data(data)
+
+
+def default_config() -> AppConfig:
+    """The built-in configuration: an empty mapping resolved to all defaults."""
+    return config_from_data({})
 
 
 def test_default_min_core_count() -> None:
@@ -268,25 +268,3 @@ def test_forced_cores_must_be_a_list() -> None:
     """A non-list forced_cores value is rejected."""
     with pytest.raises(ValueError):
         _config({"design": {"forced_cores": "Atlanta, GA"}})
-
-
-def test_load_config_reads_a_file(tmp_path: Path) -> None:
-    """load_config parses the design params from a YAML file."""
-    path = tmp_path / "c.yml"
-    path.write_text("design:\n  min_core_count: 7\n", encoding="utf-8")
-    assert load_config(path).params.min_core_count == 7
-
-
-def test_load_config_empty_file_uses_defaults(tmp_path: Path) -> None:
-    """An empty config file falls back entirely to the defaults."""
-    path = tmp_path / "empty.yml"
-    path.write_text("", encoding="utf-8")
-    assert load_config(path).params.min_core_count == 3
-
-
-def test_load_config_rejects_malformed_yaml(tmp_path: Path) -> None:
-    """Malformed YAML is reported as a ValueError."""
-    path = tmp_path / "bad.yml"
-    path.write_text("design: [unclosed\n", encoding="utf-8")
-    with pytest.raises(ValueError):
-        load_config(path)

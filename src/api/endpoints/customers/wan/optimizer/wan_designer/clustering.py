@@ -14,7 +14,7 @@ that keeps a link from ever bridging unrelated regions across the continent.
 
 from __future__ import annotations
 
-from wan_designer.model import Vertex, haversine_miles
+from wan_graph.model import Vertex, haversine_miles
 
 # Default algorithm dials, mirrored by the matching ``DesignParams`` fields so a
 # direct caller (and the test suite) need not pass them; ``etc/*.yml`` drives the

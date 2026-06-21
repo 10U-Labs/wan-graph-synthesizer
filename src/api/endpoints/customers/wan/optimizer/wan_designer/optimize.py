@@ -30,7 +30,7 @@ import math
 import os
 from dataclasses import dataclass, replace
 
-from wan_designer.model import (
+from wan_graph.model import (
     AccessEdge,
     Design,
     DesignInputs,
@@ -50,6 +50,7 @@ from wan_designer.forced import (
     removed_core_pairs,
 )
 from wan_designer.graphs import (
+    build_adjacency,
     dijkstra,
     vertex_disjoint_paths_to_cores,
     path_edge_keys,
@@ -64,7 +65,6 @@ from wan_designer.overrides import (
     colocation_edges,
     twin_vertex_id,
 )
-from wan_designer.parsing import build_adjacency
 from wan_designer.search_plan import ClusterPlan, _AggregationPlan, _SearchPlan
 from wan_designer.strength import core_strength
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 
-from wan_designer import vertex_disjoint_paths_to_cores
+from wan_designer.graphs import vertex_disjoint_paths_to_cores
 
 
 def adjacency_from_edges(
