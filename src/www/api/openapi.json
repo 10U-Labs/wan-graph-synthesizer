@@ -327,6 +327,32 @@
         }
       }
     },
+    "/wan-graph-designer/customers/{customer}/off-net": {
+      "get": {
+        "summary": "A customer's off-net candidate seats (input).",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The off-net seats." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "put": {
+        "summary": "Replace a customer's off-net seats (re-creates the WAN).",
+        "parameters": [
+          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The off-net seats were replaced." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CustomersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
     "/wan-graph-designer/customers/{customer}/config": {
       "get": {
         "summary": "A customer's design config (input).",

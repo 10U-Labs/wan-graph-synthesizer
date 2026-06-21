@@ -7,8 +7,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from wan_designer.installations import realize_installations
 from wan_designer.model import (
     Design,
@@ -19,7 +17,7 @@ from wan_designer.model import (
     Vertex,
     is_carrier_pop,
 )
-from wan_designer.offnet import load_off_net_sites, realize_off_net_sites
+from wan_designer.offnet import realize_off_net_sites
 from wan_designer.overrides import materialize_selected_colocation_twins
 from wan_designer.parsing import load_carrier_edges, load_vertices
 from wan_designer.validation import augment_physical_resilience, validate_design
@@ -56,9 +54,13 @@ def dual_home(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
-    off_net_path: Path | None,
+    off_net_sites: list[Vertex],
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
-    """Attach demand to the carrier graph: realize installations, then off-net seats."""
+    """Attach demand to the carrier graph: realize installations, then off-net seats.
+
+    ``off_net_sites`` are the loaded off-net candidate vertices (the caller loads
+    them, from a CSV file or the stored JSON), so this step is source-agnostic.
+    """
     realized = realize_installations(
         vertices, physical_edges, frozenset(params.forced_aggregation_names)
     )
@@ -66,7 +68,7 @@ def dual_home(
     off_net = realize_off_net_sites(
         vertices,
         physical_edges,
-        load_off_net_sites(off_net_path) if off_net_path else [],
+        off_net_sites,
         frozenset(params.forced_core_names) | frozenset(params.forced_aggregation_names),
     )
     return off_net.vertices, off_net.physical_edges

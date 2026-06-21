@@ -8,6 +8,7 @@ import pytest
 
 import fixtures
 from wan_designer.model import DesignParams, DesignPaths, is_carrier_pop
+from wan_designer.offnet import load_off_net_sites
 from wan_designer.stages import combine_substrate, dual_home, finalize, load_inputs
 
 
@@ -36,7 +37,7 @@ def test_dual_home_returns_a_graph_without_off_net(tmp_path: Path) -> None:
     vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
     vertices, physical_edges = load_inputs(DesignPaths(vertex_files, edges))
     homed_vertices, homed_edges = dual_home(
-        vertices, physical_edges, fixtures.ring_params(), None
+        vertices, physical_edges, fixtures.ring_params(), []
     )
     assert homed_vertices and homed_edges
 
@@ -46,7 +47,8 @@ def test_dual_home_realizes_a_forced_off_net_site(tmp_path: Path) -> None:
     paths, name = fixtures.write_off_net_solvable_inputs(tmp_path)
     params = DesignParams(min_core_count=2, forced_core_names=(name,))
     vertices, physical_edges = load_inputs(paths)
-    homed_vertices, _edges = dual_home(vertices, physical_edges, params, paths.off_net_path)
+    sites = load_off_net_sites(paths.off_net_path) if paths.off_net_path else []
+    homed_vertices, _edges = dual_home(vertices, physical_edges, params, sites)
     assert any(vertex.id.startswith("offnet_") for vertex in homed_vertices)
 
 
