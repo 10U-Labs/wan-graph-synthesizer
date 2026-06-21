@@ -19,10 +19,10 @@ def test_run_design_is_connected(tmp_path: Path) -> None:
     assert artifacts.validation["connected"] is True
 
 
-def test_run_design_over_justified_installations_is_connected(tmp_path: Path) -> None:
-    """A design whose access nodes are justified installations validates as connected."""
+def test_run_design_over_installations_is_connected(tmp_path: Path) -> None:
+    """A design whose access nodes are installations validates as connected."""
     artifacts = run_design(
-        fixtures.write_justified_solvable_inputs(tmp_path), DesignParams(min_core_count=2)
+        fixtures.write_solvable_design_paths(tmp_path), DesignParams(min_core_count=2)
     )
     assert artifacts.validation["connected"] is True
 
@@ -30,7 +30,7 @@ def test_run_design_over_justified_installations_is_connected(tmp_path: Path) ->
 def test_run_design_seats_a_forced_location_as_aggregation(tmp_path: Path) -> None:
     """A forced location's fabricated on-net twin is seated on the aggregation tier."""
     design = run_design(
-        fixtures.write_justified_solvable_inputs(tmp_path),
+        fixtures.write_solvable_design_paths(tmp_path),
         DesignParams(min_core_count=2, forced_aggregation_names=("A1",)),
     ).design
     assert any(agg.startswith("fac_") for agg in design.aggregation_ids)

@@ -19,16 +19,12 @@ class VertexInfo:
 
     ``description`` is free-text source provenance; ``municipality`` and ``state``
     are the serving city and 2-letter U.S. state shown in the map tooltip (carrier
-    PoPs derive these from their ``City, ST`` name). ``justified_aggregation`` marks
-    an access site (e.g. a military installation) the operator has justified as an
-    aggregation point; it is read from the ``Justified as an aggregation point``
-    vertex column and is meaningless for carrier PoPs.
+    PoPs derive these from their ``City, ST`` name).
     """
 
     description: str = ""
     municipality: str = ""
     state: str = ""
-    justified_aggregation: bool = False
 
 @dataclass(frozen=True)
 class Vertex:
@@ -312,15 +308,6 @@ CARRIER_KINDS = frozenset({KIND_POP, KIND_ROADM})
 def is_carrier_pop(vertex: Vertex) -> bool:
     """Whether a vertex is a carrier PoP (a routable backbone node)."""
     return vertex.kind in CARRIER_KINDS
-
-def is_justified_aggregation(vertex: Vertex) -> bool:
-    """Whether an access vertex is operator-justified as an aggregation point.
-
-    Carrier PoPs are excluded: the justification flag governs which non-carrier
-    access sites (military installations and the like) the operator wants to stand
-    up as aggregation facilities, so it never applies to backbone PoPs.
-    """
-    return not is_carrier_pop(vertex) and vertex.info.justified_aggregation
 
 def edge_key(left: str, right: str) -> tuple[str, str]:
     """Return the two PoP ids as an order-independent edge key."""

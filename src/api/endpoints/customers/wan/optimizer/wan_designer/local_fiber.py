@@ -1,6 +1,6 @@
 """Attach a non-PoP site to the backbone via synthetic local-fiber links.
 
-A site that carries no fiber of its own (a justified installation, an off-net
+A site that carries no fiber of its own (a forced installation, an off-net
 operator seat) can still be seated on the carrier backbone by standing up a
 co-located carrier-PoP *twin* at its coordinates and wiring that twin to the
 nearest existing carrier PoPs with synthetic local-fiber edges. The twin's name

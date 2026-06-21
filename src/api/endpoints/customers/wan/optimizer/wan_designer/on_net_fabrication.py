@@ -67,12 +67,11 @@ def fabricate_missing_on_net_nodes(
     """Fabricate an on-net twin for every operator-forced non-carrier location.
 
     A location the operator named in ``forced_aggregation_names`` is fabricated on-net
-    whether or not our data marks it justified -- forcing alone is sufficient, since
-    any place can become a hub. Carrier PoPs named here are already on-net and need no
-    twin. Forced locations are taken in a stable id order; co-located sites yield a
-    single twin. The twin always wires to its nearest carrier PoPs regardless of
-    distance, so a forced location is dropped only in the degenerate case of fewer
-    than :data:`LOCAL_FIBER_MIN_LINKS` carrier PoPs existing at all.
+    by the force pin alone, since any place can become a hub. Carrier PoPs named here
+    are already on-net and need no twin. Forced locations are taken in a stable id
+    order; co-located sites yield a single twin. The twin always wires to its nearest
+    carrier PoPs regardless of distance, so a forced location is dropped only in the
+    degenerate case of fewer than :data:`LOCAL_FIBER_MIN_LINKS` carrier PoPs at all.
     """
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     used_ids = {vertex.id for vertex in vertices}

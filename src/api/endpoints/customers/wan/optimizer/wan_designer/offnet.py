@@ -6,7 +6,7 @@ an aggregation. Its coordinates come from a dedicated off-net CSV and never ente
 the main vertex pool, so it carries no access demand. When the operator force-pins
 such a seat we stand up a carrier-PoP twin at its coordinates, wired by synthetic
 local fiber to the nearest carrier PoPs (see :mod:`wan_designer.local_fiber`) -- the
-same mechanism that backs justified installations, except an off-net seat may be a
+same mechanism that backs forced installations, except an off-net seat may be a
 core as well as an aggregation.
 
 Only forced off-net sites are realized; an unlisted site is ignored. Two failure

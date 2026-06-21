@@ -20,7 +20,6 @@ from wan_graph.model import (
     ForcedConnection,
     RoleExclusions,
     Vertex,
-    VertexInfo,
     PhysicalEdge,
     SourceFiles,
     edge_key,
@@ -77,25 +76,6 @@ def write_vertex_files(
         files.append((tenant, path))
     return tuple(sorted(files))
 
-JUSTIFIED_COLUMN = "Justified as an aggregation point"
-
-
-def write_justified_vertices(directory: Path) -> tuple[str, Path]:
-    """Write a tenant CSV exercising the ``Justified as an aggregation point`` column.
-
-    One justified installation (``yes``), one not (``no``), and a carrier PoP whose
-    column value is ignored because it is not an access vertex. Returns the
-    ``(tenant, path)`` pair ready to hand to :func:`load_vertices`.
-    """
-    rows = [
-        ("Luke AFB", 33.5, -112.4, "Military installation", "Shown in map", "", "yes"),
-        ("Crystal City, VA", 38.9, -77.1, "Military installation", "Shown in map", "", "no"),
-        ("Denver, CO", 39.7, -104.99, "PoP", "Not shown in map", "", "yes"),
-    ]
-    path = directory / "justified.csv"
-    _write_csv(path, [*VERTEX_HEADER, JUSTIFIED_COLUMN], rows)
-    return ("F-35", path)
-
 RING_COORDS = {
     "P0": (40.0, -100.0),
     "P1": (41.0, -100.0),
@@ -133,18 +113,6 @@ def access_vertex(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
     """Build an access (F-35 installation) vertex."""
     return Vertex(
         id=vertex_id, name=vertex_id, tenant="F-35", kind="Military installation", coords=(lat, lon)
-    )
-
-
-def justified_installation(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
-    """Build an access installation operator-justified as an aggregation point."""
-    return Vertex(
-        id=vertex_id,
-        name=vertex_id,
-        tenant="F-35",
-        kind="Military installation",
-        coords=(lat, lon),
-        info=VertexInfo(justified_aggregation=True),
     )
 
 
@@ -353,11 +321,11 @@ def forced_connection_artifacts(
     return _forced_artifacts(params, forced_connections=forced_connections)
 
 
-def write_justified_solvable_inputs(directory: Path) -> DesignPaths:
-    """Write the solvable ring with its access nodes justified as aggregation points.
+def write_solvable_design_paths(directory: Path) -> DesignPaths:
+    """Write the solvable ring of Lumen PoPs and F-35 installations as a DesignPaths.
 
-    Returns a :class:`DesignPaths` whose F-35 installations carry the justified
-    column, so :func:`run_design` synthesizes a facility twin for each.
+    Same vertices as :func:`write_solvable_inputs`, but bundled as a
+    :class:`DesignPaths` ready to hand straight to :func:`run_design`.
     """
     pops = [
         (name, lat, lon, "PoP", "Not shown in map", "")
@@ -366,11 +334,11 @@ def write_justified_solvable_inputs(directory: Path) -> DesignPaths:
     lumen_path = directory / "lumen.csv"
     _write_csv(lumen_path, VERTEX_HEADER, pops)
     access = [
-        (name, lat, lon, "Military installation", "Shown in map", "", "yes")
+        (name, lat, lon, "Military installation", "Shown in map", "")
         for name, (lat, lon) in ACCESS_COORDS.items()
     ]
     f35_path = directory / "f35.csv"
-    _write_csv(f35_path, [*VERTEX_HEADER, JUSTIFIED_COLUMN], access)
+    _write_csv(f35_path, VERTEX_HEADER, access)
     edges_path = directory / "ring_edges.csv"
     edges_path.write_text(solvable_edges_csv(), encoding="utf-8")
     return DesignPaths((("F-35", f35_path), ("Lumen", lumen_path)), edges_path)

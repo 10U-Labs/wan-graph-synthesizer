@@ -135,28 +135,28 @@ def test_access_vertices_dual_homed() -> None:
     assert ARTIFACTS.validation["access_vertices_with_required_aggregation_links"] is True
 
 
-def _justified_artifacts(directory: Path) -> DesignArtifacts:
-    """Optimize over the ring of justified installations with A1 forced as an aggregation."""
-    paths = fixtures.write_justified_solvable_inputs(directory)
+def _forced_installation_artifacts(directory: Path) -> DesignArtifacts:
+    """Optimize over the ring of installations with A1 forced as an aggregation."""
+    paths = fixtures.write_solvable_design_paths(directory)
     params = DesignParams(min_core_count=2, forced_aggregation_names=("A1",))
     return run_design(paths, params)
 
 
 def test_forced_installation_is_seated_as_an_aggregation(tmp_path: Path) -> None:
     """A forced installation's facility twin lands on the aggregation tier."""
-    design = _justified_artifacts(tmp_path).design
+    design = _forced_installation_artifacts(tmp_path).design
     assert any(aggregation.startswith("fac_") for aggregation in design.aggregation_ids)
 
 
-def test_justified_design_dual_homes_every_aggregation(tmp_path: Path) -> None:
+def test_forced_design_dual_homes_every_aggregation(tmp_path: Path) -> None:
     """Every aggregation -- installation facilities included -- dual-homes to two cores."""
-    artifacts = _justified_artifacts(tmp_path)
+    artifacts = _forced_installation_artifacts(tmp_path)
     assert artifacts.validation["aggregations_dual_homed_to_cores"] is True
 
 
-def test_justified_design_dual_homes_every_access_vertex(tmp_path: Path) -> None:
+def test_forced_design_dual_homes_every_access_vertex(tmp_path: Path) -> None:
     """Every access vertex still reaches two aggregation facilities."""
-    artifacts = _justified_artifacts(tmp_path)
+    artifacts = _forced_installation_artifacts(tmp_path)
     assert artifacts.validation["access_vertices_with_required_aggregation_links"] is True
 
 
