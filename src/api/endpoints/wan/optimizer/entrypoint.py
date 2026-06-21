@@ -100,6 +100,9 @@ def main() -> None:
     client = boto3.client("s3", region_name="us-east-2")
     customer = os.environ["CUSTOMER"]
     status_key = f"customers/{customer}/wan-status.json"
+    # Mark the task as actively building (distinct from the handler's "creating",
+    # which only means a create was requested) so a stuck task is observable.
+    _write_json(client, status_key, {"status": "building", "customer": customer})
     # Any failure (infeasible design, or an unexpected error) must be recorded as
     # the WAN's status rather than crash the task and leave it stuck "creating".
     try:
