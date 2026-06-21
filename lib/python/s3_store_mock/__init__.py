@@ -33,6 +33,11 @@ def fake_s3(objects: dict[str, bytes], keys: list[str] | None = None) -> Any:
         objects[kwargs["Key"]] = kwargs["Body"]
         return {}
 
+    def delete_object(**kwargs: Any) -> dict[str, Any]:
+        """Drop a stored object (a no-op when it is already absent)."""
+        objects.pop(kwargs["Key"], None)
+        return {}
+
     def list_objects_v2(**_kwargs: Any) -> dict[str, Any]:
         """Return a canned listing of object keys."""
         listed = keys if keys is not None else list(objects)
@@ -41,6 +46,7 @@ def fake_s3(objects: dict[str, bytes], keys: list[str] | None = None) -> Any:
     return SimpleNamespace(
         get_object=get_object,
         put_object=put_object,
+        delete_object=delete_object,
         list_objects_v2=list_objects_v2,
         exceptions=SimpleNamespace(NoSuchKey=NoSuchKey),
     )
@@ -55,3 +61,14 @@ def fake_ecs(started: list[dict[str, Any]]) -> Any:
         return {"tasks": [{"taskArn": "arn:aws:ecs:task/fake"}]}
 
     return SimpleNamespace(run_task=run_task)
+
+
+def fake_lambda(invocations: list[dict[str, Any]]) -> Any:
+    """Build a stand-in Lambda client that records each invoke into ``invocations``."""
+
+    def invoke(**kwargs: Any) -> dict[str, Any]:
+        """Record the invoke request and return a canned async (202) response."""
+        invocations.append(kwargs)
+        return {"StatusCode": 202}
+
+    return SimpleNamespace(invoke=invoke)
