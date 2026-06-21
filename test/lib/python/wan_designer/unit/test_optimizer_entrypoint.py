@@ -63,7 +63,7 @@ def _inputs(module: Any) -> dict[str, bytes]:
         "customers/f-35/csp-regions.json",
         "customers/f-35/off-net.json",
     ]
-    keys += [f"customers/f-35/{resource}.json" for resource in module._CONFIG_RESOURCES]
+    keys += [f"customers/f-35/{resource}.json" for resource in module.CONFIG_RESOURCES]
     return {key: b"{}" for key in keys}
 
 
