@@ -97,9 +97,11 @@ def main() -> None:
     client = boto3.client("s3", region_name="us-east-2")
     customer = os.environ["CUSTOMER"]
     status_key = f"customers/{customer}/wan-status.json"
+    # Any failure (infeasible design, or an unexpected error) must be recorded as
+    # the WAN's status rather than crash the task and leave it stuck "creating".
     try:
         wan = _build_wan(client, customer)
-    except ValueError as exc:
+    except Exception as exc:
         _write_json(client, status_key, {"status": "failed", "reason": str(exc)})
         return
     _write_json(client, f"customers/{customer}/wan.json", wan)
