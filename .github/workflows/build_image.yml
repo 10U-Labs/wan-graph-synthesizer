@@ -24,7 +24,7 @@ jobs:
       - name: Build and push the optimizer image
         run: |
           REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-designer-optimizer
-          docker build -f src/api/endpoints/wan/optimizer/Dockerfile \
+          docker build -f src/api/endpoints/customers/wan/optimizer/Dockerfile \
             -t "$REPO:latest" .
           docker push "$REPO:latest"
 name: Build optimizer image
@@ -32,6 +32,6 @@ name: Build optimizer image
   push:
     branches: [main]
     paths:
-      - src/api/endpoints/wan/optimizer/**
+      - src/api/endpoints/customers/wan/optimizer/**
       - lib/python/**
   workflow_dispatch: {}

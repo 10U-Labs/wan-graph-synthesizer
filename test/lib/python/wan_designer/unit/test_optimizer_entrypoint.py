@@ -18,7 +18,7 @@ from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
 from wan_designer.model import Vertex
 
-_PATH = REPO_ROOT / "src" / "api" / "endpoints" / "wan" / "optimizer" / "entrypoint.py"
+_PATH = REPO_ROOT / "src" / "api" / "endpoints" / "customers" / "wan" / "optimizer" / "entrypoint.py"
 
 
 @pytest.fixture(name="entrypoint")

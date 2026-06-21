@@ -25,7 +25,8 @@ def _load(endpoint: str, monkeypatch: pytest.MonkeyPatch, **env: str) -> Any:
     for key, value in env.items():
         monkeypatch.setenv(key, value)
     lambdas = REPO_ROOT / "src" / "api" / "endpoints" / endpoint / "lambdas"
-    module: Any = create_lambda_loader(lambdas)("handler.py", f"{endpoint}_handler")
+    name = endpoint.replace("/", "_")
+    module: Any = create_lambda_loader(lambdas)("handler.py", f"{name}_handler")
     module.clear_clients()
     return module
 
@@ -162,7 +163,7 @@ def _carrier_graph() -> bytes:
 
 def test_merge_post_unions_carriers(monkeypatch: pytest.MonkeyPatch) -> None:
     """POST counts the vertices unioned from carriers (skipping non-JSON keys)."""
-    module = _load("merge", monkeypatch)
+    module = _load("carriers/merge", monkeypatch)
     objects = {"carriers/a.json": _carrier_graph(), "carriers/b.json": _carrier_graph()}
     fake = fake_s3(objects, keys=[*objects, "carriers/_notes.txt"])
     with patch("boto3.client", return_value=fake):
@@ -173,7 +174,7 @@ def test_merge_post_unions_carriers(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_merge_post_stores_the_substrate(monkeypatch: pytest.MonkeyPatch) -> None:
     """POST writes the merged substrate back to the store."""
     objects: dict[str, bytes] = {}
-    module = _load("merge", monkeypatch)
+    module = _load("carriers/merge", monkeypatch)
     with patch("boto3.client", return_value=fake_s3(objects, keys=[])):
         module.lambda_handler({"httpMethod": "POST"}, None)
     assert "merge/substrate.json" in objects
@@ -181,7 +182,7 @@ def test_merge_post_stores_the_substrate(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_merge_get_serves_vertices(monkeypatch: pytest.MonkeyPatch) -> None:
     """GET vertices returns the stored substrate's vertices."""
-    module = _load("merge", monkeypatch)
+    module = _load("carriers/merge", monkeypatch)
     stored = json.dumps({"vertices": [{"id": "P"}], "edges": []}).encode()
     with patch("boto3.client", return_value=fake_s3({"merge/substrate.json": stored})):
         response = module.lambda_handler({"path": "/x/carriers/merge/vertices"}, None)
@@ -190,7 +191,7 @@ def test_merge_get_serves_vertices(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_merge_get_404_for_an_unknown_collection(monkeypatch: pytest.MonkeyPatch) -> None:
     """A merge sub-resource other than vertices/edges is a 404."""
-    module = _load("merge", monkeypatch)
+    module = _load("carriers/merge", monkeypatch)
     with patch("boto3.client", return_value=fake_s3({})):
         response = module.lambda_handler({"path": "/x/carriers/merge/bogus"}, None)
     assert response["statusCode"] == 404
@@ -198,7 +199,7 @@ def test_merge_get_404_for_an_unknown_collection(monkeypatch: pytest.MonkeyPatch
 
 def test_merge_get_404_when_not_built(monkeypatch: pytest.MonkeyPatch) -> None:
     """Reading the substrate before any merge returns a 'not built' 404."""
-    module = _load("merge", monkeypatch)
+    module = _load("carriers/merge", monkeypatch)
     with patch("boto3.client", return_value=fake_s3({})):
         response = module.lambda_handler({"path": "/x/carriers/merge/edges"}, None)
     assert response["statusCode"] == 404
@@ -206,7 +207,7 @@ def test_merge_get_404_when_not_built(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_merge_caches_the_s3_client(monkeypatch: pytest.MonkeyPatch) -> None:
     """A POST then a GET reuse the one cached client."""
-    module = _load("merge", monkeypatch)
+    module = _load("carriers/merge", monkeypatch)
     with patch("boto3.client", return_value=fake_s3({}, keys=[])) as mock_client:
         module.lambda_handler({"httpMethod": "POST"}, None)
         module.lambda_handler({"path": "/x/carriers/merge/vertices"}, None)
@@ -445,7 +446,7 @@ def test_customer_write_404_when_no_customer(monkeypatch: pytest.MonkeyPatch) ->
 def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
     """Load the wan handler with the create task's environment configured."""
     return _load(
-        "wan",
+        "customers/wan",
         monkeypatch,
         CLUSTER_ARN="arn:cluster",
         TASK_DEFINITION_ARN="arn:task",

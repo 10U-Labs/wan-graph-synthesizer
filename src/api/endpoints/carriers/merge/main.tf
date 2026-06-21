@@ -6,13 +6,13 @@ provider "aws" {
       ManagedBy  = "OpenTofu"
       Project    = "wan-graph-designer"
       Repository = "10U-Labs/wan-graph-designer"
-      Stack      = "endpoints/merge"
+      Stack      = "endpoints/carriers/merge"
     }
   }
 }
 
 module "common" {
-  source = "../../../../lib/opentofu/common"
+  source = "../../../../../lib/opentofu/common"
 }
 
 locals {

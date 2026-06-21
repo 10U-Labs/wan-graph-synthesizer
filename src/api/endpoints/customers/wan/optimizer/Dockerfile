@@ -11,7 +11,7 @@ FROM python:3.13-slim
 WORKDIR /app
 
 COPY lib/python/ /app/lib/python/
-COPY src/api/endpoints/wan/optimizer/ /app/optimizer/
+COPY src/api/endpoints/customers/wan/optimizer/ /app/optimizer/
 
 RUN pip install --no-cache-dir boto3 PyYAML
 
