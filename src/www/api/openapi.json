@@ -95,7 +95,16 @@
       },
       "options": {
         "summary": "CORS preflight.",
-        "responses": { "200": { "description": "CORS." } },
+        "responses": {
+          "200": {
+            "description": "CORS.",
+            "headers": {
+              "Access-Control-Allow-Origin": { "schema": { "type": "string" } },
+              "Access-Control-Allow-Methods": { "schema": { "type": "string" } },
+              "Access-Control-Allow-Headers": { "schema": { "type": "string" } }
+            }
+          }
+        },
         "x-amazon-apigateway-integration": {
           "type": "mock",
           "requestTemplates": { "application/json": "{\"statusCode\": 200}" },
@@ -391,7 +400,16 @@
         "parameters": [
           { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "CORS." } },
+        "responses": {
+          "200": {
+            "description": "CORS.",
+            "headers": {
+              "Access-Control-Allow-Origin": { "schema": { "type": "string" } },
+              "Access-Control-Allow-Methods": { "schema": { "type": "string" } },
+              "Access-Control-Allow-Headers": { "schema": { "type": "string" } }
+            }
+          }
+        },
         "x-amazon-apigateway-integration": {
           "type": "mock",
           "requestTemplates": { "application/json": "{\"statusCode\": 200}" },
