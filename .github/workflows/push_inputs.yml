@@ -1,0 +1,26 @@
+---
+concurrency:
+  cancel-in-progress: false
+  group: push-inputs
+jobs:
+  push:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install pyyaml
+      - name: Push the git-authored inputs to the API
+        run: PYTHONPATH=lib/python python scripts/push_inputs.py
+name: Push inputs
+'on':
+  push:
+    branches: [main]
+    paths:
+      - data/**
+      - etc/**
+  workflow_dispatch: {}
