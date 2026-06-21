@@ -37,7 +37,7 @@ from wan_designer.stages import dual_home, finalize
 
 # The customer config resources, each its own stored document, assembled back into a
 # single AppConfig. The three degrees are required; the rest default when empty.
-_CONFIG_RESOURCES = (
+CONFIG_RESOURCES = (
     "forced-core-nodes",
     "forced-aggregation-points",
     "forced-connections",
@@ -82,7 +82,7 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
     )
     parts = {
         resource: _read_json(client, f"customers/{customer}/{resource}.json")
-        for resource in _CONFIG_RESOURCES
+        for resource in CONFIG_RESOURCES
     }
     config = app_config_from_parts(parts)
     graph = carrier_pops + locations + regions

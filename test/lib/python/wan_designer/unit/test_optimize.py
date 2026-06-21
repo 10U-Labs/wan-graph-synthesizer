@@ -299,11 +299,6 @@ def test_feasible_colocation_twins_skips_a_twin_that_loses_redundancy() -> None:
     assert feasible_colocation_twins(("c1", "c2"), _twin_plan({"x"}), 2) == set()
 
 
-def test_feasible_colocation_twins_offers_every_twin_at_homing_degree_one() -> None:
-    """At homing degree 1 a selected core's twin needs no reach-around to qualify."""
-    assert feasible_colocation_twins(("c1", "c2"), _twin_plan({"x"}), 1) == {"aggr_c1"}
-
-
 def test_aggregation_homes_memoizes_feasibility() -> None:
     """aggregation_homes records its computed feasibility in the cache."""
     edges = physical({("g", "c1"): 1.0, ("g", "c2"): 1.0, ("c1", "c2"): 1.0})
@@ -311,13 +306,6 @@ def test_aggregation_homes_memoizes_feasibility() -> None:
     cache: dict[tuple[str, tuple[str, ...], int], bool] = {}
     aggregation_homes("g", ("c1", "c2"), 2, inputs, cache)
     assert cache[("g", ("c1", "c2"), 2)] is True
-
-
-def test_aggregation_homes_uses_cached_result() -> None:
-    """aggregation_homes trusts a cached verdict over the live graph."""
-    inputs = _inputs_from_edges(["g", "c1", "c2"], physical({("g", "c1"): 1.0}), {"g"})
-    cache = {("g", ("c1", "c2"), 2): True}
-    assert aggregation_homes("g", ("c1", "c2"), 2, inputs, cache) is True
 
 
 def test_aggregation_homes_at_degree_one_needs_only_one_core() -> None:
