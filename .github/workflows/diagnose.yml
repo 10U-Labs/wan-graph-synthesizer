@@ -1,0 +1,36 @@
+---
+concurrency:
+  cancel-in-progress: true
+  group: diagnose
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Optimizer tasks and logs
+        run: |
+          echo "=== RUNNING tasks ==="
+          aws ecs list-tasks --cluster wan-graph-designer \
+            --desired-status RUNNING --output json
+          echo "=== recent STOPPED tasks (stop reason) ==="
+          for arn in $(aws ecs list-tasks --cluster wan-graph-designer \
+            --desired-status STOPPED --output text --query 'taskArns[:5]'); do
+            aws ecs describe-tasks --cluster wan-graph-designer --tasks "$arn" \
+              --query 'tasks[0].{stopCode:stopCode,reason:stoppedReason,\
+                containers:containers[0].{exit:exitCode,reason:reason}}' \
+              --output json
+          done
+          echo "=== optimizer logs (last 30m) ==="
+          aws logs tail /ecs/wan-graph-designer-optimizer --since 30m \
+            --format short || echo "no log group/streams yet"
+name: Diagnose optimizer
+'on':
+  workflow_dispatch: {}
