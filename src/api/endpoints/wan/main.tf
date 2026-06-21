@@ -127,8 +127,8 @@ resource "aws_ecs_task_definition" "optimizer" {
   family                   = "wan-graph-designer-optimizer"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "4096"
-  memory                   = "8192"
+  cpu                      = "8192"
+  memory                   = "32768"
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.task.arn
 
