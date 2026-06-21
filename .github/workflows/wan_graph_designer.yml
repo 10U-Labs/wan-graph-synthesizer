@@ -93,8 +93,8 @@ jobs:
       - name: Detect copy-paste in source
         run: |
           jscpd --pattern "**/*.py" --threshold 0 --reporters console \
-            --ignore "src/api/endpoints/*/lambdas/**" lib/python/ src/
-          for handler in src/api/endpoints/*/lambdas; do
+            --ignore "src/api/endpoints/**/lambdas/**" lib/python/ src/
+          for handler in $(find src/api/endpoints -type d -name lambdas); do
             jscpd --pattern "**/*.py" --threshold 0 --reporters console \
               lib/python/ "$handler"
           done

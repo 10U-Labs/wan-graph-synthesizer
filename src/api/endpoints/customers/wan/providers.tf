@@ -6,7 +6,7 @@ provider "aws" {
       ManagedBy  = "OpenTofu"
       Project    = "wan-graph-designer"
       Repository = "10U-Labs/wan-graph-designer"
-      Stack      = "endpoints/wan"
+      Stack      = "endpoints/customers/wan"
     }
   }
 }
