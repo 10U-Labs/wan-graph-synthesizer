@@ -157,6 +157,32 @@
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
+      },
+      "put": {
+        "summary": "Replace a CSP's regions (cascades a rebuild).",
+        "parameters": [
+          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The CSP's regions were replaced." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CspsHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-designer/csps/{provider}": {
+      "delete": {
+        "summary": "Remove a CSP (cascades a rebuild).",
+        "parameters": [
+          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The CSP was removed." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${CspsHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
       }
     },
     "/wan-graph-designer/customers": {
