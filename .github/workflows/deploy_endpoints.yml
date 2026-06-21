@@ -1,0 +1,39 @@
+---
+concurrency:
+  cancel-in-progress: false
+  group: deploy-endpoints-${{ github.ref }}
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        endpoint: [carriers, csps, customers, merge, wan]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+      - name: Apply the ${{ matrix.endpoint }} endpoint
+        run: |
+          cd "src/api/endpoints/${{ matrix.endpoint }}"
+          tofu init -input=false
+          tofu apply -auto-approve -input=false
+name: Deploy endpoints
+'on':
+  push:
+    branches: [main]
+    paths:
+      - src/api/endpoints/**
+      - lib/opentofu/common/**
+  workflow_dispatch: {}
