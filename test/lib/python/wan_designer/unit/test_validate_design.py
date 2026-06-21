@@ -70,6 +70,15 @@ def test_good_design_is_dual_homed() -> None:
     assert validate_design(GOOD_VERTICES, GOOD)["aggregations_dual_homed_to_cores"] is True
 
 
+def test_core_backbone_two_edge_connected_with_fewer_than_two_cores() -> None:
+    """A backbone with fewer than two cores is trivially two-edge-connected."""
+    design = build_design(
+        core_ids=("C1",), aggregation_ids=(), transit_ids=(), physical_pairs=[]
+    )
+    report = validate_design([make_pop("C1")], design)
+    assert report["core_backbone_two_edge_connected"] is True
+
+
 def test_good_design_has_no_missing_redundancy() -> None:
     """Good design has no missing redundancy."""
     assert not aggregations_without_core_redundancy(GOOD, 2)

@@ -81,6 +81,16 @@ def test_collapses_colocated_sites() -> None:
     assert len(result.on_net_ids) == 1
 
 
+def test_demand_only_when_too_few_carrier_pops() -> None:
+    """A forced location with fewer than two carrier PoPs to wire to stays demand-only."""
+    result = fabricate_missing_on_net_nodes(
+        [fixtures.carrier_pop("P0", 0.0, 0.0), fixtures.justified_installation("luke", 0.0, 0.5)],
+        {},
+        frozenset({"luke"}),
+    )
+    assert result.on_net_ids == frozenset()
+
+
 def test_avoids_id_collision() -> None:
     """A twin id already taken by another vertex is suffixed to stay unique."""
     result = _fabricate(

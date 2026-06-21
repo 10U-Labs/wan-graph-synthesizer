@@ -309,8 +309,13 @@ def test_aggregation_homes_memoizes_feasibility() -> None:
 
 
 def test_aggregation_homes_at_degree_one_needs_only_one_core() -> None:
-    """At homing degree 1 a single reachable core is enough to home."""
-    inputs = _inputs_from_edges(["g", "c1", "c2"], physical({("g", "c1"): 1.0}), {"g"})
+    """At homing degree 1 one reachable core is enough, even through a bottleneck.
+
+    The shared transit vertex ``X`` blocks two vertex-disjoint paths, so degree 2
+    would be infeasible here; degree 1 still homes.
+    """
+    edges = physical({("g", "X"): 1.0, ("X", "c1"): 1.0, ("X", "c2"): 1.0})
+    inputs = _inputs_from_edges(["g", "X", "c1", "c2"], edges, {"g"})
     assert aggregation_homes("g", ("c1", "c2"), 1, inputs, {}) is True
 
 

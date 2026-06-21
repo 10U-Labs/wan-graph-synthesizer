@@ -265,6 +265,20 @@ def test_missing_required_degree_is_rejected() -> None:
         config_from_data({"tuning": {"core_links_per_core": 3, "access_aggregation_links": 2}})
 
 
+def test_non_integer_degree_is_rejected() -> None:
+    """A required degree that is not an integer is rejected."""
+    with pytest.raises(ValueError):
+        config_from_data(
+            {
+                "tuning": {
+                    "core_links_per_core": "three",
+                    "aggregation_homing_degree": 2,
+                    "access_aggregation_links": 2,
+                }
+            }
+        )
+
+
 def test_reads_aggregation_homing_degree() -> None:
     """An aggregation_homing_degree value is read into the tuning."""
     assert _config(
@@ -331,6 +345,30 @@ def test_app_config_from_parts_requires_each_degree() -> None:
     del parts["aggregation-homing-degree"]
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
+
+
+def test_app_config_from_parts_rejects_a_malformed_degree_document() -> None:
+    """A degree document that is not a ``{"degree": int}`` object is rejected."""
+    parts = _parts()
+    parts["core-mesh-degree"] = 3
+    with pytest.raises(ValueError):
+        app_config_from_parts(parts)
+
+
+def test_app_config_from_parts_rejects_a_non_integer_degree() -> None:
+    """A degree document whose value is not an integer is rejected."""
+    parts = _parts()
+    parts["core-mesh-degree"] = {"degree": "three"}
+    with pytest.raises(ValueError):
+        app_config_from_parts(parts)
+
+
+def test_app_config_from_parts_defaults_core_count_when_absent() -> None:
+    """An empty core-node-count document leaves min/max at their built-in defaults."""
+    parts = _parts()
+    parts["core-node-count"] = {}
+    params = app_config_from_parts(parts).params
+    assert (params.min_core_count, params.max_core_count) == (3, None)
 
 
 def test_app_config_from_parts_parses_connections() -> None:
