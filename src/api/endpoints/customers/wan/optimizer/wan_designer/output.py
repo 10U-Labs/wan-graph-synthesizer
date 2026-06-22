@@ -6,14 +6,8 @@ from collections.abc import Iterable
 from dataclasses import asdict
 from typing import Any
 
-from wan_graph.model import (
-    Design,
-    DesignArtifacts,
-    SourceFiles,
-    Vertex,
-    edge_key,
-    is_carrier_pop,
-)
+from wan_graph.model import Vertex, edge_key
+from wan_designer.model import Design, DesignArtifacts, SourceFiles, is_carrier_pop
 from wan_designer.overrides import twin_vertex_id
 from wan_designer.validation import included_vertex_ids, vertex_role
 

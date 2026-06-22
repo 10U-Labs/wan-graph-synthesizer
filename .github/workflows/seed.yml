@@ -1,0 +1,108 @@
+---
+concurrency:
+  cancel-in-progress: false
+  group: seed
+jobs:
+  seed:
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - static-analysis
+      - test-seed
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install pyyaml
+      - name: Push the git-authored inputs to the API
+        run: PYTHONPATH=lib/python python scripts/seed.py
+  static-analysis:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: >-
+          pip install assert-no-inline-directives assert-no-linter-config-files
+          mypy pylint pyyaml types-PyYAML yamllint
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/seed.yml
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/scripts
+      - name: Assert no linter config files
+        run: >-
+          assert-no-linter-config-files
+          --linters pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/scripts
+      - name: Run pylint
+        run: >-
+          PYTHONPATH=lib/python:scripts python3 -m pylint
+          scripts/seed.py
+          --fail-on=C,R,W --fail-under=10.0
+      - name: Run mypy
+        run: >-
+          MYPYPATH=lib/python:scripts python3 -m mypy --strict
+          --explicit-package-bases scripts/seed.py
+  test-seed:
+    needs: static-analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pytest pytest-cov pyyaml
+      - name: Run seed tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/customers/wan/optimizer
+          python3 -m pytest
+          test/lib/python/wan_designer/unit/test_parsing.py
+          test/lib/python/wan_designer/unit/test_offnet.py
+          test/lib/python/wan_designer/unit/test_graph_helpers.py
+          test/lib/python/wan_designer/unit/test_push.py
+          --verbose --pythonwarnings=error
+          --cov=seed
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+name: seed
+on:
+  pull_request:
+    paths:
+      - .github/workflows/seed.yml
+      - data/**
+      - etc/**
+      - lib/python/**
+      - scripts/**
+      - test/lib/python/wan_designer/unit/test_graph_helpers.py
+      - test/lib/python/wan_designer/unit/test_offnet.py
+      - test/lib/python/wan_designer/unit/test_parsing.py
+      - test/lib/python/wan_designer/unit/test_push.py
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/seed.yml
+      - data/**
+      - etc/**
+      - lib/python/**
+      - scripts/**
+      - test/lib/python/wan_designer/unit/test_graph_helpers.py
+      - test/lib/python/wan_designer/unit/test_offnet.py
+      - test/lib/python/wan_designer/unit/test_parsing.py
+      - test/lib/python/wan_designer/unit/test_push.py
+  workflow_dispatch: {}

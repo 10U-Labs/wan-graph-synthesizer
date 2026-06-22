@@ -7,20 +7,17 @@ from dataclasses import replace
 import pytest
 
 import fixtures
-from wan_graph.model import (
+from wan_graph.model import PhysicalEdge, Vertex, edge_key, haversine_miles
+from wan_designer.model import (
     AccessEdge,
     Design,
     DesignInputs,
     DesignMetrics,
     DesignParams,
     ForcedLinks,
-    Vertex,
-    PhysicalEdge,
     RoleExclusions,
     RoleOverrides,
     Tuning,
-    edge_key,
-    haversine_miles,
 )
 from wan_designer.optimize import (
     AggregationHoming,

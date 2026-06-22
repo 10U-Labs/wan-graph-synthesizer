@@ -79,7 +79,6 @@ jobs:
           python3 -m pylint
           lib/python/wan_graph/ src/api/
           src/api/endpoints/customers/wan/optimizer/wan_designer/
-          scripts/data_inputs.py
           --fail-on=C,R,W --fail-under=10.0
       - name: Run pylint on tests
         run: >-
@@ -91,7 +90,7 @@ jobs:
         run: >-
           MYPYPATH=lib/python:scripts:src:src/api/endpoints/customers/wan/optimizer
           python3 -m mypy --strict
-          --explicit-package-bases lib/python/ src/ scripts/data_inputs.py
+          --explicit-package-bases lib/python/ src/
       - name: Run mypy on tests
         run: >-
           MYPYPATH=lib/python:scripts:src:test:src/api/endpoints/customers/wan/optimizer
@@ -147,7 +146,6 @@ jobs:
           --verbose --pythonwarnings=error
           --cov=wan_designer
           --cov=wan_graph
-          --cov=data_inputs
           --cov=api
           --cov-branch
           --cov-report=term-missing

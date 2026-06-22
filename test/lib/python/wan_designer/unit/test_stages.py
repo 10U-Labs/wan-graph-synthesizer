@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import fixtures
-from data_inputs import load_off_net_sites
+from seed import load_off_net_sites
 from wan_designer.stages import dual_home, finalize
-from wan_graph.model import DesignParams, DesignPaths
+from wan_designer.model import DesignParams, DesignPaths
 
 
 def test_dual_home_returns_a_graph_without_off_net(tmp_path: Path) -> None:

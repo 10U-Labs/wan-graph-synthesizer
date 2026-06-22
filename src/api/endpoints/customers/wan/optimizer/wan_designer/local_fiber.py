@@ -17,12 +17,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from wan_graph.model import (
-    KIND_POP,
     PhysicalEdge,
     Vertex,
     edge_key,
     haversine_miles,
 )
+from wan_designer.model import KIND_POP
 
 LOCAL_FIBER_LINKS = 3
 LOCAL_FIBER_MIN_LINKS = 2

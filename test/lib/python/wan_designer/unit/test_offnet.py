@@ -7,9 +7,10 @@ from pathlib import Path
 import pytest
 
 import fixtures
-from data_inputs import load_off_net_sites
+from seed import load_off_net_sites
 from wan_designer.offnet import RealizedOffNet, realize_off_net_sites
-from wan_graph.model import Vertex, is_carrier_pop
+from wan_designer.model import is_carrier_pop
+from wan_graph.model import Vertex
 
 
 def _pops() -> list[Vertex]:

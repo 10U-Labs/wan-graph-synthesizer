@@ -11,7 +11,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from wan_graph.model import ForcedLinks, Tuning, Vertex
+from wan_graph.model import Vertex
+from wan_designer.model import ForcedLinks, Tuning
 
 
 @dataclass(frozen=True)

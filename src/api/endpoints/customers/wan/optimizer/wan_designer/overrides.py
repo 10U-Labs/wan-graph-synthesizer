@@ -1,6 +1,6 @@
 """Resolve operator role pins and population anchors into search role overrides.
 
-The optimizer's search consumes a :class:`~wan_graph.model.RoleOverrides`
+The optimizer's search consumes a :class:`~wan_designer.model.RoleOverrides`
 describing which PoPs are forced cores, which aggregations must be seated, which
 are excluded, and how the core and aggregation tiers are restricted. This module
 builds that object from two independent sources -- the operator's force-pins
@@ -13,15 +13,13 @@ from __future__ import annotations
 
 from collections.abc import Set as AbstractSet
 
-from wan_graph.model import (
+from wan_graph.model import PhysicalEdge, Vertex, edge_key
+from wan_designer.model import (
     Design,
     DesignParams,
     ForcedConnection,
     ForcedLinks,
-    PhysicalEdge,
     RoleOverrides,
-    Vertex,
-    edge_key,
     is_carrier_pop,
 )
 

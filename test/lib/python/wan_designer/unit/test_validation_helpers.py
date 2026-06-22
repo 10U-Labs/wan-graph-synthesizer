@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 
-from wan_graph.model import (
-    AccessEdge,
-    Design,
-    DesignMetrics,
-    Vertex,
-    edge_key,
-)
+from wan_graph.model import Vertex, edge_key
+from wan_designer.model import AccessEdge, Design, DesignMetrics
 from wan_designer.validation import (
     access_attachment_counts,
     design_edge_set,

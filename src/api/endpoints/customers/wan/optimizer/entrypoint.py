@@ -17,19 +17,16 @@ from typing import Any
 
 import boto3
 
-from wan_graph.graph_collections import (
+from wan_graph.codec import load_input_graph
+from wan_designer.collections import (
     access_nodes,
     aggregation_points,
     core_nodes,
     edges,
-    load_input_graph,
     vertices,
 )
-from wan_graph.model import (
-    DesignArtifacts,
-    SourceFiles,
-)
 from wan_designer.config import app_config_from_parts
+from wan_designer.model import DesignArtifacts, SourceFiles
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.output import design_payload
 from wan_designer.overrides import apply_role_overrides

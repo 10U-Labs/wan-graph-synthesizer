@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import fixtures
-from wan_graph.model import DesignParams, RoleExclusions, RoleOverrides
+from wan_designer.model import DesignParams, RoleExclusions, RoleOverrides
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.overrides import apply_role_overrides
 

@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import fixtures
-from wan_graph.model import (
-    PathUse,
-    edge_key,
-)
+from wan_graph.model import edge_key
+from wan_designer.model import PathUse
 from wan_designer.backbone import (
     BackboneConstraints,
     core_mesh_paths,

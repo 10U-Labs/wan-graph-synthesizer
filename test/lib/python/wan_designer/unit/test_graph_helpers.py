@@ -13,7 +13,8 @@ from wan_designer.graphs import (
     path_edge_keys,
     reconstruct_path,
 )
-from wan_graph.model import Vertex, edge_key, haversine_miles, slugify
+from wan_graph.model import Vertex, edge_key, haversine_miles
+from seed import slugify
 
 
 def make_vertex(vertex_id: str, lat: float, lon: float) -> Vertex:

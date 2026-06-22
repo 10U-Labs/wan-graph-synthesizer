@@ -7,7 +7,8 @@ from wan_designer.on_net_fabrication import (
     FabricatedOnNetNodes,
     fabricate_missing_on_net_nodes,
 )
-from wan_graph.model import Vertex, is_carrier_pop
+from wan_designer.model import is_carrier_pop
+from wan_graph.model import Vertex
 
 
 def _pops() -> list[Vertex]:

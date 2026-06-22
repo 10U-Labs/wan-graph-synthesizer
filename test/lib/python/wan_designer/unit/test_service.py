@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 import fixtures
-from wan_graph.model import DesignParams, DesignPaths
+from wan_designer.model import DesignParams, DesignPaths
 from fixtures import run_design
 
 
