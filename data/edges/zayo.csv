@@ -1,306 +1,306 @@
 A_Municipality,A_State,Z_Municipality,Z_State
-Seattle,WA,Everett,WA
-Seattle,WA,Bellevue,WA
-Seattle,WA,Redmond,WA
-Seattle,WA,Tacoma,WA
-Tacoma,WA,Olympia,WA
-Seattle,WA,Kent,WA
-Kent,WA,Tukwila,WA
-Seattle,WA,Wenatchee,WA
-Wenatchee,WA,Spokane,WA
-Wenatchee,WA,Quincy,WA
-Quincy,WA,Pasco,WA
-Seattle,WA,Yakima,WA
-Yakima,WA,Pasco,WA
-Pasco,WA,Umatilla,OR
-Umatilla,OR,Boardman,OR
-Olympia,WA,Kalama,WA
-Kalama,WA,Portland,OR
-Portland,OR,Hillsboro,OR
+Leeds,AL,Memphis,TN
+Chandler,AZ,Tucson,AZ
+Phoenix,AZ,Chandler,AZ
+Phoenix,AZ,Phoenix,AZ
+Phoenix,AZ,Albuquerque,NM
+Tucson,AZ,Nogales,AZ
+Tucson,AZ,Tucson,AZ
+Tucson,AZ,El Paso,TX
+Anaheim,CA,Irvine,CA
+Anderson,CA,Sacramento,CA
+Barstow,CA,Las Vegas,NV
+Fremont,CA,Modesto,CA
+Los Angeles,CA,Anaheim,CA
+Los Angeles,CA,Barstow,CA
+Los Angeles,CA,Los Angeles,CA
+Los Angeles,CA,San Diego,CA
+Los Osos,CA,Santa Barbara,CA
+Modesto,CA,Modesto,CA
+Modesto,CA,Tulare,CA
+Oakland,CA,San Francisco,CA
+Palmdale,CA,Barstow,CA
+Palmdale,CA,Los Angeles,CA
+Palo Alto,CA,Santa Clara,CA
+Sacramento,CA,Modesto,CA
+Sacramento,CA,Oakland,CA
+Sacramento,CA,Rancho Cordova,CA
+Sacramento,CA,Sacramento,CA
+Sacramento,CA,Reno,NV
+San Diego,CA,Phoenix,AZ
+San Diego,CA,San Diego,CA
+San Francisco,CA,Palo Alto,CA
+San Francisco,CA,San Francisco,CA
+San Jose,CA,Fremont,CA
+San Jose,CA,San Jose,CA
+Santa Barbara,CA,Los Angeles,CA
+Santa Clara,CA,San Jose,CA
+Tulare,CA,Los Osos,CA
+Tulare,CA,Palmdale,CA
+Colorado Springs,CO,Amarillo,TX
+Denver,CO,Aurora,CO
+Denver,CO,Colorado Springs,CO
+Denver,CO,Denver,CO
+Denver,CO,Englewood,CO
+Denver,CO,Henderson,CO
+Denver,CO,Keenesburg,CO
+Denver,CO,Monument,CO
+Denver,CO,Des Moines,IA
+Englewood,CO,Centennial,CO
+Grand Junction,CO,Denver,CO
+Grand Junction,CO,Silver Plume,CO
+Keenesburg,CO,Denver,CO
+Monument,CO,Colorado Springs,CO
+Silver Plume,CO,Denver,CO
+Stamford,CT,Stamford,CT
+Stamford,CT,New York,NY
+Trumbull,CT,Stamford,CT
+Washington,DC,McLean,VA
+Wilmington,DE,Baltimore,MD
+Jacksonville,FL,Jacksonville,FL
+Jacksonville,FL,Orlando,FL
+Jacksonville,FL,Charlotte,NC
+Miami,FL,Miami,FL
+Orlando,FL,Miami,FL
+Orlando,FL,Orlando,FL
+Orlando,FL,Tampa,FL
+Tallahassee,FL,Jacksonville,FL
+Tallahassee,FL,Tallahassee,FL
+Tallahassee,FL,New Orleans,LA
+Tampa,FL,Miami,FL
+Tampa,FL,Tallahassee,FL
+Tampa,FL,Tampa,FL
+Albany,GA,Tallahassee,FL
+Atlanta,GA,Leeds,AL
+Atlanta,GA,Atlanta,GA
+Atlanta,GA,Lithia Springs,GA
+Atlanta,GA,Macon,GA
+Atlanta,GA,Smyrna,GA
+Macon,GA,Albany,GA
+Des Moines,IA,Des Moines,IA
+Des Moines,IA,Chicago,IL
+Des Moines,IA,Kansas City,MO
+Sioux City,IA,Omaha,NE
+Boise,ID,Boise,ID
+Boise,ID,Pocatello,ID
+Boise,ID,Shoshone,ID
+Pocatello,ID,Ogden,UT
+Shoshone,ID,Pocatello,ID
+Chicago,IL,Aurora,IL
+Chicago,IL,Chicago,IL
+Chicago,IL,Elk Grove Village,IL
+Chicago,IL,Franklin Park,IL
+Chicago,IL,Mt Prospect,IL
+Chicago,IL,Oak Brook,IL
+Chicago,IL,Valparaiso,IN
+Chicago,IL,Grand Rapids,MI
+Fort Wayne,IN,Lima,OH
+Indianapolis,IN,Frankfort,IN
+Indianapolis,IN,Indianapolis,IN
+Indianapolis,IN,Marion,IN
+Indianapolis,IN,Dayton,OH
+Marion,IN,Anderson,IN
+South Bend,IN,Fort Wayne,IN
+South Bend,IN,Indianapolis,IN
+South Bend,IN,South Bend,IN
+Valparaiso,IN,South Bend,IN
+Wichita,KS,Wichita,KS
+Wichita,KS,Kansas City,MO
+Wichita,KS,Tulsa,OK
+Ponchatoula,LA,New Orleans,LA
+Roanoke,LA,Ponchatoula,LA
+Boston,MA,Boston,MA
+Boston,MA,Nashua,NH
+Boston,MA,Providence,RI
+Baltimore,MD,Washington,DC
+Baltimore,MD,Baltimore,MD
+Baltimore,MD,Frederick,MD
+Baltimore,MD,Owings Mills,MD
+Frederick,MD,Ashburn,VA
+Grand Rapids,MI,Lansing,MI
+Lansing,MI,Southfield,MI
+Mankato,MN,Windom,MN
+Minneapolis,MN,Mankato,MN
+Minneapolis,MN,Minneapolis,MN
+Minneapolis,MN,Owatonna,MN
+Minneapolis,MN,Madison,WI
+Windom,MN,Sioux City,IA
+Kansas City,MO,Kansas City,MO
+Kansas City,MO,St. Louis,MO
+St. Louis,MO,Chicago,IL
+St. Louis,MO,St. Louis,MO
+St. Louis,MO,Memphis,TN
+St. Louis,MO,Nashville,TN
+Clinton,MS,Atlanta,GA
+Clinton,MS,New Orleans,LA
+Billings,MT,Billings,MT
+Billings,MT,Laurel,MT
+Billings,MT,Bismarck,ND
+Cut Bank,MT,Great Falls,MT
+Great Falls,MT,Billings,MT
+Great Falls,MT,Great Falls,MT
+Helena,MT,Billings,MT
+Helena,MT,Great Falls,MT
+Helena,MT,Helena,MT
+Laurel,MT,Casper,WY
+Missoula,MT,Helena,MT
+Missoula,MT,Missoula,MT
+Charlotte,NC,Atlanta,GA
+Charlotte,NC,Charlotte,NC
+Bismarck,ND,Bismarck,ND
+Fargo,ND,Minneapolis,MN
+Fargo,ND,Bismarck,ND
+Fargo,ND,Fargo,ND
+Omaha,NE,Des Moines,IA
+Omaha,NE,Kansas City,MO
+Omaha,NE,Omaha,NE
+Jersey City,NJ,Newark,NJ
+Linden,NJ,Woodbridge,NJ
+Manasquan,NJ,Tuckerton,NJ
+Newark,NJ,Linden,NJ
+Newark,NJ,Newark,NJ
+Newark,NJ,Philadelphia,PA
+Secaucus,NJ,Jersey City,NJ
+Somerset,NJ,Philadelphia,PA
+Tuckerton,NJ,Tuckerton,NJ
+Wall,NJ,Manasquan,NJ
+Wall,NJ,Wall,NJ
+Weehawken,NJ,Secaucus,NJ
+Woodbridge,NJ,Somerset,NJ
+Woodbridge,NJ,Wall,NJ
+Albuquerque,NM,Albuquerque,NM
+Albuquerque,NM,Amarillo,TX
+Albuquerque,NM,El Paso,TX
+Albuquerque,NM,Lubbock,TX
+Las Vegas,NV,Phoenix,AZ
+Las Vegas,NV,Las Vegas,NV
+Reno,NV,Reno,NV
+Reno,NV,Salt Lake City,UT
+Albany,NY,Boston,MA
+Albany,NY,Albany,NY
+Albany,NY,New York,NY
+Buffalo,NY,Albany,NY
+Buffalo,NY,Buffalo,NY
+Buffalo,NY,Pittsburgh,PA
+New York,NY,Weehawken,NJ
+New York,NY,New York,NY
+New York,NY,Staten Island,NY
+Akron,OH,Akron,OH
+Akron,OH,Youngstown,OH
+Cleveland,OH,Akron,OH
+Cleveland,OH,Cleveland,OH
+Cleveland,OH,Columbus,OH
+Cleveland,OH,Garfield Heights,OH
+Columbus,OH,Columbus,OH
+Columbus,OH,Little Hocking,OH
+Columbus,OH,Pittsburgh,PA
+Dayton,OH,Columbus,OH
+Lima,OH,Columbus,OH
+Youngstown,OH,Pittsburgh,PA
+Tulsa,OK,Kansas City,MO
+Tulsa,OK,Tulsa,OK
+Beatty,OR,Reno,NV
+Bend,OR,Beatty,OR
+Bend,OR,Burns,OR
+Burns,OR,Boise,ID
+Eugene,OR,Bend,OR
+Eugene,OR,Jasper,OR
+Jasper,OR,Anderson,CA
 Portland,OR,Beaverton,OR
+Portland,OR,Boardman,OR
+Portland,OR,Hillsboro,OR
+Portland,OR,Portland,OR
 Portland,OR,Salem,OR
 Salem,OR,Shedd,OR
 Shedd,OR,Eugene,OR
-Eugene,OR,Jasper,OR
-Portland,OR,Boardman,OR
-Eugene,OR,Bend,OR
-Bend,OR,Burns,OR
-Burns,OR,Boise,ID
-Bend,OR,Beatty,OR
-Beatty,OR,Reno,NV
-Jasper,OR,Anderson,CA
-Anderson,CA,Sacramento,CA
-Spokane,WA,Missoula,MT
-Missoula,MT,Helena,MT
-Helena,MT,Great Falls,MT
-Spokane,WA,Cut Bank,MT
-Cut Bank,MT,Great Falls,MT
-Great Falls,MT,Billings,MT
-Helena,MT,Billings,MT
-Billings,MT,Laurel,MT
-Laurel,MT,Casper,WY
-Billings,MT,Bismarck,ND
-Boise,ID,Shoshone,ID
-Shoshone,ID,Pocatello,ID
-Pocatello,ID,Ogden,UT
-Boise,ID,Pocatello,ID
-Ogden,UT,Salt Lake City,UT
-Salt Lake City,UT,West Jordan,UT
-West Jordan,UT,Bluffdale,UT
-Salt Lake City,UT,Coalville,UT
-Salt Lake City,UT,Springville,UT
-Coalville,UT,Rock Springs,WY
-Rock Springs,WY,Cheyenne,WY
-Rock Springs,WY,Casper,WY
-Casper,WY,Cheyenne,WY
-Springville,UT,Grand Junction,CO
-Salt Lake City,UT,St. George,UT
-St. George,UT,Las Vegas,NV
-Reno,NV,Salt Lake City,UT
-Sacramento,CA,Rancho Cordova,CA
-Sacramento,CA,Reno,NV
-Sacramento,CA,Oakland,CA
-Oakland,CA,San Francisco,CA
-San Francisco,CA,Palo Alto,CA
-Palo Alto,CA,Santa Clara,CA
-Santa Clara,CA,San Jose,CA
-San Jose,CA,Fremont,CA
-Fremont,CA,Modesto,CA
-Sacramento,CA,Modesto,CA
-Modesto,CA,Tulare,CA
-Tulare,CA,Los Osos,CA
-Los Osos,CA,Santa Barbara,CA
-Santa Barbara,CA,Los Angeles,CA
-Tulare,CA,Palmdale,CA
-Palmdale,CA,Los Angeles,CA
-Los Angeles,CA,Anaheim,CA
-Anaheim,CA,Irvine,CA
-Los Angeles,CA,San Diego,CA
-Los Angeles,CA,Barstow,CA
-Barstow,CA,Las Vegas,NV
-Palmdale,CA,Barstow,CA
-San Diego,CA,Phoenix,AZ
-Las Vegas,NV,Phoenix,AZ
-Phoenix,AZ,Chandler,AZ
-Chandler,AZ,Tucson,AZ
-Tucson,AZ,Nogales,AZ
-Tucson,AZ,El Paso,TX
-Phoenix,AZ,Albuquerque,NM
-Grand Junction,CO,Denver,CO
-Grand Junction,CO,Silver Plume,CO
-Silver Plume,CO,Denver,CO
-Albuquerque,NM,El Paso,TX
-Albuquerque,NM,Amarillo,TX
-Albuquerque,NM,Lubbock,TX
-Denver,CO,Henderson,CO
-Denver,CO,Aurora,CO
-Denver,CO,Englewood,CO
-Englewood,CO,Centennial,CO
-Denver,CO,Monument,CO
-Monument,CO,Colorado Springs,CO
-Denver,CO,Keenesburg,CO
-Cheyenne,WY,Keenesburg,CO
-Keenesburg,CO,Denver,CO
-Denver,CO,Colorado Springs,CO
-Colorado Springs,CO,Amarillo,TX
-Denver,CO,Des Moines,IA
-El Paso,TX,Midland,TX
-Midland,TX,San Angelo,TX
-San Angelo,TX,Austin,TX
-Lubbock,TX,Wichita Falls,TX
-Amarillo,TX,Wichita Falls,TX
-Wichita Falls,TX,Dallas,TX
-Dallas,TX,Plano,TX
-Dallas,TX,Fort Worth,TX
-Dallas,TX,Wills Point,TX
-Dallas,TX,Waco,TX
-Waco,TX,Temple,TX
-Temple,TX,Austin,TX
-Austin,TX,San Antonio,TX
-San Antonio,TX,Laredo,TX
-Laredo,TX,McAllen,TX
-San Antonio,TX,Houston,TX
-Austin,TX,Houston,TX
-Houston,TX,Spring,TX
-Spring,TX,Montgomery,TX
-Dallas,TX,Tulsa,OK
-Tulsa,OK,Kansas City,MO
-Amarillo,TX,Lubbock,TX
-Houston,TX,Roanoke,LA
-Roanoke,LA,Ponchatoula,LA
-Ponchatoula,LA,New Orleans,LA
-Dallas,TX,Clinton,MS
-Clinton,MS,Atlanta,GA
-Clinton,MS,New Orleans,LA
-Fargo,ND,Bismarck,ND
-Fargo,ND,Minneapolis,MN
-Minneapolis,MN,Mankato,MN
-Mankato,MN,Windom,MN
-Minneapolis,MN,Owatonna,MN
-Windom,MN,Sioux City,IA
-Sioux City,IA,Omaha,NE
-Omaha,NE,Des Moines,IA
-Omaha,NE,Kansas City,MO
-Des Moines,IA,Kansas City,MO
-Des Moines,IA,Chicago,IL
-Minneapolis,MN,Madison,WI
-Madison,WI,Chicago,IL
-Kansas City,MO,St. Louis,MO
-St. Louis,MO,Chicago,IL
-St. Louis,MO,Memphis,TN
-St. Louis,MO,Nashville,TN
-Wichita,KS,Kansas City,MO
-Wichita,KS,Tulsa,OK
-Chicago,IL,Franklin Park,IL
-Chicago,IL,Elk Grove Village,IL
-Chicago,IL,Mt Prospect,IL
-Chicago,IL,Oak Brook,IL
-Chicago,IL,Aurora,IL
-Chicago,IL,Valparaiso,IN
-Valparaiso,IN,South Bend,IN
-South Bend,IN,Fort Wayne,IN
-Chicago,IL,Grand Rapids,MI
-Grand Rapids,MI,Lansing,MI
-Lansing,MI,Southfield,MI
-South Bend,IN,Indianapolis,IN
-Indianapolis,IN,Marion,IN
-Marion,IN,Anderson,IN
-Indianapolis,IN,Frankfort,IN
-Fort Wayne,IN,Lima,OH
-Indianapolis,IN,Dayton,OH
-Dayton,OH,Columbus,OH
-Cleveland,OH,Garfield Heights,OH
-Cleveland,OH,Akron,OH
-Akron,OH,Youngstown,OH
-Youngstown,OH,Pittsburgh,PA
-Columbus,OH,Little Hocking,OH
-Columbus,OH,Pittsburgh,PA
-Cleveland,OH,Columbus,OH
-Lima,OH,Columbus,OH
-Buffalo,NY,Albany,NY
-Albany,NY,Boston,MA
-Boston,MA,Nashua,NH
-Boston,MA,Providence,RI
-Providence,RI,Trumbull,CT
-Trumbull,CT,Stamford,CT
-Stamford,CT,New York,NY
-New York,NY,Staten Island,NY
-New York,NY,Weehawken,NJ
-Weehawken,NJ,Secaucus,NJ
-Secaucus,NJ,Jersey City,NJ
-Jersey City,NJ,Newark,NJ
-Newark,NJ,Linden,NJ
-Linden,NJ,Woodbridge,NJ
-Woodbridge,NJ,Somerset,NJ
-Woodbridge,NJ,Wall,NJ
-Wall,NJ,Manasquan,NJ
-Manasquan,NJ,Tuckerton,NJ
-Newark,NJ,Philadelphia,PA
-Somerset,NJ,Philadelphia,PA
+Umatilla,OR,Boardman,OR
 Philadelphia,PA,Wilmington,DE
-Wilmington,DE,Baltimore,MD
-Baltimore,MD,Owings Mills,MD
-Baltimore,MD,Frederick,MD
-Frederick,MD,Ashburn,VA
-Baltimore,MD,Washington,DC
-Washington,DC,McLean,VA
-McLean,VA,Ashburn,VA
-Ashburn,VA,Reston,VA
-McLean,VA,Fort Belvoir,VA
-Fort Belvoir,VA,Richmond,VA
-Richmond,VA,Virginia Beach,VA
-Richmond,VA,Charlotte,NC
-Albany,NY,New York,NY
-Buffalo,NY,Pittsburgh,PA
+Philadelphia,PA,Philadelphia,PA
+Pittsburgh,PA,Pittsburgh,PA
 Pittsburgh,PA,Port Matilda,PA
 Port Matilda,PA,Philadelphia,PA
-Charlotte,NC,Atlanta,GA
-Atlanta,GA,Lithia Springs,GA
-Atlanta,GA,Smyrna,GA
-Atlanta,GA,Macon,GA
-Macon,GA,Albany,GA
-Albany,GA,Tallahassee,FL
-Atlanta,GA,Leeds,AL
-Leeds,AL,Memphis,TN
-Memphis,TN,Nashville,TN
-Nashville,TN,Clinton,TN
+Providence,RI,Trumbull,CT
 Clinton,TN,Atlanta,GA
-Nashville,TN,Atlanta,GA
-Tallahassee,FL,Jacksonville,FL
-Tallahassee,FL,New Orleans,LA
-Jacksonville,FL,Orlando,FL
-Orlando,FL,Tampa,FL
-Tampa,FL,Tallahassee,FL
-Tampa,FL,Miami,FL
-Orlando,FL,Miami,FL
-Jacksonville,FL,Charlotte,NC
-Akron,OH,Akron,OH
-Albany,NY,Albany,NY
-Albuquerque,NM,Albuquerque,NM
-Ashburn,VA,Ashburn,VA
-Atlanta,GA,Atlanta,GA
-Austin,TX,Austin,TX
-Baltimore,MD,Baltimore,MD
-Billings,MT,Billings,MT
-Bismarck,ND,Bismarck,ND
-Boise,ID,Boise,ID
-Boston,MA,Boston,MA
-Buffalo,NY,Buffalo,NY
-Charlotte,NC,Charlotte,NC
-Cheyenne,WY,Cheyenne,WY
-Chicago,IL,Chicago,IL
-Cleveland,OH,Cleveland,OH
-Columbus,OH,Columbus,OH
-Dallas,TX,Dallas,TX
-Denver,CO,Denver,CO
-Des Moines,IA,Des Moines,IA
-El Paso,TX,El Paso,TX
-Fargo,ND,Fargo,ND
-Fort Worth,TX,Fort Worth,TX
-Great Falls,MT,Great Falls,MT
-Helena,MT,Helena,MT
-Houston,TX,Houston,TX
-Indianapolis,IN,Indianapolis,IN
-Jacksonville,FL,Jacksonville,FL
-Kansas City,MO,Kansas City,MO
-Laredo,TX,Laredo,TX
-Las Vegas,NV,Las Vegas,NV
-Los Angeles,CA,Los Angeles,CA
-Madison,WI,Madison,WI
-McAllen,TX,McAllen,TX
-McLean,VA,McLean,VA
 Memphis,TN,Memphis,TN
-Miami,FL,Miami,FL
-Minneapolis,MN,Minneapolis,MN
-Missoula,MT,Missoula,MT
-Modesto,CA,Modesto,CA
+Memphis,TN,Nashville,TN
+Nashville,TN,Atlanta,GA
+Nashville,TN,Clinton,TN
 Nashville,TN,Nashville,TN
-New York,NY,New York,NY
-Newark,NJ,Newark,NJ
-Ogden,UT,Ogden,UT
-Omaha,NE,Omaha,NE
-Orlando,FL,Orlando,FL
-Philadelphia,PA,Philadelphia,PA
-Phoenix,AZ,Phoenix,AZ
-Pittsburgh,PA,Pittsburgh,PA
-Portland,OR,Portland,OR
-Reno,NV,Reno,NV
-Richmond,VA,Richmond,VA
-Sacramento,CA,Sacramento,CA
-Salt Lake City,UT,Salt Lake City,UT
+Amarillo,TX,Lubbock,TX
+Amarillo,TX,Wichita Falls,TX
+Austin,TX,Austin,TX
+Austin,TX,Houston,TX
+Austin,TX,San Antonio,TX
+Dallas,TX,Clinton,MS
+Dallas,TX,Tulsa,OK
+Dallas,TX,Dallas,TX
+Dallas,TX,Fort Worth,TX
+Dallas,TX,Plano,TX
+Dallas,TX,Waco,TX
+Dallas,TX,Wills Point,TX
+El Paso,TX,El Paso,TX
+El Paso,TX,Midland,TX
+Fort Worth,TX,Fort Worth,TX
+Houston,TX,Roanoke,LA
+Houston,TX,Houston,TX
+Houston,TX,Spring,TX
+Laredo,TX,Laredo,TX
+Laredo,TX,McAllen,TX
+Lubbock,TX,Wichita Falls,TX
+McAllen,TX,McAllen,TX
+Midland,TX,San Angelo,TX
+San Angelo,TX,Austin,TX
+San Antonio,TX,Houston,TX
+San Antonio,TX,Laredo,TX
 San Antonio,TX,San Antonio,TX
-San Diego,CA,San Diego,CA
-San Francisco,CA,San Francisco,CA
-San Jose,CA,San Jose,CA
+Spring,TX,Montgomery,TX
+Temple,TX,Austin,TX
+Waco,TX,Temple,TX
+Wichita Falls,TX,Dallas,TX
+Coalville,UT,Rock Springs,WY
+Ogden,UT,Ogden,UT
+Ogden,UT,Salt Lake City,UT
+Salt Lake City,UT,Coalville,UT
+Salt Lake City,UT,Salt Lake City,UT
+Salt Lake City,UT,Springville,UT
+Salt Lake City,UT,St. George,UT
+Salt Lake City,UT,West Jordan,UT
+Springville,UT,Grand Junction,CO
+St. George,UT,Las Vegas,NV
+West Jordan,UT,Bluffdale,UT
+Ashburn,VA,Ashburn,VA
+Ashburn,VA,Reston,VA
+Fort Belvoir,VA,Richmond,VA
+McLean,VA,Ashburn,VA
+McLean,VA,Fort Belvoir,VA
+McLean,VA,McLean,VA
+Richmond,VA,Charlotte,NC
+Richmond,VA,Richmond,VA
+Richmond,VA,Virginia Beach,VA
+Kalama,WA,Portland,OR
+Kent,WA,Tukwila,WA
+Olympia,WA,Kalama,WA
+Pasco,WA,Umatilla,OR
+Quincy,WA,Pasco,WA
+Seattle,WA,Bellevue,WA
+Seattle,WA,Everett,WA
+Seattle,WA,Kent,WA
+Seattle,WA,Redmond,WA
 Seattle,WA,Seattle,WA
-South Bend,IN,South Bend,IN
-St. Louis,MO,St. Louis,MO
-Stamford,CT,Stamford,CT
-Tallahassee,FL,Tallahassee,FL
-Tampa,FL,Tampa,FL
-Tuckerton,NJ,Tuckerton,NJ
-Tucson,AZ,Tucson,AZ
-Tulsa,OK,Tulsa,OK
-Wall,NJ,Wall,NJ
-Wichita,KS,Wichita,KS
+Seattle,WA,Tacoma,WA
+Seattle,WA,Wenatchee,WA
+Seattle,WA,Yakima,WA
+Spokane,WA,Cut Bank,MT
+Spokane,WA,Missoula,MT
+Tacoma,WA,Olympia,WA
+Wenatchee,WA,Quincy,WA
+Wenatchee,WA,Spokane,WA
+Yakima,WA,Pasco,WA
 Yakima,WA,Yakima,WA
+Madison,WI,Chicago,IL
+Madison,WI,Madison,WI
+Casper,WY,Cheyenne,WY
+Cheyenne,WY,Keenesburg,CO
+Cheyenne,WY,Cheyenne,WY
+Rock Springs,WY,Casper,WY
+Rock Springs,WY,Cheyenne,WY

@@ -1,20 +1,20 @@
 A_Municipality,A_State,Z_Municipality,Z_State
-Kalispell,MT,Great Falls,MT
-Kalispell,MT,Helena,MT
-Kalispell,MT,Havre,MT
-Great Falls,MT,Helena,MT
-Great Falls,MT,Havre,MT
-Great Falls,MT,Bozeman,MT
-Great Falls,MT,Billings,MT
-Billings,MT,Miles City,MT
 Billings,MT,Bozeman,MT
 Billings,MT,Havre,MT
-Bozeman,MT,Helena,MT
+Billings,MT,Miles City,MT
 Bozeman,MT,Havre,MT
-Miles City,MT,Havre,MT
-Kalispell,MT,Missoula,MT
+Bozeman,MT,Helena,MT
+Great Falls,MT,Billings,MT
+Great Falls,MT,Bozeman,MT
+Great Falls,MT,Havre,MT
+Great Falls,MT,Helena,MT
 Great Falls,MT,Missoula,MT
 Havre,MT,Missoula,MT
-Helena,MT,Missoula,MT
 Havre,MT,Williston,ND
+Helena,MT,Missoula,MT
+Kalispell,MT,Great Falls,MT
+Kalispell,MT,Havre,MT
+Kalispell,MT,Helena,MT
+Kalispell,MT,Missoula,MT
+Miles City,MT,Havre,MT
 Miles City,MT,Williston,ND

@@ -1,162 +1,162 @@
 A_Municipality,A_State,Z_Municipality,Z_State
-Seattle,WA,Portland,OR
-Portland,OR,Hillsboro,OR
-Portland,OR,Boise,ID
-Boise,ID,Twin Falls,ID
-Twin Falls,ID,Salt Lake City,UT
-Reno,NV,Sacramento,CA
-Reno,NV,Salt Lake City,UT
-Sacramento,CA,San Francisco,CA
-San Francisco,CA,Palo Alto,CA
-Palo Alto,CA,San Jose,CA
-Sacramento,CA,Bakersfield,CA
+Birmingham,AL,Birmingham,AL
+Birmingham,AL,Atlanta,GA
+Dothan,AL,Tallahassee,FL
+Mobile,AL,Dothan,AL
+Little Rock,AR,Memphis,TN
+Phoenix,AZ,Phoenix,AZ
+Phoenix,AZ,Tucson,AZ
+Tucson,AZ,Tucson,AZ
+Tucson,AZ,El Paso,TX
 Bakersfield,CA,Los Angeles,CA
-San Jose,CA,Los Angeles,CA
+Los Angeles,CA,Phoenix,AZ
+Los Angeles,CA,Los Angeles,CA
 Los Angeles,CA,San Diego,CA
 Los Angeles,CA,Las Vegas,NV
-Los Angeles,CA,Phoenix,AZ
-Las Vegas,NV,Salt Lake City,UT
-Las Vegas,NV,Phoenix,AZ
-Phoenix,AZ,Tucson,AZ
-Tucson,AZ,El Paso,TX
-Salt Lake City,UT,Grand Junction,CO
-Grand Junction,CO,Denver,CO
-Denver,CO,Colorado Springs,CO
+Palo Alto,CA,San Jose,CA
+Sacramento,CA,Bakersfield,CA
+Sacramento,CA,Sacramento,CA
+Sacramento,CA,San Francisco,CA
+San Diego,CA,San Diego,CA
+San Francisco,CA,Palo Alto,CA
+San Francisco,CA,San Francisco,CA
+San Jose,CA,Los Angeles,CA
+San Jose,CA,San Jose,CA
 Colorado Springs,CO,Amarillo,TX
-El Paso,TX,Carlsbad,NM
-Carlsbad,NM,Odessa,TX
-Odessa,TX,Midland,TX
-Midland,TX,Dallas,TX
-Minneapolis,MN,Chicago,IL
-Minneapolis,MN,Des Moines,IA
-Des Moines,IA,Davenport,IA
+Denver,CO,Colorado Springs,CO
+Denver,CO,Denver,CO
+Grand Junction,CO,Denver,CO
+Washington,DC,Ashburn,VA
+Washington,DC,Richmond,VA
+Jacksonville,FL,Jacksonville,FL
+Jacksonville,FL,Orlando,FL
+Miami,FL,Miami,FL
+Orlando,FL,Miami,FL
+Orlando,FL,Orlando,FL
+Orlando,FL,Tampa,FL
+Tallahassee,FL,Jacksonville,FL
+Tallahassee,FL,Tallahassee,FL
+Tampa,FL,Miami,FL
+Tampa,FL,Tampa,FL
+Atlanta,GA,Tallahassee,FL
+Atlanta,GA,Atlanta,GA
+Atlanta,GA,Augusta,GA
+Augusta,GA,Augusta,GA
+Augusta,GA,Charleston,SC
+Savannah,GA,Jacksonville,FL
+Davenport,IA,Davenport,IA
 Davenport,IA,Chicago,IL
-Des Moines,IA,Omaha,NE
+Des Moines,IA,Davenport,IA
+Des Moines,IA,Des Moines,IA
 Des Moines,IA,Chicago,IL
-Omaha,NE,Lincoln,NE
-Lincoln,NE,Kansas City,MO
-Chicago,IL,Bloomington,IL
+Des Moines,IA,Omaha,NE
+Boise,ID,Boise,ID
+Boise,ID,Twin Falls,ID
+Twin Falls,ID,Salt Lake City,UT
 Bloomington,IL,St. Louis,MO
-Kansas City,MO,Columbia,MO
+Chicago,IL,Bloomington,IL
+Chicago,IL,Chicago,IL
+Chicago,IL,Indianapolis,IN
+Chicago,IL,Toledo,OH
+Indianapolis,IN,Indianapolis,IN
+Indianapolis,IN,Louisville,KY
+Indianapolis,IN,Cincinnati,OH
+Louisville,KY,Lexington,KY
+Louisville,KY,Nashville,TN
+New Orleans,LA,Mobile,AL
+Shreveport,LA,Jackson,MS
+Minneapolis,MN,Des Moines,IA
+Minneapolis,MN,Chicago,IL
+Minneapolis,MN,Minneapolis,MN
 Columbia,MO,St. Louis,MO
+Kansas City,MO,Columbia,MO
+Kansas City,MO,Kansas City,MO
 Kansas City,MO,St. Louis,MO
 Kansas City,MO,Tulsa,OK
-Tulsa,OK,Oklahoma City,OK
-Oklahoma City,OK,Wichita Falls,TX
-Wichita Falls,TX,Dallas,TX
-Oklahoma City,OK,Dallas,TX
-Amarillo,TX,Lubbock,TX
-Lubbock,TX,Dallas,TX
-Tulsa,OK,Little Rock,AR
-Little Rock,AR,Memphis,TN
-Dallas,TX,Shreveport,LA
-Shreveport,LA,Jackson,MS
-Jackson,MS,Birmingham,AL
-Dallas,TX,Temple,TX
-Temple,TX,San Antonio,TX
-Dallas,TX,Houston,TX
-Houston,TX,San Antonio,TX
-San Antonio,TX,Laredo,TX
-Laredo,TX,McAllen,TX
-Houston,TX,New Orleans,LA
 St. Louis,MO,Indianapolis,IN
-St. Louis,MO,Memphis,TN
 St. Louis,MO,Louisville,KY
-Chicago,IL,Indianapolis,IN
-Indianapolis,IN,Cincinnati,OH
+St. Louis,MO,St. Louis,MO
+St. Louis,MO,Memphis,TN
+Jackson,MS,Birmingham,AL
+Charlotte,NC,Atlanta,GA
+Charlotte,NC,Augusta,GA
+Charlotte,NC,Charlotte,NC
+Lincoln,NE,Kansas City,MO
+Omaha,NE,Lincoln,NE
+Omaha,NE,Omaha,NE
+Newark,NJ,Newark,NJ
+Newark,NJ,Wall,NJ
+Wall,NJ,Wall,NJ
+Carlsbad,NM,Odessa,TX
+Las Vegas,NV,Phoenix,AZ
+Las Vegas,NV,Las Vegas,NV
+Las Vegas,NV,Salt Lake City,UT
+Reno,NV,Sacramento,CA
+Reno,NV,Reno,NV
+Reno,NV,Salt Lake City,UT
+Albany,NY,Albany,NY
+Albany,NY,New York,NY
+Buffalo,NY,Albany,NY
+Buffalo,NY,Buffalo,NY
+New York,NY,Newark,NJ
+New York,NY,New York,NY
+New York,NY,Philadelphia,PA
 Cincinnati,OH,Louisville,KY
-Louisville,KY,Lexington,KY
-Indianapolis,IN,Louisville,KY
-Louisville,KY,Nashville,TN
-Memphis,TN,Nashville,TN
-Memphis,TN,Birmingham,AL
-Nashville,TN,Knoxville,TN
+Cincinnati,OH,Cincinnati,OH
+Cleveland,OH,Buffalo,NY
+Cleveland,OH,Cleveland,OH
+Cleveland,OH,Pittsburgh,PA
+Toledo,OH,Cleveland,OH
+Toledo,OH,Toledo,OH
+Oklahoma City,OK,Oklahoma City,OK
+Oklahoma City,OK,Dallas,TX
+Oklahoma City,OK,Wichita Falls,TX
+Tulsa,OK,Little Rock,AR
+Tulsa,OK,Oklahoma City,OK
+Tulsa,OK,Tulsa,OK
+Portland,OR,Boise,ID
+Portland,OR,Hillsboro,OR
+Portland,OR,Portland,OR
+Philadelphia,PA,Washington,DC
+Philadelphia,PA,Philadelphia,PA
+Pittsburgh,PA,Philadelphia,PA
+Pittsburgh,PA,Pittsburgh,PA
+Charleston,SC,Savannah,GA
+Bristol,TN,Richmond,VA
 Knoxville,TN,Bristol,TN
+Memphis,TN,Birmingham,AL
+Memphis,TN,Memphis,TN
+Memphis,TN,Nashville,TN
 Nashville,TN,Birmingham,AL
 Nashville,TN,Atlanta,GA
-Birmingham,AL,Atlanta,GA
-Chicago,IL,Toledo,OH
-Toledo,OH,Cleveland,OH
-Cleveland,OH,Buffalo,NY
-Cleveland,OH,Pittsburgh,PA
-Buffalo,NY,Albany,NY
-Pittsburgh,PA,Philadelphia,PA
-Philadelphia,PA,Washington,DC
-Washington,DC,Ashburn,VA
-Albany,NY,New York,NY
-New York,NY,Newark,NJ
-Newark,NJ,Wall,NJ
-New York,NY,Philadelphia,PA
-Washington,DC,Richmond,VA
-Ashburn,VA,Richmond,VA
-Richmond,VA,Virginia Beach,VA
-Richmond,VA,Charlotte,NC
-Bristol,TN,Richmond,VA
-Charlotte,NC,Atlanta,GA
-Atlanta,GA,Augusta,GA
-Augusta,GA,Charleston,SC
-Charleston,SC,Savannah,GA
-Savannah,GA,Jacksonville,FL
-Atlanta,GA,Tallahassee,FL
-Tallahassee,FL,Jacksonville,FL
-Jacksonville,FL,Orlando,FL
-Orlando,FL,Tampa,FL
-Tampa,FL,Miami,FL
-Orlando,FL,Miami,FL
-New Orleans,LA,Mobile,AL
-Mobile,AL,Dothan,AL
-Dothan,AL,Tallahassee,FL
-Charlotte,NC,Augusta,GA
-Albany,NY,Albany,NY
-Ashburn,VA,Ashburn,VA
-Atlanta,GA,Atlanta,GA
-Augusta,GA,Augusta,GA
-Birmingham,AL,Birmingham,AL
-Boise,ID,Boise,ID
-Buffalo,NY,Buffalo,NY
-Charlotte,NC,Charlotte,NC
-Chicago,IL,Chicago,IL
-Cincinnati,OH,Cincinnati,OH
-Cleveland,OH,Cleveland,OH
-Dallas,TX,Dallas,TX
-Davenport,IA,Davenport,IA
-Denver,CO,Denver,CO
-Des Moines,IA,Des Moines,IA
-El Paso,TX,El Paso,TX
-Houston,TX,Houston,TX
-Indianapolis,IN,Indianapolis,IN
-Jacksonville,FL,Jacksonville,FL
-Kansas City,MO,Kansas City,MO
-Laredo,TX,Laredo,TX
-Las Vegas,NV,Las Vegas,NV
-Los Angeles,CA,Los Angeles,CA
-McAllen,TX,McAllen,TX
-Memphis,TN,Memphis,TN
-Miami,FL,Miami,FL
-Minneapolis,MN,Minneapolis,MN
+Nashville,TN,Knoxville,TN
 Nashville,TN,Nashville,TN
-New York,NY,New York,NY
-Newark,NJ,Newark,NJ
-Oklahoma City,OK,Oklahoma City,OK
-Omaha,NE,Omaha,NE
-Orlando,FL,Orlando,FL
-Philadelphia,PA,Philadelphia,PA
-Phoenix,AZ,Phoenix,AZ
-Pittsburgh,PA,Pittsburgh,PA
-Portland,OR,Portland,OR
-Reno,NV,Reno,NV
-Richmond,VA,Richmond,VA
-Sacramento,CA,Sacramento,CA
-Salt Lake City,UT,Salt Lake City,UT
+Amarillo,TX,Lubbock,TX
+Dallas,TX,Shreveport,LA
+Dallas,TX,Dallas,TX
+Dallas,TX,Houston,TX
+Dallas,TX,Temple,TX
+El Paso,TX,Carlsbad,NM
+El Paso,TX,El Paso,TX
+Houston,TX,New Orleans,LA
+Houston,TX,Houston,TX
+Houston,TX,San Antonio,TX
+Laredo,TX,Laredo,TX
+Laredo,TX,McAllen,TX
+Lubbock,TX,Dallas,TX
+McAllen,TX,McAllen,TX
+Midland,TX,Dallas,TX
+Odessa,TX,Midland,TX
+San Antonio,TX,Laredo,TX
 San Antonio,TX,San Antonio,TX
-San Diego,CA,San Diego,CA
-San Francisco,CA,San Francisco,CA
-San Jose,CA,San Jose,CA
+Temple,TX,San Antonio,TX
+Wichita Falls,TX,Dallas,TX
+Salt Lake City,UT,Grand Junction,CO
+Salt Lake City,UT,Salt Lake City,UT
+Ashburn,VA,Ashburn,VA
+Ashburn,VA,Richmond,VA
+Richmond,VA,Charlotte,NC
+Richmond,VA,Richmond,VA
+Richmond,VA,Virginia Beach,VA
+Seattle,WA,Portland,OR
 Seattle,WA,Seattle,WA
-St. Louis,MO,St. Louis,MO
-Tallahassee,FL,Tallahassee,FL
-Tampa,FL,Tampa,FL
-Toledo,OH,Toledo,OH
-Tucson,AZ,Tucson,AZ
-Tulsa,OK,Tulsa,OK
-Wall,NJ,Wall,NJ
