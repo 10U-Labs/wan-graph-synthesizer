@@ -1,93 +1,93 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
-"South Bend, IN",41.6764,-86.25,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,South Bend,IN
-"Kalamazoo, MI",42.2917,-85.5872,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Kalamazoo,MI
-"Boise, ID",43.615,-116.2023,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Boise,ID
-"Missoula, MT",46.8721,-113.9966,ROADM,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Missoula,MT
-"Sacramento, CA",38.5816,-121.4944,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Sacramento,CA
-"Modesto, CA",37.6391,-120.9969,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Modesto,CA
-"McLean, VA",38.9339,-77.1773,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,McLean,VA
-"New York, NY",40.7128,-74.006,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,New York,NY
-"Stamford, CT",41.0534,-73.5387,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Stamford,CT
-"Philadelphia, PA",39.9526,-75.1652,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Philadelphia,PA
-"Wall, NJ",40.1654,-74.0665,ROADM,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Wall,NJ
-"Tuckerton, NJ",39.6032,-74.3402,ROADM,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Tuckerton,NJ
-"Ashburn, VA",39.0438,-77.4875,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Ashburn,VA
-"Baltimore, MD",39.2904,-76.6122,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Baltimore,MD
-"Boston, MA",42.3601,-71.0589,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Boston,MA
-"San Luis Obispo, CA",35.2828,-120.6596,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,San Luis Obispo,CA
-"Los Angeles, CA",34.0522,-118.2437,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Los Angeles,CA
-"San Francisco, CA",37.7749,-122.4194,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,San Francisco,CA
-"San Jose, CA",37.3382,-121.8863,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,San Jose,CA
-"Sunnyvale, CA",37.3688,-122.0363,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Sunnyvale,CA
-"Seattle, WA",47.6062,-122.3321,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Seattle,WA
-"Yakima, WA",46.6021,-120.5059,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Yakima,WA
-"Portland, OR",45.5152,-122.6765,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Portland,OR
-"Bandon, OR",43.119,-124.4098,ROADM,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Bandon,OR
-"Salt Lake City, UT",40.7608,-111.891,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Salt Lake City,UT
-"Ogden, UT",41.223,-111.9738,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Ogden,UT
-"El Paso, TX",31.7619,-106.485,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,El Paso,TX
-"Albuquerque, NM",35.0844,-106.6504,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Albuquerque,NM
-"Las Vegas, NV",36.1699,-115.1398,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Las Vegas,NV
-"San Bernardino, CA",34.1083,-117.2898,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,San Bernardino,CA
-"San Diego, CA",32.7157,-117.1611,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,San Diego,CA
-"Tustin, CA",33.7459,-117.8265,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Tustin,CA
-"Riverside, CA",33.9533,-117.3962,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Riverside,CA
-"Phoenix, AZ",33.4484,-112.074,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Phoenix,AZ
-"Tucson, AZ",32.2226,-110.9747,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Tucson,AZ
-"Cheyenne, WY",41.14,-104.8202,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Cheyenne,WY
-"Denver, CO",39.7392,-104.9903,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Denver,CO
-"Fort Worth, TX",32.7555,-97.3308,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Fort Worth,TX
-"San Antonio, TX",29.4241,-98.4936,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,San Antonio,TX
-"Laredo, TX",27.5306,-99.5075,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Laredo,TX
-"McAllen, TX",26.2034,-98.23,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,McAllen,TX
-"Corpus Christi, TX",27.8006,-97.3964,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Corpus Christi,TX
-"Harlingen, TX",26.1906,-97.6961,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Harlingen,TX
-"Austin, TX",30.2672,-97.7431,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Austin,TX
-"Reno, NV",39.5296,-119.8138,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Reno,NV
-"Minneapolis, MN",44.9778,-93.265,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Minneapolis,MN
-"Des Moines, IA",41.5868,-93.6091,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Des Moines,IA
-"Davenport, IA",41.5236,-90.5776,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Davenport,IA
-"Omaha, NE",41.2565,-95.9345,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Omaha,NE
-"Kansas City, MO",39.0997,-94.5786,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Kansas City,MO
-"St. Louis, MO",38.627,-90.1994,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,St. Louis,MO
-"Tulsa, OK",36.154,-95.9928,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Tulsa,OK
-"Oklahoma City, OK",35.4676,-97.5164,ROADM,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Oklahoma City,OK
-"Stratford, TX",36.3361,-102.0721,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Stratford,TX
-"Houston, TX",29.7604,-95.3698,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Houston,TX
-"Birmingham, AL",33.5186,-86.8025,ROADM,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Birmingham,AL
-"Billingsley, AL",32.6601,-86.7114,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Billingsley,AL
-"Memphis, TN",35.1495,-90.049,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Memphis,TN
-"Chicago, IL",41.8781,-87.6298,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Chicago,IL
-"Indianapolis, IN",39.7684,-86.1581,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Indianapolis,IN
-"Nashville, TN",36.1627,-86.7816,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Nashville,TN
-"Madison, WI",43.0731,-89.4012,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Madison,WI
-"Milwaukee, WI",43.0389,-87.9065,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Milwaukee,WI
-"Jacksonville, FL",30.3322,-81.6557,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Jacksonville,FL
-"Tallahassee, FL",30.4383,-84.2807,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Tallahassee,FL
-"Orlando, FL",28.5383,-81.3792,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Orlando,FL
-"Miami, FL",25.7617,-80.1918,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Miami,FL
-"Tampa, FL",27.9506,-82.4572,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Tampa,FL
-"Fort Meyers, FL",26.6406,-81.8723,ROADM,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Fort Meyers,FL
-"Atlanta, GA",33.749,-84.388,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Atlanta,GA
-"Augusta, GA",33.4735,-81.9748,ROADM,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Augusta,GA
-"Charlotte, NC",35.2271,-80.8431,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Charlotte,NC
-"Richmond, VA",37.5407,-77.436,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Richmond,VA
-"Norfolk, VA",36.8508,-76.2859,ROADM,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Norfolk,VA
-"Raleigh, NC",35.7796,-78.6382,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Raleigh,NC
-"Cleveland, OH",41.4993,-81.6944,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Cleveland,OH
-"Akron, OH",41.0814,-81.519,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Akron,OH
-"Detroit, MI",42.3314,-83.0458,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Detroit,MI
-"Toledo, OH",41.6528,-83.5552,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Toledo,OH
-"Cincinnati, OH",39.1031,-84.512,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Cincinnati,OH
-"Columbus, OH",39.9612,-82.9988,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Columbus,OH
-"Buffalo, NY",42.8864,-78.8784,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Buffalo,NY
-"Pittsburgh, PA",40.4406,-79.9959,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Pittsburgh,PA
-"Albany, NY",42.6526,-73.7562,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Albany,NY
-"Newark, NJ",40.7357,-74.1724,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Newark,NJ
-"Dallas, TX",32.7767,-96.797,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Dallas,TX
-"Wichita, KS",37.6872,-97.3301,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Wichita,KS
-"Herndon, VA",38.9696,-77.3861,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Herndon,VA
-"Cambridge, MA",42.3736,-71.1097,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Cambridge,MA
-"Hayward, CA",37.6688,-122.0808,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Hayward,CA
-"Emeryville, CA",37.8313,-122.2852,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Emeryville,CA
-"Goodyear, AZ",33.4353,-112.3582,PoP,Not shown in map,Carrier 400G PoP / Next-Gen Optical Network location from uploaded mapbook.,Goodyear,AZ
+municipality,state,latitude,longitude
+South Bend,IN,41.6764,-86.25
+Kalamazoo,MI,42.2917,-85.5872
+Boise,ID,43.615,-116.2023
+Missoula,MT,46.8721,-113.9966
+Sacramento,CA,38.5816,-121.4944
+Modesto,CA,37.6391,-120.9969
+McLean,VA,38.9339,-77.1773
+New York,NY,40.7128,-74.006
+Stamford,CT,41.0534,-73.5387
+Philadelphia,PA,39.9526,-75.1652
+Wall,NJ,40.1654,-74.0665
+Tuckerton,NJ,39.6032,-74.3402
+Ashburn,VA,39.0438,-77.4875
+Baltimore,MD,39.2904,-76.6122
+Boston,MA,42.3601,-71.0589
+San Luis Obispo,CA,35.2828,-120.6596
+Los Angeles,CA,34.0522,-118.2437
+San Francisco,CA,37.7749,-122.4194
+San Jose,CA,37.3382,-121.8863
+Sunnyvale,CA,37.3688,-122.0363
+Seattle,WA,47.6062,-122.3321
+Yakima,WA,46.6021,-120.5059
+Portland,OR,45.5152,-122.6765
+Bandon,OR,43.119,-124.4098
+Salt Lake City,UT,40.7608,-111.891
+Ogden,UT,41.223,-111.9738
+El Paso,TX,31.7619,-106.485
+Albuquerque,NM,35.0844,-106.6504
+Las Vegas,NV,36.1699,-115.1398
+San Bernardino,CA,34.1083,-117.2898
+San Diego,CA,32.7157,-117.1611
+Tustin,CA,33.7459,-117.8265
+Riverside,CA,33.9533,-117.3962
+Phoenix,AZ,33.4484,-112.074
+Tucson,AZ,32.2226,-110.9747
+Cheyenne,WY,41.14,-104.8202
+Denver,CO,39.7392,-104.9903
+Fort Worth,TX,32.7555,-97.3308
+San Antonio,TX,29.4241,-98.4936
+Laredo,TX,27.5306,-99.5075
+McAllen,TX,26.2034,-98.23
+Corpus Christi,TX,27.8006,-97.3964
+Harlingen,TX,26.1906,-97.6961
+Austin,TX,30.2672,-97.7431
+Reno,NV,39.5296,-119.8138
+Minneapolis,MN,44.9778,-93.265
+Des Moines,IA,41.5868,-93.6091
+Davenport,IA,41.5236,-90.5776
+Omaha,NE,41.2565,-95.9345
+Kansas City,MO,39.0997,-94.5786
+St. Louis,MO,38.627,-90.1994
+Tulsa,OK,36.154,-95.9928
+Oklahoma City,OK,35.4676,-97.5164
+Stratford,TX,36.3361,-102.0721
+Houston,TX,29.7604,-95.3698
+Birmingham,AL,33.5186,-86.8025
+Billingsley,AL,32.6601,-86.7114
+Memphis,TN,35.1495,-90.049
+Chicago,IL,41.8781,-87.6298
+Indianapolis,IN,39.7684,-86.1581
+Nashville,TN,36.1627,-86.7816
+Madison,WI,43.0731,-89.4012
+Milwaukee,WI,43.0389,-87.9065
+Jacksonville,FL,30.3322,-81.6557
+Tallahassee,FL,30.4383,-84.2807
+Orlando,FL,28.5383,-81.3792
+Miami,FL,25.7617,-80.1918
+Tampa,FL,27.9506,-82.4572
+Fort Meyers,FL,26.6406,-81.8723
+Atlanta,GA,33.749,-84.388
+Augusta,GA,33.4735,-81.9748
+Charlotte,NC,35.2271,-80.8431
+Richmond,VA,37.5407,-77.436
+Norfolk,VA,36.8508,-76.2859
+Raleigh,NC,35.7796,-78.6382
+Cleveland,OH,41.4993,-81.6944
+Akron,OH,41.0814,-81.519
+Detroit,MI,42.3314,-83.0458
+Toledo,OH,41.6528,-83.5552
+Cincinnati,OH,39.1031,-84.512
+Columbus,OH,39.9612,-82.9988
+Buffalo,NY,42.8864,-78.8784
+Pittsburgh,PA,40.4406,-79.9959
+Albany,NY,42.6526,-73.7562
+Newark,NJ,40.7357,-74.1724
+Dallas,TX,32.7767,-96.797
+Wichita,KS,37.6872,-97.3301
+Herndon,VA,38.9696,-77.3861
+Cambridge,MA,42.3736,-71.1097
+Hayward,CA,37.6688,-122.0808
+Emeryville,CA,37.8313,-122.2852
+Goodyear,AZ,33.4353,-112.3582

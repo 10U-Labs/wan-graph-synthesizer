@@ -1,22 +1,22 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
-Williston,48.147,-103.618,ROADM,Not shown in map,,Williston,ND
-Ray,48.341,-103.166,ROADM,Not shown in map,,Ray,ND
-Stanley,48.317,-102.388,ROADM,Not shown in map,,Stanley,ND
-"Minot, ND",48.232,-101.296,ROADM,Not shown in map,,Minot,ND
-Alexander,47.838,-103.642,ROADM,Not shown in map,,Alexander,ND
-Parshall,47.952,-102.135,ROADM,Not shown in map,,Parshall,ND
-Max,47.815,-101.298,ROADM,Not shown in map,,Max,ND
-Bismarck,46.808,-100.784,ROADM,Not shown in map,,Bismarck,ND
-Steele,46.857,-99.916,ROADM,Not shown in map,,Steele,ND
-Dickinson,46.879,-102.789,ROADM,Not shown in map,,Dickinson,ND
-Beach,46.918,-104.001,ROADM,Not shown in map,,Beach,ND
-Rugby,48.369,-99.996,ROADM,Not shown in map,,Rugby,ND
-Devils Lake,48.113,-98.865,ROADM,Not shown in map,,Devils Lake,ND
-Carrington,47.449,-99.126,ROADM,Not shown in map,,Carrington,ND
-Jamestown,46.910,-98.708,ROADM,Not shown in map,,Jamestown,ND
-Marion Jct.,46.611,-98.343,ROADM,Not shown in map,,Marion Jct.,ND
-Gwinner,46.218,-97.661,ROADM,Not shown in map,,Gwinner,ND
-Abercrombie,46.448,-96.728,ROADM,Not shown in map,,Abercrombie,ND
-Buffalo,46.917,-97.547,ROADM,Not shown in map,,Buffalo,ND
-Fargo,46.877,-96.789,ROADM,Not shown in map,,Fargo,ND
-Grand Forks,47.925,-97.032,ROADM,Not shown in map,,Grand Forks,ND
+municipality,state,latitude,longitude
+Williston,ND,48.147,-103.618
+Ray,ND,48.341,-103.166
+Stanley,ND,48.317,-102.388
+Minot,ND,48.232,-101.296
+Alexander,ND,47.838,-103.642
+Parshall,ND,47.952,-102.135
+Max,ND,47.815,-101.298
+Bismarck,ND,46.808,-100.784
+Steele,ND,46.857,-99.916
+Dickinson,ND,46.879,-102.789
+Beach,ND,46.918,-104.001
+Rugby,ND,48.369,-99.996
+Devils Lake,ND,48.113,-98.865
+Carrington,ND,47.449,-99.126
+Jamestown,ND,46.910,-98.708
+Marion Jct.,ND,46.611,-98.343
+Gwinner,ND,46.218,-97.661
+Abercrombie,ND,46.448,-96.728
+Buffalo,ND,46.917,-97.547
+Fargo,ND,46.877,-96.789
+Grand Forks,ND,47.925,-97.032
