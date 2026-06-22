@@ -1,20 +1,20 @@
 Name,Municipality,State,Latitude,Longitude
+Burlington ANGB,South Burlington,VT,44.4719,-73.1533
+"Crystal City, VA",Arlington,VA,38.8564,-77.0502
 Dannelly Field,Montgomery,AL,32.3006,-86.3939
-Eielson AFB,Fairbanks,AK,64.6657,-147.1015
-Luke AFB,Glendale,AZ,33.535,-112.383
-MCAS Yuma,Yuma,AZ,32.6566,-114.606
 Ebbing ANGB,Fort Smith,AR,35.3366,-94.3674
 Edwards AFB,Edwards,CA,34.9054,-117.8837
-NAS Lemoore,Lemoore,CA,36.333,-119.952
-MCAS Miramar,San Diego,CA,32.8671,-117.1418
 Eglin AFB,Valparaiso,FL,30.4832,-86.5254
-Jacksonville ANGB,Jacksonville,FL,30.4941,-81.6879
-Tyndall AFB,Panama City,FL,30.0696,-85.5754
-NAS Fallon,Fallon,NV,39.4166,-118.7003
-Nellis AFB,Las Vegas,NV,36.2362,-115.0343
-MCAS Cherry Point,Havelock,NC,34.9009,-76.8807
-MCAS Beaufort,Beaufort,SC,32.4774,-80.7232
+Eielson AFB,Fairbanks,AK,64.6657,-147.1015
 Hill AFB,Layton,UT,41.124,-111.9731
-Burlington ANGB,South Burlington,VT,44.4719,-73.1533
+Jacksonville ANGB,Jacksonville,FL,30.4941,-81.6879
+Luke AFB,Glendale,AZ,33.535,-112.383
+MCAS Beaufort,Beaufort,SC,32.4774,-80.7232
+MCAS Cherry Point,Havelock,NC,34.9009,-76.8807
+MCAS Miramar,San Diego,CA,32.8671,-117.1418
+MCAS Yuma,Yuma,AZ,32.6566,-114.606
+NAS Fallon,Fallon,NV,39.4166,-118.7003
+NAS Lemoore,Lemoore,CA,36.333,-119.952
+Nellis AFB,Las Vegas,NV,36.2362,-115.0343
 Truax Field,Madison,WI,43.1399,-89.3375
-"Crystal City, VA",Arlington,VA,38.8564,-77.0502
+Tyndall AFB,Panama City,FL,30.0696,-85.5754
