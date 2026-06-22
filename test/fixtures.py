@@ -12,26 +12,24 @@ import io
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-from wan_graph.model import (
+from seed import (
+    OFF_NET_KIND,
+    OFF_NET_TENANT,
+    load_carrier_edges,
+    load_off_net_sites,
+    load_vertices,
+    slugify,
+)
+from wan_graph.model import PhysicalEdge, Vertex, edge_key
+from wan_designer.model import (
     KIND_ROADM,
     DesignArtifacts,
     DesignParams,
     DesignPaths,
     ForcedConnection,
     RoleExclusions,
-    Vertex,
-    PhysicalEdge,
     SourceFiles,
-    edge_key,
     is_carrier_pop,
-    slugify,
-)
-from data_inputs import (
-    OFF_NET_KIND,
-    OFF_NET_TENANT,
-    load_carrier_edges,
-    load_off_net_sites,
-    load_vertices,
 )
 from wan_designer.optimize import optimize_three_tier_design
 from wan_designer.overrides import apply_role_overrides, materialize_selected_colocation_twins

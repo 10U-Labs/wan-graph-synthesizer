@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 
-from wan_graph.model import (
-    Design,
-    Vertex,
-    ValidationReport,
-    edge_key,
-    is_carrier_pop,
-)
+from wan_graph.model import Vertex, edge_key
+from wan_designer.model import Design, ValidationReport, is_carrier_pop
 from wan_designer.graphs import (
     articulation_points,
     connected_components,

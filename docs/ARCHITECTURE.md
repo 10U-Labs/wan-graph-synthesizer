@@ -97,7 +97,7 @@ to the store and auto-creates the dependent graph(s):
 - a carrier — re-creates the substrate, then every customer's WAN
 
 Inputs are authored in git (`data/`, `etc/`) for review and history; a CI
-client (`push_inputs`) reads changed files and issues the same `PUT`s. git is
+client (`scripts/seed.py`) reads changed files and issues the same `PUT`s. git is
 an authoring convenience — the API store (S3) is the source of truth. A person,
 script, or UI issuing the same `PUT` is identical.
 
@@ -143,10 +143,11 @@ shared state bucket `10ulabs-terraform-state-us-east-2`, and GitHub OIDC.
 - `docs/tenets/tests/` — the four test tiers, per `10ulabs.com`.
 
 Reusable code lives in `lib/`; single-use code lives in its `src/` stack. The
-optimizer and the existing `design_payload` logic are unchanged — relocated
-into pipeline steps (`lib/python/wan_designer/stages.py`) and per-collection
-JSON serializers (`lib/python/wan_designer/graph_collections.py`), not
-rewritten.
+shared graph interchange — the vertex/edge types and the input-graph JSON codec
+— is `lib/python/wan_graph/`; the optimizer's own design vocabulary, pipeline
+steps (`wan_designer/stages.py`), and per-collection JSON views
+(`wan_designer/collections.py`) live with the optimizer engine. The inputs
+script's CSV readers live in `scripts/seed.py`.
 
 ## Out of scope (deferred)
 

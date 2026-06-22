@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from wan_graph.graph_collections import input_graph, load_input_graph
+import fixtures
+from wan_graph.codec import input_graph, load_input_graph
 from wan_graph.model import PhysicalEdge, Vertex, VertexInfo, edge_key
 
 
@@ -40,3 +41,15 @@ def test_round_trips_edges() -> None:
     edges = _edges()
     _, loaded = load_input_graph(input_graph([_vertex(), second], edges))
     assert loaded == edges
+
+
+def test_input_graph_shapes_vertices_and_edges() -> None:
+    """input_graph() shapes a carrier-style graph's vertices and fiber edges."""
+    graph = input_graph(fixtures.ring_vertices(), fixtures.ring_physical_edges())
+    assert len(graph["vertices"]) == len(fixtures.ring_vertices()) and graph["edges"]
+
+
+def test_input_graph_has_no_edges_for_a_csp() -> None:
+    """A CSP input (no fiber) shapes to an empty edge list."""
+    graph = input_graph(fixtures.ring_vertices(), {})
+    assert graph["edges"] == []

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from wan_graph.model import (
+from wan_designer.model import (
     FORCED_CONNECTION_TYPES,
     ClusterTuning,
     DesignPaths,

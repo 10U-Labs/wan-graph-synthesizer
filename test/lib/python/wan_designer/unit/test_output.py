@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import fixtures
-from wan_graph.model import AccessEdge, Design, DesignMetrics
+from wan_designer.model import AccessEdge, Design, DesignMetrics
 from wan_designer.output import (
     design_payload,
     included_access_count,

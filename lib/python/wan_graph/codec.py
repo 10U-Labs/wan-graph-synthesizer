@@ -1,8 +1,9 @@
-"""Per-collection JSON views of a graph, shared by the read endpoints and create tasks.
+"""The input-graph JSON codec: the wire-format contract between the two programs.
 
-For a computed customer WAN, slice the single ``design_payload`` (output.py) into its
-collections (vertices, edges, the tier views). For an input graph (carrier / CSP /
-substrate), shape its raw vertices and carrier edges directly.
+:func:`input_graph` shapes a graph's vertices and carrier edges as JSON (the inputs
+script writes it); :func:`load_input_graph` is its inverse, rebuilding the dataclasses
+so the optimizer can read the stored graph back. Keeping both halves here gives the
+on-the-wire format a single definition the writer and reader cannot drift apart from.
 """
 
 from __future__ import annotations
@@ -11,37 +12,6 @@ from dataclasses import asdict
 from typing import Any
 
 from wan_graph.model import PhysicalEdge, Vertex, VertexInfo, edge_key
-
-
-def vertices(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """The vertices of a computed customer WAN (each carries kind + tier_role)."""
-    result: list[dict[str, Any]] = payload["vertices"]
-    return result
-
-
-def edges(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """Every edge of a computed customer WAN: access homings plus carrier fiber."""
-    result: list[dict[str, Any]] = payload["access_edges"] + payload["physical_edges"]
-    return result
-
-
-def _tier(payload: dict[str, Any], tier_role: str) -> list[dict[str, Any]]:
-    return [vertex for vertex in payload["vertices"] if vertex["tier_role"] == tier_role]
-
-
-def core_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """The carrier PoPs the design selected as core (national) hubs."""
-    return _tier(payload, "core")
-
-
-def aggregation_points(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """The carrier PoPs the design selected as aggregation (regional) hubs."""
-    return _tier(payload, "aggregation")
-
-
-def access_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """The demand vertices (installations + CSP regions) homed into the design."""
-    return _tier(payload, "access")
 
 
 def _load_vertex(vertex: dict[str, Any]) -> Vertex:

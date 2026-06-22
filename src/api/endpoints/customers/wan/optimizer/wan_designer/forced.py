@@ -1,7 +1,7 @@
 """Apply operator-forced connections during the routing stage.
 
 The overrides layer resolves the operator's forced connections into a
-:class:`~wan_graph.model.ForcedLinks` bundle; these helpers consume it while
+:class:`~wan_designer.model.ForcedLinks` bundle; these helpers consume it while
 the optimizer routes a design, so the pinned edges are honored: core-core pairs
 pruned from the backbone, aggregation-core links forced as routing sinks, and
 access-aggregation links pinned as homes. They depend only on the model, so the
@@ -10,7 +10,8 @@ optimizer imports them without a cycle.
 
 from __future__ import annotations
 
-from wan_graph.model import ForcedLinks, Vertex, haversine_miles
+from wan_graph.model import Vertex, haversine_miles
+from wan_designer.model import ForcedLinks
 
 
 def removed_core_pairs(

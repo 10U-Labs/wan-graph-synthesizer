@@ -8,15 +8,8 @@ nearest cores on the backbone.
 from __future__ import annotations
 
 from wan_designer.validation import aggregations_without_core_redundancy, validate_design
-from wan_graph.model import (
-    AccessEdge,
-    Design,
-    DesignMetrics,
-    PathUse,
-    ValidationReport,
-    Vertex,
-    edge_key,
-)
+from wan_designer.model import AccessEdge, Design, DesignMetrics, PathUse, ValidationReport
+from wan_graph.model import Vertex, edge_key
 
 
 def make_pop(vertex_id: str) -> Vertex:

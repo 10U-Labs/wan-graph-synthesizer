@@ -27,11 +27,8 @@ from wan_designer.local_fiber import (
     build_local_fiber_twin,
     unique_twin_id,
 )
-from wan_graph.model import (
-    PhysicalEdge,
-    Vertex,
-    is_carrier_pop,
-)
+from wan_designer.model import is_carrier_pop
+from wan_graph.model import PhysicalEdge, Vertex
 
 logger = logging.getLogger(__name__)
 

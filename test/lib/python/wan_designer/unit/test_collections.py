@@ -1,11 +1,11 @@
-"""Unit tests for the per-collection JSON views of a graph."""
+"""Unit tests for the per-collection JSON views of a computed WAN."""
 
 from __future__ import annotations
 
 from typing import Any
 
 import fixtures
-from wan_graph import graph_collections as gc
+from wan_designer import collections as gc
 from wan_designer.output import design_payload
 
 
@@ -39,15 +39,3 @@ def test_aggregation_points_are_all_tier_aggregation() -> None:
 def test_access_nodes_are_all_tier_access() -> None:
     """access_nodes() returns only access-tier vertices."""
     assert all(vertex["tier_role"] == "access" for vertex in gc.access_nodes(_payload()))
-
-
-def test_input_graph_shapes_vertices_and_edges() -> None:
-    """input_graph() shapes a carrier-style graph's vertices and fiber edges."""
-    graph = gc.input_graph(fixtures.ring_vertices(), fixtures.ring_physical_edges())
-    assert len(graph["vertices"]) == len(fixtures.ring_vertices()) and graph["edges"]
-
-
-def test_input_graph_has_no_edges_for_a_csp() -> None:
-    """A CSP input (no fiber) shapes to an empty edge list."""
-    graph = gc.input_graph(fixtures.ring_vertices(), {})
-    assert graph["edges"] == []

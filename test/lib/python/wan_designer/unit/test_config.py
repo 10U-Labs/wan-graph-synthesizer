@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from wan_designer.config import AppConfig, app_config_from_parts, config_from_data
-from wan_graph.model import ForcedConnection
+from wan_designer.model import ForcedConnection
 
 
 # The three redundancy degrees are required (no default); inject them so each test

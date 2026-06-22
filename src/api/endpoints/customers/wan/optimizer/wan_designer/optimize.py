@@ -30,17 +30,15 @@ import math
 import os
 from dataclasses import dataclass, replace
 
-from wan_graph.model import (
+from wan_graph.model import PhysicalEdge, Vertex, haversine_miles
+from wan_designer.model import (
     AccessEdge,
     Design,
     DesignInputs,
     DesignMetrics,
     DesignParams,
-    Vertex,
     PathUse,
-    PhysicalEdge,
     RoleOverrides,
-    haversine_miles,
     is_carrier_pop,
 )
 from wan_designer.forced import (
