@@ -1,43 +1,15 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
-Hill AFB,41.124,-111.9731,Military installation,Shown in map,"Program: Sentinel
-Location: Hill AFB
-State/Territory: Utah",Layton,UT
-Malmstrom AFB,47.5053,-111.183,Military installation,Shown in map,"Program: Sentinel
-Location: Malmstrom AFB
-State/Territory: Montana",Great Falls,MT
-Minot AFB,48.4156,-101.3577,Military installation,Shown in map,"Program: Sentinel
-Location: Minot AFB
-State/Territory: North Dakota",Minot,ND
-Vandenberg SFB,34.742,-120.5724,Military installation,Shown in map,"Program: Sentinel
-Location: Vandenberg SFB
-State/Territory: California",Lompoc,CA
-Cape Canaveral SFS,28.4889,-80.5772,Military installation,Shown in map,"Program: Sentinel
-Location: Cape Canaveral SFS
-State/Territory: Florida",Cape Canaveral,FL
-F.E. Warren AFB,41.151,-104.861,Military installation,Shown in map,"Program: Sentinel
-Location: F.E. Warren AFB
-State/Territory: Wyoming",Cheyenne,WY
-Camp Guernsey,42.269,-104.745,Military installation,Shown in map,"Program: Sentinel
-Location: Camp Guernsey
-State/Territory: Wyoming",Guernsey,WY
-Camp Navajo,35.222,-111.842,Military installation,Shown in map,"Program: Sentinel
-Location: Camp Navajo
-State/Territory: Arizona",Bellemont,AZ
-JHU APL,39.1684,-76.8991,UARC,Shown in map,"Program: Sentinel
-Location: JHU APL
-State/Territory: Maryland",Laurel,MD
-Reagan Test Site,8.72,167.731,Military installation,Shown in map,"Program: Sentinel
-Location: Reagan Test Site
-State/Territory: Marshall Islands",Kwajalein,MH
-Barksdale AFB,32.5018,-93.6627,Military installation,Shown in map,"Program: Sentinel
-Location: Barksdale AFB
-State/Territory: Louisiana",Bossier City,LA
-Hanscom AFB,42.4699,-71.289,Military installation,Shown in map,"Program: Sentinel
-Location: Hanscom AFB
-State/Territory: Massachusetts",Bedford,MA
-"Washington, DC",38.9072,-77.0369,Corporate office,Shown in map,"Program: Sentinel
-Location: Washington, DC
-State/Territory: District of Columbia",Washington,DC
-Utah Test and Training Range (UTTR),41.0,-113.0,Military installation,Shown in map,"Program: Sentinel
-Location: Utah Test and Training Range (UTTR)
-State/Territory: Utah",Tooele,UT
+Name,Municipality,State,Latitude,Longitude
+Hill AFB,Layton,UT,41.124,-111.9731
+Malmstrom AFB,Great Falls,MT,47.5053,-111.183
+Minot AFB,Minot,ND,48.4156,-101.3577
+Vandenberg SFB,Lompoc,CA,34.742,-120.5724
+Cape Canaveral SFS,Cape Canaveral,FL,28.4889,-80.5772
+F.E. Warren AFB,Cheyenne,WY,41.151,-104.861
+Camp Guernsey,Guernsey,WY,42.269,-104.745
+Camp Navajo,Bellemont,AZ,35.222,-111.842
+JHU APL,Laurel,MD,39.1684,-76.8991
+Reagan Test Site,Kwajalein,MH,8.72,167.731
+Barksdale AFB,Bossier City,LA,32.5018,-93.6627
+Hanscom AFB,Bedford,MA,42.4699,-71.289
+"Washington, DC",Washington,DC,38.9072,-77.0369
+Utah Test and Training Range (UTTR),Tooele,UT,41.0,-113.0

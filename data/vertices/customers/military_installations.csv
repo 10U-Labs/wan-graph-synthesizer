@@ -1,148 +1,148 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
-Fort Liberty,35.1410,-79.0060,Military installation,Shown in map,State: North Carolina,Fayetteville,NC
-Fort Campbell,36.6672,-87.4639,Military installation,Shown in map,State: Kentucky,Clarksville,TN
-Fort Cavazos,31.1349,-97.7841,Military installation,Shown in map,State: Texas,Killeen,TX
-Fort Moore,32.3539,-84.9692,Military installation,Shown in map,State: Georgia,Columbus,GA
-Fort Bliss,31.8131,-106.4210,Military installation,Shown in map,State: Texas,El Paso,TX
-Fort Carson,38.7375,-104.7889,Military installation,Shown in map,State: Colorado,Colorado Springs,CO
-Fort Drum,44.0509,-75.7591,Military installation,Shown in map,State: New York,Watertown,NY
-Fort Eisenhower,33.4204,-82.1402,Military installation,Shown in map,State: Georgia,Augusta,GA
-Fort Irwin,35.2611,-116.6847,Military installation,Shown in map,State: California,Barstow,CA
-Fort Jackson,34.0298,-80.9170,Military installation,Shown in map,State: South Carolina,Columbia,SC
-Fort Knox,37.8915,-85.9636,Military installation,Shown in map,State: Kentucky,Radcliff,KY
-Fort Leavenworth,39.3556,-94.9152,Military installation,Shown in map,State: Kansas,Leavenworth,KS
-Fort Leonard Wood,37.7531,-92.1296,Military installation,Shown in map,State: Missouri,Waynesville,MO
-Fort Gregg-Adams,37.2436,-77.3344,Military installation,Shown in map,State: Virginia,Petersburg,VA
-Fort Meade,39.1083,-76.7430,Military installation,Shown in map,State: Maryland,Odenton,MD
-Fort Johnson,31.0497,-93.2044,Military installation,Shown in map,State: Louisiana,Leesville,LA
-Fort Riley,39.0858,-96.8047,Military installation,Shown in map,State: Kansas,Junction City,KS
-Fort Novosel,31.3413,-85.7130,Military installation,Shown in map,State: Alabama,Enterprise,AL
-Fort Sill,34.6590,-98.4029,Military installation,Shown in map,State: Oklahoma,Lawton,OK
-Fort Stewart,31.8693,-81.6093,Military installation,Shown in map,State: Georgia,Hinesville,GA
-Fort Wainwright,64.8278,-147.6400,Military installation,Shown in map,State: Alaska,Fairbanks,AK
-Fort Greely,63.8767,-145.7350,Military installation,Shown in map,State: Alaska,Delta Junction,AK
-Joint Base Lewis-McChord,47.0858,-122.5828,Military installation,Shown in map,State: Washington,Tacoma,WA
-Fort Belvoir,38.7187,-77.1469,Military installation,Shown in map,State: Virginia,Alexandria,VA
-Aberdeen Proving Ground,39.4690,-76.1300,Military installation,Shown in map,State: Maryland,Aberdeen,MD
-Fort Huachuca,31.5500,-110.3450,Military installation,Shown in map,State: Arizona,Sierra Vista,AZ
-Fort Detrick,39.4360,-77.4280,Military installation,Shown in map,State: Maryland,Frederick,MD
-White Sands Missile Range,32.3784,-106.4844,Military installation,Shown in map,State: New Mexico,Las Cruces,NM
-Fort Shafter,21.3460,-157.8920,Military installation,Shown in map,State: Hawaii,Honolulu,HI
-Schofield Barracks,21.4936,-158.0640,Military installation,Shown in map,State: Hawaii,Wahiawa,HI
-United States Military Academy,41.3915,-73.9568,Military installation,Shown in map,State: New York,West Point,NY
-Presidio of Monterey,36.5970,-121.9180,Military installation,Shown in map,State: California,Monterey,CA
-Fort Hamilton,40.6090,-74.0300,Military installation,Shown in map,State: New York,Brooklyn,NY
-Fort McCoy,44.0370,-90.6760,Military installation,Shown in map,State: Wisconsin,Sparta,WI
-Anniston Army Depot,33.6200,-85.9600,Military installation,Shown in map,State: Alabama,Anniston,AL
-Picatinny Arsenal,40.9300,-74.5400,Military installation,Shown in map,State: New Jersey,Dover,NJ
-Tobyhanna Army Depot,41.1900,-75.4200,Military installation,Shown in map,State: Pennsylvania,Tobyhanna,PA
-Fort A.P. Hill,38.0900,-77.2900,Military installation,Shown in map,State: Virginia,Bowling Green,VA
-Naval Station Norfolk,36.9460,-76.3120,Military installation,Shown in map,State: Virginia,Norfolk,VA
-Naval Base San Diego,32.6800,-117.1290,Military installation,Shown in map,State: California,San Diego,CA
-Naval Base Coronado,32.6990,-117.2150,Military installation,Shown in map,State: California,Coronado,CA
-Naval Base Kitsap,47.7100,-122.7080,Military installation,Shown in map,State: Washington,Bremerton,WA
-Naval Station Mayport,30.3920,-81.4240,Military installation,Shown in map,State: Florida,Jacksonville,FL
-Naval Air Station Jacksonville,30.2360,-81.6800,Military installation,Shown in map,State: Florida,Jacksonville,FL
-Naval Station Everett,47.9920,-122.2460,Military installation,Shown in map,State: Washington,Everett,WA
-Naval Submarine Base New London,41.3960,-72.0870,Military installation,Shown in map,State: Connecticut,Groton,CT
-Naval Submarine Base Kings Bay,30.7960,-81.5160,Military installation,Shown in map,State: Georgia,St. Marys,GA
-Naval Air Station Oceana,36.8206,-76.0333,Military installation,Shown in map,State: Virginia,Virginia Beach,VA
-Naval Air Station Pensacola,30.3500,-87.3050,Military installation,Shown in map,State: Florida,Pensacola,FL
-Naval Air Station Whidbey Island,48.3520,-122.6560,Military installation,Shown in map,State: Washington,Oak Harbor,WA
-Naval Air Station Patuxent River,38.2860,-76.4120,Military installation,Shown in map,State: Maryland,Lexington Park,MD
-Naval Air Station Kingsville,27.5070,-97.8090,Military installation,Shown in map,State: Texas,Kingsville,TX
-Naval Air Station Meridian,32.5520,-88.5560,Military installation,Shown in map,State: Mississippi,Meridian,MS
-Naval Air Station Fort Worth JRB,32.7690,-97.4410,Military installation,Shown in map,State: Texas,Fort Worth,TX
-Naval Air Station Key West,24.5760,-81.6890,Military installation,Shown in map,State: Florida,Key West,FL
-Naval Air Weapons Station China Lake,35.6850,-117.6920,Military installation,Shown in map,State: California,Ridgecrest,CA
-Naval Base Ventura County,34.1200,-119.1200,Military installation,Shown in map,State: California,Oxnard,CA
-Naval Station Great Lakes,42.3100,-87.8400,Military installation,Shown in map,State: Illinois,North Chicago,IL
-Naval Air Station Whiting Field,30.7240,-87.0210,Military installation,Shown in map,State: Florida,Milton,FL
-Portsmouth Naval Shipyard,43.0790,-70.7430,Military installation,Shown in map,State: Maine,Kittery,ME
-United States Naval Academy,38.9840,-76.4840,Military installation,Shown in map,State: Maryland,Annapolis,MD
-Naval Support Activity Bethesda,39.0010,-77.0960,Military installation,Shown in map,State: Maryland,Bethesda,MD
-Joint Expeditionary Base Little Creek,36.9180,-76.1730,Military installation,Shown in map,State: Virginia,Virginia Beach,VA
-Joint Base Langley-Eustis,37.0830,-76.3600,Military installation,Shown in map,State: Virginia,Hampton,VA
-Joint Base Elmendorf-Richardson,61.2510,-149.8070,Military installation,Shown in map,State: Alaska,Anchorage,AK
-Joint Base Pearl Harbor-Hickam,21.3360,-157.9470,Military installation,Shown in map,State: Hawaii,Honolulu,HI
-Joint Base McGuire-Dix-Lakehurst,40.0160,-74.5920,Military installation,Shown in map,State: New Jersey,Trenton,NJ
-Joint Base Anacostia-Bolling,38.8430,-77.0160,Military installation,Shown in map,District of Columbia,Washington,DC
-Davis-Monthan AFB,32.1665,-110.8830,Military installation,Shown in map,State: Arizona,Tucson,AZ
-Travis AFB,38.2627,-121.9270,Military installation,Shown in map,State: California,Fairfield,CA
-Beale AFB,39.1360,-121.4360,Military installation,Shown in map,State: California,Marysville,CA
-Creech AFB,36.5870,-115.6730,Military installation,Shown in map,State: Nevada,Indian Springs,NV
-Los Angeles AFB,33.9160,-118.3810,Military installation,Shown in map,State: California,El Segundo,CA
-Peterson SFB,38.8230,-104.7000,Military installation,Shown in map,State: Colorado,Colorado Springs,CO
-Schriever SFB,38.8030,-104.5260,Military installation,Shown in map,State: Colorado,Colorado Springs,CO
-Buckley SFB,39.7020,-104.7520,Military installation,Shown in map,State: Colorado,Aurora,CO
-United States Air Force Academy,38.9980,-104.8610,Military installation,Shown in map,State: Colorado,Colorado Springs,CO
-Cheyenne Mountain SFS,38.7440,-104.8460,Military installation,Shown in map,State: Colorado,Colorado Springs,CO
-Dover AFB,39.1290,-75.4660,Military installation,Shown in map,State: Delaware,Dover,DE
-MacDill AFB,27.8490,-82.5210,Military installation,Shown in map,State: Florida,Tampa,FL
-Patrick SFB,28.2350,-80.6100,Military installation,Shown in map,State: Florida,Cocoa Beach,FL
-Moody AFB,30.9670,-83.1930,Military installation,Shown in map,State: Georgia,Valdosta,GA
-Mountain Home AFB,43.0430,-115.8720,Military installation,Shown in map,State: Idaho,Mountain Home,ID
-Scott AFB,38.5450,-89.8350,Military installation,Shown in map,State: Illinois,Belleville,IL
-McConnell AFB,37.6210,-97.2670,Military installation,Shown in map,State: Kansas,Wichita,KS
-Whiteman AFB,38.7300,-93.5480,Military installation,Shown in map,State: Missouri,Knob Noster,MO
-Offutt AFB,41.1180,-95.9120,Military installation,Shown in map,State: Nebraska,Omaha,NE
-Holloman AFB,32.8520,-106.1060,Military installation,Shown in map,State: New Mexico,Alamogordo,NM
-Kirtland AFB,35.0500,-106.5590,Military installation,Shown in map,State: New Mexico,Albuquerque,NM
-Altus AFB,34.6670,-99.2670,Military installation,Shown in map,State: Oklahoma,Altus,OK
-Vance AFB,36.3390,-97.9160,Military installation,Shown in map,State: Oklahoma,Enid,OK
-Shaw AFB,33.9730,-80.4730,Military installation,Shown in map,State: South Carolina,Sumter,SC
-Joint Base Charleston,32.8990,-80.0410,Military installation,Shown in map,State: South Carolina,Charleston,SC
-Ellsworth AFB,44.1450,-103.1040,Military installation,Shown in map,State: South Dakota,Rapid City,SD
-Arnold AFB,35.3890,-86.0860,Military installation,Shown in map,State: Tennessee,Tullahoma,TN
-Dyess AFB,32.4280,-99.8540,Military installation,Shown in map,State: Texas,Abilene,TX
-Goodfellow AFB,31.4340,-100.4030,Military installation,Shown in map,State: Texas,San Angelo,TX
-Laughlin AFB,29.3590,-100.7780,Military installation,Shown in map,State: Texas,Del Rio,TX
-Sheppard AFB,33.9750,-98.4920,Military installation,Shown in map,State: Texas,Wichita Falls,TX
-Fairchild AFB,47.6150,-117.6560,Military installation,Shown in map,State: Washington,Spokane,WA
-Seymour Johnson AFB,35.3390,-77.9610,Military installation,Shown in map,State: North Carolina,Goldsboro,NC
-Grand Forks AFB,47.9610,-97.4010,Military installation,Shown in map,State: North Dakota,Grand Forks,ND
-Columbus AFB,33.6440,-88.4440,Military installation,Shown in map,State: Mississippi,Columbus,MS
-Keesler AFB,30.4120,-88.9240,Military installation,Shown in map,State: Mississippi,Biloxi,MS
-Little Rock AFB,34.9170,-92.1500,Military installation,Shown in map,State: Arkansas,Jacksonville,AR
-Clear Space Force Station,64.2900,-149.1900,Military installation,Shown in map,State: Alaska,Anderson,AK
-Cavalier Space Force Station,48.7240,-97.9000,Military installation,Shown in map,State: North Dakota,Cavalier,ND
-Marine Corps Base Camp Lejeune,34.6080,-77.3360,Military installation,Shown in map,State: North Carolina,Jacksonville,NC
-Marine Corps Base Camp Pendleton,33.3850,-117.4350,Military installation,Shown in map,State: California,Oceanside,CA
-Marine Corps Base Quantico,38.5220,-77.3050,Military installation,Shown in map,State: Virginia,Quantico,VA
-Marine Corps Air Ground Combat Center Twentynine Palms,34.2390,-116.0560,Military installation,Shown in map,State: California,Twentynine Palms,CA
-Marine Corps Recruit Depot Parris Island,32.3380,-80.6890,Military installation,Shown in map,State: South Carolina,Beaufort,SC
-Marine Corps Recruit Depot San Diego,32.7400,-117.2010,Military installation,Shown in map,State: California,San Diego,CA
-Marine Corps Base Hawaii,21.4500,-157.7680,Military installation,Shown in map,State: Hawaii,Kailua,HI
-Marine Corps Air Station New River,34.7080,-77.4400,Military installation,Shown in map,State: North Carolina,Jacksonville,NC
-Marine Corps Logistics Base Albany,31.5460,-84.0470,Military installation,Shown in map,State: Georgia,Albany,GA
-Marine Corps Logistics Base Barstow,34.8420,-117.0240,Military installation,Shown in map,State: California,Barstow,CA
-Eglin AFB,30.4832,-86.5254,Military installation,Shown in map,State: Florida,Valparaiso,FL
-Tyndall AFB,30.0696,-85.5754,Military installation,Shown in map,State: Florida,Panama City,FL
-Hurlburt Field,30.4279,-86.6889,Military installation,Shown in map,State: Florida,Mary Esther,FL
-Cape Canaveral Space Force Station,28.4889,-80.5778,Military installation,Shown in map,State: Florida,Cape Canaveral,FL
-Luke AFB,33.5350,-112.3830,Military installation,Shown in map,State: Arizona,Glendale,AZ
-Edwards AFB,34.9054,-117.8837,Military installation,Shown in map,State: California,Edwards,CA
-Nellis AFB,36.2362,-115.0343,Military installation,Shown in map,State: Nevada,Las Vegas,NV
-Naval Air Station Fallon,39.4166,-118.7003,Military installation,Shown in map,State: Nevada,Fallon,NV
-Naval Air Station Lemoore,36.3330,-119.9520,Military installation,Shown in map,State: California,Lemoore,CA
-Marine Corps Air Station Yuma,32.6566,-114.6060,Military installation,Shown in map,State: Arizona,Yuma,AZ
-Marine Corps Air Station Miramar,32.8671,-117.1418,Military installation,Shown in map,State: California,San Diego,CA
-Marine Corps Air Station Cherry Point,34.9009,-76.8807,Military installation,Shown in map,State: North Carolina,Havelock,NC
-Marine Corps Air Station Beaufort,32.4774,-80.7232,Military installation,Shown in map,State: South Carolina,Beaufort,SC
-Hill AFB,41.1240,-111.9731,Military installation,Shown in map,State: Utah,Layton,UT
-Eielson AFB,64.6657,-147.1015,Military installation,Shown in map,State: Alaska,Fairbanks,AK
-Cannon AFB,34.3828,-103.3222,Military installation,Shown in map,State: New Mexico,Clovis,NM
-Joint Base Andrews,38.8108,-76.8670,Military installation,Shown in map,State: Maryland,Camp Springs,MD
-Joint Base San Antonio,29.4595,-98.4360,Military installation,Shown in map,State: Texas,San Antonio,TX
-Maxwell AFB,32.3790,-86.3660,Military installation,Shown in map,State: Alabama,Montgomery,AL
-Redstone Arsenal,34.6856,-86.6486,Military installation,Shown in map,State: Alabama,Huntsville,AL
-Robins AFB,32.6400,-83.5919,Military installation,Shown in map,State: Georgia,Warner Robins,GA
-Tinker AFB,35.4147,-97.3866,Military installation,Shown in map,State: Oklahoma,Midwest City,OK
-Wright-Patterson AFB,39.8261,-84.0488,Military installation,Shown in map,State: Ohio,Dayton,OH
-Barksdale AFB,32.5018,-93.6627,Military installation,Shown in map,State: Louisiana,Bossier City,LA
-F.E. Warren AFB,41.1517,-104.8678,Military installation,Shown in map,State: Wyoming,Cheyenne,WY
-Hanscom AFB,42.4670,-71.2890,Military installation,Shown in map,State: Massachusetts,Bedford,MA
-Malmstrom AFB,47.5048,-111.1872,Military installation,Shown in map,State: Montana,Great Falls,MT
-Minot AFB,48.4159,-101.3306,Military installation,Shown in map,State: North Dakota,Minot,ND
-Vandenberg SFB,34.7420,-120.5724,Military installation,Shown in map,State: California,Lompoc,CA
-Burlington ANGB,44.4719,-73.1533,Military installation,Shown in map,State: Vermont,South Burlington,VT
+Name,Municipality,State,Latitude,Longitude
+Fort Liberty,Fayetteville,NC,35.1410,-79.0060
+Fort Campbell,Clarksville,TN,36.6672,-87.4639
+Fort Cavazos,Killeen,TX,31.1349,-97.7841
+Fort Moore,Columbus,GA,32.3539,-84.9692
+Fort Bliss,El Paso,TX,31.8131,-106.4210
+Fort Carson,Colorado Springs,CO,38.7375,-104.7889
+Fort Drum,Watertown,NY,44.0509,-75.7591
+Fort Eisenhower,Augusta,GA,33.4204,-82.1402
+Fort Irwin,Barstow,CA,35.2611,-116.6847
+Fort Jackson,Columbia,SC,34.0298,-80.9170
+Fort Knox,Radcliff,KY,37.8915,-85.9636
+Fort Leavenworth,Leavenworth,KS,39.3556,-94.9152
+Fort Leonard Wood,Waynesville,MO,37.7531,-92.1296
+Fort Gregg-Adams,Petersburg,VA,37.2436,-77.3344
+Fort Meade,Odenton,MD,39.1083,-76.7430
+Fort Johnson,Leesville,LA,31.0497,-93.2044
+Fort Riley,Junction City,KS,39.0858,-96.8047
+Fort Novosel,Enterprise,AL,31.3413,-85.7130
+Fort Sill,Lawton,OK,34.6590,-98.4029
+Fort Stewart,Hinesville,GA,31.8693,-81.6093
+Fort Wainwright,Fairbanks,AK,64.8278,-147.6400
+Fort Greely,Delta Junction,AK,63.8767,-145.7350
+Joint Base Lewis-McChord,Tacoma,WA,47.0858,-122.5828
+Fort Belvoir,Alexandria,VA,38.7187,-77.1469
+Aberdeen Proving Ground,Aberdeen,MD,39.4690,-76.1300
+Fort Huachuca,Sierra Vista,AZ,31.5500,-110.3450
+Fort Detrick,Frederick,MD,39.4360,-77.4280
+White Sands Missile Range,Las Cruces,NM,32.3784,-106.4844
+Fort Shafter,Honolulu,HI,21.3460,-157.8920
+Schofield Barracks,Wahiawa,HI,21.4936,-158.0640
+United States Military Academy,West Point,NY,41.3915,-73.9568
+Presidio of Monterey,Monterey,CA,36.5970,-121.9180
+Fort Hamilton,Brooklyn,NY,40.6090,-74.0300
+Fort McCoy,Sparta,WI,44.0370,-90.6760
+Anniston Army Depot,Anniston,AL,33.6200,-85.9600
+Picatinny Arsenal,Dover,NJ,40.9300,-74.5400
+Tobyhanna Army Depot,Tobyhanna,PA,41.1900,-75.4200
+Fort A.P. Hill,Bowling Green,VA,38.0900,-77.2900
+Naval Station Norfolk,Norfolk,VA,36.9460,-76.3120
+Naval Base San Diego,San Diego,CA,32.6800,-117.1290
+Naval Base Coronado,Coronado,CA,32.6990,-117.2150
+Naval Base Kitsap,Bremerton,WA,47.7100,-122.7080
+Naval Station Mayport,Jacksonville,FL,30.3920,-81.4240
+Naval Air Station Jacksonville,Jacksonville,FL,30.2360,-81.6800
+Naval Station Everett,Everett,WA,47.9920,-122.2460
+Naval Submarine Base New London,Groton,CT,41.3960,-72.0870
+Naval Submarine Base Kings Bay,St. Marys,GA,30.7960,-81.5160
+Naval Air Station Oceana,Virginia Beach,VA,36.8206,-76.0333
+Naval Air Station Pensacola,Pensacola,FL,30.3500,-87.3050
+Naval Air Station Whidbey Island,Oak Harbor,WA,48.3520,-122.6560
+Naval Air Station Patuxent River,Lexington Park,MD,38.2860,-76.4120
+Naval Air Station Kingsville,Kingsville,TX,27.5070,-97.8090
+Naval Air Station Meridian,Meridian,MS,32.5520,-88.5560
+Naval Air Station Fort Worth JRB,Fort Worth,TX,32.7690,-97.4410
+Naval Air Station Key West,Key West,FL,24.5760,-81.6890
+Naval Air Weapons Station China Lake,Ridgecrest,CA,35.6850,-117.6920
+Naval Base Ventura County,Oxnard,CA,34.1200,-119.1200
+Naval Station Great Lakes,North Chicago,IL,42.3100,-87.8400
+Naval Air Station Whiting Field,Milton,FL,30.7240,-87.0210
+Portsmouth Naval Shipyard,Kittery,ME,43.0790,-70.7430
+United States Naval Academy,Annapolis,MD,38.9840,-76.4840
+Naval Support Activity Bethesda,Bethesda,MD,39.0010,-77.0960
+Joint Expeditionary Base Little Creek,Virginia Beach,VA,36.9180,-76.1730
+Joint Base Langley-Eustis,Hampton,VA,37.0830,-76.3600
+Joint Base Elmendorf-Richardson,Anchorage,AK,61.2510,-149.8070
+Joint Base Pearl Harbor-Hickam,Honolulu,HI,21.3360,-157.9470
+Joint Base McGuire-Dix-Lakehurst,Trenton,NJ,40.0160,-74.5920
+Joint Base Anacostia-Bolling,Washington,DC,38.8430,-77.0160
+Davis-Monthan AFB,Tucson,AZ,32.1665,-110.8830
+Travis AFB,Fairfield,CA,38.2627,-121.9270
+Beale AFB,Marysville,CA,39.1360,-121.4360
+Creech AFB,Indian Springs,NV,36.5870,-115.6730
+Los Angeles AFB,El Segundo,CA,33.9160,-118.3810
+Peterson SFB,Colorado Springs,CO,38.8230,-104.7000
+Schriever SFB,Colorado Springs,CO,38.8030,-104.5260
+Buckley SFB,Aurora,CO,39.7020,-104.7520
+United States Air Force Academy,Colorado Springs,CO,38.9980,-104.8610
+Cheyenne Mountain SFS,Colorado Springs,CO,38.7440,-104.8460
+Dover AFB,Dover,DE,39.1290,-75.4660
+MacDill AFB,Tampa,FL,27.8490,-82.5210
+Patrick SFB,Cocoa Beach,FL,28.2350,-80.6100
+Moody AFB,Valdosta,GA,30.9670,-83.1930
+Mountain Home AFB,Mountain Home,ID,43.0430,-115.8720
+Scott AFB,Belleville,IL,38.5450,-89.8350
+McConnell AFB,Wichita,KS,37.6210,-97.2670
+Whiteman AFB,Knob Noster,MO,38.7300,-93.5480
+Offutt AFB,Omaha,NE,41.1180,-95.9120
+Holloman AFB,Alamogordo,NM,32.8520,-106.1060
+Kirtland AFB,Albuquerque,NM,35.0500,-106.5590
+Altus AFB,Altus,OK,34.6670,-99.2670
+Vance AFB,Enid,OK,36.3390,-97.9160
+Shaw AFB,Sumter,SC,33.9730,-80.4730
+Joint Base Charleston,Charleston,SC,32.8990,-80.0410
+Ellsworth AFB,Rapid City,SD,44.1450,-103.1040
+Arnold AFB,Tullahoma,TN,35.3890,-86.0860
+Dyess AFB,Abilene,TX,32.4280,-99.8540
+Goodfellow AFB,San Angelo,TX,31.4340,-100.4030
+Laughlin AFB,Del Rio,TX,29.3590,-100.7780
+Sheppard AFB,Wichita Falls,TX,33.9750,-98.4920
+Fairchild AFB,Spokane,WA,47.6150,-117.6560
+Seymour Johnson AFB,Goldsboro,NC,35.3390,-77.9610
+Grand Forks AFB,Grand Forks,ND,47.9610,-97.4010
+Columbus AFB,Columbus,MS,33.6440,-88.4440
+Keesler AFB,Biloxi,MS,30.4120,-88.9240
+Little Rock AFB,Jacksonville,AR,34.9170,-92.1500
+Clear Space Force Station,Anderson,AK,64.2900,-149.1900
+Cavalier Space Force Station,Cavalier,ND,48.7240,-97.9000
+Marine Corps Base Camp Lejeune,Jacksonville,NC,34.6080,-77.3360
+Marine Corps Base Camp Pendleton,Oceanside,CA,33.3850,-117.4350
+Marine Corps Base Quantico,Quantico,VA,38.5220,-77.3050
+Marine Corps Air Ground Combat Center Twentynine Palms,Twentynine Palms,CA,34.2390,-116.0560
+Marine Corps Recruit Depot Parris Island,Beaufort,SC,32.3380,-80.6890
+Marine Corps Recruit Depot San Diego,San Diego,CA,32.7400,-117.2010
+Marine Corps Base Hawaii,Kailua,HI,21.4500,-157.7680
+Marine Corps Air Station New River,Jacksonville,NC,34.7080,-77.4400
+Marine Corps Logistics Base Albany,Albany,GA,31.5460,-84.0470
+Marine Corps Logistics Base Barstow,Barstow,CA,34.8420,-117.0240
+Eglin AFB,Valparaiso,FL,30.4832,-86.5254
+Tyndall AFB,Panama City,FL,30.0696,-85.5754
+Hurlburt Field,Mary Esther,FL,30.4279,-86.6889
+Cape Canaveral Space Force Station,Cape Canaveral,FL,28.4889,-80.5778
+Luke AFB,Glendale,AZ,33.5350,-112.3830
+Edwards AFB,Edwards,CA,34.9054,-117.8837
+Nellis AFB,Las Vegas,NV,36.2362,-115.0343
+Naval Air Station Fallon,Fallon,NV,39.4166,-118.7003
+Naval Air Station Lemoore,Lemoore,CA,36.3330,-119.9520
+Marine Corps Air Station Yuma,Yuma,AZ,32.6566,-114.6060
+Marine Corps Air Station Miramar,San Diego,CA,32.8671,-117.1418
+Marine Corps Air Station Cherry Point,Havelock,NC,34.9009,-76.8807
+Marine Corps Air Station Beaufort,Beaufort,SC,32.4774,-80.7232
+Hill AFB,Layton,UT,41.1240,-111.9731
+Eielson AFB,Fairbanks,AK,64.6657,-147.1015
+Cannon AFB,Clovis,NM,34.3828,-103.3222
+Joint Base Andrews,Camp Springs,MD,38.8108,-76.8670
+Joint Base San Antonio,San Antonio,TX,29.4595,-98.4360
+Maxwell AFB,Montgomery,AL,32.3790,-86.3660
+Redstone Arsenal,Huntsville,AL,34.6856,-86.6486
+Robins AFB,Warner Robins,GA,32.6400,-83.5919
+Tinker AFB,Midwest City,OK,35.4147,-97.3866
+Wright-Patterson AFB,Dayton,OH,39.8261,-84.0488
+Barksdale AFB,Bossier City,LA,32.5018,-93.6627
+F.E. Warren AFB,Cheyenne,WY,41.1517,-104.8678
+Hanscom AFB,Bedford,MA,42.4670,-71.2890
+Malmstrom AFB,Great Falls,MT,47.5048,-111.1872
+Minot AFB,Minot,ND,48.4159,-101.3306
+Vandenberg SFB,Lompoc,CA,34.7420,-120.5724
+Burlington ANGB,South Burlington,VT,44.4719,-73.1533
