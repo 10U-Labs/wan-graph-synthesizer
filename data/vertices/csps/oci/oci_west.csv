@@ -1,5 +1,2 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
-OCI Secret West Region,32.7555,-97.3308,CSP data center,Shown in map,"Layer: Secret regions for cloud service providers
-Provider: OCI
-Region: Secret West Region
-Location: Fort Worth, TX",Fort Worth,TX
+name,municipality,state,latitude,longitude
+OCI Secret West Region,Fort Worth,TX,32.7555,-97.3308
