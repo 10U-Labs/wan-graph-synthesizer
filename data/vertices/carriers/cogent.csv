@@ -1,163 +1,155 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
-"Cogent Abilene, TX",32.4487,-99.7331,PoP,Not shown in map,Cogent Core Network PoP,Abilene,TX
-"Cogent Akron, OH",41.0814,-81.5190,PoP,Not shown in map,Cogent Core Network PoP,Akron,OH
-"Cogent Albany, NY",42.6526,-73.7562,PoP,Not shown in map,Cogent Core Network PoP,Albany,NY
-"Cogent Albuquerque, NM",35.0844,-106.6504,PoP,Not shown in map,Cogent Core Network PoP,Albuquerque,NM
-"Cogent Amarillo, TX",35.2220,-101.8313,PoP,Not shown in map,Cogent Core Network PoP,Amarillo,TX
-"Cogent Andover, MA",42.6583,-71.1368,PoP,Not shown in map,Cogent Core Network PoP,Andover,MA
-"Cogent Ashburn, VA",39.0438,-77.4875,PoP,Not shown in map,Cogent Core Network PoP,Ashburn,VA
-"Cogent Atlanta, GA",33.7490,-84.3880,PoP,Not shown in map,Cogent Core Network PoP,Atlanta,GA
-"Cogent Atmore, AL",31.0238,-87.4936,PoP,Not shown in map,Cogent Core Network PoP,Atmore,AL
-"Cogent Austin, TX",30.2672,-97.7431,PoP,Not shown in map,Cogent Core Network PoP,Austin,TX
-"Cogent Bakersfield, CA",35.3733,-119.0187,PoP,Not shown in map,Cogent Core Network PoP,Bakersfield,CA
-"Cogent Baltimore, MD",39.2904,-76.6122,PoP,Not shown in map,Cogent Core Network PoP,Baltimore,MD
-"Cogent Barrie, ON",44.3894,-79.6903,PoP,Not shown in map,Cogent Core Network PoP,Barrie,ON
-"Cogent Baton Rouge, LA",30.4515,-91.1871,PoP,Not shown in map,Cogent Core Network PoP,Baton Rouge,LA
-"Cogent Belfield, ND",46.8836,-103.1996,PoP,Not shown in map,Cogent Core Network PoP,Belfield,ND
-"Cogent Bend, OR",44.0582,-121.3153,PoP,Not shown in map,Cogent Core Network PoP,Bend,OR
-"Cogent Billings, MT",45.7870,-108.5000,PoP,Not shown in map,Cogent Core Network PoP,Billings,MT
-"Cogent Binghamton, NY",42.0987,-75.9180,PoP,Not shown in map,Cogent Core Network PoP,Binghamton,NY
-"Cogent Birmingham, AL",33.5186,-86.8025,PoP,Not shown in map,Cogent Core Network PoP,Birmingham,AL
-"Cogent Bismarck, ND",46.8080,-100.7840,PoP,Not shown in map,Cogent Core Network PoP,Bismarck,ND
-"Cogent Bloomington, IL",40.4842,-88.9937,PoP,Not shown in map,Cogent Core Network PoP,Bloomington,IL
-"Cogent Boca Raton, FL",26.3683,-80.1289,PoP,Not shown in map,Cogent Core Network PoP,Boca Raton,FL
-"Cogent Boise, ID",43.6150,-116.2023,PoP,Not shown in map,Cogent Core Network PoP,Boise,ID
-"Cogent Boston, MA",42.3601,-71.0589,PoP,Not shown in map,Cogent Core Network PoP,Boston,MA
-"Cogent Bowie, TX",33.5590,-97.8486,PoP,Not shown in map,Cogent Core Network PoP,Bowie,TX
-"Cogent Bryan, TX",30.6744,-96.3700,PoP,Not shown in map,Cogent Core Network PoP,Bryan,TX
-"Cogent Buffalo, NY",42.8864,-78.8784,PoP,Not shown in map,Cogent Core Network PoP,Buffalo,NY
-"Cogent Burbank, CA",34.1808,-118.3090,PoP,Not shown in map,Cogent Core Network PoP,Burbank,CA
-"Cogent Calgary, AB",51.0447,-114.0719,PoP,Not shown in map,Cogent Core Network PoP,Calgary,AB
-"Cogent Cedar Rapids, IA",41.9779,-91.6656,PoP,Not shown in map,Cogent Core Network PoP,Cedar Rapids,IA
-"Cogent Champaign, IL",40.1164,-88.2434,PoP,Not shown in map,Cogent Core Network PoP,Champaign,IL
-"Cogent Charleston, SC",32.7765,-79.9311,PoP,Not shown in map,Cogent Core Network PoP,Charleston,SC
-"Cogent Charleston, WV",38.3498,-81.6326,PoP,Not shown in map,Cogent Core Network PoP,Charleston,WV
-"Cogent Charlotte, NC",35.2271,-80.8431,PoP,Not shown in map,Cogent Core Network PoP,Charlotte,NC
-"Cogent Charlottesville, VA",38.0293,-78.4767,PoP,Not shown in map,Cogent Core Network PoP,Charlottesville,VA
-"Cogent Cheyenne, WY",41.1400,-104.8202,PoP,Not shown in map,Cogent Core Network PoP,Cheyenne,WY
-"Cogent Chicago, IL",41.8781,-87.6298,PoP,Not shown in map,Cogent Core Network PoP,Chicago,IL
-"Cogent Cincinnati, OH",39.1031,-84.5120,PoP,Not shown in map,Cogent Core Network PoP,Cincinnati,OH
-"Cogent Cleveland, OH",41.4993,-81.6944,PoP,Not shown in map,Cogent Core Network PoP,Cleveland,OH
-"Cogent Clinton, IA",41.8444,-90.1887,PoP,Not shown in map,Cogent Core Network PoP,Clinton,IA
-"Cogent Colorado Springs, CO",38.8339,-104.8214,PoP,Not shown in map,Cogent Core Network PoP,Colorado Springs,CO
-"Cogent Columbus, OH",39.9612,-82.9988,PoP,Not shown in map,Cogent Core Network PoP,Columbus,OH
-"Cogent Corpus Christi, TX",27.8006,-97.3964,PoP,Not shown in map,Cogent Core Network PoP,Corpus Christi,TX
-"Cogent Dallas, TX",32.7767,-96.7970,PoP,Not shown in map,Cogent Core Network PoP,Dallas,TX
-"Cogent Denver, CO",39.7392,-104.9903,PoP,Not shown in map,Cogent Core Network PoP,Denver,CO
-"Cogent Des Moines, IA",41.5868,-93.6091,PoP,Not shown in map,Cogent Core Network PoP,Des Moines,IA
-"Cogent Detroit, MI",42.3314,-83.0458,PoP,Not shown in map,Cogent Core Network PoP,Detroit,MI
-"Cogent Eau Claire, WI",44.8113,-91.4985,PoP,Not shown in map,Cogent Core Network PoP,Eau Claire,WI
-"Cogent El Paso, TX",31.7619,-106.4850,PoP,Not shown in map,Cogent Core Network PoP,El Paso,TX
-"Cogent Erie, PA",42.1292,-80.0851,PoP,Not shown in map,Cogent Core Network PoP,Erie,PA
-"Cogent Everett, WA",47.9790,-122.2021,PoP,Not shown in map,Cogent Core Network PoP,Everett,WA
-"Cogent Fairfax, VA",38.8462,-77.3064,PoP,Not shown in map,Cogent Core Network PoP,Fairfax,VA
-"Cogent Fargo, ND",46.8770,-96.7890,PoP,Not shown in map,Cogent Core Network PoP,Fargo,ND
-"Cogent Flint, MI",43.0125,-83.6875,PoP,Not shown in map,Cogent Core Network PoP,Flint,MI
-"Cogent Fort Myers, FL",26.6406,-81.8723,PoP,Not shown in map,Cogent Core Network PoP,Fort Myers,FL
-"Cogent Fort Worth, TX",32.7555,-97.3308,PoP,Not shown in map,Cogent Core Network PoP,Fort Worth,TX
-"Cogent Fresno, CA",36.7378,-119.7871,PoP,Not shown in map,Cogent Core Network PoP,Fresno,CA
-"Cogent Grand Island, NE",40.9264,-98.3420,PoP,Not shown in map,Cogent Core Network PoP,Grand Island,NE
-"Cogent Grand Rapids, MI",42.9634,-85.6681,PoP,Not shown in map,Cogent Core Network PoP,Grand Rapids,MI
-"Cogent Guadalajara, MX",20.6597,-103.3496,PoP,Not shown in map,Cogent Core Network PoP,Guadalajara,MX
-"Cogent Hamlet, NC",34.8853,-79.6948,PoP,Not shown in map,Cogent Core Network PoP,Hamlet,NC
-"Cogent Harrisburg, PA",40.2732,-76.8867,PoP,Not shown in map,Cogent Core Network PoP,Harrisburg,PA
-"Cogent Houston, TX",29.7604,-95.3698,PoP,Not shown in map,Cogent Core Network PoP,Houston,TX
-"Cogent Huntsville, AL",34.7304,-86.5861,PoP,Not shown in map,Cogent Core Network PoP,Huntsville,AL
-"Cogent Indianapolis, IN",39.7684,-86.1581,PoP,Not shown in map,Cogent Core Network PoP,Indianapolis,IN
-"Cogent Jackson, MS",32.2988,-90.1848,PoP,Not shown in map,Cogent Core Network PoP,Jackson,MS
-"Cogent Jacksonville, FL",30.3322,-81.6557,PoP,Not shown in map,Cogent Core Network PoP,Jacksonville,FL
-"Cogent Jefferson City, MO",38.5767,-92.1735,PoP,Not shown in map,Cogent Core Network PoP,Jefferson City,MO
-"Cogent Kamloops, BC",50.6745,-120.3273,PoP,Not shown in map,Cogent Core Network PoP,Kamloops,BC
-"Cogent Kansas City, MO",39.0997,-94.5786,PoP,Not shown in map,Cogent Core Network PoP,Kansas City,MO
-"Cogent Knoxville, TN",35.9606,-83.9207,PoP,Not shown in map,Cogent Core Network PoP,Knoxville,TN
-"Cogent Lansing, MI",42.7325,-84.5555,PoP,Not shown in map,Cogent Core Network PoP,Lansing,MI
-"Cogent Las Cruces, NM",32.3199,-106.7637,PoP,Not shown in map,Cogent Core Network PoP,Las Cruces,NM
-"Cogent Las Vegas, NV",36.1699,-115.1398,PoP,Not shown in map,Cogent Core Network PoP,Las Vegas,NV
-"Cogent Lexington, KY",38.0406,-84.5037,PoP,Not shown in map,Cogent Core Network PoP,Lexington,KY
-"Cogent Lincoln, NE",40.8136,-96.7026,PoP,Not shown in map,Cogent Core Network PoP,Lincoln,NE
-"Cogent Little Rock, AR",34.7465,-92.2896,PoP,Not shown in map,Cogent Core Network PoP,Little Rock,AR
-"Cogent Livermore, CA",37.6819,-121.7680,PoP,Not shown in map,Cogent Core Network PoP,Livermore,CA
-"Cogent Los Angeles, CA",34.0522,-118.2437,PoP,Not shown in map,Cogent Core Network PoP,Los Angeles,CA
-"Cogent Los Osos, CA",35.3111,-120.8324,PoP,Not shown in map,Cogent Core Network PoP,Los Osos,CA
-"Cogent Louisville, KY",38.2527,-85.7585,PoP,Not shown in map,Cogent Core Network PoP,Louisville,KY
-"Cogent Lubbock, TX",33.5779,-101.8552,PoP,Not shown in map,Cogent Core Network PoP,Lubbock,TX
-"Cogent Madison, WI",43.0731,-89.4012,PoP,Not shown in map,Cogent Core Network PoP,Madison,WI
-"Cogent Martinsburg, WV",39.4562,-77.9639,PoP,Not shown in map,Cogent Core Network PoP,Martinsburg,WV
-"Cogent McAllen, TX",26.2034,-98.2300,PoP,Not shown in map,Cogent Core Network PoP,McAllen,TX
-"Cogent Medford, OR",42.3265,-122.8756,PoP,Not shown in map,Cogent Core Network PoP,Medford,OR
-"Cogent Memphis, TN",35.1495,-90.0490,PoP,Not shown in map,Cogent Core Network PoP,Memphis,TN
-"Cogent Mexico City, MX",19.4326,-99.1332,PoP,Not shown in map,Cogent Core Network PoP,Mexico City,MX
-"Cogent Miami, FL",25.7617,-80.1918,PoP,Not shown in map,Cogent Core Network PoP,Miami,FL
-"Cogent Midland, TX",31.9974,-102.0779,PoP,Not shown in map,Cogent Core Network PoP,Midland,TX
-"Cogent Milwaukee, WI",43.0389,-87.9065,PoP,Not shown in map,Cogent Core Network PoP,Milwaukee,WI
-"Cogent Minneapolis, MN",44.9778,-93.2650,PoP,Not shown in map,Cogent Core Network PoP,Minneapolis,MN
-"Cogent Missoula, MT",46.8721,-113.9966,PoP,Not shown in map,Cogent Core Network PoP,Missoula,MT
-"Cogent Mobile, AL",30.6954,-88.0399,PoP,Not shown in map,Cogent Core Network PoP,Mobile,AL
-"Cogent Monterrey, MX",25.6866,-100.3161,PoP,Not shown in map,Cogent Core Network PoP,Monterrey,MX
-"Cogent Montgomery, AL",32.3668,-86.3000,PoP,Not shown in map,Cogent Core Network PoP,Montgomery,AL
-"Cogent Montreal, QC",45.5019,-73.5674,PoP,Not shown in map,Cogent Core Network PoP,Montreal,QC
-"Cogent Myrtle Beach, SC",33.6891,-78.8867,PoP,Not shown in map,Cogent Core Network PoP,Myrtle Beach,SC
-"Cogent Nashville, TN",36.1627,-86.7816,PoP,Not shown in map,Cogent Core Network PoP,Nashville,TN
-"Cogent New Orleans, LA",29.9511,-90.0715,PoP,Not shown in map,Cogent Core Network PoP,New Orleans,LA
-"Cogent New York, NY",40.7128,-74.0060,PoP,Not shown in map,Cogent Core Network PoP,New York,NY
-"Cogent Newark, NJ",40.7357,-74.1724,PoP,Not shown in map,Cogent Core Network PoP,Newark,NJ
-"Cogent Oakland, CA",37.8044,-122.2712,PoP,Not shown in map,Cogent Core Network PoP,Oakland,CA
-"Cogent Okarche, OK",35.7281,-97.9762,PoP,Not shown in map,Cogent Core Network PoP,Okarche,OK
-"Cogent Oklahoma City, OK",35.4676,-97.5164,PoP,Not shown in map,Cogent Core Network PoP,Oklahoma City,OK
-"Cogent Omaha, NE",41.2565,-95.9345,PoP,Not shown in map,Cogent Core Network PoP,Omaha,NE
-"Cogent Orlando, FL",28.5383,-81.3792,PoP,Not shown in map,Cogent Core Network PoP,Orlando,FL
-"Cogent Oroville, CA",39.5138,-121.5564,PoP,Not shown in map,Cogent Core Network PoP,Oroville,CA
-"Cogent Palm Springs, CA",33.8303,-116.5453,PoP,Not shown in map,Cogent Core Network PoP,Palm Springs,CA
-"Cogent Pensacola, FL",30.4213,-87.2169,PoP,Not shown in map,Cogent Core Network PoP,Pensacola,FL
-"Cogent Philadelphia, PA",39.9526,-75.1652,PoP,Not shown in map,Cogent Core Network PoP,Philadelphia,PA
-"Cogent Phoenix, AZ",33.4484,-112.0740,PoP,Not shown in map,Cogent Core Network PoP,Phoenix,AZ
-"Cogent Pittsburgh, PA",40.4406,-79.9959,PoP,Not shown in map,Cogent Core Network PoP,Pittsburgh,PA
-"Cogent Portland, OR",45.5152,-122.6765,PoP,Not shown in map,Cogent Core Network PoP,Portland,OR
-"Cogent Providence, RI",41.8240,-71.4128,PoP,Not shown in map,Cogent Core Network PoP,Providence,RI
-"Cogent Queretaro, MX",20.5888,-100.3899,PoP,Not shown in map,Cogent Core Network PoP,Queretaro,MX
-"Cogent Raleigh, NC",35.7796,-78.6382,PoP,Not shown in map,Cogent Core Network PoP,Raleigh,NC
-"Cogent Reno, NV",39.5296,-119.8138,PoP,Not shown in map,Cogent Core Network PoP,Reno,NV
-"Cogent Rialto, CA",34.1064,-117.3703,PoP,Not shown in map,Cogent Core Network PoP,Rialto,CA
-"Cogent Richmond, VA",37.5407,-77.4360,PoP,Not shown in map,Cogent Core Network PoP,Richmond,VA
-"Cogent Roanoke, VA",37.2710,-79.9414,PoP,Not shown in map,Cogent Core Network PoP,Roanoke,VA
-"Cogent Rochester, NY",43.1566,-77.6088,PoP,Not shown in map,Cogent Core Network PoP,Rochester,NY
-"Cogent Sacramento, CA",38.5816,-121.4944,PoP,Not shown in map,Cogent Core Network PoP,Sacramento,CA
-"Cogent Salt Lake City, UT",40.7608,-111.8910,PoP,Not shown in map,Cogent Core Network PoP,Salt Lake City,UT
-"Cogent San Antonio, TX",29.4241,-98.4936,PoP,Not shown in map,Cogent Core Network PoP,San Antonio,TX
-"Cogent San Diego, CA",32.7157,-117.1611,PoP,Not shown in map,Cogent Core Network PoP,San Diego,CA
-"Cogent San Francisco, CA",37.7749,-122.4194,PoP,Not shown in map,Cogent Core Network PoP,San Francisco,CA
-"Cogent Santa Barbara, CA",34.4208,-119.6982,PoP,Not shown in map,Cogent Core Network PoP,Santa Barbara,CA
-"Cogent Santa Clara, CA",37.3541,-121.9552,PoP,Not shown in map,Cogent Core Network PoP,Santa Clara,CA
-"Cogent Scranton, PA",41.4090,-75.6624,PoP,Not shown in map,Cogent Core Network PoP,Scranton,PA
-"Cogent Seattle, WA",47.6062,-122.3321,PoP,Not shown in map,Cogent Core Network PoP,Seattle,WA
-"Cogent Shreveport, LA",32.5252,-93.7502,PoP,Not shown in map,Cogent Core Network PoP,Shreveport,LA
-"Cogent South Bend, IN",41.6764,-86.2500,PoP,Not shown in map,Cogent Core Network PoP,South Bend,IN
-"Cogent Spokane, WA",47.6588,-117.4260,PoP,Not shown in map,Cogent Core Network PoP,Spokane,WA
-"Cogent Springfield, IL",39.7817,-89.6501,PoP,Not shown in map,Cogent Core Network PoP,Springfield,IL
-"Cogent Springfield, MA",42.1015,-72.5898,PoP,Not shown in map,Cogent Core Network PoP,Springfield,MA
-"Cogent St Cloud, MN",45.5579,-94.1632,PoP,Not shown in map,Cogent Core Network PoP,St Cloud,MN
-"Cogent St. Louis, MO",38.6270,-90.1994,PoP,Not shown in map,Cogent Core Network PoP,St. Louis,MO
-"Cogent Stamford, CT",41.0534,-73.5387,PoP,Not shown in map,Cogent Core Network PoP,Stamford,CT
-"Cogent Stockton, CA",37.9577,-121.2908,PoP,Not shown in map,Cogent Core Network PoP,Stockton,CA
-"Cogent Syracuse, NY",43.0481,-76.1474,PoP,Not shown in map,Cogent Core Network PoP,Syracuse,NY
-"Cogent Tacoma, WA",47.2529,-122.4443,PoP,Not shown in map,Cogent Core Network PoP,Tacoma,WA
-"Cogent Tallahassee, FL",30.4383,-84.2807,PoP,Not shown in map,Cogent Core Network PoP,Tallahassee,FL
-"Cogent Tampa, FL",27.9506,-82.4572,PoP,Not shown in map,Cogent Core Network PoP,Tampa,FL
-"Cogent Toledo, OH",41.6528,-83.5552,PoP,Not shown in map,Cogent Core Network PoP,Toledo,OH
-"Cogent Toronto, ON",43.6532,-79.3832,PoP,Not shown in map,Cogent Core Network PoP,Toronto,ON
-"Cogent Tucson, AZ",32.2226,-110.9747,PoP,Not shown in map,Cogent Core Network PoP,Tucson,AZ
-"Cogent Tulsa, OK",36.1540,-95.9928,PoP,Not shown in map,Cogent Core Network PoP,Tulsa,OK
-"Cogent Van Buren, AR",35.4365,-94.3483,PoP,Not shown in map,Cogent Core Network PoP,Van Buren,AR
-"Cogent Vancouver, BC",49.2827,-123.1207,PoP,Not shown in map,Cogent Core Network PoP,Vancouver,BC
-"Cogent Ventura, CA",34.2746,-119.2290,PoP,Not shown in map,Cogent Core Network PoP,Ventura,CA
-"Cogent Virginia Beach, VA",36.8529,-75.9780,PoP,Not shown in map,Cogent Core Network PoP,Virginia Beach,VA
-"Cogent Waco, TX",31.5493,-97.1467,PoP,Not shown in map,Cogent Core Network PoP,Waco,TX
-"Cogent Washington, DC",38.9072,-77.0369,PoP,Not shown in map,Cogent Core Network PoP,Washington,DC
-"Cogent Wenatchee, WA",47.4235,-120.3103,PoP,Not shown in map,Cogent Core Network PoP,Wenatchee,WA
-"Cogent West Palm Beach, FL",26.7153,-80.0534,PoP,Not shown in map,Cogent Core Network PoP,West Palm Beach,FL
-"Cogent Wichita, KS",37.6872,-97.3301,PoP,Not shown in map,Cogent Core Network PoP,Wichita,KS
-"Cogent Wilmington, DE",39.7459,-75.5466,PoP,Not shown in map,Cogent Core Network PoP,Wilmington,DE
-"Cogent Winnipeg, MB",49.8951,-97.1384,PoP,Not shown in map,Cogent Core Network PoP,Winnipeg,MB
-"Cogent Winston Salem, NC",36.0999,-80.2442,PoP,Not shown in map,Cogent Core Network PoP,Winston Salem,NC
-"Cogent Worcester, MA",42.2626,-71.8023,PoP,Not shown in map,Cogent Core Network PoP,Worcester,MA
-"Cogent Edmonton, AB",53.5344,-113.4903,PoP,Not shown in map,Cogent Core Network PoP,Edmonton,AB
+municipality,state,latitude,longitude
+Abilene,TX,32.4487,-99.7331
+Akron,OH,41.0814,-81.5190
+Albany,NY,42.6526,-73.7562
+Albuquerque,NM,35.0844,-106.6504
+Amarillo,TX,35.2220,-101.8313
+Andover,MA,42.6583,-71.1368
+Ashburn,VA,39.0438,-77.4875
+Atlanta,GA,33.7490,-84.3880
+Atmore,AL,31.0238,-87.4936
+Austin,TX,30.2672,-97.7431
+Bakersfield,CA,35.3733,-119.0187
+Baltimore,MD,39.2904,-76.6122
+Baton Rouge,LA,30.4515,-91.1871
+Belfield,ND,46.8836,-103.1996
+Bend,OR,44.0582,-121.3153
+Billings,MT,45.7870,-108.5000
+Binghamton,NY,42.0987,-75.9180
+Birmingham,AL,33.5186,-86.8025
+Bismarck,ND,46.8080,-100.7840
+Bloomington,IL,40.4842,-88.9937
+Boca Raton,FL,26.3683,-80.1289
+Boise,ID,43.6150,-116.2023
+Boston,MA,42.3601,-71.0589
+Bowie,TX,33.5590,-97.8486
+Bryan,TX,30.6744,-96.3700
+Buffalo,NY,42.8864,-78.8784
+Burbank,CA,34.1808,-118.3090
+Cedar Rapids,IA,41.9779,-91.6656
+Champaign,IL,40.1164,-88.2434
+Charleston,SC,32.7765,-79.9311
+Charleston,WV,38.3498,-81.6326
+Charlotte,NC,35.2271,-80.8431
+Charlottesville,VA,38.0293,-78.4767
+Cheyenne,WY,41.1400,-104.8202
+Chicago,IL,41.8781,-87.6298
+Cincinnati,OH,39.1031,-84.5120
+Cleveland,OH,41.4993,-81.6944
+Clinton,IA,41.8444,-90.1887
+Colorado Springs,CO,38.8339,-104.8214
+Columbus,OH,39.9612,-82.9988
+Corpus Christi,TX,27.8006,-97.3964
+Dallas,TX,32.7767,-96.7970
+Denver,CO,39.7392,-104.9903
+Des Moines,IA,41.5868,-93.6091
+Detroit,MI,42.3314,-83.0458
+Eau Claire,WI,44.8113,-91.4985
+El Paso,TX,31.7619,-106.4850
+Erie,PA,42.1292,-80.0851
+Everett,WA,47.9790,-122.2021
+Fairfax,VA,38.8462,-77.3064
+Fargo,ND,46.8770,-96.7890
+Flint,MI,43.0125,-83.6875
+Fort Myers,FL,26.6406,-81.8723
+Fort Worth,TX,32.7555,-97.3308
+Fresno,CA,36.7378,-119.7871
+Grand Island,NE,40.9264,-98.3420
+Grand Rapids,MI,42.9634,-85.6681
+Guadalajara,MX,20.6597,-103.3496
+Hamlet,NC,34.8853,-79.6948
+Harrisburg,PA,40.2732,-76.8867
+Houston,TX,29.7604,-95.3698
+Huntsville,AL,34.7304,-86.5861
+Indianapolis,IN,39.7684,-86.1581
+Jackson,MS,32.2988,-90.1848
+Jacksonville,FL,30.3322,-81.6557
+Jefferson City,MO,38.5767,-92.1735
+Kansas City,MO,39.0997,-94.5786
+Knoxville,TN,35.9606,-83.9207
+Lansing,MI,42.7325,-84.5555
+Las Cruces,NM,32.3199,-106.7637
+Las Vegas,NV,36.1699,-115.1398
+Lexington,KY,38.0406,-84.5037
+Lincoln,NE,40.8136,-96.7026
+Little Rock,AR,34.7465,-92.2896
+Livermore,CA,37.6819,-121.7680
+Los Angeles,CA,34.0522,-118.2437
+Los Osos,CA,35.3111,-120.8324
+Louisville,KY,38.2527,-85.7585
+Lubbock,TX,33.5779,-101.8552
+Madison,WI,43.0731,-89.4012
+Martinsburg,WV,39.4562,-77.9639
+McAllen,TX,26.2034,-98.2300
+Medford,OR,42.3265,-122.8756
+Memphis,TN,35.1495,-90.0490
+Mexico City,MX,19.4326,-99.1332
+Miami,FL,25.7617,-80.1918
+Midland,TX,31.9974,-102.0779
+Milwaukee,WI,43.0389,-87.9065
+Minneapolis,MN,44.9778,-93.2650
+Missoula,MT,46.8721,-113.9966
+Mobile,AL,30.6954,-88.0399
+Monterrey,MX,25.6866,-100.3161
+Montgomery,AL,32.3668,-86.3000
+Myrtle Beach,SC,33.6891,-78.8867
+Nashville,TN,36.1627,-86.7816
+New Orleans,LA,29.9511,-90.0715
+New York,NY,40.7128,-74.0060
+Newark,NJ,40.7357,-74.1724
+Oakland,CA,37.8044,-122.2712
+Okarche,OK,35.7281,-97.9762
+Oklahoma City,OK,35.4676,-97.5164
+Omaha,NE,41.2565,-95.9345
+Orlando,FL,28.5383,-81.3792
+Oroville,CA,39.5138,-121.5564
+Palm Springs,CA,33.8303,-116.5453
+Pensacola,FL,30.4213,-87.2169
+Philadelphia,PA,39.9526,-75.1652
+Phoenix,AZ,33.4484,-112.0740
+Pittsburgh,PA,40.4406,-79.9959
+Portland,OR,45.5152,-122.6765
+Providence,RI,41.8240,-71.4128
+Queretaro,MX,20.5888,-100.3899
+Raleigh,NC,35.7796,-78.6382
+Reno,NV,39.5296,-119.8138
+Rialto,CA,34.1064,-117.3703
+Richmond,VA,37.5407,-77.4360
+Roanoke,VA,37.2710,-79.9414
+Rochester,NY,43.1566,-77.6088
+Sacramento,CA,38.5816,-121.4944
+Salt Lake City,UT,40.7608,-111.8910
+San Antonio,TX,29.4241,-98.4936
+San Diego,CA,32.7157,-117.1611
+San Francisco,CA,37.7749,-122.4194
+Santa Barbara,CA,34.4208,-119.6982
+Santa Clara,CA,37.3541,-121.9552
+Scranton,PA,41.4090,-75.6624
+Seattle,WA,47.6062,-122.3321
+Shreveport,LA,32.5252,-93.7502
+South Bend,IN,41.6764,-86.2500
+Spokane,WA,47.6588,-117.4260
+Springfield,IL,39.7817,-89.6501
+Springfield,MA,42.1015,-72.5898
+St Cloud,MN,45.5579,-94.1632
+St. Louis,MO,38.6270,-90.1994
+Stamford,CT,41.0534,-73.5387
+Stockton,CA,37.9577,-121.2908
+Syracuse,NY,43.0481,-76.1474
+Tacoma,WA,47.2529,-122.4443
+Tallahassee,FL,30.4383,-84.2807
+Tampa,FL,27.9506,-82.4572
+Toledo,OH,41.6528,-83.5552
+Tucson,AZ,32.2226,-110.9747
+Tulsa,OK,36.1540,-95.9928
+Van Buren,AR,35.4365,-94.3483
+Ventura,CA,34.2746,-119.2290
+Virginia Beach,VA,36.8529,-75.9780
+Waco,TX,31.5493,-97.1467
+Washington,DC,38.9072,-77.0369
+Wenatchee,WA,47.4235,-120.3103
+West Palm Beach,FL,26.7153,-80.0534
+Wichita,KS,37.6872,-97.3301
+Wilmington,DE,39.7459,-75.5466
+Winston Salem,NC,36.0999,-80.2442
+Worcester,MA,42.2626,-71.8023

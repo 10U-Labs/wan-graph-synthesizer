@@ -1,10 +1,10 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
-Kalispell,48.196,-114.314,ROADM,Not shown in map,,Kalispell,MT
-"Great Falls, MT",47.507,-111.300,ROADM,Not shown in map,,Great Falls,MT
-Helena,46.589,-112.039,ROADM,Not shown in map,,Helena,MT
-Havre,48.550,-109.684,ROADM,Not shown in map,,Havre,MT
-Bozeman,45.677,-111.043,ROADM,Not shown in map,,Bozeman,MT
-Billings,45.787,-108.500,ROADM,Not shown in map,,Billings,MT
-Miles City,46.408,-105.840,ROADM,Not shown in map,,Miles City,MT
-Missoula,46.874,-114.026,ROADM,Not shown in map,,Missoula,MT
-Williston,48.181,-103.628,ROADM,Not shown in map,,Williston,ND
+municipality,state,latitude,longitude
+Kalispell,MT,48.196,-114.314
+Great Falls,MT,47.507,-111.300
+Helena,MT,46.589,-112.039
+Havre,MT,48.550,-109.684
+Bozeman,MT,45.677,-111.043
+Billings,MT,45.787,-108.500
+Miles City,MT,46.408,-105.840
+Missoula,MT,46.874,-114.026
+Williston,ND,48.181,-103.628

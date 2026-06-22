@@ -1,213 +1,192 @@
-name,latitude,longitude,kind,shown_in_map,description,municipality,state
-"Zayo Akron, OH",41.0814,-81.5190,PoP,Not shown in map,Zayo Core Network PoP,Akron,OH
-"Zayo Albany, GA",31.5785,-84.1557,PoP,Not shown in map,Zayo Core Network PoP,Albany,GA
-"Zayo Albany, NY",42.6526,-73.7562,PoP,Not shown in map,Zayo Core Network PoP,Albany,NY
-"Zayo Albuquerque, NM",35.0844,-106.6504,PoP,Not shown in map,Zayo Core Network PoP,Albuquerque,NM
-"Zayo Amarillo, TX",35.2220,-101.8313,PoP,Not shown in map,Zayo Core Network PoP,Amarillo,TX
-"Zayo Anaheim, CA",33.8366,-117.9143,PoP,Not shown in map,Zayo Core Network PoP,Anaheim,CA
-"Zayo Anderson, CA",40.4482,-122.2978,PoP,Not shown in map,Zayo Core Network PoP,Anderson,CA
-"Zayo Anderson, IN",40.1053,-85.6803,PoP,Not shown in map,Zayo Core Network PoP,Anderson,IN
-"Zayo Ashburn, VA",39.0438,-77.4875,PoP,Not shown in map,Zayo Core Network PoP,Ashburn,VA
-"Zayo Atlanta, GA",33.7490,-84.3880,PoP,Not shown in map,Zayo Core Network PoP,Atlanta,GA
-"Zayo Aurora, CO",39.7294,-104.8319,PoP,Not shown in map,Zayo Core Network PoP,Aurora,CO
-"Zayo Aurora, IL",41.7606,-88.3201,PoP,Not shown in map,Zayo Core Network PoP,Aurora,IL
-"Zayo Austin, TX",30.2672,-97.7431,PoP,Not shown in map,Zayo Core Network PoP,Austin,TX
-"Zayo Baltimore, MD",39.2904,-76.6122,PoP,Not shown in map,Zayo Core Network PoP,Baltimore,MD
-"Zayo Barrie, ON",44.3894,-79.6903,PoP,Not shown in map,Zayo Core Network PoP,Barrie,ON
-"Zayo Barstow, CA",34.8958,-117.0173,PoP,Not shown in map,Zayo Core Network PoP,Barstow,CA
-"Zayo Beatty, OR",42.4376,-121.2778,PoP,Not shown in map,Zayo Core Network PoP,Beatty,OR
-"Zayo Beaverton, OR",45.4871,-122.8037,PoP,Not shown in map,Zayo Core Network PoP,Beaverton,OR
-"Zayo Bellevue, WA",47.6101,-122.2015,PoP,Not shown in map,Zayo Core Network PoP,Bellevue,WA
-"Zayo Bend, OR",44.0582,-121.3153,PoP,Not shown in map,Zayo Core Network PoP,Bend,OR
-"Zayo Billings, MT",45.7870,-108.5000,PoP,Not shown in map,Zayo Core Network PoP,Billings,MT
-"Zayo Bismarck, ND",46.8080,-100.7840,PoP,Not shown in map,Zayo Core Network PoP,Bismarck,ND
-"Zayo Bluffdale, UT",40.4894,-111.9388,PoP,Not shown in map,Zayo Core Network PoP,Bluffdale,UT
-"Zayo Boardman, OR",45.8398,-119.7003,PoP,Not shown in map,Zayo Core Network PoP,Boardman,OR
-"Zayo Boise, ID",43.6150,-116.2023,PoP,Not shown in map,Zayo Core Network PoP,Boise,ID
-"Zayo Boston, MA",42.3601,-71.0589,PoP,Not shown in map,Zayo Core Network PoP,Boston,MA
-"Zayo Buffalo, NY",42.8864,-78.8784,PoP,Not shown in map,Zayo Core Network PoP,Buffalo,NY
-"Zayo Burns, OR",43.5863,-118.6943,PoP,Not shown in map,Zayo Core Network PoP,Burns,OR
-"Zayo Calgary, AB",51.0447,-114.0719,PoP,Not shown in map,Zayo Core Network PoP,Calgary,AB
-"Zayo Casper, WY",42.8666,-106.3131,PoP,Not shown in map,Zayo Core Network PoP,Casper,WY
-"Zayo Centennial, CO",39.5807,-104.8772,PoP,Not shown in map,Zayo Core Network PoP,Centennial,CO
-"Zayo Chandler, AZ",33.3062,-111.8413,PoP,Not shown in map,Zayo Core Network PoP,Chandler,AZ
-"Zayo Charlotte, NC",35.2271,-80.8431,PoP,Not shown in map,Zayo Core Network PoP,Charlotte,NC
-"Zayo Cheyenne, WY",41.1400,-104.8202,PoP,Not shown in map,Zayo Core Network PoP,Cheyenne,WY
-"Zayo Chicago, IL",41.8781,-87.6298,PoP,Not shown in map,Zayo Core Network PoP,Chicago,IL
-"Zayo Cleveland, OH",41.4993,-81.6944,PoP,Not shown in map,Zayo Core Network PoP,Cleveland,OH
-"Zayo Clinton, MS",32.3415,-90.3218,PoP,Not shown in map,Zayo Core Network PoP,Clinton,MS
-"Zayo Clinton, TN",36.1126,-84.1296,PoP,Not shown in map,Zayo Core Network PoP,Clinton,TN
-"Zayo Coalville, UT",40.9180,-111.3994,PoP,Not shown in map,Zayo Core Network PoP,Coalville,UT
-"Zayo Colorado Springs, CO",38.8339,-104.8214,PoP,Not shown in map,Zayo Core Network PoP,Colorado Springs,CO
-"Zayo Columbus, OH",39.9612,-82.9988,PoP,Not shown in map,Zayo Core Network PoP,Columbus,OH
-"Zayo Cut Bank, MT",48.6333,-112.3261,PoP,Not shown in map,Zayo Core Network PoP,Cut Bank,MT
-"Zayo Dallas, TX",32.7767,-96.7970,PoP,Not shown in map,Zayo Core Network PoP,Dallas,TX
-"Zayo Dayton, OH",39.7589,-84.1916,PoP,Not shown in map,Zayo Core Network PoP,Dayton,OH
-"Zayo Denver, CO",39.7392,-104.9903,PoP,Not shown in map,Zayo Core Network PoP,Denver,CO
-"Zayo Des Moines, IA",41.5868,-93.6091,PoP,Not shown in map,Zayo Core Network PoP,Des Moines,IA
-"Zayo Edmonton, AB",53.5461,-113.4938,PoP,Not shown in map,Zayo Core Network PoP,Edmonton,AB
-"Zayo El Paso, TX",31.7619,-106.4850,PoP,Not shown in map,Zayo Core Network PoP,El Paso,TX
-"Zayo Elk Grove Village, IL",42.0039,-87.9706,PoP,Not shown in map,Zayo Core Network PoP,Elk Grove Village,IL
-"Zayo Englewood, CO",39.6478,-104.9878,PoP,Not shown in map,Zayo Core Network PoP,Englewood,CO
-"Zayo Etobicoke, ON",43.6205,-79.5132,PoP,Not shown in map,Zayo Core Network PoP,Etobicoke,ON
-"Zayo Eugene, OR",44.0521,-123.0868,PoP,Not shown in map,Zayo Core Network PoP,Eugene,OR
-"Zayo Everett, WA",47.9790,-122.2021,PoP,Not shown in map,Zayo Core Network PoP,Everett,WA
-"Zayo Fargo, ND",46.8770,-96.7890,PoP,Not shown in map,Zayo Core Network PoP,Fargo,ND
-"Zayo Fort Belvoir, VA",38.7095,-77.1461,PoP,Not shown in map,Zayo Core Network PoP,Fort Belvoir,VA
-"Zayo Fort Wayne, IN",41.0793,-85.1394,PoP,Not shown in map,Zayo Core Network PoP,Fort Wayne,IN
-"Zayo Fort Worth, TX",32.7555,-97.3308,PoP,Not shown in map,Zayo Core Network PoP,Fort Worth,TX
-"Zayo Frankfort, IN",40.2797,-86.5111,PoP,Not shown in map,Zayo Core Network PoP,Frankfort,IN
-"Zayo Franklin Park, IL",41.9353,-87.8653,PoP,Not shown in map,Zayo Core Network PoP,Franklin Park,IL
-"Zayo Frederick, MD",39.4143,-77.4105,PoP,Not shown in map,Zayo Core Network PoP,Frederick,MD
-"Zayo Fremont, CA",37.5485,-121.9886,PoP,Not shown in map,Zayo Core Network PoP,Fremont,CA
-"Zayo Garfield Heights, OH",41.4170,-81.6054,PoP,Not shown in map,Zayo Core Network PoP,Garfield Heights,OH
-"Zayo Grand Junction, CO",39.0639,-108.5506,PoP,Not shown in map,Zayo Core Network PoP,Grand Junction,CO
-"Zayo Grand Rapids, MI",42.9634,-85.6681,PoP,Not shown in map,Zayo Core Network PoP,Grand Rapids,MI
-"Zayo Great Falls, MT",47.5070,-111.3000,PoP,Not shown in map,Zayo Core Network PoP,Great Falls,MT
-"Zayo Guelph, ON",43.5448,-80.2482,PoP,Not shown in map,Zayo Core Network PoP,Guelph,ON
-"Zayo Hamilton, ON",43.2557,-79.8711,PoP,Not shown in map,Zayo Core Network PoP,Hamilton,ON
-"Zayo Helena, MT",46.5890,-112.0390,PoP,Not shown in map,Zayo Core Network PoP,Helena,MT
-"Zayo Henderson, CO",39.9183,-104.8772,PoP,Not shown in map,Zayo Core Network PoP,Henderson,CO
-"Zayo Hillsboro, OR",45.5229,-122.9898,PoP,Not shown in map,Zayo Core Network PoP,Hillsboro,OR
-"Zayo Houston, TX",29.7604,-95.3698,PoP,Not shown in map,Zayo Core Network PoP,Houston,TX
-"Zayo Indianapolis, IN",39.7684,-86.1581,PoP,Not shown in map,Zayo Core Network PoP,Indianapolis,IN
-"Zayo Irvine, CA",33.6846,-117.8265,PoP,Not shown in map,Zayo Core Network PoP,Irvine,CA
-"Zayo Jacksonville, FL",30.3322,-81.6557,PoP,Not shown in map,Zayo Core Network PoP,Jacksonville,FL
-"Zayo Jasper, OR",43.9926,-122.9001,PoP,Not shown in map,Zayo Core Network PoP,Jasper,OR
-"Zayo Jersey City, NJ",40.7178,-74.0431,PoP,Not shown in map,Zayo Core Network PoP,Jersey City,NJ
-"Zayo Kalama, WA",46.0093,-122.8443,PoP,Not shown in map,Zayo Core Network PoP,Kalama,WA
-"Zayo Kansas City, MO",39.0997,-94.5786,PoP,Not shown in map,Zayo Core Network PoP,Kansas City,MO
-"Zayo Keenesburg, CO",40.1083,-104.5191,PoP,Not shown in map,Zayo Core Network PoP,Keenesburg,CO
-"Zayo Kent, WA",47.3809,-122.2348,PoP,Not shown in map,Zayo Core Network PoP,Kent,WA
-"Zayo Kitchener, ON",43.4516,-80.4925,PoP,Not shown in map,Zayo Core Network PoP,Kitchener,ON
-"Zayo Lansing, MI",42.7325,-84.5555,PoP,Not shown in map,Zayo Core Network PoP,Lansing,MI
-"Zayo Laredo, TX",27.5306,-99.5075,PoP,Not shown in map,Zayo Core Network PoP,Laredo,TX
-"Zayo Las Vegas, NV",36.1699,-115.1398,PoP,Not shown in map,Zayo Core Network PoP,Las Vegas,NV
-"Zayo Laurel, MT",45.6691,-108.7710,PoP,Not shown in map,Zayo Core Network PoP,Laurel,MT
-"Zayo Leeds, AL",33.5479,-86.5444,PoP,Not shown in map,Zayo Core Network PoP,Leeds,AL
-"Zayo Lima, OH",40.7426,-84.1052,PoP,Not shown in map,Zayo Core Network PoP,Lima,OH
-"Zayo Linden, NJ",40.6220,-74.2446,PoP,Not shown in map,Zayo Core Network PoP,Linden,NJ
-"Zayo Lithia Springs, GA",33.7943,-84.6635,PoP,Not shown in map,Zayo Core Network PoP,Lithia Springs,GA
-"Zayo Little Hocking, OH",39.2851,-81.7090,PoP,Not shown in map,Zayo Core Network PoP,Little Hocking,OH
-"Zayo Los Angeles, CA",34.0522,-118.2437,PoP,Not shown in map,Zayo Core Network PoP,Los Angeles,CA
-"Zayo Los Osos, CA",35.3111,-120.8324,PoP,Not shown in map,Zayo Core Network PoP,Los Osos,CA
-"Zayo Lubbock, TX",33.5779,-101.8552,PoP,Not shown in map,Zayo Core Network PoP,Lubbock,TX
-"Zayo Macon, GA",32.8407,-83.6324,PoP,Not shown in map,Zayo Core Network PoP,Macon,GA
-"Zayo Madison, WI",43.0731,-89.4012,PoP,Not shown in map,Zayo Core Network PoP,Madison,WI
-"Zayo Manasquan, NJ",40.1257,-74.0490,PoP,Not shown in map,Zayo Core Network PoP,Manasquan,NJ
-"Zayo Mankato, MN",44.1636,-93.9994,PoP,Not shown in map,Zayo Core Network PoP,Mankato,MN
-"Zayo Marion, IN",40.5584,-85.6591,PoP,Not shown in map,Zayo Core Network PoP,Marion,IN
-"Zayo Markham, ON",43.8561,-79.3370,PoP,Not shown in map,Zayo Core Network PoP,Markham,ON
-"Zayo McAllen, TX",26.2034,-98.2300,PoP,Not shown in map,Zayo Core Network PoP,McAllen,TX
-"Zayo McLean, VA",38.9339,-77.1773,PoP,Not shown in map,Zayo Core Network PoP,McLean,VA
-"Zayo Memphis, TN",35.1495,-90.0490,PoP,Not shown in map,Zayo Core Network PoP,Memphis,TN
-"Zayo Miami, FL",25.7617,-80.1918,PoP,Not shown in map,Zayo Core Network PoP,Miami,FL
-"Zayo Midland, TX",31.9974,-102.0779,PoP,Not shown in map,Zayo Core Network PoP,Midland,TX
-"Zayo Minneapolis, MN",44.9778,-93.2650,PoP,Not shown in map,Zayo Core Network PoP,Minneapolis,MN
-"Zayo Mississauga, ON",43.5890,-79.6441,PoP,Not shown in map,Zayo Core Network PoP,Mississauga,ON
-"Zayo Missoula, MT",46.8721,-113.9966,PoP,Not shown in map,Zayo Core Network PoP,Missoula,MT
-"Zayo Modesto, CA",37.6391,-120.9969,PoP,Not shown in map,Zayo Core Network PoP,Modesto,CA
-"Zayo Montgomery, TX",30.3877,-95.6963,PoP,Not shown in map,Zayo Core Network PoP,Montgomery,TX
-"Zayo Montreal, QC",45.5019,-73.5674,PoP,Not shown in map,Zayo Core Network PoP,Montreal,QC
-"Zayo Monument, CO",39.0917,-104.8722,PoP,Not shown in map,Zayo Core Network PoP,Monument,CO
-"Zayo Mt Prospect, IL",42.0664,-87.9373,PoP,Not shown in map,Zayo Core Network PoP,Mt Prospect,IL
-"Zayo Nashua, NH",42.7654,-71.4676,PoP,Not shown in map,Zayo Core Network PoP,Nashua,NH
-"Zayo Nashville, TN",36.1627,-86.7816,PoP,Not shown in map,Zayo Core Network PoP,Nashville,TN
-"Zayo New Orleans, LA",29.9511,-90.0715,PoP,Not shown in map,Zayo Core Network PoP,New Orleans,LA
-"Zayo New York, NY",40.7128,-74.0060,PoP,Not shown in map,Zayo Core Network PoP,New York,NY
-"Zayo Newark, NJ",40.7357,-74.1724,PoP,Not shown in map,Zayo Core Network PoP,Newark,NJ
-"Zayo Nogales, AZ",31.3404,-110.9343,PoP,Not shown in map,Zayo Core Network PoP,Nogales,AZ
-"Zayo Oak Brook, IL",41.8350,-87.9290,PoP,Not shown in map,Zayo Core Network PoP,Oak Brook,IL
-"Zayo Oakland, CA",37.8044,-122.2712,PoP,Not shown in map,Zayo Core Network PoP,Oakland,CA
-"Zayo Ogden, UT",41.2230,-111.9738,PoP,Not shown in map,Zayo Core Network PoP,Ogden,UT
-"Zayo Olympia, WA",47.0379,-122.9007,PoP,Not shown in map,Zayo Core Network PoP,Olympia,WA
-"Zayo Omaha, NE",41.2565,-95.9345,PoP,Not shown in map,Zayo Core Network PoP,Omaha,NE
-"Zayo Orlando, FL",28.5383,-81.3792,PoP,Not shown in map,Zayo Core Network PoP,Orlando,FL
-"Zayo Ottawa, ON",45.4215,-75.6972,PoP,Not shown in map,Zayo Core Network PoP,Ottawa,ON
-"Zayo Owatonna, MN",44.0840,-93.2260,PoP,Not shown in map,Zayo Core Network PoP,Owatonna,MN
-"Zayo Owings Mills, MD",39.4196,-76.7802,PoP,Not shown in map,Zayo Core Network PoP,Owings Mills,MD
-"Zayo Palmdale, CA",34.5794,-118.1165,PoP,Not shown in map,Zayo Core Network PoP,Palmdale,CA
-"Zayo Palo Alto, CA",37.4419,-122.1430,PoP,Not shown in map,Zayo Core Network PoP,Palo Alto,CA
-"Zayo Pasco, WA",46.2396,-119.1006,PoP,Not shown in map,Zayo Core Network PoP,Pasco,WA
-"Zayo Philadelphia, PA",39.9526,-75.1652,PoP,Not shown in map,Zayo Core Network PoP,Philadelphia,PA
-"Zayo Phoenix, AZ",33.4484,-112.0740,PoP,Not shown in map,Zayo Core Network PoP,Phoenix,AZ
-"Zayo Pittsburgh, PA",40.4406,-79.9959,PoP,Not shown in map,Zayo Core Network PoP,Pittsburgh,PA
-"Zayo Plano, TX",33.0198,-96.6989,PoP,Not shown in map,Zayo Core Network PoP,Plano,TX
-"Zayo Pocatello, ID",42.8713,-112.4455,PoP,Not shown in map,Zayo Core Network PoP,Pocatello,ID
-"Zayo Ponchatoula, LA",30.4385,-90.4418,PoP,Not shown in map,Zayo Core Network PoP,Ponchatoula,LA
-"Zayo Port Matilda, PA",40.8009,-78.0508,PoP,Not shown in map,Zayo Core Network PoP,Port Matilda,PA
-"Zayo Portland, OR",45.5152,-122.6765,PoP,Not shown in map,Zayo Core Network PoP,Portland,OR
-"Zayo Providence, RI",41.8240,-71.4128,PoP,Not shown in map,Zayo Core Network PoP,Providence,RI
-"Zayo Quebec City, QC",46.8139,-71.2080,PoP,Not shown in map,Zayo Core Network PoP,Quebec City,QC
-"Zayo Quincy, WA",47.2343,-119.8526,PoP,Not shown in map,Zayo Core Network PoP,Quincy,WA
-"Zayo Rancho Cordova, CA",38.5891,-121.3027,PoP,Not shown in map,Zayo Core Network PoP,Rancho Cordova,CA
-"Zayo Redmond, WA",47.6740,-122.1215,PoP,Not shown in map,Zayo Core Network PoP,Redmond,WA
-"Zayo Regina, SK",50.4452,-104.6189,PoP,Not shown in map,Zayo Core Network PoP,Regina,SK
-"Zayo Reno, NV",39.5296,-119.8138,PoP,Not shown in map,Zayo Core Network PoP,Reno,NV
-"Zayo Reston, VA",38.9587,-77.3570,PoP,Not shown in map,Zayo Core Network PoP,Reston,VA
-"Zayo Richmond, VA",37.5407,-77.4360,PoP,Not shown in map,Zayo Core Network PoP,Richmond,VA
-"Zayo Roanoke, LA",30.2566,-92.7440,PoP,Not shown in map,Zayo Core Network PoP,Roanoke,LA
-"Zayo Rock Springs, WY",41.5875,-109.2029,PoP,Not shown in map,Zayo Core Network PoP,Rock Springs,WY
-"Zayo Sacramento, CA",38.5816,-121.4944,PoP,Not shown in map,Zayo Core Network PoP,Sacramento,CA
-"Zayo Salem, OR",44.9429,-123.0351,PoP,Not shown in map,Zayo Core Network PoP,Salem,OR
-"Zayo Salt Lake City, UT",40.7608,-111.8910,PoP,Not shown in map,Zayo Core Network PoP,Salt Lake City,UT
-"Zayo San Angelo, TX",31.4638,-100.4370,PoP,Not shown in map,Zayo Core Network PoP,San Angelo,TX
-"Zayo San Antonio, TX",29.4241,-98.4936,PoP,Not shown in map,Zayo Core Network PoP,San Antonio,TX
-"Zayo San Diego, CA",32.7157,-117.1611,PoP,Not shown in map,Zayo Core Network PoP,San Diego,CA
-"Zayo San Francisco, CA",37.7749,-122.4194,PoP,Not shown in map,Zayo Core Network PoP,San Francisco,CA
-"Zayo San Jose, CA",37.3382,-121.8863,PoP,Not shown in map,Zayo Core Network PoP,San Jose,CA
-"Zayo Santa Barbara, CA",34.4208,-119.6982,PoP,Not shown in map,Zayo Core Network PoP,Santa Barbara,CA
-"Zayo Santa Clara, CA",37.3541,-121.9552,PoP,Not shown in map,Zayo Core Network PoP,Santa Clara,CA
-"Zayo Seattle, WA",47.6062,-122.3321,PoP,Not shown in map,Zayo Core Network PoP,Seattle,WA
-"Zayo Secaucus, NJ",40.7895,-74.0565,PoP,Not shown in map,Zayo Core Network PoP,Secaucus,NJ
-"Zayo Shedd, OR",44.4534,-123.1084,PoP,Not shown in map,Zayo Core Network PoP,Shedd,OR
-"Zayo Shoshone, ID",42.9357,-114.4060,PoP,Not shown in map,Zayo Core Network PoP,Shoshone,ID
-"Zayo Silver Plume, CO",39.6938,-105.7278,PoP,Not shown in map,Zayo Core Network PoP,Silver Plume,CO
-"Zayo Sioux City, IA",42.4999,-96.4003,PoP,Not shown in map,Zayo Core Network PoP,Sioux City,IA
-"Zayo Smyrna, GA",33.8840,-84.5144,PoP,Not shown in map,Zayo Core Network PoP,Smyrna,GA
-"Zayo Somerset, NJ",40.4976,-74.4884,PoP,Not shown in map,Zayo Core Network PoP,Somerset,NJ
-"Zayo South Bend, IN",41.6764,-86.2500,PoP,Not shown in map,Zayo Core Network PoP,South Bend,IN
-"Zayo Southfield, MI",42.4734,-83.2219,PoP,Not shown in map,Zayo Core Network PoP,Southfield,MI
-"Zayo Spokane, WA",47.6588,-117.4260,PoP,Not shown in map,Zayo Core Network PoP,Spokane,WA
-"Zayo Spring, TX",30.0799,-95.4172,PoP,Not shown in map,Zayo Core Network PoP,Spring,TX
-"Zayo Springville, UT",40.1652,-111.6108,PoP,Not shown in map,Zayo Core Network PoP,Springville,UT
-"Zayo St. George, UT",37.0965,-113.5684,PoP,Not shown in map,Zayo Core Network PoP,St. George,UT
-"Zayo St. Louis, MO",38.6270,-90.1994,PoP,Not shown in map,Zayo Core Network PoP,St. Louis,MO
-"Zayo Stamford, CT",41.0534,-73.5387,PoP,Not shown in map,Zayo Core Network PoP,Stamford,CT
-"Zayo Staten Island, NY",40.5795,-74.1502,PoP,Not shown in map,Zayo Core Network PoP,Staten Island,NY
-"Zayo Sudbury, ON",46.4917,-80.9930,PoP,Not shown in map,Zayo Core Network PoP,Sudbury,ON
-"Zayo Tacoma, WA",47.2529,-122.4443,PoP,Not shown in map,Zayo Core Network PoP,Tacoma,WA
-"Zayo Tallahassee, FL",30.4383,-84.2807,PoP,Not shown in map,Zayo Core Network PoP,Tallahassee,FL
-"Zayo Tampa, FL",27.9506,-82.4572,PoP,Not shown in map,Zayo Core Network PoP,Tampa,FL
-"Zayo Temple, TX",31.0982,-97.3428,PoP,Not shown in map,Zayo Core Network PoP,Temple,TX
-"Zayo Thunder Bay, ON",48.3809,-89.2477,PoP,Not shown in map,Zayo Core Network PoP,Thunder Bay,ON
-"Zayo Toronto, ON",43.6532,-79.3832,PoP,Not shown in map,Zayo Core Network PoP,Toronto,ON
-"Zayo Trumbull, CT",41.2426,-73.2007,PoP,Not shown in map,Zayo Core Network PoP,Trumbull,CT
-"Zayo Tuckerton, NJ",39.6032,-74.3402,PoP,Not shown in map,Zayo Core Network PoP,Tuckerton,NJ
-"Zayo Tucson, AZ",32.2226,-110.9747,PoP,Not shown in map,Zayo Core Network PoP,Tucson,AZ
-"Zayo Tukwila, WA",47.4639,-122.2590,PoP,Not shown in map,Zayo Core Network PoP,Tukwila,WA
-"Zayo Tulare, CA",36.2077,-119.3473,PoP,Not shown in map,Zayo Core Network PoP,Tulare,CA
-"Zayo Tulsa, OK",36.1540,-95.9928,PoP,Not shown in map,Zayo Core Network PoP,Tulsa,OK
-"Zayo Umatilla, OR",45.9171,-119.3422,PoP,Not shown in map,Zayo Core Network PoP,Umatilla,OR
-"Zayo Valparaiso, IN",41.4731,-87.0611,PoP,Not shown in map,Zayo Core Network PoP,Valparaiso,IN
-"Zayo Vancouver, BC",49.2827,-123.1207,PoP,Not shown in map,Zayo Core Network PoP,Vancouver,BC
-"Zayo Virginia Beach, VA",36.8529,-75.9780,PoP,Not shown in map,Zayo Core Network PoP,Virginia Beach,VA
-"Zayo Waco, TX",31.5493,-97.1467,PoP,Not shown in map,Zayo Core Network PoP,Waco,TX
-"Zayo Wall, NJ",40.1654,-74.0665,PoP,Not shown in map,Zayo Core Network PoP,Wall,NJ
-"Zayo Washington, DC",38.9072,-77.0369,PoP,Not shown in map,Zayo Core Network PoP,Washington,DC
-"Zayo Waterloo, ON",43.4643,-80.5204,PoP,Not shown in map,Zayo Core Network PoP,Waterloo,ON
-"Zayo Weehawken, NJ",40.7695,-74.0204,PoP,Not shown in map,Zayo Core Network PoP,Weehawken,NJ
-"Zayo Wenatchee, WA",47.4235,-120.3103,PoP,Not shown in map,Zayo Core Network PoP,Wenatchee,WA
-"Zayo West Jordan, UT",40.6097,-111.9391,PoP,Not shown in map,Zayo Core Network PoP,West Jordan,UT
-"Zayo Wichita Falls, TX",33.9137,-98.4934,PoP,Not shown in map,Zayo Core Network PoP,Wichita Falls,TX
-"Zayo Wichita, KS",37.6872,-97.3301,PoP,Not shown in map,Zayo Core Network PoP,Wichita,KS
-"Zayo Wills Point, TX",32.7099,-96.0086,PoP,Not shown in map,Zayo Core Network PoP,Wills Point,TX
-"Zayo Wilmington, DE",39.7459,-75.5466,PoP,Not shown in map,Zayo Core Network PoP,Wilmington,DE
-"Zayo Windom, MN",43.8655,-95.1169,PoP,Not shown in map,Zayo Core Network PoP,Windom,MN
-"Zayo Windsor, ON",42.3149,-83.0364,PoP,Not shown in map,Zayo Core Network PoP,Windsor,ON
-"Zayo Winnipeg, MB",49.8951,-97.1384,PoP,Not shown in map,Zayo Core Network PoP,Winnipeg,MB
-"Zayo Woodbridge, NJ",40.5576,-74.2846,PoP,Not shown in map,Zayo Core Network PoP,Woodbridge,NJ
-"Zayo Yakima, WA",46.6021,-120.5059,PoP,Not shown in map,Zayo Core Network PoP,Yakima,WA
-"Zayo Youngstown, OH",41.0998,-80.6495,PoP,Not shown in map,Zayo Core Network PoP,Youngstown,OH
-"Zayo Saskatoon, SK",52.1397,-106.6861,PoP,Not shown in map,Zayo Core Network PoP,Saskatoon,SK
-"Zayo Lockport, NY",43.1697,-78.6911,PoP,Not shown in map,Zayo Core Network PoP,Lockport,NY
+municipality,state,latitude,longitude
+Akron,OH,41.0814,-81.5190
+Albany,GA,31.5785,-84.1557
+Albany,NY,42.6526,-73.7562
+Albuquerque,NM,35.0844,-106.6504
+Amarillo,TX,35.2220,-101.8313
+Anaheim,CA,33.8366,-117.9143
+Anderson,CA,40.4482,-122.2978
+Anderson,IN,40.1053,-85.6803
+Ashburn,VA,39.0438,-77.4875
+Atlanta,GA,33.7490,-84.3880
+Aurora,CO,39.7294,-104.8319
+Aurora,IL,41.7606,-88.3201
+Austin,TX,30.2672,-97.7431
+Baltimore,MD,39.2904,-76.6122
+Barstow,CA,34.8958,-117.0173
+Beatty,OR,42.4376,-121.2778
+Beaverton,OR,45.4871,-122.8037
+Bellevue,WA,47.6101,-122.2015
+Bend,OR,44.0582,-121.3153
+Billings,MT,45.7870,-108.5000
+Bismarck,ND,46.8080,-100.7840
+Bluffdale,UT,40.4894,-111.9388
+Boardman,OR,45.8398,-119.7003
+Boise,ID,43.6150,-116.2023
+Boston,MA,42.3601,-71.0589
+Buffalo,NY,42.8864,-78.8784
+Burns,OR,43.5863,-118.6943
+Casper,WY,42.8666,-106.3131
+Centennial,CO,39.5807,-104.8772
+Chandler,AZ,33.3062,-111.8413
+Charlotte,NC,35.2271,-80.8431
+Cheyenne,WY,41.1400,-104.8202
+Chicago,IL,41.8781,-87.6298
+Cleveland,OH,41.4993,-81.6944
+Clinton,MS,32.3415,-90.3218
+Clinton,TN,36.1126,-84.1296
+Coalville,UT,40.9180,-111.3994
+Colorado Springs,CO,38.8339,-104.8214
+Columbus,OH,39.9612,-82.9988
+Cut Bank,MT,48.6333,-112.3261
+Dallas,TX,32.7767,-96.7970
+Dayton,OH,39.7589,-84.1916
+Denver,CO,39.7392,-104.9903
+Des Moines,IA,41.5868,-93.6091
+El Paso,TX,31.7619,-106.4850
+Elk Grove Village,IL,42.0039,-87.9706
+Englewood,CO,39.6478,-104.9878
+Eugene,OR,44.0521,-123.0868
+Everett,WA,47.9790,-122.2021
+Fargo,ND,46.8770,-96.7890
+Fort Belvoir,VA,38.7095,-77.1461
+Fort Wayne,IN,41.0793,-85.1394
+Fort Worth,TX,32.7555,-97.3308
+Frankfort,IN,40.2797,-86.5111
+Franklin Park,IL,41.9353,-87.8653
+Frederick,MD,39.4143,-77.4105
+Fremont,CA,37.5485,-121.9886
+Garfield Heights,OH,41.4170,-81.6054
+Grand Junction,CO,39.0639,-108.5506
+Grand Rapids,MI,42.9634,-85.6681
+Great Falls,MT,47.5070,-111.3000
+Helena,MT,46.5890,-112.0390
+Henderson,CO,39.9183,-104.8772
+Hillsboro,OR,45.5229,-122.9898
+Houston,TX,29.7604,-95.3698
+Indianapolis,IN,39.7684,-86.1581
+Irvine,CA,33.6846,-117.8265
+Jacksonville,FL,30.3322,-81.6557
+Jasper,OR,43.9926,-122.9001
+Jersey City,NJ,40.7178,-74.0431
+Kalama,WA,46.0093,-122.8443
+Kansas City,MO,39.0997,-94.5786
+Keenesburg,CO,40.1083,-104.5191
+Kent,WA,47.3809,-122.2348
+Lansing,MI,42.7325,-84.5555
+Laredo,TX,27.5306,-99.5075
+Las Vegas,NV,36.1699,-115.1398
+Laurel,MT,45.6691,-108.7710
+Leeds,AL,33.5479,-86.5444
+Lima,OH,40.7426,-84.1052
+Linden,NJ,40.6220,-74.2446
+Lithia Springs,GA,33.7943,-84.6635
+Little Hocking,OH,39.2851,-81.7090
+Los Angeles,CA,34.0522,-118.2437
+Los Osos,CA,35.3111,-120.8324
+Lubbock,TX,33.5779,-101.8552
+Macon,GA,32.8407,-83.6324
+Madison,WI,43.0731,-89.4012
+Manasquan,NJ,40.1257,-74.0490
+Mankato,MN,44.1636,-93.9994
+Marion,IN,40.5584,-85.6591
+McAllen,TX,26.2034,-98.2300
+McLean,VA,38.9339,-77.1773
+Memphis,TN,35.1495,-90.0490
+Miami,FL,25.7617,-80.1918
+Midland,TX,31.9974,-102.0779
+Minneapolis,MN,44.9778,-93.2650
+Missoula,MT,46.8721,-113.9966
+Modesto,CA,37.6391,-120.9969
+Montgomery,TX,30.3877,-95.6963
+Monument,CO,39.0917,-104.8722
+Mt Prospect,IL,42.0664,-87.9373
+Nashua,NH,42.7654,-71.4676
+Nashville,TN,36.1627,-86.7816
+New Orleans,LA,29.9511,-90.0715
+New York,NY,40.7128,-74.0060
+Newark,NJ,40.7357,-74.1724
+Nogales,AZ,31.3404,-110.9343
+Oak Brook,IL,41.8350,-87.9290
+Oakland,CA,37.8044,-122.2712
+Ogden,UT,41.2230,-111.9738
+Olympia,WA,47.0379,-122.9007
+Omaha,NE,41.2565,-95.9345
+Orlando,FL,28.5383,-81.3792
+Owatonna,MN,44.0840,-93.2260
+Owings Mills,MD,39.4196,-76.7802
+Palmdale,CA,34.5794,-118.1165
+Palo Alto,CA,37.4419,-122.1430
+Pasco,WA,46.2396,-119.1006
+Philadelphia,PA,39.9526,-75.1652
+Phoenix,AZ,33.4484,-112.0740
+Pittsburgh,PA,40.4406,-79.9959
+Plano,TX,33.0198,-96.6989
+Pocatello,ID,42.8713,-112.4455
+Ponchatoula,LA,30.4385,-90.4418
+Port Matilda,PA,40.8009,-78.0508
+Portland,OR,45.5152,-122.6765
+Providence,RI,41.8240,-71.4128
+Quincy,WA,47.2343,-119.8526
+Rancho Cordova,CA,38.5891,-121.3027
+Redmond,WA,47.6740,-122.1215
+Reno,NV,39.5296,-119.8138
+Reston,VA,38.9587,-77.3570
+Richmond,VA,37.5407,-77.4360
+Roanoke,LA,30.2566,-92.7440
+Rock Springs,WY,41.5875,-109.2029
+Sacramento,CA,38.5816,-121.4944
+Salem,OR,44.9429,-123.0351
+Salt Lake City,UT,40.7608,-111.8910
+San Angelo,TX,31.4638,-100.4370
+San Antonio,TX,29.4241,-98.4936
+San Diego,CA,32.7157,-117.1611
+San Francisco,CA,37.7749,-122.4194
+San Jose,CA,37.3382,-121.8863
+Santa Barbara,CA,34.4208,-119.6982
+Santa Clara,CA,37.3541,-121.9552
+Seattle,WA,47.6062,-122.3321
+Secaucus,NJ,40.7895,-74.0565
+Shedd,OR,44.4534,-123.1084
+Shoshone,ID,42.9357,-114.4060
+Silver Plume,CO,39.6938,-105.7278
+Sioux City,IA,42.4999,-96.4003
+Smyrna,GA,33.8840,-84.5144
+Somerset,NJ,40.4976,-74.4884
+South Bend,IN,41.6764,-86.2500
+Southfield,MI,42.4734,-83.2219
+Spokane,WA,47.6588,-117.4260
+Spring,TX,30.0799,-95.4172
+Springville,UT,40.1652,-111.6108
+St. George,UT,37.0965,-113.5684
+St. Louis,MO,38.6270,-90.1994
+Stamford,CT,41.0534,-73.5387
+Staten Island,NY,40.5795,-74.1502
+Tacoma,WA,47.2529,-122.4443
+Tallahassee,FL,30.4383,-84.2807
+Tampa,FL,27.9506,-82.4572
+Temple,TX,31.0982,-97.3428
+Trumbull,CT,41.2426,-73.2007
+Tuckerton,NJ,39.6032,-74.3402
+Tucson,AZ,32.2226,-110.9747
+Tukwila,WA,47.4639,-122.2590
+Tulare,CA,36.2077,-119.3473
+Tulsa,OK,36.1540,-95.9928
+Umatilla,OR,45.9171,-119.3422
+Valparaiso,IN,41.4731,-87.0611
+Virginia Beach,VA,36.8529,-75.9780
+Waco,TX,31.5493,-97.1467
+Wall,NJ,40.1654,-74.0665
+Washington,DC,38.9072,-77.0369
+Weehawken,NJ,40.7695,-74.0204
+Wenatchee,WA,47.4235,-120.3103
+West Jordan,UT,40.6097,-111.9391
+Wichita Falls,TX,33.9137,-98.4934
+Wichita,KS,37.6872,-97.3301
+Wills Point,TX,32.7099,-96.0086
+Wilmington,DE,39.7459,-75.5466
+Windom,MN,43.8655,-95.1169
+Woodbridge,NJ,40.5576,-74.2846
+Yakima,WA,46.6021,-120.5059
+Youngstown,OH,41.0998,-80.6495
+Lockport,NY,43.1697,-78.6911
