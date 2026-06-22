@@ -1,280 +1,271 @@
-A,Z
-"Cogent Vancouver, BC","Cogent Seattle, WA"
-"Cogent Vancouver, BC","Cogent Kamloops, BC"
-"Cogent Kamloops, BC","Cogent Calgary, AB"
-"Cogent Seattle, WA","Cogent Everett, WA"
-"Cogent Seattle, WA","Cogent Tacoma, WA"
-"Cogent Seattle, WA","Cogent Wenatchee, WA"
-"Cogent Wenatchee, WA","Cogent Spokane, WA"
-"Cogent Spokane, WA","Cogent Missoula, MT"
-"Cogent Tacoma, WA","Cogent Portland, OR"
-"Cogent Portland, OR","Cogent Bend, OR"
-"Cogent Bend, OR","Cogent Boise, ID"
-"Cogent Portland, OR","Cogent Medford, OR"
-"Cogent Medford, OR","Cogent Oroville, CA"
-"Cogent Oroville, CA","Cogent Sacramento, CA"
-"Cogent Bend, OR","Cogent Reno, NV"
-"Cogent Reno, NV","Cogent Sacramento, CA"
-"Cogent Reno, NV","Cogent Salt Lake City, UT"
-"Cogent Sacramento, CA","Cogent Stockton, CA"
-"Cogent Stockton, CA","Cogent Oakland, CA"
-"Cogent Oakland, CA","Cogent San Francisco, CA"
-"Cogent San Francisco, CA","Cogent Santa Clara, CA"
-"Cogent Santa Clara, CA","Cogent Livermore, CA"
-"Cogent Livermore, CA","Cogent Stockton, CA"
-"Cogent Stockton, CA","Cogent Fresno, CA"
-"Cogent Fresno, CA","Cogent Bakersfield, CA"
-"Cogent Bakersfield, CA","Cogent Burbank, CA"
-"Cogent Santa Clara, CA","Cogent Los Osos, CA"
-"Cogent Los Osos, CA","Cogent Santa Barbara, CA"
-"Cogent Santa Barbara, CA","Cogent Ventura, CA"
-"Cogent Ventura, CA","Cogent Los Angeles, CA"
-"Cogent Burbank, CA","Cogent Los Angeles, CA"
-"Cogent Los Angeles, CA","Cogent Rialto, CA"
-"Cogent Rialto, CA","Cogent Palm Springs, CA"
-"Cogent Los Angeles, CA","Cogent San Diego, CA"
-"Cogent Rialto, CA","Cogent Las Vegas, NV"
-"Cogent Palm Springs, CA","Cogent Phoenix, AZ"
-"Cogent San Diego, CA","Cogent Phoenix, AZ"
-"Cogent Calgary, AB","Cogent Winnipeg, MB"
-"Cogent Missoula, MT","Cogent Billings, MT"
-"Cogent Billings, MT","Cogent Bismarck, ND"
-"Cogent Bismarck, ND","Cogent Belfield, ND"
-"Cogent Belfield, ND","Cogent Billings, MT"
-"Cogent Billings, MT","Cogent Cheyenne, WY"
-"Cogent Boise, ID","Cogent Salt Lake City, UT"
-"Cogent Salt Lake City, UT","Cogent Cheyenne, WY"
-"Cogent Salt Lake City, UT","Cogent Las Vegas, NV"
-"Cogent Salt Lake City, UT","Cogent Denver, CO"
-"Cogent Cheyenne, WY","Cogent Denver, CO"
-"Cogent Cheyenne, WY","Cogent Grand Island, NE"
-"Cogent Denver, CO","Cogent Colorado Springs, CO"
-"Cogent Colorado Springs, CO","Cogent Albuquerque, NM"
-"Cogent Colorado Springs, CO","Cogent Wichita, KS"
-"Cogent Las Vegas, NV","Cogent Phoenix, AZ"
-"Cogent Phoenix, AZ","Cogent Tucson, AZ"
-"Cogent Tucson, AZ","Cogent El Paso, TX"
-"Cogent Phoenix, AZ","Cogent Las Cruces, NM"
-"Cogent Albuquerque, NM","Cogent Las Cruces, NM"
-"Cogent Las Cruces, NM","Cogent El Paso, TX"
-"Cogent Albuquerque, NM","Cogent Amarillo, TX"
-"Cogent Albuquerque, NM","Cogent Lubbock, TX"
-"Cogent Winnipeg, MB","Cogent Fargo, ND"
-"Cogent Fargo, ND","Cogent Bismarck, ND"
-"Cogent Fargo, ND","Cogent St Cloud, MN"
-"Cogent St Cloud, MN","Cogent Minneapolis, MN"
-"Cogent Minneapolis, MN","Cogent Eau Claire, WI"
-"Cogent Eau Claire, WI","Cogent Madison, WI"
-"Cogent Madison, WI","Cogent Milwaukee, WI"
-"Cogent Milwaukee, WI","Cogent Chicago, IL"
-"Cogent Minneapolis, MN","Cogent Des Moines, IA"
-"Cogent Grand Island, NE","Cogent Omaha, NE"
-"Cogent Omaha, NE","Cogent Des Moines, IA"
-"Cogent Omaha, NE","Cogent Lincoln, NE"
-"Cogent Lincoln, NE","Cogent Kansas City, MO"
-"Cogent Grand Island, NE","Cogent Lincoln, NE"
-"Cogent Des Moines, IA","Cogent Chicago, IL"
-"Cogent Des Moines, IA","Cogent Cedar Rapids, IA"
-"Cogent Cedar Rapids, IA","Cogent Clinton, IA"
-"Cogent Clinton, IA","Cogent Chicago, IL"
-"Cogent Kansas City, MO","Cogent Des Moines, IA"
-"Cogent Kansas City, MO","Cogent St. Louis, MO"
-"Cogent Kansas City, MO","Cogent Wichita, KS"
-"Cogent Kansas City, MO","Cogent Jefferson City, MO"
-"Cogent Jefferson City, MO","Cogent St. Louis, MO"
-"Cogent Chicago, IL","Cogent Bloomington, IL"
-"Cogent Bloomington, IL","Cogent Springfield, IL"
-"Cogent Springfield, IL","Cogent St. Louis, MO"
-"Cogent Chicago, IL","Cogent Champaign, IL"
-"Cogent Champaign, IL","Cogent Indianapolis, IN"
-"Cogent Wichita, KS","Cogent Oklahoma City, OK"
-"Cogent Oklahoma City, OK","Cogent Okarche, OK"
-"Cogent Oklahoma City, OK","Cogent Tulsa, OK"
-"Cogent Oklahoma City, OK","Cogent Amarillo, TX"
-"Cogent Oklahoma City, OK","Cogent Dallas, TX"
-"Cogent Amarillo, TX","Cogent Lubbock, TX"
-"Cogent Tulsa, OK","Cogent Van Buren, AR"
-"Cogent Van Buren, AR","Cogent Little Rock, AR"
-"Cogent Little Rock, AR","Cogent Memphis, TN"
-"Cogent El Paso, TX","Cogent Midland, TX"
-"Cogent Midland, TX","Cogent Abilene, TX"
-"Cogent Abilene, TX","Cogent Fort Worth, TX"
-"Cogent Lubbock, TX","Cogent Abilene, TX"
-"Cogent Fort Worth, TX","Cogent Bowie, TX"
-"Cogent Bowie, TX","Cogent Oklahoma City, OK"
-"Cogent Fort Worth, TX","Cogent Dallas, TX"
-"Cogent Dallas, TX","Cogent Waco, TX"
-"Cogent Waco, TX","Cogent Austin, TX"
-"Cogent Austin, TX","Cogent San Antonio, TX"
-"Cogent Dallas, TX","Cogent Bryan, TX"
-"Cogent Bryan, TX","Cogent Houston, TX"
-"Cogent San Antonio, TX","Cogent Houston, TX"
-"Cogent Austin, TX","Cogent Houston, TX"
-"Cogent San Antonio, TX","Cogent Corpus Christi, TX"
-"Cogent Houston, TX","Cogent Corpus Christi, TX"
-"Cogent Corpus Christi, TX","Cogent McAllen, TX"
-"Cogent McAllen, TX","Cogent Monterrey, MX"
-"Cogent Monterrey, MX","Cogent Queretaro, MX"
-"Cogent Queretaro, MX","Cogent Mexico City, MX"
-"Cogent Queretaro, MX","Cogent Guadalajara, MX"
-"Cogent Dallas, TX","Cogent Shreveport, LA"
-"Cogent Shreveport, LA","Cogent Jackson, MS"
-"Cogent Houston, TX","Cogent Baton Rouge, LA"
-"Cogent Baton Rouge, LA","Cogent New Orleans, LA"
-"Cogent Jackson, MS","Cogent New Orleans, LA"
-"Cogent Jackson, MS","Cogent Birmingham, AL"
-"Cogent Chicago, IL","Cogent South Bend, IN"
-"Cogent South Bend, IN","Cogent Toledo, OH"
-"Cogent Toledo, OH","Cogent Cleveland, OH"
-"Cogent Chicago, IL","Cogent Grand Rapids, MI"
-"Cogent Grand Rapids, MI","Cogent Lansing, MI"
-"Cogent Lansing, MI","Cogent Flint, MI"
-"Cogent Flint, MI","Cogent Detroit, MI"
-"Cogent Detroit, MI","Cogent Toledo, OH"
-"Cogent Cleveland, OH","Cogent Erie, PA"
-"Cogent Erie, PA","Cogent Buffalo, NY"
-"Cogent Cleveland, OH","Cogent Akron, OH"
-"Cogent Akron, OH","Cogent Pittsburgh, PA"
-"Cogent Cleveland, OH","Cogent Columbus, OH"
-"Cogent Columbus, OH","Cogent Cincinnati, OH"
-"Cogent Indianapolis, IN","Cogent Cincinnati, OH"
-"Cogent Indianapolis, IN","Cogent Louisville, KY"
-"Cogent Louisville, KY","Cogent Lexington, KY"
-"Cogent Cincinnati, OH","Cogent Lexington, KY"
-"Cogent Columbus, OH","Cogent Charleston, WV"
-"Cogent South Bend, IN","Cogent Indianapolis, IN"
-"Cogent Buffalo, NY","Cogent Rochester, NY"
-"Cogent Rochester, NY","Cogent Syracuse, NY"
-"Cogent Syracuse, NY","Cogent Albany, NY"
-"Cogent Buffalo, NY","Cogent Toronto, ON"
-"Cogent Toronto, ON","Cogent Barrie, ON"
-"Cogent Toronto, ON","Cogent Montreal, QC"
-"Cogent Montreal, QC","Cogent Albany, NY"
-"Cogent Albany, NY","Cogent Springfield, MA"
-"Cogent Springfield, MA","Cogent Worcester, MA"
-"Cogent Worcester, MA","Cogent Boston, MA"
-"Cogent Boston, MA","Cogent Andover, MA"
-"Cogent Boston, MA","Cogent Providence, RI"
-"Cogent Providence, RI","Cogent Stamford, CT"
-"Cogent Stamford, CT","Cogent New York, NY"
-"Cogent Albany, NY","Cogent New York, NY"
-"Cogent Binghamton, NY","Cogent Syracuse, NY"
-"Cogent Binghamton, NY","Cogent Scranton, PA"
-"Cogent Scranton, PA","Cogent Newark, NJ"
-"Cogent New York, NY","Cogent Newark, NJ"
-"Cogent Newark, NJ","Cogent Philadelphia, PA"
-"Cogent Philadelphia, PA","Cogent Wilmington, DE"
-"Cogent Wilmington, DE","Cogent Baltimore, MD"
-"Cogent Baltimore, MD","Cogent Washington, DC"
-"Cogent Pittsburgh, PA","Cogent Harrisburg, PA"
-"Cogent Harrisburg, PA","Cogent Philadelphia, PA"
-"Cogent Pittsburgh, PA","Cogent Martinsburg, WV"
-"Cogent Martinsburg, WV","Cogent Ashburn, VA"
-"Cogent Washington, DC","Cogent Ashburn, VA"
-"Cogent Washington, DC","Cogent Fairfax, VA"
-"Cogent Washington, DC","Cogent Richmond, VA"
-"Cogent Richmond, VA","Cogent Virginia Beach, VA"
-"Cogent Charleston, WV","Cogent Charlottesville, VA"
-"Cogent Charlottesville, VA","Cogent Richmond, VA"
-"Cogent Roanoke, VA","Cogent Charlottesville, VA"
-"Cogent Richmond, VA","Cogent Raleigh, NC"
-"Cogent St. Louis, MO","Cogent Nashville, TN"
-"Cogent Nashville, TN","Cogent Memphis, TN"
-"Cogent Nashville, TN","Cogent Knoxville, TN"
-"Cogent Knoxville, TN","Cogent Atlanta, GA"
-"Cogent Nashville, TN","Cogent Atlanta, GA"
-"Cogent Nashville, TN","Cogent Huntsville, AL"
-"Cogent Huntsville, AL","Cogent Birmingham, AL"
-"Cogent Birmingham, AL","Cogent Atlanta, GA"
-"Cogent Birmingham, AL","Cogent Montgomery, AL"
-"Cogent Montgomery, AL","Cogent Mobile, AL"
-"Cogent Mobile, AL","Cogent Atmore, AL"
-"Cogent Atmore, AL","Cogent Pensacola, FL"
-"Cogent Pensacola, FL","Cogent Tallahassee, FL"
-"Cogent Mobile, AL","Cogent New Orleans, LA"
-"Cogent Atlanta, GA","Cogent Charlotte, NC"
-"Cogent Charlotte, NC","Cogent Winston Salem, NC"
-"Cogent Winston Salem, NC","Cogent Raleigh, NC"
-"Cogent Raleigh, NC","Cogent Hamlet, NC"
-"Cogent Charlotte, NC","Cogent Hamlet, NC"
-"Cogent Hamlet, NC","Cogent Myrtle Beach, SC"
-"Cogent Myrtle Beach, SC","Cogent Charleston, SC"
-"Cogent Atlanta, GA","Cogent Tallahassee, FL"
-"Cogent Atlanta, GA","Cogent Jacksonville, FL"
-"Cogent Tallahassee, FL","Cogent Jacksonville, FL"
-"Cogent Jacksonville, FL","Cogent Orlando, FL"
-"Cogent Orlando, FL","Cogent Tampa, FL"
-"Cogent Tampa, FL","Cogent Fort Myers, FL"
-"Cogent Fort Myers, FL","Cogent Miami, FL"
-"Cogent Orlando, FL","Cogent West Palm Beach, FL"
-"Cogent West Palm Beach, FL","Cogent Boca Raton, FL"
-"Cogent Boca Raton, FL","Cogent Miami, FL"
-"Cogent Charleston, SC","Cogent Jacksonville, FL"
-"Cogent Akron, OH","Akron, OH"
-"Cogent Albany, NY","Albany, NY"
-"Cogent Albuquerque, NM","Albuquerque, NM"
-"Cogent Ashburn, VA","Ashburn, VA"
-"Cogent Atlanta, GA","Atlanta, GA"
-"Cogent Austin, TX","Austin, TX"
-"Cogent Baltimore, MD","Baltimore, MD"
-"Cogent Billings, MT",Billings
-"Cogent Birmingham, AL","Birmingham, AL"
-"Cogent Bismarck, ND",Bismarck
-"Cogent Boise, ID","Boise, ID"
-"Cogent Boston, MA","Boston, MA"
-"Cogent Buffalo, NY","Buffalo, NY"
-"Cogent Charlotte, NC","Charlotte, NC"
-"Cogent Cheyenne, WY","Cheyenne, WY"
-"Cogent Chicago, IL","Chicago, IL"
-"Cogent Cincinnati, OH","Cincinnati, OH"
-"Cogent Cleveland, OH","Cleveland, OH"
-"Cogent Columbus, OH","Columbus, OH"
-"Cogent Corpus Christi, TX","Corpus Christi, TX"
-"Cogent Dallas, TX","Dallas, TX"
-"Cogent Denver, CO","Denver, CO"
-"Cogent Des Moines, IA","Des Moines, IA"
-"Cogent Detroit, MI","Detroit, MI"
-"Cogent El Paso, TX","El Paso, TX"
-"Cogent Fargo, ND",Fargo
-"Cogent Fort Worth, TX","Fort Worth, TX"
-"Cogent Houston, TX","Houston, TX"
-"Cogent Indianapolis, IN","Indianapolis, IN"
-"Cogent Jacksonville, FL","Jacksonville, FL"
-"Cogent Kansas City, MO","Kansas City, MO"
-"Cogent Las Vegas, NV","Las Vegas, NV"
-"Cogent Los Angeles, CA","Los Angeles, CA"
-"Cogent Madison, WI","Madison, WI"
-"Cogent McAllen, TX","McAllen, TX"
-"Cogent Memphis, TN","Memphis, TN"
-"Cogent Miami, FL","Miami, FL"
-"Cogent Milwaukee, WI","Milwaukee, WI"
-"Cogent Minneapolis, MN","Minneapolis, MN"
-"Cogent Missoula, MT","Missoula, MT"
-"Cogent Nashville, TN","Nashville, TN"
-"Cogent New York, NY","New York, NY"
-"Cogent Newark, NJ","Newark, NJ"
-"Cogent Oklahoma City, OK","Oklahoma City, OK"
-"Cogent Omaha, NE","Omaha, NE"
-"Cogent Orlando, FL","Orlando, FL"
-"Cogent Philadelphia, PA","Philadelphia, PA"
-"Cogent Phoenix, AZ","Phoenix, AZ"
-"Cogent Pittsburgh, PA","Pittsburgh, PA"
-"Cogent Portland, OR","Portland, OR"
-"Cogent Raleigh, NC","Raleigh, NC"
-"Cogent Reno, NV","Reno, NV"
-"Cogent Richmond, VA","Richmond, VA"
-"Cogent Sacramento, CA","Sacramento, CA"
-"Cogent Salt Lake City, UT","Salt Lake City, UT"
-"Cogent San Antonio, TX","San Antonio, TX"
-"Cogent San Diego, CA","San Diego, CA"
-"Cogent San Francisco, CA","San Francisco, CA"
-"Cogent Seattle, WA","Seattle, WA"
-"Cogent South Bend, IN","South Bend, IN"
-"Cogent St. Louis, MO","St. Louis, MO"
-"Cogent Stamford, CT","Stamford, CT"
-"Cogent Tallahassee, FL","Tallahassee, FL"
-"Cogent Tampa, FL","Tampa, FL"
-"Cogent Toledo, OH","Toledo, OH"
-"Cogent Tucson, AZ","Tucson, AZ"
-"Cogent Tulsa, OK","Tulsa, OK"
-"Cogent Wichita, KS","Wichita, KS"
+A_Municipality,A_State,Z_Municipality,Z_State
+Seattle,WA,Everett,WA
+Seattle,WA,Tacoma,WA
+Seattle,WA,Wenatchee,WA
+Wenatchee,WA,Spokane,WA
+Spokane,WA,Missoula,MT
+Tacoma,WA,Portland,OR
+Portland,OR,Bend,OR
+Bend,OR,Boise,ID
+Portland,OR,Medford,OR
+Medford,OR,Oroville,CA
+Oroville,CA,Sacramento,CA
+Bend,OR,Reno,NV
+Reno,NV,Sacramento,CA
+Reno,NV,Salt Lake City,UT
+Sacramento,CA,Stockton,CA
+Stockton,CA,Oakland,CA
+Oakland,CA,San Francisco,CA
+San Francisco,CA,Santa Clara,CA
+Santa Clara,CA,Livermore,CA
+Livermore,CA,Stockton,CA
+Stockton,CA,Fresno,CA
+Fresno,CA,Bakersfield,CA
+Bakersfield,CA,Burbank,CA
+Santa Clara,CA,Los Osos,CA
+Los Osos,CA,Santa Barbara,CA
+Santa Barbara,CA,Ventura,CA
+Ventura,CA,Los Angeles,CA
+Burbank,CA,Los Angeles,CA
+Los Angeles,CA,Rialto,CA
+Rialto,CA,Palm Springs,CA
+Los Angeles,CA,San Diego,CA
+Rialto,CA,Las Vegas,NV
+Palm Springs,CA,Phoenix,AZ
+San Diego,CA,Phoenix,AZ
+Missoula,MT,Billings,MT
+Billings,MT,Bismarck,ND
+Bismarck,ND,Belfield,ND
+Belfield,ND,Billings,MT
+Billings,MT,Cheyenne,WY
+Boise,ID,Salt Lake City,UT
+Salt Lake City,UT,Cheyenne,WY
+Salt Lake City,UT,Las Vegas,NV
+Salt Lake City,UT,Denver,CO
+Cheyenne,WY,Denver,CO
+Cheyenne,WY,Grand Island,NE
+Denver,CO,Colorado Springs,CO
+Colorado Springs,CO,Albuquerque,NM
+Colorado Springs,CO,Wichita,KS
+Las Vegas,NV,Phoenix,AZ
+Phoenix,AZ,Tucson,AZ
+Tucson,AZ,El Paso,TX
+Phoenix,AZ,Las Cruces,NM
+Albuquerque,NM,Las Cruces,NM
+Las Cruces,NM,El Paso,TX
+Albuquerque,NM,Amarillo,TX
+Albuquerque,NM,Lubbock,TX
+Fargo,ND,Bismarck,ND
+Fargo,ND,St Cloud,MN
+St Cloud,MN,Minneapolis,MN
+Minneapolis,MN,Eau Claire,WI
+Eau Claire,WI,Madison,WI
+Madison,WI,Milwaukee,WI
+Milwaukee,WI,Chicago,IL
+Minneapolis,MN,Des Moines,IA
+Grand Island,NE,Omaha,NE
+Omaha,NE,Des Moines,IA
+Omaha,NE,Lincoln,NE
+Lincoln,NE,Kansas City,MO
+Grand Island,NE,Lincoln,NE
+Des Moines,IA,Chicago,IL
+Des Moines,IA,Cedar Rapids,IA
+Cedar Rapids,IA,Clinton,IA
+Clinton,IA,Chicago,IL
+Kansas City,MO,Des Moines,IA
+Kansas City,MO,St. Louis,MO
+Kansas City,MO,Wichita,KS
+Kansas City,MO,Jefferson City,MO
+Jefferson City,MO,St. Louis,MO
+Chicago,IL,Bloomington,IL
+Bloomington,IL,Springfield,IL
+Springfield,IL,St. Louis,MO
+Chicago,IL,Champaign,IL
+Champaign,IL,Indianapolis,IN
+Wichita,KS,Oklahoma City,OK
+Oklahoma City,OK,Okarche,OK
+Oklahoma City,OK,Tulsa,OK
+Oklahoma City,OK,Amarillo,TX
+Oklahoma City,OK,Dallas,TX
+Amarillo,TX,Lubbock,TX
+Tulsa,OK,Van Buren,AR
+Van Buren,AR,Little Rock,AR
+Little Rock,AR,Memphis,TN
+El Paso,TX,Midland,TX
+Midland,TX,Abilene,TX
+Abilene,TX,Fort Worth,TX
+Lubbock,TX,Abilene,TX
+Fort Worth,TX,Bowie,TX
+Bowie,TX,Oklahoma City,OK
+Fort Worth,TX,Dallas,TX
+Dallas,TX,Waco,TX
+Waco,TX,Austin,TX
+Austin,TX,San Antonio,TX
+Dallas,TX,Bryan,TX
+Bryan,TX,Houston,TX
+San Antonio,TX,Houston,TX
+Austin,TX,Houston,TX
+San Antonio,TX,Corpus Christi,TX
+Houston,TX,Corpus Christi,TX
+Corpus Christi,TX,McAllen,TX
+McAllen,TX,Monterrey,MX
+Monterrey,MX,Queretaro,MX
+Queretaro,MX,Mexico City,MX
+Queretaro,MX,Guadalajara,MX
+Dallas,TX,Shreveport,LA
+Shreveport,LA,Jackson,MS
+Houston,TX,Baton Rouge,LA
+Baton Rouge,LA,New Orleans,LA
+Jackson,MS,New Orleans,LA
+Jackson,MS,Birmingham,AL
+Chicago,IL,South Bend,IN
+South Bend,IN,Toledo,OH
+Toledo,OH,Cleveland,OH
+Chicago,IL,Grand Rapids,MI
+Grand Rapids,MI,Lansing,MI
+Lansing,MI,Flint,MI
+Flint,MI,Detroit,MI
+Detroit,MI,Toledo,OH
+Cleveland,OH,Erie,PA
+Erie,PA,Buffalo,NY
+Cleveland,OH,Akron,OH
+Akron,OH,Pittsburgh,PA
+Cleveland,OH,Columbus,OH
+Columbus,OH,Cincinnati,OH
+Indianapolis,IN,Cincinnati,OH
+Indianapolis,IN,Louisville,KY
+Louisville,KY,Lexington,KY
+Cincinnati,OH,Lexington,KY
+Columbus,OH,Charleston,WV
+South Bend,IN,Indianapolis,IN
+Buffalo,NY,Rochester,NY
+Rochester,NY,Syracuse,NY
+Syracuse,NY,Albany,NY
+Albany,NY,Springfield,MA
+Springfield,MA,Worcester,MA
+Worcester,MA,Boston,MA
+Boston,MA,Andover,MA
+Boston,MA,Providence,RI
+Providence,RI,Stamford,CT
+Stamford,CT,New York,NY
+Albany,NY,New York,NY
+Binghamton,NY,Syracuse,NY
+Binghamton,NY,Scranton,PA
+Scranton,PA,Newark,NJ
+New York,NY,Newark,NJ
+Newark,NJ,Philadelphia,PA
+Philadelphia,PA,Wilmington,DE
+Wilmington,DE,Baltimore,MD
+Baltimore,MD,Washington,DC
+Pittsburgh,PA,Harrisburg,PA
+Harrisburg,PA,Philadelphia,PA
+Pittsburgh,PA,Martinsburg,WV
+Martinsburg,WV,Ashburn,VA
+Washington,DC,Ashburn,VA
+Washington,DC,Fairfax,VA
+Washington,DC,Richmond,VA
+Richmond,VA,Virginia Beach,VA
+Charleston,WV,Charlottesville,VA
+Charlottesville,VA,Richmond,VA
+Roanoke,VA,Charlottesville,VA
+Richmond,VA,Raleigh,NC
+St. Louis,MO,Nashville,TN
+Nashville,TN,Memphis,TN
+Nashville,TN,Knoxville,TN
+Knoxville,TN,Atlanta,GA
+Nashville,TN,Atlanta,GA
+Nashville,TN,Huntsville,AL
+Huntsville,AL,Birmingham,AL
+Birmingham,AL,Atlanta,GA
+Birmingham,AL,Montgomery,AL
+Montgomery,AL,Mobile,AL
+Mobile,AL,Atmore,AL
+Atmore,AL,Pensacola,FL
+Pensacola,FL,Tallahassee,FL
+Mobile,AL,New Orleans,LA
+Atlanta,GA,Charlotte,NC
+Charlotte,NC,Winston Salem,NC
+Winston Salem,NC,Raleigh,NC
+Raleigh,NC,Hamlet,NC
+Charlotte,NC,Hamlet,NC
+Hamlet,NC,Myrtle Beach,SC
+Myrtle Beach,SC,Charleston,SC
+Atlanta,GA,Tallahassee,FL
+Atlanta,GA,Jacksonville,FL
+Tallahassee,FL,Jacksonville,FL
+Jacksonville,FL,Orlando,FL
+Orlando,FL,Tampa,FL
+Tampa,FL,Fort Myers,FL
+Fort Myers,FL,Miami,FL
+Orlando,FL,West Palm Beach,FL
+West Palm Beach,FL,Boca Raton,FL
+Boca Raton,FL,Miami,FL
+Charleston,SC,Jacksonville,FL
+Akron,OH,Akron,OH
+Albany,NY,Albany,NY
+Albuquerque,NM,Albuquerque,NM
+Ashburn,VA,Ashburn,VA
+Atlanta,GA,Atlanta,GA
+Austin,TX,Austin,TX
+Baltimore,MD,Baltimore,MD
+Billings,MT,Billings,MT
+Birmingham,AL,Birmingham,AL
+Bismarck,ND,Bismarck,ND
+Boise,ID,Boise,ID
+Boston,MA,Boston,MA
+Buffalo,NY,Buffalo,NY
+Charlotte,NC,Charlotte,NC
+Cheyenne,WY,Cheyenne,WY
+Chicago,IL,Chicago,IL
+Cincinnati,OH,Cincinnati,OH
+Cleveland,OH,Cleveland,OH
+Columbus,OH,Columbus,OH
+Corpus Christi,TX,Corpus Christi,TX
+Dallas,TX,Dallas,TX
+Denver,CO,Denver,CO
+Des Moines,IA,Des Moines,IA
+Detroit,MI,Detroit,MI
+El Paso,TX,El Paso,TX
+Fargo,ND,Fargo,ND
+Fort Worth,TX,Fort Worth,TX
+Houston,TX,Houston,TX
+Indianapolis,IN,Indianapolis,IN
+Jacksonville,FL,Jacksonville,FL
+Kansas City,MO,Kansas City,MO
+Las Vegas,NV,Las Vegas,NV
+Los Angeles,CA,Los Angeles,CA
+Madison,WI,Madison,WI
+McAllen,TX,McAllen,TX
+Memphis,TN,Memphis,TN
+Miami,FL,Miami,FL
+Milwaukee,WI,Milwaukee,WI
+Minneapolis,MN,Minneapolis,MN
+Missoula,MT,Missoula,MT
+Nashville,TN,Nashville,TN
+New York,NY,New York,NY
+Newark,NJ,Newark,NJ
+Oklahoma City,OK,Oklahoma City,OK
+Omaha,NE,Omaha,NE
+Orlando,FL,Orlando,FL
+Philadelphia,PA,Philadelphia,PA
+Phoenix,AZ,Phoenix,AZ
+Pittsburgh,PA,Pittsburgh,PA
+Portland,OR,Portland,OR
+Raleigh,NC,Raleigh,NC
+Reno,NV,Reno,NV
+Richmond,VA,Richmond,VA
+Sacramento,CA,Sacramento,CA
+Salt Lake City,UT,Salt Lake City,UT
+San Antonio,TX,San Antonio,TX
+San Diego,CA,San Diego,CA
+San Francisco,CA,San Francisco,CA
+Seattle,WA,Seattle,WA
+South Bend,IN,South Bend,IN
+St. Louis,MO,St. Louis,MO
+Stamford,CT,Stamford,CT
+Tallahassee,FL,Tallahassee,FL
+Tampa,FL,Tampa,FL
+Toledo,OH,Toledo,OH
+Tucson,AZ,Tucson,AZ
+Tulsa,OK,Tulsa,OK
+Wichita,KS,Wichita,KS

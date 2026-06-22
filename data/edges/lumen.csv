@@ -1,130 +1,130 @@
-A,Z
-"Seattle, WA","Yakima, WA"
-"Seattle, WA","Portland, OR"
-"Yakima, WA","Missoula, MT"
-"Yakima, WA","Boise, ID"
-"Portland, OR","Bandon, OR"
-"Portland, OR","Sacramento, CA"
-"Missoula, MT","Cheyenne, WY"
-"Boise, ID","Ogden, UT"
-"Ogden, UT","Salt Lake City, UT"
-"Ogden, UT","Cheyenne, WY"
-"Salt Lake City, UT","Reno, NV"
-"Salt Lake City, UT","Denver, CO"
-"Salt Lake City, UT","Las Vegas, NV"
-"Reno, NV","Sacramento, CA"
-"Sacramento, CA","San Francisco, CA"
-"Sacramento, CA","Emeryville, CA"
-"Sacramento, CA","Modesto, CA"
-"San Francisco, CA","Hayward, CA"
-"Hayward, CA","Sunnyvale, CA"
-"Sunnyvale, CA","San Jose, CA"
-"San Jose, CA","San Luis Obispo, CA"
-"San Luis Obispo, CA","Los Angeles, CA"
-"Los Angeles, CA","Tustin, CA"
-"Tustin, CA","San Diego, CA"
-"San Diego, CA","Riverside, CA"
-"Los Angeles, CA","San Bernardino, CA"
-"Riverside, CA","San Bernardino, CA"
-"San Bernardino, CA","Las Vegas, NV"
-"San Bernardino, CA","Phoenix, AZ"
-"San Diego, CA","Phoenix, AZ"
-"Phoenix, AZ","Goodyear, AZ"
-"Phoenix, AZ","Tucson, AZ"
-"Tucson, AZ","El Paso, TX"
-"Cheyenne, WY","Denver, CO"
-"Cheyenne, WY","Omaha, NE"
-"Denver, CO","Omaha, NE"
-"Denver, CO","Kansas City, MO"
-"Denver, CO","Wichita, KS"
-"Denver, CO","Stratford, TX"
-"Denver, CO","Albuquerque, NM"
-"Albuquerque, NM","El Paso, TX"
-"Albuquerque, NM","Stratford, TX"
-"Stratford, TX","Tulsa, OK"
-"Stratford, TX","Oklahoma City, OK"
-"Oklahoma City, OK","Tulsa, OK"
-"Oklahoma City, OK","Fort Worth, TX"
-"Tulsa, OK","Fort Worth, TX"
-"Tulsa, OK","Kansas City, MO"
-"Fort Worth, TX","Dallas, TX"
-"Fort Worth, TX","Austin, TX"
-"Dallas, TX","Houston, TX"
-"Dallas, TX","Memphis, TN"
-"El Paso, TX","San Antonio, TX"
-"San Antonio, TX","Austin, TX"
-"Austin, TX","Houston, TX"
-"San Antonio, TX","Houston, TX"
-"San Antonio, TX","Laredo, TX"
-"Laredo, TX","McAllen, TX"
-"McAllen, TX","Harlingen, TX"
-"Harlingen, TX","Corpus Christi, TX"
-"Corpus Christi, TX","Houston, TX"
-"Houston, TX","Tallahassee, FL"
-"Houston, TX","Billingsley, AL"
-"Minneapolis, MN","Milwaukee, WI"
-"Minneapolis, MN","Des Moines, IA"
-"Des Moines, IA","Omaha, NE"
-"Des Moines, IA","Davenport, IA"
-"Des Moines, IA","Kansas City, MO"
-"Davenport, IA","Chicago, IL"
-"Chicago, IL","Madison, WI"
-"Madison, WI","Milwaukee, WI"
-"Milwaukee, WI","Chicago, IL"
-"Chicago, IL","South Bend, IN"
-"Chicago, IL","Indianapolis, IN"
-"Chicago, IL","St. Louis, MO"
-"South Bend, IN","Kalamazoo, MI"
-"South Bend, IN","Toledo, OH"
-"Kalamazoo, MI","Detroit, MI"
-"Detroit, MI","Toledo, OH"
-"Toledo, OH","Cleveland, OH"
-"Toledo, OH","Akron, OH"
-"Cleveland, OH","Akron, OH"
-"Cleveland, OH","Buffalo, NY"
-"Cleveland, OH","Pittsburgh, PA"
-"Akron, OH","Columbus, OH"
-"Columbus, OH","Cincinnati, OH"
-"Cincinnati, OH","Indianapolis, IN"
-"Indianapolis, IN","St. Louis, MO"
-"St. Louis, MO","Kansas City, MO"
-"St. Louis, MO","Nashville, TN"
-"Buffalo, NY","Albany, NY"
-"Albany, NY","Cambridge, MA"
-"Cambridge, MA","Boston, MA"
-"Boston, MA","Stamford, CT"
-"Albany, NY","Stamford, CT"
-"Stamford, CT","New York, NY"
-"New York, NY","Newark, NJ"
-"New York, NY","Wall, NJ"
-"Wall, NJ","Tuckerton, NJ"
-"Tuckerton, NJ","Philadelphia, PA"
-"Newark, NJ","Philadelphia, PA"
-"Philadelphia, PA","Baltimore, MD"
-"Philadelphia, PA","Pittsburgh, PA"
-"Baltimore, MD","Ashburn, VA"
-"Ashburn, VA","Herndon, VA"
-"Herndon, VA","McLean, VA"
-"McLean, VA","Baltimore, MD"
-"McLean, VA","Richmond, VA"
-"Richmond, VA","Norfolk, VA"
-"Richmond, VA","Raleigh, NC"
-"Raleigh, NC","Charlotte, NC"
-"Charlotte, NC","Atlanta, GA"
-"Charlotte, NC","Augusta, GA"
-"Charlotte, NC","Nashville, TN"
-"Nashville, TN","Memphis, TN"
-"Nashville, TN","Atlanta, GA"
-"Memphis, TN","Atlanta, GA"
-"Memphis, TN","Birmingham, AL"
-"Birmingham, AL","Atlanta, GA"
-"Billingsley, AL","Atlanta, GA"
-"Atlanta, GA","Augusta, GA"
-"Atlanta, GA","Tallahassee, FL"
-"Tallahassee, FL","Jacksonville, FL"
-"Jacksonville, FL","Augusta, GA"
-"Jacksonville, FL","Orlando, FL"
-"Orlando, FL","Tampa, FL"
-"Tampa, FL","Fort Meyers, FL"
-"Fort Meyers, FL","Miami, FL"
-"Orlando, FL","Miami, FL"
+A_Municipality,A_State,Z_Municipality,Z_State
+Seattle,WA,Yakima,WA
+Seattle,WA,Portland,OR
+Yakima,WA,Missoula,MT
+Yakima,WA,Boise,ID
+Portland,OR,Bandon,OR
+Portland,OR,Sacramento,CA
+Missoula,MT,Cheyenne,WY
+Boise,ID,Ogden,UT
+Ogden,UT,Salt Lake City,UT
+Ogden,UT,Cheyenne,WY
+Salt Lake City,UT,Reno,NV
+Salt Lake City,UT,Denver,CO
+Salt Lake City,UT,Las Vegas,NV
+Reno,NV,Sacramento,CA
+Sacramento,CA,San Francisco,CA
+Sacramento,CA,Emeryville,CA
+Sacramento,CA,Modesto,CA
+San Francisco,CA,Hayward,CA
+Hayward,CA,Sunnyvale,CA
+Sunnyvale,CA,San Jose,CA
+San Jose,CA,San Luis Obispo,CA
+San Luis Obispo,CA,Los Angeles,CA
+Los Angeles,CA,Tustin,CA
+Tustin,CA,San Diego,CA
+San Diego,CA,Riverside,CA
+Los Angeles,CA,San Bernardino,CA
+Riverside,CA,San Bernardino,CA
+San Bernardino,CA,Las Vegas,NV
+San Bernardino,CA,Phoenix,AZ
+San Diego,CA,Phoenix,AZ
+Phoenix,AZ,Goodyear,AZ
+Phoenix,AZ,Tucson,AZ
+Tucson,AZ,El Paso,TX
+Cheyenne,WY,Denver,CO
+Cheyenne,WY,Omaha,NE
+Denver,CO,Omaha,NE
+Denver,CO,Kansas City,MO
+Denver,CO,Wichita,KS
+Denver,CO,Stratford,TX
+Denver,CO,Albuquerque,NM
+Albuquerque,NM,El Paso,TX
+Albuquerque,NM,Stratford,TX
+Stratford,TX,Tulsa,OK
+Stratford,TX,Oklahoma City,OK
+Oklahoma City,OK,Tulsa,OK
+Oklahoma City,OK,Fort Worth,TX
+Tulsa,OK,Fort Worth,TX
+Tulsa,OK,Kansas City,MO
+Fort Worth,TX,Dallas,TX
+Fort Worth,TX,Austin,TX
+Dallas,TX,Houston,TX
+Dallas,TX,Memphis,TN
+El Paso,TX,San Antonio,TX
+San Antonio,TX,Austin,TX
+Austin,TX,Houston,TX
+San Antonio,TX,Houston,TX
+San Antonio,TX,Laredo,TX
+Laredo,TX,McAllen,TX
+McAllen,TX,Harlingen,TX
+Harlingen,TX,Corpus Christi,TX
+Corpus Christi,TX,Houston,TX
+Houston,TX,Tallahassee,FL
+Houston,TX,Billingsley,AL
+Minneapolis,MN,Milwaukee,WI
+Minneapolis,MN,Des Moines,IA
+Des Moines,IA,Omaha,NE
+Des Moines,IA,Davenport,IA
+Des Moines,IA,Kansas City,MO
+Davenport,IA,Chicago,IL
+Chicago,IL,Madison,WI
+Madison,WI,Milwaukee,WI
+Milwaukee,WI,Chicago,IL
+Chicago,IL,South Bend,IN
+Chicago,IL,Indianapolis,IN
+Chicago,IL,St. Louis,MO
+South Bend,IN,Kalamazoo,MI
+South Bend,IN,Toledo,OH
+Kalamazoo,MI,Detroit,MI
+Detroit,MI,Toledo,OH
+Toledo,OH,Cleveland,OH
+Toledo,OH,Akron,OH
+Cleveland,OH,Akron,OH
+Cleveland,OH,Buffalo,NY
+Cleveland,OH,Pittsburgh,PA
+Akron,OH,Columbus,OH
+Columbus,OH,Cincinnati,OH
+Cincinnati,OH,Indianapolis,IN
+Indianapolis,IN,St. Louis,MO
+St. Louis,MO,Kansas City,MO
+St. Louis,MO,Nashville,TN
+Buffalo,NY,Albany,NY
+Albany,NY,Cambridge,MA
+Cambridge,MA,Boston,MA
+Boston,MA,Stamford,CT
+Albany,NY,Stamford,CT
+Stamford,CT,New York,NY
+New York,NY,Newark,NJ
+New York,NY,Wall,NJ
+Wall,NJ,Tuckerton,NJ
+Tuckerton,NJ,Philadelphia,PA
+Newark,NJ,Philadelphia,PA
+Philadelphia,PA,Baltimore,MD
+Philadelphia,PA,Pittsburgh,PA
+Baltimore,MD,Ashburn,VA
+Ashburn,VA,Herndon,VA
+Herndon,VA,McLean,VA
+McLean,VA,Baltimore,MD
+McLean,VA,Richmond,VA
+Richmond,VA,Norfolk,VA
+Richmond,VA,Raleigh,NC
+Raleigh,NC,Charlotte,NC
+Charlotte,NC,Atlanta,GA
+Charlotte,NC,Augusta,GA
+Charlotte,NC,Nashville,TN
+Nashville,TN,Memphis,TN
+Nashville,TN,Atlanta,GA
+Memphis,TN,Atlanta,GA
+Memphis,TN,Birmingham,AL
+Birmingham,AL,Atlanta,GA
+Billingsley,AL,Atlanta,GA
+Atlanta,GA,Augusta,GA
+Atlanta,GA,Tallahassee,FL
+Tallahassee,FL,Jacksonville,FL
+Jacksonville,FL,Augusta,GA
+Jacksonville,FL,Orlando,FL
+Orlando,FL,Tampa,FL
+Tampa,FL,Fort Meyers,FL
+Fort Meyers,FL,Miami,FL
+Orlando,FL,Miami,FL
