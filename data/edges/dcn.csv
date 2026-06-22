@@ -1,35 +1,35 @@
-A,Z
-Williston,Ray
-Ray,Stanley
-Stanley,"Minot, ND"
-Williston,Alexander
-Alexander,Parshall
-Parshall,Max
-Max,"Minot, ND"
-Max,Bismarck
-Beach,Dickinson
-Dickinson,Bismarck
-Bismarck,Steele
-Steele,Jamestown
-"Minot, ND",Rugby
-Rugby,Devils Lake
-Devils Lake,Grand Forks
-Devils Lake,Carrington
-Carrington,Jamestown
-Grand Forks,Fargo
-Fargo,Buffalo
-Buffalo,Jamestown
-Fargo,Abercrombie
-Abercrombie,Gwinner
-Gwinner,Marion Jct.
-Marion Jct.,Jamestown
-Bismarck,Carrington
-Williston,"Seattle, WA"
-Beach,"Denver, CO"
-Dickinson,"Cheyenne, WY"
-Grand Forks,"Minneapolis, MN"
-Grand Forks,"Chicago, IL"
-Fargo,"Minneapolis, MN"
-Fargo,"Chicago, IL"
-Gwinner,"Omaha, NE"
-Abercrombie,"Omaha, NE"
+A_Municipality,A_State,Z_Municipality,Z_State
+Williston,ND,Ray,ND
+Ray,ND,Stanley,ND
+Stanley,ND,Minot,ND
+Williston,ND,Alexander,ND
+Alexander,ND,Parshall,ND
+Parshall,ND,Max,ND
+Max,ND,Minot,ND
+Max,ND,Bismarck,ND
+Beach,ND,Dickinson,ND
+Dickinson,ND,Bismarck,ND
+Bismarck,ND,Steele,ND
+Steele,ND,Jamestown,ND
+Minot,ND,Rugby,ND
+Rugby,ND,Devils Lake,ND
+Devils Lake,ND,Grand Forks,ND
+Devils Lake,ND,Carrington,ND
+Carrington,ND,Jamestown,ND
+Grand Forks,ND,Fargo,ND
+Fargo,ND,Buffalo,ND
+Buffalo,ND,Jamestown,ND
+Fargo,ND,Abercrombie,ND
+Abercrombie,ND,Gwinner,ND
+Gwinner,ND,Marion Jct.,ND
+Marion Jct.,ND,Jamestown,ND
+Bismarck,ND,Carrington,ND
+Williston,ND,Seattle,WA
+Beach,ND,Denver,CO
+Dickinson,ND,Cheyenne,WY
+Grand Forks,ND,Minneapolis,MN
+Grand Forks,ND,Chicago,IL
+Fargo,ND,Minneapolis,MN
+Fargo,ND,Chicago,IL
+Gwinner,ND,Omaha,NE
+Abercrombie,ND,Omaha,NE

@@ -1,332 +1,306 @@
-A,Z
-"Zayo Vancouver, BC","Zayo Seattle, WA"
-"Zayo Seattle, WA","Zayo Everett, WA"
-"Zayo Seattle, WA","Zayo Bellevue, WA"
-"Zayo Seattle, WA","Zayo Redmond, WA"
-"Zayo Seattle, WA","Zayo Tacoma, WA"
-"Zayo Tacoma, WA","Zayo Olympia, WA"
-"Zayo Seattle, WA","Zayo Kent, WA"
-"Zayo Kent, WA","Zayo Tukwila, WA"
-"Zayo Seattle, WA","Zayo Wenatchee, WA"
-"Zayo Wenatchee, WA","Zayo Spokane, WA"
-"Zayo Wenatchee, WA","Zayo Quincy, WA"
-"Zayo Quincy, WA","Zayo Pasco, WA"
-"Zayo Seattle, WA","Zayo Yakima, WA"
-"Zayo Yakima, WA","Zayo Pasco, WA"
-"Zayo Pasco, WA","Zayo Umatilla, OR"
-"Zayo Umatilla, OR","Zayo Boardman, OR"
-"Zayo Olympia, WA","Zayo Kalama, WA"
-"Zayo Kalama, WA","Zayo Portland, OR"
-"Zayo Portland, OR","Zayo Hillsboro, OR"
-"Zayo Portland, OR","Zayo Beaverton, OR"
-"Zayo Portland, OR","Zayo Salem, OR"
-"Zayo Salem, OR","Zayo Shedd, OR"
-"Zayo Shedd, OR","Zayo Eugene, OR"
-"Zayo Eugene, OR","Zayo Jasper, OR"
-"Zayo Portland, OR","Zayo Boardman, OR"
-"Zayo Eugene, OR","Zayo Bend, OR"
-"Zayo Bend, OR","Zayo Burns, OR"
-"Zayo Burns, OR","Zayo Boise, ID"
-"Zayo Bend, OR","Zayo Beatty, OR"
-"Zayo Beatty, OR","Zayo Reno, NV"
-"Zayo Jasper, OR","Zayo Anderson, CA"
-"Zayo Anderson, CA","Zayo Sacramento, CA"
-"Zayo Spokane, WA","Zayo Missoula, MT"
-"Zayo Missoula, MT","Zayo Helena, MT"
-"Zayo Helena, MT","Zayo Great Falls, MT"
-"Zayo Spokane, WA","Zayo Cut Bank, MT"
-"Zayo Cut Bank, MT","Zayo Great Falls, MT"
-"Zayo Calgary, AB","Zayo Cut Bank, MT"
-"Zayo Edmonton, AB","Zayo Calgary, AB"
-"Zayo Calgary, AB","Zayo Regina, SK"
-"Zayo Great Falls, MT","Zayo Billings, MT"
-"Zayo Helena, MT","Zayo Billings, MT"
-"Zayo Billings, MT","Zayo Laurel, MT"
-"Zayo Laurel, MT","Zayo Casper, WY"
-"Zayo Billings, MT","Zayo Bismarck, ND"
-"Zayo Regina, SK","Zayo Winnipeg, MB"
-"Zayo Regina, SK","Zayo Bismarck, ND"
-"Zayo Boise, ID","Zayo Shoshone, ID"
-"Zayo Shoshone, ID","Zayo Pocatello, ID"
-"Zayo Pocatello, ID","Zayo Ogden, UT"
-"Zayo Boise, ID","Zayo Pocatello, ID"
-"Zayo Ogden, UT","Zayo Salt Lake City, UT"
-"Zayo Salt Lake City, UT","Zayo West Jordan, UT"
-"Zayo West Jordan, UT","Zayo Bluffdale, UT"
-"Zayo Salt Lake City, UT","Zayo Coalville, UT"
-"Zayo Salt Lake City, UT","Zayo Springville, UT"
-"Zayo Coalville, UT","Zayo Rock Springs, WY"
-"Zayo Rock Springs, WY","Zayo Cheyenne, WY"
-"Zayo Rock Springs, WY","Zayo Casper, WY"
-"Zayo Casper, WY","Zayo Cheyenne, WY"
-"Zayo Springville, UT","Zayo Grand Junction, CO"
-"Zayo Salt Lake City, UT","Zayo St. George, UT"
-"Zayo St. George, UT","Zayo Las Vegas, NV"
-"Zayo Reno, NV","Zayo Salt Lake City, UT"
-"Zayo Sacramento, CA","Zayo Rancho Cordova, CA"
-"Zayo Sacramento, CA","Zayo Reno, NV"
-"Zayo Sacramento, CA","Zayo Oakland, CA"
-"Zayo Oakland, CA","Zayo San Francisco, CA"
-"Zayo San Francisco, CA","Zayo Palo Alto, CA"
-"Zayo Palo Alto, CA","Zayo Santa Clara, CA"
-"Zayo Santa Clara, CA","Zayo San Jose, CA"
-"Zayo San Jose, CA","Zayo Fremont, CA"
-"Zayo Fremont, CA","Zayo Modesto, CA"
-"Zayo Sacramento, CA","Zayo Modesto, CA"
-"Zayo Modesto, CA","Zayo Tulare, CA"
-"Zayo Tulare, CA","Zayo Los Osos, CA"
-"Zayo Los Osos, CA","Zayo Santa Barbara, CA"
-"Zayo Santa Barbara, CA","Zayo Los Angeles, CA"
-"Zayo Tulare, CA","Zayo Palmdale, CA"
-"Zayo Palmdale, CA","Zayo Los Angeles, CA"
-"Zayo Los Angeles, CA","Zayo Anaheim, CA"
-"Zayo Anaheim, CA","Zayo Irvine, CA"
-"Zayo Los Angeles, CA","Zayo San Diego, CA"
-"Zayo Los Angeles, CA","Zayo Barstow, CA"
-"Zayo Barstow, CA","Zayo Las Vegas, NV"
-"Zayo Palmdale, CA","Zayo Barstow, CA"
-"Zayo San Diego, CA","Zayo Phoenix, AZ"
-"Zayo Las Vegas, NV","Zayo Phoenix, AZ"
-"Zayo Phoenix, AZ","Zayo Chandler, AZ"
-"Zayo Chandler, AZ","Zayo Tucson, AZ"
-"Zayo Tucson, AZ","Zayo Nogales, AZ"
-"Zayo Tucson, AZ","Zayo El Paso, TX"
-"Zayo Phoenix, AZ","Zayo Albuquerque, NM"
-"Zayo Grand Junction, CO","Zayo Denver, CO"
-"Zayo Grand Junction, CO","Zayo Silver Plume, CO"
-"Zayo Silver Plume, CO","Zayo Denver, CO"
-"Zayo Albuquerque, NM","Zayo El Paso, TX"
-"Zayo Albuquerque, NM","Zayo Amarillo, TX"
-"Zayo Albuquerque, NM","Zayo Lubbock, TX"
-"Zayo Denver, CO","Zayo Henderson, CO"
-"Zayo Denver, CO","Zayo Aurora, CO"
-"Zayo Denver, CO","Zayo Englewood, CO"
-"Zayo Englewood, CO","Zayo Centennial, CO"
-"Zayo Denver, CO","Zayo Monument, CO"
-"Zayo Monument, CO","Zayo Colorado Springs, CO"
-"Zayo Denver, CO","Zayo Keenesburg, CO"
-"Zayo Cheyenne, WY","Zayo Keenesburg, CO"
-"Zayo Keenesburg, CO","Zayo Denver, CO"
-"Zayo Denver, CO","Zayo Colorado Springs, CO"
-"Zayo Colorado Springs, CO","Zayo Amarillo, TX"
-"Zayo Denver, CO","Zayo Des Moines, IA"
-"Zayo El Paso, TX","Zayo Midland, TX"
-"Zayo Midland, TX","Zayo San Angelo, TX"
-"Zayo San Angelo, TX","Zayo Austin, TX"
-"Zayo Lubbock, TX","Zayo Wichita Falls, TX"
-"Zayo Amarillo, TX","Zayo Wichita Falls, TX"
-"Zayo Wichita Falls, TX","Zayo Dallas, TX"
-"Zayo Dallas, TX","Zayo Plano, TX"
-"Zayo Dallas, TX","Zayo Fort Worth, TX"
-"Zayo Dallas, TX","Zayo Wills Point, TX"
-"Zayo Dallas, TX","Zayo Waco, TX"
-"Zayo Waco, TX","Zayo Temple, TX"
-"Zayo Temple, TX","Zayo Austin, TX"
-"Zayo Austin, TX","Zayo San Antonio, TX"
-"Zayo San Antonio, TX","Zayo Laredo, TX"
-"Zayo Laredo, TX","Zayo McAllen, TX"
-"Zayo San Antonio, TX","Zayo Houston, TX"
-"Zayo Austin, TX","Zayo Houston, TX"
-"Zayo Houston, TX","Zayo Spring, TX"
-"Zayo Spring, TX","Zayo Montgomery, TX"
-"Zayo Dallas, TX","Zayo Tulsa, OK"
-"Zayo Tulsa, OK","Zayo Kansas City, MO"
-"Zayo Amarillo, TX","Zayo Lubbock, TX"
-"Zayo Houston, TX","Zayo Roanoke, LA"
-"Zayo Roanoke, LA","Zayo Ponchatoula, LA"
-"Zayo Ponchatoula, LA","Zayo New Orleans, LA"
-"Zayo Dallas, TX","Zayo Clinton, MS"
-"Zayo Clinton, MS","Zayo Atlanta, GA"
-"Zayo Clinton, MS","Zayo New Orleans, LA"
-"Zayo Winnipeg, MB","Zayo Fargo, ND"
-"Zayo Winnipeg, MB","Zayo Thunder Bay, ON"
-"Zayo Fargo, ND","Zayo Bismarck, ND"
-"Zayo Fargo, ND","Zayo Minneapolis, MN"
-"Zayo Minneapolis, MN","Zayo Mankato, MN"
-"Zayo Mankato, MN","Zayo Windom, MN"
-"Zayo Minneapolis, MN","Zayo Owatonna, MN"
-"Zayo Windom, MN","Zayo Sioux City, IA"
-"Zayo Sioux City, IA","Zayo Omaha, NE"
-"Zayo Omaha, NE","Zayo Des Moines, IA"
-"Zayo Omaha, NE","Zayo Kansas City, MO"
-"Zayo Des Moines, IA","Zayo Kansas City, MO"
-"Zayo Des Moines, IA","Zayo Chicago, IL"
-"Zayo Minneapolis, MN","Zayo Madison, WI"
-"Zayo Madison, WI","Zayo Chicago, IL"
-"Zayo Kansas City, MO","Zayo St. Louis, MO"
-"Zayo St. Louis, MO","Zayo Chicago, IL"
-"Zayo St. Louis, MO","Zayo Memphis, TN"
-"Zayo St. Louis, MO","Zayo Nashville, TN"
-"Zayo Wichita, KS","Zayo Kansas City, MO"
-"Zayo Wichita, KS","Zayo Tulsa, OK"
-"Zayo Chicago, IL","Zayo Franklin Park, IL"
-"Zayo Chicago, IL","Zayo Elk Grove Village, IL"
-"Zayo Chicago, IL","Zayo Mt Prospect, IL"
-"Zayo Chicago, IL","Zayo Oak Brook, IL"
-"Zayo Chicago, IL","Zayo Aurora, IL"
-"Zayo Chicago, IL","Zayo Valparaiso, IN"
-"Zayo Valparaiso, IN","Zayo South Bend, IN"
-"Zayo South Bend, IN","Zayo Fort Wayne, IN"
-"Zayo Chicago, IL","Zayo Grand Rapids, MI"
-"Zayo Grand Rapids, MI","Zayo Lansing, MI"
-"Zayo Lansing, MI","Zayo Southfield, MI"
-"Zayo Southfield, MI","Zayo Windsor, ON"
-"Zayo Windsor, ON","Zayo Cleveland, OH"
-"Zayo South Bend, IN","Zayo Indianapolis, IN"
-"Zayo Indianapolis, IN","Zayo Marion, IN"
-"Zayo Marion, IN","Zayo Anderson, IN"
-"Zayo Indianapolis, IN","Zayo Frankfort, IN"
-"Zayo Fort Wayne, IN","Zayo Lima, OH"
-"Zayo Indianapolis, IN","Zayo Dayton, OH"
-"Zayo Dayton, OH","Zayo Columbus, OH"
-"Zayo Cleveland, OH","Zayo Garfield Heights, OH"
-"Zayo Cleveland, OH","Zayo Akron, OH"
-"Zayo Akron, OH","Zayo Youngstown, OH"
-"Zayo Youngstown, OH","Zayo Pittsburgh, PA"
-"Zayo Columbus, OH","Zayo Little Hocking, OH"
-"Zayo Columbus, OH","Zayo Pittsburgh, PA"
-"Zayo Cleveland, OH","Zayo Columbus, OH"
-"Zayo Lima, OH","Zayo Columbus, OH"
-"Zayo Thunder Bay, ON","Zayo Sudbury, ON"
-"Zayo Sudbury, ON","Zayo Ottawa, ON"
-"Zayo Ottawa, ON","Zayo Montreal, QC"
-"Zayo Montreal, QC","Zayo Quebec City, QC"
-"Zayo Sudbury, ON","Zayo Barrie, ON"
-"Zayo Barrie, ON","Zayo Toronto, ON"
-"Zayo Toronto, ON","Zayo Markham, ON"
-"Zayo Toronto, ON","Zayo Etobicoke, ON"
-"Zayo Etobicoke, ON","Zayo Mississauga, ON"
-"Zayo Mississauga, ON","Zayo Hamilton, ON"
-"Zayo Hamilton, ON","Zayo Guelph, ON"
-"Zayo Guelph, ON","Zayo Kitchener, ON"
-"Zayo Kitchener, ON","Zayo Waterloo, ON"
-"Zayo Hamilton, ON","Zayo Buffalo, NY"
-"Zayo Toronto, ON","Zayo Buffalo, NY"
-"Zayo Montreal, QC","Zayo Albany, NY"
-"Zayo Buffalo, NY","Zayo Albany, NY"
-"Zayo Albany, NY","Zayo Boston, MA"
-"Zayo Boston, MA","Zayo Nashua, NH"
-"Zayo Boston, MA","Zayo Providence, RI"
-"Zayo Providence, RI","Zayo Trumbull, CT"
-"Zayo Trumbull, CT","Zayo Stamford, CT"
-"Zayo Stamford, CT","Zayo New York, NY"
-"Zayo New York, NY","Zayo Staten Island, NY"
-"Zayo New York, NY","Zayo Weehawken, NJ"
-"Zayo Weehawken, NJ","Zayo Secaucus, NJ"
-"Zayo Secaucus, NJ","Zayo Jersey City, NJ"
-"Zayo Jersey City, NJ","Zayo Newark, NJ"
-"Zayo Newark, NJ","Zayo Linden, NJ"
-"Zayo Linden, NJ","Zayo Woodbridge, NJ"
-"Zayo Woodbridge, NJ","Zayo Somerset, NJ"
-"Zayo Woodbridge, NJ","Zayo Wall, NJ"
-"Zayo Wall, NJ","Zayo Manasquan, NJ"
-"Zayo Manasquan, NJ","Zayo Tuckerton, NJ"
-"Zayo Newark, NJ","Zayo Philadelphia, PA"
-"Zayo Somerset, NJ","Zayo Philadelphia, PA"
-"Zayo Philadelphia, PA","Zayo Wilmington, DE"
-"Zayo Wilmington, DE","Zayo Baltimore, MD"
-"Zayo Baltimore, MD","Zayo Owings Mills, MD"
-"Zayo Baltimore, MD","Zayo Frederick, MD"
-"Zayo Frederick, MD","Zayo Ashburn, VA"
-"Zayo Baltimore, MD","Zayo Washington, DC"
-"Zayo Washington, DC","Zayo McLean, VA"
-"Zayo McLean, VA","Zayo Ashburn, VA"
-"Zayo Ashburn, VA","Zayo Reston, VA"
-"Zayo McLean, VA","Zayo Fort Belvoir, VA"
-"Zayo Fort Belvoir, VA","Zayo Richmond, VA"
-"Zayo Richmond, VA","Zayo Virginia Beach, VA"
-"Zayo Richmond, VA","Zayo Charlotte, NC"
-"Zayo Albany, NY","Zayo New York, NY"
-"Zayo Buffalo, NY","Zayo Pittsburgh, PA"
-"Zayo Pittsburgh, PA","Zayo Port Matilda, PA"
-"Zayo Port Matilda, PA","Zayo Philadelphia, PA"
-"Zayo Charlotte, NC","Zayo Atlanta, GA"
-"Zayo Atlanta, GA","Zayo Lithia Springs, GA"
-"Zayo Atlanta, GA","Zayo Smyrna, GA"
-"Zayo Atlanta, GA","Zayo Macon, GA"
-"Zayo Macon, GA","Zayo Albany, GA"
-"Zayo Albany, GA","Zayo Tallahassee, FL"
-"Zayo Atlanta, GA","Zayo Leeds, AL"
-"Zayo Leeds, AL","Zayo Memphis, TN"
-"Zayo Memphis, TN","Zayo Nashville, TN"
-"Zayo Nashville, TN","Zayo Clinton, TN"
-"Zayo Clinton, TN","Zayo Atlanta, GA"
-"Zayo Nashville, TN","Zayo Atlanta, GA"
-"Zayo Tallahassee, FL","Zayo Jacksonville, FL"
-"Zayo Tallahassee, FL","Zayo New Orleans, LA"
-"Zayo Jacksonville, FL","Zayo Orlando, FL"
-"Zayo Orlando, FL","Zayo Tampa, FL"
-"Zayo Tampa, FL","Zayo Tallahassee, FL"
-"Zayo Tampa, FL","Zayo Miami, FL"
-"Zayo Orlando, FL","Zayo Miami, FL"
-"Zayo Jacksonville, FL","Zayo Charlotte, NC"
-"Zayo Akron, OH","Akron, OH"
-"Zayo Albany, NY","Albany, NY"
-"Zayo Albuquerque, NM","Albuquerque, NM"
-"Zayo Ashburn, VA","Ashburn, VA"
-"Zayo Atlanta, GA","Atlanta, GA"
-"Zayo Austin, TX","Austin, TX"
-"Zayo Baltimore, MD","Baltimore, MD"
-"Zayo Billings, MT",Billings
-"Zayo Bismarck, ND",Bismarck
-"Zayo Boise, ID","Boise, ID"
-"Zayo Boston, MA","Boston, MA"
-"Zayo Buffalo, NY","Buffalo, NY"
-"Zayo Charlotte, NC","Charlotte, NC"
-"Zayo Cheyenne, WY","Cheyenne, WY"
-"Zayo Chicago, IL","Chicago, IL"
-"Zayo Cleveland, OH","Cleveland, OH"
-"Zayo Columbus, OH","Columbus, OH"
-"Zayo Dallas, TX","Dallas, TX"
-"Zayo Denver, CO","Denver, CO"
-"Zayo Des Moines, IA","Des Moines, IA"
-"Zayo El Paso, TX","El Paso, TX"
-"Zayo Fargo, ND",Fargo
-"Zayo Fort Worth, TX","Fort Worth, TX"
-"Zayo Great Falls, MT","Great Falls, MT"
-"Zayo Helena, MT",Helena
-"Zayo Houston, TX","Houston, TX"
-"Zayo Indianapolis, IN","Indianapolis, IN"
-"Zayo Jacksonville, FL","Jacksonville, FL"
-"Zayo Kansas City, MO","Kansas City, MO"
-"Zayo Laredo, TX","Laredo, TX"
-"Zayo Las Vegas, NV","Las Vegas, NV"
-"Zayo Los Angeles, CA","Los Angeles, CA"
-"Zayo Madison, WI","Madison, WI"
-"Zayo McAllen, TX","McAllen, TX"
-"Zayo McLean, VA","McLean, VA"
-"Zayo Memphis, TN","Memphis, TN"
-"Zayo Miami, FL","Miami, FL"
-"Zayo Minneapolis, MN","Minneapolis, MN"
-"Zayo Missoula, MT","Missoula, MT"
-"Zayo Modesto, CA","Modesto, CA"
-"Zayo Nashville, TN","Nashville, TN"
-"Zayo New York, NY","New York, NY"
-"Zayo Newark, NJ","Newark, NJ"
-"Zayo Ogden, UT","Ogden, UT"
-"Zayo Omaha, NE","Omaha, NE"
-"Zayo Orlando, FL","Orlando, FL"
-"Zayo Philadelphia, PA","Philadelphia, PA"
-"Zayo Phoenix, AZ","Phoenix, AZ"
-"Zayo Pittsburgh, PA","Pittsburgh, PA"
-"Zayo Portland, OR","Portland, OR"
-"Zayo Reno, NV","Reno, NV"
-"Zayo Richmond, VA","Richmond, VA"
-"Zayo Sacramento, CA","Sacramento, CA"
-"Zayo Salt Lake City, UT","Salt Lake City, UT"
-"Zayo San Antonio, TX","San Antonio, TX"
-"Zayo San Diego, CA","San Diego, CA"
-"Zayo San Francisco, CA","San Francisco, CA"
-"Zayo San Jose, CA","San Jose, CA"
-"Zayo Seattle, WA","Seattle, WA"
-"Zayo South Bend, IN","South Bend, IN"
-"Zayo St. Louis, MO","St. Louis, MO"
-"Zayo Stamford, CT","Stamford, CT"
-"Zayo Tallahassee, FL","Tallahassee, FL"
-"Zayo Tampa, FL","Tampa, FL"
-"Zayo Tuckerton, NJ","Tuckerton, NJ"
-"Zayo Tucson, AZ","Tucson, AZ"
-"Zayo Tulsa, OK","Tulsa, OK"
-"Zayo Wall, NJ","Wall, NJ"
-"Zayo Wichita, KS","Wichita, KS"
-"Zayo Yakima, WA","Yakima, WA"
+A_Municipality,A_State,Z_Municipality,Z_State
+Seattle,WA,Everett,WA
+Seattle,WA,Bellevue,WA
+Seattle,WA,Redmond,WA
+Seattle,WA,Tacoma,WA
+Tacoma,WA,Olympia,WA
+Seattle,WA,Kent,WA
+Kent,WA,Tukwila,WA
+Seattle,WA,Wenatchee,WA
+Wenatchee,WA,Spokane,WA
+Wenatchee,WA,Quincy,WA
+Quincy,WA,Pasco,WA
+Seattle,WA,Yakima,WA
+Yakima,WA,Pasco,WA
+Pasco,WA,Umatilla,OR
+Umatilla,OR,Boardman,OR
+Olympia,WA,Kalama,WA
+Kalama,WA,Portland,OR
+Portland,OR,Hillsboro,OR
+Portland,OR,Beaverton,OR
+Portland,OR,Salem,OR
+Salem,OR,Shedd,OR
+Shedd,OR,Eugene,OR
+Eugene,OR,Jasper,OR
+Portland,OR,Boardman,OR
+Eugene,OR,Bend,OR
+Bend,OR,Burns,OR
+Burns,OR,Boise,ID
+Bend,OR,Beatty,OR
+Beatty,OR,Reno,NV
+Jasper,OR,Anderson,CA
+Anderson,CA,Sacramento,CA
+Spokane,WA,Missoula,MT
+Missoula,MT,Helena,MT
+Helena,MT,Great Falls,MT
+Spokane,WA,Cut Bank,MT
+Cut Bank,MT,Great Falls,MT
+Great Falls,MT,Billings,MT
+Helena,MT,Billings,MT
+Billings,MT,Laurel,MT
+Laurel,MT,Casper,WY
+Billings,MT,Bismarck,ND
+Boise,ID,Shoshone,ID
+Shoshone,ID,Pocatello,ID
+Pocatello,ID,Ogden,UT
+Boise,ID,Pocatello,ID
+Ogden,UT,Salt Lake City,UT
+Salt Lake City,UT,West Jordan,UT
+West Jordan,UT,Bluffdale,UT
+Salt Lake City,UT,Coalville,UT
+Salt Lake City,UT,Springville,UT
+Coalville,UT,Rock Springs,WY
+Rock Springs,WY,Cheyenne,WY
+Rock Springs,WY,Casper,WY
+Casper,WY,Cheyenne,WY
+Springville,UT,Grand Junction,CO
+Salt Lake City,UT,St. George,UT
+St. George,UT,Las Vegas,NV
+Reno,NV,Salt Lake City,UT
+Sacramento,CA,Rancho Cordova,CA
+Sacramento,CA,Reno,NV
+Sacramento,CA,Oakland,CA
+Oakland,CA,San Francisco,CA
+San Francisco,CA,Palo Alto,CA
+Palo Alto,CA,Santa Clara,CA
+Santa Clara,CA,San Jose,CA
+San Jose,CA,Fremont,CA
+Fremont,CA,Modesto,CA
+Sacramento,CA,Modesto,CA
+Modesto,CA,Tulare,CA
+Tulare,CA,Los Osos,CA
+Los Osos,CA,Santa Barbara,CA
+Santa Barbara,CA,Los Angeles,CA
+Tulare,CA,Palmdale,CA
+Palmdale,CA,Los Angeles,CA
+Los Angeles,CA,Anaheim,CA
+Anaheim,CA,Irvine,CA
+Los Angeles,CA,San Diego,CA
+Los Angeles,CA,Barstow,CA
+Barstow,CA,Las Vegas,NV
+Palmdale,CA,Barstow,CA
+San Diego,CA,Phoenix,AZ
+Las Vegas,NV,Phoenix,AZ
+Phoenix,AZ,Chandler,AZ
+Chandler,AZ,Tucson,AZ
+Tucson,AZ,Nogales,AZ
+Tucson,AZ,El Paso,TX
+Phoenix,AZ,Albuquerque,NM
+Grand Junction,CO,Denver,CO
+Grand Junction,CO,Silver Plume,CO
+Silver Plume,CO,Denver,CO
+Albuquerque,NM,El Paso,TX
+Albuquerque,NM,Amarillo,TX
+Albuquerque,NM,Lubbock,TX
+Denver,CO,Henderson,CO
+Denver,CO,Aurora,CO
+Denver,CO,Englewood,CO
+Englewood,CO,Centennial,CO
+Denver,CO,Monument,CO
+Monument,CO,Colorado Springs,CO
+Denver,CO,Keenesburg,CO
+Cheyenne,WY,Keenesburg,CO
+Keenesburg,CO,Denver,CO
+Denver,CO,Colorado Springs,CO
+Colorado Springs,CO,Amarillo,TX
+Denver,CO,Des Moines,IA
+El Paso,TX,Midland,TX
+Midland,TX,San Angelo,TX
+San Angelo,TX,Austin,TX
+Lubbock,TX,Wichita Falls,TX
+Amarillo,TX,Wichita Falls,TX
+Wichita Falls,TX,Dallas,TX
+Dallas,TX,Plano,TX
+Dallas,TX,Fort Worth,TX
+Dallas,TX,Wills Point,TX
+Dallas,TX,Waco,TX
+Waco,TX,Temple,TX
+Temple,TX,Austin,TX
+Austin,TX,San Antonio,TX
+San Antonio,TX,Laredo,TX
+Laredo,TX,McAllen,TX
+San Antonio,TX,Houston,TX
+Austin,TX,Houston,TX
+Houston,TX,Spring,TX
+Spring,TX,Montgomery,TX
+Dallas,TX,Tulsa,OK
+Tulsa,OK,Kansas City,MO
+Amarillo,TX,Lubbock,TX
+Houston,TX,Roanoke,LA
+Roanoke,LA,Ponchatoula,LA
+Ponchatoula,LA,New Orleans,LA
+Dallas,TX,Clinton,MS
+Clinton,MS,Atlanta,GA
+Clinton,MS,New Orleans,LA
+Fargo,ND,Bismarck,ND
+Fargo,ND,Minneapolis,MN
+Minneapolis,MN,Mankato,MN
+Mankato,MN,Windom,MN
+Minneapolis,MN,Owatonna,MN
+Windom,MN,Sioux City,IA
+Sioux City,IA,Omaha,NE
+Omaha,NE,Des Moines,IA
+Omaha,NE,Kansas City,MO
+Des Moines,IA,Kansas City,MO
+Des Moines,IA,Chicago,IL
+Minneapolis,MN,Madison,WI
+Madison,WI,Chicago,IL
+Kansas City,MO,St. Louis,MO
+St. Louis,MO,Chicago,IL
+St. Louis,MO,Memphis,TN
+St. Louis,MO,Nashville,TN
+Wichita,KS,Kansas City,MO
+Wichita,KS,Tulsa,OK
+Chicago,IL,Franklin Park,IL
+Chicago,IL,Elk Grove Village,IL
+Chicago,IL,Mt Prospect,IL
+Chicago,IL,Oak Brook,IL
+Chicago,IL,Aurora,IL
+Chicago,IL,Valparaiso,IN
+Valparaiso,IN,South Bend,IN
+South Bend,IN,Fort Wayne,IN
+Chicago,IL,Grand Rapids,MI
+Grand Rapids,MI,Lansing,MI
+Lansing,MI,Southfield,MI
+South Bend,IN,Indianapolis,IN
+Indianapolis,IN,Marion,IN
+Marion,IN,Anderson,IN
+Indianapolis,IN,Frankfort,IN
+Fort Wayne,IN,Lima,OH
+Indianapolis,IN,Dayton,OH
+Dayton,OH,Columbus,OH
+Cleveland,OH,Garfield Heights,OH
+Cleveland,OH,Akron,OH
+Akron,OH,Youngstown,OH
+Youngstown,OH,Pittsburgh,PA
+Columbus,OH,Little Hocking,OH
+Columbus,OH,Pittsburgh,PA
+Cleveland,OH,Columbus,OH
+Lima,OH,Columbus,OH
+Buffalo,NY,Albany,NY
+Albany,NY,Boston,MA
+Boston,MA,Nashua,NH
+Boston,MA,Providence,RI
+Providence,RI,Trumbull,CT
+Trumbull,CT,Stamford,CT
+Stamford,CT,New York,NY
+New York,NY,Staten Island,NY
+New York,NY,Weehawken,NJ
+Weehawken,NJ,Secaucus,NJ
+Secaucus,NJ,Jersey City,NJ
+Jersey City,NJ,Newark,NJ
+Newark,NJ,Linden,NJ
+Linden,NJ,Woodbridge,NJ
+Woodbridge,NJ,Somerset,NJ
+Woodbridge,NJ,Wall,NJ
+Wall,NJ,Manasquan,NJ
+Manasquan,NJ,Tuckerton,NJ
+Newark,NJ,Philadelphia,PA
+Somerset,NJ,Philadelphia,PA
+Philadelphia,PA,Wilmington,DE
+Wilmington,DE,Baltimore,MD
+Baltimore,MD,Owings Mills,MD
+Baltimore,MD,Frederick,MD
+Frederick,MD,Ashburn,VA
+Baltimore,MD,Washington,DC
+Washington,DC,McLean,VA
+McLean,VA,Ashburn,VA
+Ashburn,VA,Reston,VA
+McLean,VA,Fort Belvoir,VA
+Fort Belvoir,VA,Richmond,VA
+Richmond,VA,Virginia Beach,VA
+Richmond,VA,Charlotte,NC
+Albany,NY,New York,NY
+Buffalo,NY,Pittsburgh,PA
+Pittsburgh,PA,Port Matilda,PA
+Port Matilda,PA,Philadelphia,PA
+Charlotte,NC,Atlanta,GA
+Atlanta,GA,Lithia Springs,GA
+Atlanta,GA,Smyrna,GA
+Atlanta,GA,Macon,GA
+Macon,GA,Albany,GA
+Albany,GA,Tallahassee,FL
+Atlanta,GA,Leeds,AL
+Leeds,AL,Memphis,TN
+Memphis,TN,Nashville,TN
+Nashville,TN,Clinton,TN
+Clinton,TN,Atlanta,GA
+Nashville,TN,Atlanta,GA
+Tallahassee,FL,Jacksonville,FL
+Tallahassee,FL,New Orleans,LA
+Jacksonville,FL,Orlando,FL
+Orlando,FL,Tampa,FL
+Tampa,FL,Tallahassee,FL
+Tampa,FL,Miami,FL
+Orlando,FL,Miami,FL
+Jacksonville,FL,Charlotte,NC
+Akron,OH,Akron,OH
+Albany,NY,Albany,NY
+Albuquerque,NM,Albuquerque,NM
+Ashburn,VA,Ashburn,VA
+Atlanta,GA,Atlanta,GA
+Austin,TX,Austin,TX
+Baltimore,MD,Baltimore,MD
+Billings,MT,Billings,MT
+Bismarck,ND,Bismarck,ND
+Boise,ID,Boise,ID
+Boston,MA,Boston,MA
+Buffalo,NY,Buffalo,NY
+Charlotte,NC,Charlotte,NC
+Cheyenne,WY,Cheyenne,WY
+Chicago,IL,Chicago,IL
+Cleveland,OH,Cleveland,OH
+Columbus,OH,Columbus,OH
+Dallas,TX,Dallas,TX
+Denver,CO,Denver,CO
+Des Moines,IA,Des Moines,IA
+El Paso,TX,El Paso,TX
+Fargo,ND,Fargo,ND
+Fort Worth,TX,Fort Worth,TX
+Great Falls,MT,Great Falls,MT
+Helena,MT,Helena,MT
+Houston,TX,Houston,TX
+Indianapolis,IN,Indianapolis,IN
+Jacksonville,FL,Jacksonville,FL
+Kansas City,MO,Kansas City,MO
+Laredo,TX,Laredo,TX
+Las Vegas,NV,Las Vegas,NV
+Los Angeles,CA,Los Angeles,CA
+Madison,WI,Madison,WI
+McAllen,TX,McAllen,TX
+McLean,VA,McLean,VA
+Memphis,TN,Memphis,TN
+Miami,FL,Miami,FL
+Minneapolis,MN,Minneapolis,MN
+Missoula,MT,Missoula,MT
+Modesto,CA,Modesto,CA
+Nashville,TN,Nashville,TN
+New York,NY,New York,NY
+Newark,NJ,Newark,NJ
+Ogden,UT,Ogden,UT
+Omaha,NE,Omaha,NE
+Orlando,FL,Orlando,FL
+Philadelphia,PA,Philadelphia,PA
+Phoenix,AZ,Phoenix,AZ
+Pittsburgh,PA,Pittsburgh,PA
+Portland,OR,Portland,OR
+Reno,NV,Reno,NV
+Richmond,VA,Richmond,VA
+Sacramento,CA,Sacramento,CA
+Salt Lake City,UT,Salt Lake City,UT
+San Antonio,TX,San Antonio,TX
+San Diego,CA,San Diego,CA
+San Francisco,CA,San Francisco,CA
+San Jose,CA,San Jose,CA
+Seattle,WA,Seattle,WA
+South Bend,IN,South Bend,IN
+St. Louis,MO,St. Louis,MO
+Stamford,CT,Stamford,CT
+Tallahassee,FL,Tallahassee,FL
+Tampa,FL,Tampa,FL
+Tuckerton,NJ,Tuckerton,NJ
+Tucson,AZ,Tucson,AZ
+Tulsa,OK,Tulsa,OK
+Wall,NJ,Wall,NJ
+Wichita,KS,Wichita,KS
+Yakima,WA,Yakima,WA

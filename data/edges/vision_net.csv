@@ -1,20 +1,20 @@
-A,Z
-Kalispell,"Great Falls, MT"
-Kalispell,Helena
-Kalispell,Havre
-"Great Falls, MT",Helena
-"Great Falls, MT",Havre
-"Great Falls, MT",Bozeman
-"Great Falls, MT",Billings
-Billings,Miles City
-Billings,Bozeman
-Billings,Havre
-Bozeman,Helena
-Bozeman,Havre
-Miles City,Havre
-Kalispell,"Missoula, MT"
-"Great Falls, MT","Missoula, MT"
-Havre,"Missoula, MT"
-Helena,"Missoula, MT"
-Havre,Williston
-Miles City,Williston
+A_Municipality,A_State,Z_Municipality,Z_State
+Kalispell,MT,Great Falls,MT
+Kalispell,MT,Helena,MT
+Kalispell,MT,Havre,MT
+Great Falls,MT,Helena,MT
+Great Falls,MT,Havre,MT
+Great Falls,MT,Bozeman,MT
+Great Falls,MT,Billings,MT
+Billings,MT,Miles City,MT
+Billings,MT,Bozeman,MT
+Billings,MT,Havre,MT
+Bozeman,MT,Helena,MT
+Bozeman,MT,Havre,MT
+Miles City,MT,Havre,MT
+Kalispell,MT,Missoula,MT
+Great Falls,MT,Missoula,MT
+Havre,MT,Missoula,MT
+Helena,MT,Missoula,MT
+Havre,MT,Williston,ND
+Miles City,MT,Williston,ND
