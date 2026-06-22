@@ -160,3 +160,4 @@ name,latitude,longitude,kind,shown_in_map,description,municipality,state
 "Cogent Winnipeg, MB",49.8951,-97.1384,PoP,Not shown in map,Cogent Core Network PoP,Winnipeg,MB
 "Cogent Winston Salem, NC",36.0999,-80.2442,PoP,Not shown in map,Cogent Core Network PoP,Winston Salem,NC
 "Cogent Worcester, MA",42.2626,-71.8023,PoP,Not shown in map,Cogent Core Network PoP,Worcester,MA
+"Cogent Edmonton, AB",53.5344,-113.4903,PoP,Not shown in map,Cogent Core Network PoP,Edmonton,AB
