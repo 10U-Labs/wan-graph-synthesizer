@@ -1,20 +1,20 @@
-source,target,type,note
-Kalispell,"Great Falls, MT",backbone,confirmed
-Kalispell,Helena,backbone,confirmed
-Kalispell,Havre,backbone,confirmed
-"Great Falls, MT",Helena,backbone,confirmed
-"Great Falls, MT",Havre,backbone,confirmed
-"Great Falls, MT",Bozeman,backbone,confirmed
-"Great Falls, MT",Billings,backbone,confirmed
-Billings,Miles City,backbone,confirmed
-Billings,Bozeman,backbone,confirmed
-Billings,Havre,backbone,confirmed
-Bozeman,Helena,backbone,confirmed
-Bozeman,Havre,backbone,confirmed
-Miles City,Havre,backbone,confirmed
-Kalispell,"Missoula, MT",interconnect-lumen,confirmed (Missoula is a Lumen PoP and a VN vertex)
-"Great Falls, MT","Missoula, MT",interconnect-lumen,confirmed
-Havre,"Missoula, MT",interconnect-lumen,confirmed
-Helena,"Missoula, MT",interconnect-lumen,confirmed
-Havre,Williston,interconnect-dcn,confirmed (Williston is a DCN vertex)
-Miles City,Williston,interconnect-dcn,confirmed
+A,Z
+Kalispell,"Great Falls, MT"
+Kalispell,Helena
+Kalispell,Havre
+"Great Falls, MT",Helena
+"Great Falls, MT",Havre
+"Great Falls, MT",Bozeman
+"Great Falls, MT",Billings
+Billings,Miles City
+Billings,Bozeman
+Billings,Havre
+Bozeman,Helena
+Bozeman,Havre
+Miles City,Havre
+Kalispell,"Missoula, MT"
+"Great Falls, MT","Missoula, MT"
+Havre,"Missoula, MT"
+Helena,"Missoula, MT"
+Havre,Williston
+Miles City,Williston

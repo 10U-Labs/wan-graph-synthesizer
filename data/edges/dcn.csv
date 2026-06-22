@@ -1,35 +1,35 @@
-source,target,type,note
-Williston,Ray,backbone,zoom-verified
-Ray,Stanley,backbone,zoom-verified
-Stanley,"Minot, ND",backbone,zoom-verified
-Williston,Alexander,backbone,zoom-verified
-Alexander,Parshall,backbone,zoom-verified
-Parshall,Max,backbone,zoom-verified
-Max,"Minot, ND",backbone,zoom-verified
-Max,Bismarck,backbone,zoom-verified
-Beach,Dickinson,backbone,zoom-verified
-Dickinson,Bismarck,backbone,zoom-verified
-Bismarck,Steele,backbone,zoom-verified
-Steele,Jamestown,backbone,zoom-verified
-"Minot, ND",Rugby,backbone,zoom-verified
-Rugby,Devils Lake,backbone,zoom-verified
-Devils Lake,Grand Forks,backbone,zoom-verified
-Devils Lake,Carrington,backbone,zoom-verified
-Carrington,Jamestown,backbone,zoom-verified
-Grand Forks,Fargo,backbone,zoom-verified
-Fargo,Buffalo,backbone,zoom-verified
-Buffalo,Jamestown,backbone,zoom-verified
-Fargo,Abercrombie,backbone,zoom-verified
-Abercrombie,Gwinner,backbone,zoom-verified
-Gwinner,Marion Jct.,backbone,zoom-verified
-Marion Jct.,Jamestown,backbone,zoom-verified
-Bismarck,Carrington,backbone,zoom-verified (spine branch Wilton-Regan-Wing to Carrington)
-Williston,"Seattle, WA",interconnect,confirmed
-Beach,"Denver, CO",interconnect,confirmed
-Dickinson,"Cheyenne, WY",interconnect,confirmed
-Grand Forks,"Minneapolis, MN",interconnect,confirmed
-Grand Forks,"Chicago, IL",interconnect,confirmed
-Fargo,"Minneapolis, MN",interconnect,confirmed
-Fargo,"Chicago, IL",interconnect,confirmed
-Gwinner,"Omaha, NE",interconnect,confirmed
-Abercrombie,"Omaha, NE",interconnect,confirmed
+A,Z
+Williston,Ray
+Ray,Stanley
+Stanley,"Minot, ND"
+Williston,Alexander
+Alexander,Parshall
+Parshall,Max
+Max,"Minot, ND"
+Max,Bismarck
+Beach,Dickinson
+Dickinson,Bismarck
+Bismarck,Steele
+Steele,Jamestown
+"Minot, ND",Rugby
+Rugby,Devils Lake
+Devils Lake,Grand Forks
+Devils Lake,Carrington
+Carrington,Jamestown
+Grand Forks,Fargo
+Fargo,Buffalo
+Buffalo,Jamestown
+Fargo,Abercrombie
+Abercrombie,Gwinner
+Gwinner,Marion Jct.
+Marion Jct.,Jamestown
+Bismarck,Carrington
+Williston,"Seattle, WA"
+Beach,"Denver, CO"
+Dickinson,"Cheyenne, WY"
+Grand Forks,"Minneapolis, MN"
+Grand Forks,"Chicago, IL"
+Fargo,"Minneapolis, MN"
+Fargo,"Chicago, IL"
+Gwinner,"Omaha, NE"
+Abercrombie,"Omaha, NE"

@@ -1,130 +1,130 @@
-source,target,source_page,note
-"Seattle, WA","Yakima, WA",overview/west,visible route
-"Seattle, WA","Portland, OR",overview/west,visible route
-"Yakima, WA","Missoula, MT",overview/west,visible route
-"Yakima, WA","Boise, ID",overview/west,visible route
-"Portland, OR","Bandon, OR",overview/west,visible route
-"Portland, OR","Sacramento, CA",overview/west,visible route
-"Missoula, MT","Cheyenne, WY",overview/west,visible route
-"Boise, ID","Ogden, UT",overview/west,visible route
-"Ogden, UT","Salt Lake City, UT",overview/west,visible route
-"Ogden, UT","Cheyenne, WY",overview/west,visible route
-"Salt Lake City, UT","Reno, NV",overview/west,visible route
-"Salt Lake City, UT","Denver, CO",overview/west,visible route
-"Salt Lake City, UT","Las Vegas, NV",overview/west,visible route
-"Reno, NV","Sacramento, CA",overview/west,visible route
-"Sacramento, CA","San Francisco, CA",overview/west,visible route
-"Sacramento, CA","Emeryville, CA",overview/west,visible route
-"Sacramento, CA","Modesto, CA",overview/west,visible route
-"San Francisco, CA","Hayward, CA",overview/west,visible route
-"Hayward, CA","Sunnyvale, CA",overview/west,visible route
-"Sunnyvale, CA","San Jose, CA",overview/west,visible route
-"San Jose, CA","San Luis Obispo, CA",overview/west,visible route
-"San Luis Obispo, CA","Los Angeles, CA",overview/west,visible route
-"Los Angeles, CA","Tustin, CA",overview/west,visible route
-"Tustin, CA","San Diego, CA",overview/west,visible route
-"San Diego, CA","Riverside, CA",overview/west,visible route
-"Los Angeles, CA","San Bernardino, CA",overview/west,visible route
-"Riverside, CA","San Bernardino, CA",overview/west,visible route
-"San Bernardino, CA","Las Vegas, NV",overview/west,visible route
-"San Bernardino, CA","Phoenix, AZ",overview/west,visible route
-"San Diego, CA","Phoenix, AZ",overview/west,visible route
-"Phoenix, AZ","Goodyear, AZ",overview/west,visible route
-"Phoenix, AZ","Tucson, AZ",overview/southwest,visible route
-"Tucson, AZ","El Paso, TX",overview/southwest,visible route
-"Cheyenne, WY","Denver, CO",overview/west,visible route
-"Cheyenne, WY","Omaha, NE",overview/west,visible route
-"Denver, CO","Omaha, NE",overview/west,visible route
-"Denver, CO","Kansas City, MO",overview,visible route
-"Denver, CO","Wichita, KS",overview/west,visible route spur
-"Denver, CO","Stratford, TX",overview/west,visible route
-"Denver, CO","Albuquerque, NM",overview/west,visible route
-"Albuquerque, NM","El Paso, TX",southwest/west,visible route
-"Albuquerque, NM","Stratford, TX",southwest/west,visible route
-"Stratford, TX","Tulsa, OK",southwest/west,visible route
-"Stratford, TX","Oklahoma City, OK",southwest/west,visible route
-"Oklahoma City, OK","Tulsa, OK",southwest,visible route
-"Oklahoma City, OK","Fort Worth, TX",southwest,visible route
-"Tulsa, OK","Fort Worth, TX",southwest,visible route
-"Tulsa, OK","Kansas City, MO",overview,visible route
-"Fort Worth, TX","Dallas, TX",southwest,visible route
-"Fort Worth, TX","Austin, TX",southwest,visible route
-"Dallas, TX","Houston, TX",southwest,visible route
-"Dallas, TX","Memphis, TN",southwest/southeast,visible route
-"El Paso, TX","San Antonio, TX",southwest,visible route
-"San Antonio, TX","Austin, TX",southwest,visible route
-"Austin, TX","Houston, TX",southwest,visible route
-"San Antonio, TX","Houston, TX",southwest,visible route
-"San Antonio, TX","Laredo, TX",southwest,visible route
-"Laredo, TX","McAllen, TX",southwest,visible route
-"McAllen, TX","Harlingen, TX",southwest,visible route
-"Harlingen, TX","Corpus Christi, TX",southwest,visible route
-"Corpus Christi, TX","Houston, TX",southwest,visible route
-"Houston, TX","Tallahassee, FL",southeast/overview,visible Gulf route
-"Houston, TX","Billingsley, AL",southeast/overview,visible route
-"Minneapolis, MN","Milwaukee, WI",overview,visible route
-"Minneapolis, MN","Des Moines, IA",overview,visible route
-"Des Moines, IA","Omaha, NE",overview,visible route
-"Des Moines, IA","Davenport, IA",overview,visible route
-"Des Moines, IA","Kansas City, MO",overview,visible route
-"Davenport, IA","Chicago, IL",overview,visible route
-"Chicago, IL","Madison, WI",overview,visible route
-"Madison, WI","Milwaukee, WI",overview,visible route
-"Milwaukee, WI","Chicago, IL",overview,visible route
-"Chicago, IL","South Bend, IN",overview/northeast,visible route
-"Chicago, IL","Indianapolis, IN",overview,visible route
-"Chicago, IL","St. Louis, MO",overview,visible route
-"South Bend, IN","Kalamazoo, MI",northeast/overview,visible route
-"South Bend, IN","Toledo, OH",northeast,visible route
-"Kalamazoo, MI","Detroit, MI",northeast/overview,visible route
-"Detroit, MI","Toledo, OH",northeast/overview,visible route
-"Toledo, OH","Cleveland, OH",northeast/overview,visible route
-"Toledo, OH","Akron, OH",northeast,visible route
-"Cleveland, OH","Akron, OH",northeast/overview,visible route
-"Cleveland, OH","Buffalo, NY",northeast/overview,visible route
-"Cleveland, OH","Pittsburgh, PA",northeast/overview,visible route
-"Akron, OH","Columbus, OH",northeast/overview,visible route
-"Columbus, OH","Cincinnati, OH",northeast/overview,visible route
-"Cincinnati, OH","Indianapolis, IN",northeast/overview,visible route
-"Indianapolis, IN","St. Louis, MO",overview,visible route
-"St. Louis, MO","Kansas City, MO",overview,visible route
-"St. Louis, MO","Nashville, TN",overview,visible route
-"Buffalo, NY","Albany, NY",northeast/overview,visible route
-"Albany, NY","Cambridge, MA",northeast/overview,visible route
-"Cambridge, MA","Boston, MA",northeast/overview,visible route
-"Boston, MA","Stamford, CT",northeast/overview,visible route
-"Albany, NY","Stamford, CT",northeast/overview,visible route
-"Stamford, CT","New York, NY",northeast/overview,visible route
-"New York, NY","Newark, NJ",northeast/overview,visible route
-"New York, NY","Wall, NJ",northeast/overview,visible route
-"Wall, NJ","Tuckerton, NJ",northeast/overview,visible route
-"Tuckerton, NJ","Philadelphia, PA",northeast/overview,visible route
-"Newark, NJ","Philadelphia, PA",northeast/overview,visible route
-"Philadelphia, PA","Baltimore, MD",northeast/overview,visible route
-"Philadelphia, PA","Pittsburgh, PA",northeast/overview,visible route
-"Baltimore, MD","Ashburn, VA",northeast/overview,visible route
-"Ashburn, VA","Herndon, VA",northeast/overview,visible route
-"Herndon, VA","McLean, VA",northeast/overview,visible route
-"McLean, VA","Baltimore, MD",northeast/overview,visible route
-"McLean, VA","Richmond, VA",northeast/overview,visible route
-"Richmond, VA","Norfolk, VA",northeast/overview,visible route
-"Richmond, VA","Raleigh, NC",northeast/overview,visible route
-"Raleigh, NC","Charlotte, NC",southeast/overview,visible route
-"Charlotte, NC","Atlanta, GA",southeast/overview,visible route
-"Charlotte, NC","Augusta, GA",southeast/overview,visible route
-"Charlotte, NC","Nashville, TN",southeast/overview,visible route
-"Nashville, TN","Memphis, TN",southeast/overview,visible route
-"Nashville, TN","Atlanta, GA",southeast/overview,visible route
-"Memphis, TN","Atlanta, GA",southeast/overview,visible route
-"Memphis, TN","Birmingham, AL",southeast/overview,visible route
-"Birmingham, AL","Atlanta, GA",southeast/overview,visible route
-"Billingsley, AL","Atlanta, GA",southeast/overview,visible route
-"Atlanta, GA","Augusta, GA",southeast/overview,visible route
-"Atlanta, GA","Tallahassee, FL",southeast/overview,visible route
-"Tallahassee, FL","Jacksonville, FL",southeast/overview,visible route
-"Jacksonville, FL","Augusta, GA",southeast,visible route
-"Jacksonville, FL","Orlando, FL",southeast/overview,visible route
-"Orlando, FL","Tampa, FL",southeast/overview,visible route
-"Tampa, FL","Fort Meyers, FL",southeast/overview,visible route
-"Fort Meyers, FL","Miami, FL",southeast/overview,visible route
-"Orlando, FL","Miami, FL",southeast/overview,visible route
+A,Z
+"Seattle, WA","Yakima, WA"
+"Seattle, WA","Portland, OR"
+"Yakima, WA","Missoula, MT"
+"Yakima, WA","Boise, ID"
+"Portland, OR","Bandon, OR"
+"Portland, OR","Sacramento, CA"
+"Missoula, MT","Cheyenne, WY"
+"Boise, ID","Ogden, UT"
+"Ogden, UT","Salt Lake City, UT"
+"Ogden, UT","Cheyenne, WY"
+"Salt Lake City, UT","Reno, NV"
+"Salt Lake City, UT","Denver, CO"
+"Salt Lake City, UT","Las Vegas, NV"
+"Reno, NV","Sacramento, CA"
+"Sacramento, CA","San Francisco, CA"
+"Sacramento, CA","Emeryville, CA"
+"Sacramento, CA","Modesto, CA"
+"San Francisco, CA","Hayward, CA"
+"Hayward, CA","Sunnyvale, CA"
+"Sunnyvale, CA","San Jose, CA"
+"San Jose, CA","San Luis Obispo, CA"
+"San Luis Obispo, CA","Los Angeles, CA"
+"Los Angeles, CA","Tustin, CA"
+"Tustin, CA","San Diego, CA"
+"San Diego, CA","Riverside, CA"
+"Los Angeles, CA","San Bernardino, CA"
+"Riverside, CA","San Bernardino, CA"
+"San Bernardino, CA","Las Vegas, NV"
+"San Bernardino, CA","Phoenix, AZ"
+"San Diego, CA","Phoenix, AZ"
+"Phoenix, AZ","Goodyear, AZ"
+"Phoenix, AZ","Tucson, AZ"
+"Tucson, AZ","El Paso, TX"
+"Cheyenne, WY","Denver, CO"
+"Cheyenne, WY","Omaha, NE"
+"Denver, CO","Omaha, NE"
+"Denver, CO","Kansas City, MO"
+"Denver, CO","Wichita, KS"
+"Denver, CO","Stratford, TX"
+"Denver, CO","Albuquerque, NM"
+"Albuquerque, NM","El Paso, TX"
+"Albuquerque, NM","Stratford, TX"
+"Stratford, TX","Tulsa, OK"
+"Stratford, TX","Oklahoma City, OK"
+"Oklahoma City, OK","Tulsa, OK"
+"Oklahoma City, OK","Fort Worth, TX"
+"Tulsa, OK","Fort Worth, TX"
+"Tulsa, OK","Kansas City, MO"
+"Fort Worth, TX","Dallas, TX"
+"Fort Worth, TX","Austin, TX"
+"Dallas, TX","Houston, TX"
+"Dallas, TX","Memphis, TN"
+"El Paso, TX","San Antonio, TX"
+"San Antonio, TX","Austin, TX"
+"Austin, TX","Houston, TX"
+"San Antonio, TX","Houston, TX"
+"San Antonio, TX","Laredo, TX"
+"Laredo, TX","McAllen, TX"
+"McAllen, TX","Harlingen, TX"
+"Harlingen, TX","Corpus Christi, TX"
+"Corpus Christi, TX","Houston, TX"
+"Houston, TX","Tallahassee, FL"
+"Houston, TX","Billingsley, AL"
+"Minneapolis, MN","Milwaukee, WI"
+"Minneapolis, MN","Des Moines, IA"
+"Des Moines, IA","Omaha, NE"
+"Des Moines, IA","Davenport, IA"
+"Des Moines, IA","Kansas City, MO"
+"Davenport, IA","Chicago, IL"
+"Chicago, IL","Madison, WI"
+"Madison, WI","Milwaukee, WI"
+"Milwaukee, WI","Chicago, IL"
+"Chicago, IL","South Bend, IN"
+"Chicago, IL","Indianapolis, IN"
+"Chicago, IL","St. Louis, MO"
+"South Bend, IN","Kalamazoo, MI"
+"South Bend, IN","Toledo, OH"
+"Kalamazoo, MI","Detroit, MI"
+"Detroit, MI","Toledo, OH"
+"Toledo, OH","Cleveland, OH"
+"Toledo, OH","Akron, OH"
+"Cleveland, OH","Akron, OH"
+"Cleveland, OH","Buffalo, NY"
+"Cleveland, OH","Pittsburgh, PA"
+"Akron, OH","Columbus, OH"
+"Columbus, OH","Cincinnati, OH"
+"Cincinnati, OH","Indianapolis, IN"
+"Indianapolis, IN","St. Louis, MO"
+"St. Louis, MO","Kansas City, MO"
+"St. Louis, MO","Nashville, TN"
+"Buffalo, NY","Albany, NY"
+"Albany, NY","Cambridge, MA"
+"Cambridge, MA","Boston, MA"
+"Boston, MA","Stamford, CT"
+"Albany, NY","Stamford, CT"
+"Stamford, CT","New York, NY"
+"New York, NY","Newark, NJ"
+"New York, NY","Wall, NJ"
+"Wall, NJ","Tuckerton, NJ"
+"Tuckerton, NJ","Philadelphia, PA"
+"Newark, NJ","Philadelphia, PA"
+"Philadelphia, PA","Baltimore, MD"
+"Philadelphia, PA","Pittsburgh, PA"
+"Baltimore, MD","Ashburn, VA"
+"Ashburn, VA","Herndon, VA"
+"Herndon, VA","McLean, VA"
+"McLean, VA","Baltimore, MD"
+"McLean, VA","Richmond, VA"
+"Richmond, VA","Norfolk, VA"
+"Richmond, VA","Raleigh, NC"
+"Raleigh, NC","Charlotte, NC"
+"Charlotte, NC","Atlanta, GA"
+"Charlotte, NC","Augusta, GA"
+"Charlotte, NC","Nashville, TN"
+"Nashville, TN","Memphis, TN"
+"Nashville, TN","Atlanta, GA"
+"Memphis, TN","Atlanta, GA"
+"Memphis, TN","Birmingham, AL"
+"Birmingham, AL","Atlanta, GA"
+"Billingsley, AL","Atlanta, GA"
+"Atlanta, GA","Augusta, GA"
+"Atlanta, GA","Tallahassee, FL"
+"Tallahassee, FL","Jacksonville, FL"
+"Jacksonville, FL","Augusta, GA"
+"Jacksonville, FL","Orlando, FL"
+"Orlando, FL","Tampa, FL"
+"Tampa, FL","Fort Meyers, FL"
+"Fort Meyers, FL","Miami, FL"
+"Orlando, FL","Miami, FL"
