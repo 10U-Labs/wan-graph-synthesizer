@@ -49,7 +49,7 @@ def _capture_requests(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
     """Patch urlopen to record each request and return a dummy response."""
     requests: list[Any] = []
 
-    def _fake_urlopen(request: Any, timeout: int = 0) -> Any:
+    def _fake_urlopen(request: Any, **_kwargs: Any) -> Any:
         requests.append(request)
         return MagicMock()
 
