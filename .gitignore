@@ -9,6 +9,7 @@ outputs/
 .serve.pid
 .serve.log
 .ci-venv/
+.DS_Store
 .terraform/
 *.tfstate
 *.tfstate.*
