@@ -464,9 +464,7 @@ def assign_access(
     return access_edges, selected
 
 def evaluate_cores(
-    core_ids: tuple[str, ...],
-    inputs: DesignInputs,
-    plan: _SearchPlan,
+    core_ids: tuple[str, ...], inputs: DesignInputs, plan: _SearchPlan,
     known_feasible: set[str] | None = None,
 ) -> tuple[list[AccessEdge], set[str]] | None:
     """Score a core set's feasibility and access homing without routing paths.
