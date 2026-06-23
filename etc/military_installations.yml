@@ -5,8 +5,8 @@ access_homing_degree: 2
 aggregation_homing_degree: 2
 core_mesh_degree: 3
 core_node_count:
-  max: 9
-  min: 3
+  max: 11
+  min: 11
 forced_aggregation_points:
   - Cheyenne, WY
   - Dulles, VA
