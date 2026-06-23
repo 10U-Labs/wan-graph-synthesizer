@@ -31,8 +31,15 @@ resource "aws_iam_role_policy" "dispatch" {
       },
       {
         Effect   = "Allow"
-        Action   = ["ecs:RunTask", "ecs:TagResource"]
+        Action   = ["ecs:RunTask"]
         Resource = ["${aws_ecs_task_definition.synthesizer.arn_without_revision}:*"]
+      },
+      {
+        # Tag the task on launch with Customer/Attempt. TagResource applies to the
+        # task resource (random id), not the task definition.
+        Effect   = "Allow"
+        Action   = ["ecs:TagResource"]
+        Resource = ["arn:aws:ecs:${module.common.aws_region}:${module.common.aws_account_id}:task/${aws_ecs_cluster.this.name}/*"]
       },
       {
         Effect   = "Allow"
