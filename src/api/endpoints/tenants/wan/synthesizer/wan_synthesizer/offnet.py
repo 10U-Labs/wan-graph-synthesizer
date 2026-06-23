@@ -58,8 +58,9 @@ def realize_off_net_sites(
 
     ``forced_names`` is the union of the operator's forced core and aggregation names.
     A site whose name is not forced is ignored. A forced site whose name is also a
-    carrier PoP, or that cannot reach :data:`~wan_synthesizer.local_fiber.LOCAL_FIBER_MIN_LINKS`
-    carrier PoPs within range, raises ``ValueError``.
+    carrier PoP is already on-net -- the pin seats there, so no off-net twin is built.
+    A forced site that cannot reach :data:`~wan_synthesizer.local_fiber.LOCAL_FIBER_MIN_LINKS`
+    carrier PoPs within range raises ``ValueError``.
     """
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     carrier_names = {pop.name for pop in carrier_pops}
@@ -71,7 +72,8 @@ def realize_off_net_sites(
         if site.name not in forced_names:
             continue
         if site.name in carrier_names:
-            raise ValueError(f"off-net site name is also a carrier PoP: {site.name}")
+            # Already an on-net carrier PoP; the forced pin seats there, no twin needed.
+            continue
         twin_id = unique_twin_id(f"{OFF_NET_ID_PREFIX}{site.id}", used_ids)
         built = build_local_fiber_twin(
             site, twin_id, carrier_pops,
