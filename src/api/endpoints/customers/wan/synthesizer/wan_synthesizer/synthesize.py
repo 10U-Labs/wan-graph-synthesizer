@@ -773,15 +773,25 @@ def grow_cores_for_coverage(
     core_ids = base.core_ids
     design = base
     free = [pop_id for pop_id in plan.core_candidates if pop_id not in core_ids]
+    logger.info(
+        "Growing cores for coverage: %d candidates, %.0f mi target", len(free), target_miles
+    )
     while free:
         if params.max_core_count is not None and len(core_ids) >= params.max_core_count:
+            logger.info("Coverage growth stopped at the %d-core cap", len(core_ids))
             break
         worst, total = aggregation_haul_miles(core_ids, design.aggregation_ids, pop_by_id)
         if worst <= target_miles:
+            logger.info("Coverage met at %d cores (worst haul %.0f mi)", len(core_ids), worst)
             break
+        logger.info(
+            "Coverage round at %d cores: worst haul %.0f mi > %.0f target; scoring %d candidates",
+            len(core_ids), worst, target_miles, len(free),
+        )
         candidates = coverage_candidate_totals(core_ids, free, inputs, plan, pop_by_id)
         improving = [pair for pair in candidates if pair[0] < total - COVERAGE_EPSILON_MILES]
         if not improving:
+            logger.info("No candidate improves coverage; holding at %d cores", len(core_ids))
             break
         best_id = min(improving)[1]
         core_ids = tuple(sorted((*core_ids, best_id)))
@@ -790,6 +800,7 @@ def grow_cores_for_coverage(
         assert grown is not None
         design = grown
         free.remove(best_id)
+        logger.info("Added core %s for coverage; now %d cores", best_id, len(core_ids))
     return design
 
 
