@@ -160,9 +160,7 @@ def main() -> None:
     # the WAN's status rather than crash the task and leave it stuck "creating".
     try:
         wan = _build_wan(client, customer)
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        # Intentionally broad: any failure (infeasible design or unexpected error)
-        # must become a recorded status, never an uncaught crash that hangs the WAN.
+    except Exception as exc:
         logger.warning("Build failed for %s: %s", customer, exc)
         _write_json(client, status_key, {"status": "failed", "reason": str(exc)})
         return
