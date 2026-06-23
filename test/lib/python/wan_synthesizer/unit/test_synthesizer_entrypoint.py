@@ -109,15 +109,15 @@ def test_stop_signal_records_failed_not_stuck_building(
 ) -> None:
     """A SIGTERM (Spot reclaim/stop) records 'failed', never leaving it 'building'."""
     _stub_pipeline(entrypoint, monkeypatch)
-    handlers: dict[int, Any] = {}
+    captured: list[Any] = []
     monkeypatch.setattr(
-        entrypoint.signal, "signal", lambda sig, handler: handlers.__setitem__(sig, handler)
+        entrypoint.signal, "signal", lambda _sig, handler: captured.append(handler)
     )
     objects = _inputs(entrypoint)
     with patch("boto3.client", return_value=fake_s3(objects)):
         entrypoint.main()
         try:
-            handlers[entrypoint.signal.SIGTERM](entrypoint.signal.SIGTERM, None)
+            captured[0](entrypoint.signal.SIGTERM, None)
         except SystemExit:
             pass
     assert json.loads(objects["customers/f-35/wan-status.json"])["status"] == "failed"
