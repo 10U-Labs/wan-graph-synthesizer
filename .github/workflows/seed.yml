@@ -69,7 +69,7 @@ jobs:
         run: pip install pytest pytest-cov pyyaml
       - name: Run seed tests with a 100% coverage gate
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/customers/wan/synthesizer
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/synthesizer
           python3 -m pytest
           test/lib/python/wan_synthesizer/unit/test_parsing.py
           test/lib/python/wan_synthesizer/unit/test_offnet.py

@@ -2,7 +2,7 @@
 
 Everything the operator tunes -- the input paths, the role pins and exclusions,
 the core count, and the algorithm dials -- arrives as one parsed mapping (the
-customer's stored config JSON). Any key it omits falls back to the matching
+tenant's stored config JSON). Any key it omits falls back to the matching
 built-in default, so a partial (even empty) mapping still yields a valid
 configuration.
 """
@@ -25,8 +25,8 @@ from wan_synthesizer.model import (
 )
 
 DEFAULT_VERTICES = {
-    "AFLCMC": "data/vertices/customers/aflcmc.csv",
-    "AFNWC/NI": "data/vertices/customers/afnwc_ni.csv",
+    "AFLCMC": "data/vertices/tenants/aflcmc.csv",
+    "AFNWC/NI": "data/vertices/tenants/afnwc_ni.csv",
     "Providers": [
         "data/vertices/providers/providers.csv",
         "data/vertices/providers region.csv",
@@ -39,7 +39,7 @@ DEFAULT_VERTICES = {
         "data/vertices/providers region.csv",
     ],
     "DCN": "data/vertices/carriers/dcn.csv",
-    "F-35": "data/vertices/customers/f_35.csv",
+    "F-35": "data/vertices/tenants/f_35.csv",
     "Lumen": "data/vertices/carriers/lumen.csv",
     "provider": [
         "data/vertices/providers/providers.csv",
@@ -83,7 +83,7 @@ def _required_int(data: dict[str, Any], key: str) -> int:
 
     The three redundancy degrees (``core-mesh-degree``,
     ``aggregation-homing-degree``, ``access-homing-degree``) have no default: every
-    customer must state each one, so a missing key is an error rather than a
+    tenant must state each one, so a missing key is an error rather than a
     silently-filled fallback.
     """
     if key not in data:
@@ -229,7 +229,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
 def _degree(parts: dict[str, Any], resource: str) -> int:
     """Read a required ``{"degree": int}`` document for a redundancy resource."""
     if resource not in parts:
-        raise ValueError(f"required customer resource '{resource}' is missing")
+        raise ValueError(f"required tenant resource '{resource}' is missing")
     doc = parts[resource]
     if not isinstance(doc, dict) or "degree" not in doc:
         raise ValueError(f"resource '{resource}' must be an object with a 'degree' integer")
@@ -240,7 +240,7 @@ def _degree(parts: dict[str, Any], resource: str) -> int:
 
 
 def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
-    """Assemble an :class:`AppConfig` from the per-resource customer documents.
+    """Assemble an :class:`AppConfig` from the per-resource tenant documents.
 
     Each operator concern is its own stored document (``forced-core-nodes``,
     ``prohibited-connections``, ``core-mesh-degree``, ``knobs``, ...). This reshapes

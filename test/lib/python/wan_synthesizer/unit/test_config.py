@@ -299,7 +299,7 @@ def test_forced_cores_must_be_a_list() -> None:
 
 
 def _parts(**overrides: Any) -> dict[str, Any]:
-    """A full set of per-resource customer documents for the assembler."""
+    """A full set of per-resource tenant documents for the assembler."""
     parts: dict[str, Any] = {
         "forced-core-nodes": [],
         "forced-aggregation-points": [],

@@ -4,7 +4,7 @@ One script, three steps: read the raw per-tenant vertex CSVs, the carrier fiber-
 CSVs, and the off-net candidate CSV into :class:`wan_graph.model` objects (extract);
 shape them as JSON via :func:`wan_graph.codec.input_graph` (transform); and PUT them to
 the API (load). Carriers (PoPs + fiber) and providers (regions) are pushed as graphs; each
-customer's locations, provider-region selection, and per-concern config resources are pushed
+tenant's locations, provider-region selection, and per-concern config resources are pushed
 as its inputs. A write triggers the API's auto-create cascade (substrate merge + WAN
 creates). The HTTPS PUT endpoint is the only write path; this client is one caller of it.
 
@@ -227,8 +227,8 @@ def _degree_doc(value: Any) -> dict[str, Any]:
     return {"degree": value}
 
 
-def push_customers(api: str) -> None:
-    """Push each customer's inputs: locations, provider regions, off-net, and every config resource."""
+def push_tenants(api: str) -> None:
+    """Push each tenant's inputs: locations, provider regions, off-net, and every config resource."""
     for path in sorted(ETC.glob("*.yml")):
         config = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         cid = _slug(path.stem)
@@ -237,37 +237,37 @@ def push_customers(api: str) -> None:
         regions = _tenant_vertices(inputs.get("providers", {}))
         off_net_path = inputs.get("off_net")
         off_net = load_off_net_sites(REPO_ROOT / off_net_path) if off_net_path else []
-        print(f"customer {cid}: {len(locations)} locations, {len(regions)} regions, "
+        print(f"tenant {cid}: {len(locations)} locations, {len(regions)} regions, "
               f"{len(off_net)} off-net")
-        _put(api, f"customers/{cid}/locations", input_graph(locations, {}))
-        _put(api, f"customers/{cid}/provider-regions", input_graph(regions, {}))
-        _put(api, f"customers/{cid}/off-net", input_graph(off_net, {}))
-        _put(api, f"customers/{cid}/forced-core-nodes", config.get("forced_core_nodes", []))
-        _put(api, f"customers/{cid}/forced-aggregation-points",
+        _put(api, f"tenants/{cid}/locations", input_graph(locations, {}))
+        _put(api, f"tenants/{cid}/provider-regions", input_graph(regions, {}))
+        _put(api, f"tenants/{cid}/off-net", input_graph(off_net, {}))
+        _put(api, f"tenants/{cid}/forced-core-nodes", config.get("forced_core_nodes", []))
+        _put(api, f"tenants/{cid}/forced-aggregation-points",
              config.get("forced_aggregation_points", []))
-        _put(api, f"customers/{cid}/forced-connections", config.get("forced_connections", []))
-        _put(api, f"customers/{cid}/prohibited-core-nodes",
+        _put(api, f"tenants/{cid}/forced-connections", config.get("forced_connections", []))
+        _put(api, f"tenants/{cid}/prohibited-core-nodes",
              config.get("prohibited_core_nodes", []))
-        _put(api, f"customers/{cid}/prohibited-aggregation-points",
+        _put(api, f"tenants/{cid}/prohibited-aggregation-points",
              config.get("prohibited_aggregation_points", []))
-        _put(api, f"customers/{cid}/prohibited-connections",
+        _put(api, f"tenants/{cid}/prohibited-connections",
              config.get("prohibited_connections", []))
-        _put(api, f"customers/{cid}/core-node-count", config.get("core_node_count", {}))
-        _put(api, f"customers/{cid}/core-mesh-degree", _degree_doc(config["core_mesh_degree"]))
-        _put(api, f"customers/{cid}/aggregation-homing-degree",
+        _put(api, f"tenants/{cid}/core-node-count", config.get("core_node_count", {}))
+        _put(api, f"tenants/{cid}/core-mesh-degree", _degree_doc(config["core_mesh_degree"]))
+        _put(api, f"tenants/{cid}/aggregation-homing-degree",
              _degree_doc(config["aggregation_homing_degree"]))
-        _put(api, f"customers/{cid}/access-homing-degree",
+        _put(api, f"tenants/{cid}/access-homing-degree",
              _degree_doc(config["access_homing_degree"]))
-        _put(api, f"customers/{cid}/knobs", config.get("knobs", {}))
-        _put(api, f"customers/{cid}/label", {"label": config.get("label", "")})
+        _put(api, f"tenants/{cid}/knobs", config.get("knobs", {}))
+        _put(api, f"tenants/{cid}/label", {"label": config.get("label", "")})
 
 
 def main() -> None:
-    """Seed carriers, providers, then customers (whose writes cascade to WAN builds)."""
+    """Seed carriers, providers, then tenants (whose writes cascade to WAN builds)."""
     api = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_API
     push_carriers(api)
     push_providers(api)
-    push_customers(api)
+    push_tenants(api)
 
 
 if __name__ == "__main__":  # pragma: no cover

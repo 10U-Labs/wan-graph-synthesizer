@@ -1,7 +1,7 @@
 # The WAN-create worker: a Fargate Spot task that runs the whole pipeline
 # (home -> constrain -> synthesize -> validate) in one process and writes the
-# customer's WAN JSON to the S3 store, or records a 422 reason. The dispatching
-# Lambda starts this task (ecs:RunTask) on a customer create and on the carrier
+# tenant's WAN JSON to the S3 store, or records a 422 reason. The dispatching
+# Lambda starts this task (ecs:RunTask) on a tenant create and on the carrier
 # cascade. Async + Spot because a create can exceed API Gateway's ~29s cap and
 # is fully retryable.
 

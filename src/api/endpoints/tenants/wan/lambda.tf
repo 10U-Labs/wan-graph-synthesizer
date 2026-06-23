@@ -1,5 +1,5 @@
 # The dispatching Lambda: POST starts a Fargate create (ecs:RunTask), GET reports
-# the customer's WAN status from the store. It lives in the wan stack so it can
+# the tenant's WAN status from the store. It lives in the wan stack so it can
 # reference the cluster, task definition, subnet, and security group directly.
 
 data "terraform_remote_state" "routing" {

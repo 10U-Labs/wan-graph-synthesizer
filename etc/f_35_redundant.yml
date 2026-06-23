@@ -26,7 +26,7 @@ inputs:
     provider:
       - data/vertices/providers region.csv
   locations:
-    F-35: data/vertices/customers/f_35.csv
+    F-35: data/vertices/tenants/f_35.csv
   off_net: data/vertices/utilities/off_net.csv
 knobs:
   cluster_max_radius_miles: 250.0

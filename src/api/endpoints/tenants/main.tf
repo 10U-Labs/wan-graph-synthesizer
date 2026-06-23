@@ -6,7 +6,7 @@ provider "aws" {
       ManagedBy  = "OpenTofu"
       Project    = "wan-graph-synthesizer"
       Repository = "10U-Labs/wan-graph-synthesizer"
-      Stack      = "endpoints/customers"
+      Stack      = "endpoints/tenants"
     }
   }
 }
@@ -16,8 +16,8 @@ module "common" {
 }
 
 locals {
-  function_name = module.common.lambda_handler_names.customers
-  role_name     = "wan-graph-synthesizer-customers-lambda"
+  function_name = module.common.lambda_handler_names.tenants
+  role_name     = "wan-graph-synthesizer-tenants-lambda"
 
   lambda_arn_prefix = "arn:aws:lambda:${module.common.aws_region}:${module.common.aws_account_id}:function"
   wan_function_arn  = "${local.lambda_arn_prefix}:${module.common.lambda_handler_names.wan}"
@@ -59,7 +59,7 @@ resource "aws_lambda_function" "handler" {
   architectures    = ["arm64"]
   timeout          = 10
   memory_size      = 128
-  description      = "Customers read endpoint: serve a built WAN's collections."
+  description      = "Tenants read endpoint: serve a built WAN's collections."
 
   environment {
     variables = {

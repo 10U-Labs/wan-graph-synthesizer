@@ -1,15 +1,15 @@
-"""Customers endpoint: read a computed WAN and read/write a customer's inputs.
+"""Tenants endpoint: read a computed WAN and read/write a tenant's inputs.
 
-    GET    /wan-graph-synthesizer/customers                              -> [{id, label}]
-    GET    /wan-graph-synthesizer/customers/{c}/vertices|edges           -> the WAN graph
-    GET    /wan-graph-synthesizer/customers/{c}/core-nodes|...           -> the WAN tiers
-    GET    /wan-graph-synthesizer/customers/{c}/locations|forced-core-nodes|... -> an input
-    PUT    /wan-graph-synthesizer/customers/{c}/locations|forced-core-nodes|... -> set input
-    DELETE /wan-graph-synthesizer/customers/{c}                          -> remove the customer
+    GET    /wan-graph-synthesizer/tenants                              -> [{id, label}]
+    GET    /wan-graph-synthesizer/tenants/{c}/vertices|edges           -> the WAN graph
+    GET    /wan-graph-synthesizer/tenants/{c}/core-nodes|...           -> the WAN tiers
+    GET    /wan-graph-synthesizer/tenants/{c}/locations|forced-core-nodes|... -> an input
+    PUT    /wan-graph-synthesizer/tenants/{c}/locations|forced-core-nodes|... -> set input
+    DELETE /wan-graph-synthesizer/tenants/{c}                          -> remove the tenant
 
 The computed collections come from the published ``wan.json``; each operator input is
 its own document (the synthesizer reads them all). A PUT persists the input and
-re-creates this customer's WAN. Self-contained (stdlib + boto3); single-file Lambda.
+re-creates this tenant's WAN. Self-contained (stdlib + boto3); single-file Lambda.
 """
 
 import json
@@ -40,8 +40,8 @@ _INPUTS = frozenset({
     "knobs",
     "label",
 })
-# Customers are enumerated by this marker document (every customer has a label).
-_CUSTOMER_MARKER = "label.json"
+# Tenants are enumerated by this marker document (every tenant has a label).
+_TENANT_MARKER = "label.json"
 
 
 def _s3() -> Any:
@@ -68,24 +68,24 @@ def _response(status: int, body: Any) -> dict[str, Any]:
     return {"statusCode": status, "headers": dict(_HEADERS), "body": json.dumps(body)}
 
 
-def _customers(client: Any) -> list[dict[str, str]]:
-    """List the customers (those with a label) as ``{id, label}`` entries for the UI.
+def _tenants(client: Any) -> list[dict[str, str]]:
+    """List the tenants (those with a label) as ``{id, label}`` entries for the UI.
 
-    The display label is the customer's ``label`` document (e.g. ``F-35 (redundant)``),
+    The display label is the tenant's ``label`` document (e.g. ``F-35 (redundant)``),
     falling back to the id when it is unset.
     """
     listing = client.list_objects_v2(
-        Bucket=os.environ["STORE_BUCKET"], Prefix="customers/"
+        Bucket=os.environ["STORE_BUCKET"], Prefix="tenants/"
     )
-    customers = []
+    tenants = []
     for item in listing.get("Contents", []):
         key = item["Key"]
-        if not key.endswith(f"/{_CUSTOMER_MARKER}"):
+        if not key.endswith(f"/{_TENANT_MARKER}"):
             continue
-        customer = key.removeprefix("customers/").removesuffix(f"/{_CUSTOMER_MARKER}")
+        tenant = key.removeprefix("tenants/").removesuffix(f"/{_TENANT_MARKER}")
         label = _read_object(client, key) or {}
-        customers.append({"id": customer, "label": label.get("label") or customer})
-    return customers
+        tenants.append({"id": tenant, "label": label.get("label") or tenant})
+    return tenants
 
 
 def _read_object(client: Any, key: str) -> Any:
@@ -97,67 +97,67 @@ def _read_object(client: Any, key: str) -> Any:
     return json.loads(body)
 
 
-def _serve(client: Any, customer: str, key: str, field: str | None = None) -> dict[str, Any]:
+def _serve(client: Any, tenant: str, key: str, field: str | None = None) -> dict[str, Any]:
     """Serve a stored document (or one field of it), or 404 when it is absent."""
     doc = _read_object(client, key)
     if doc is None:
-        return _response(404, {"error": f"not built: {customer}"})
+        return _response(404, {"error": f"not built: {tenant}"})
     return _response(200, doc if field is None else doc[field])
 
 
-def _cascade(customer: str) -> None:
-    """Re-create this customer's WAN after an input change."""
+def _cascade(tenant: str) -> None:
+    """Re-create this tenant's WAN after an input change."""
     _lambda().invoke(
         FunctionName=os.environ["WAN_FUNCTION"],
         InvocationType="Event",
         Payload=json.dumps(
-            {"httpMethod": "POST", "pathParameters": {"customer": customer}}
+            {"httpMethod": "POST", "pathParameters": {"tenant": tenant}}
         ).encode(),
     )
 
 
-def _get(client: Any, customer: str | None, event: dict[str, Any]) -> dict[str, Any]:
-    """Serve the customers collection, a WAN collection, or an input document."""
-    if not customer:
-        return _response(200, _customers(client))
+def _get(client: Any, tenant: str | None, event: dict[str, Any]) -> dict[str, Any]:
+    """Serve the tenants collection, a WAN collection, or an input document."""
+    if not tenant:
+        return _response(200, _tenants(client))
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection in _WAN_COLLECTIONS:
-        return _serve(client, customer, f"customers/{customer}/wan.json", collection)
+        return _serve(client, tenant, f"tenants/{tenant}/wan.json", collection)
     if collection in _INPUTS:
-        return _serve(client, customer, f"customers/{customer}/{collection}.json")
+        return _serve(client, tenant, f"tenants/{tenant}/{collection}.json")
     return _response(404, {"error": collection})
 
 
-def _put(client: Any, customer: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace one of a customer's input documents, then re-create its WAN."""
+def _put(client: Any, tenant: str, event: dict[str, Any]) -> dict[str, Any]:
+    """Replace one of a tenant's input documents, then re-create its WAN."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in _INPUTS:
         return _response(404, {"error": collection})
-    key = f"customers/{customer}/{collection}.json"
+    key = f"tenants/{tenant}/{collection}.json"
     body = json.dumps(json.loads(event["body"])).encode()
     client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=body)
-    _cascade(customer)
-    return _response(200, {"updated": f"{customer}/{collection}"})
+    _cascade(tenant)
+    return _response(200, {"updated": f"{tenant}/{collection}"})
 
 
-def _delete(client: Any, customer: str) -> dict[str, Any]:
-    """Remove every object belonging to a customer."""
+def _delete(client: Any, tenant: str) -> dict[str, Any]:
+    """Remove every object belonging to a tenant."""
     bucket = os.environ["STORE_BUCKET"]
-    listing = client.list_objects_v2(Bucket=bucket, Prefix=f"customers/{customer}/")
+    listing = client.list_objects_v2(Bucket=bucket, Prefix=f"tenants/{tenant}/")
     for item in listing.get("Contents", []):
         client.delete_object(Bucket=bucket, Key=item["Key"])
-    return _response(200, {"deleted": customer})
+    return _response(200, {"deleted": tenant})
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    """Dispatch a customers request by method: read, replace an input, or delete."""
+    """Dispatch a tenants request by method: read, replace an input, or delete."""
     client = _s3()
     method = event.get("httpMethod", "GET")
-    customer = (event.get("pathParameters") or {}).get("customer")
+    tenant = (event.get("pathParameters") or {}).get("tenant")
     if method == "GET":
-        return _get(client, customer, event)
-    if not customer:
-        return _response(404, {"error": "customer required"})
+        return _get(client, tenant, event)
+    if not tenant:
+        return _response(404, {"error": "tenant required"})
     if method == "DELETE":
-        return _delete(client, customer)
-    return _put(client, customer, event)
+        return _delete(client, tenant)
+    return _put(client, tenant, event)

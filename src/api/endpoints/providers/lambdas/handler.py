@@ -7,7 +7,7 @@
 
 A provider graph is regions only (no fiber), so it exposes vertices but no edges. provider
 regions are not part of the substrate, so a write does not rebuild the merge; it
-re-creates every customer's WAN (a customer may select any provider's regions).
+re-creates every tenant's WAN (a tenant may select any provider's regions).
 Self-contained (stdlib + boto3); deployed as a single-file Lambda.
 """
 
@@ -55,26 +55,26 @@ def _provider_ids(client: Any) -> list[str]:
     ]
 
 
-def _customer_ids(client: Any) -> list[str]:
-    """List the customers (objects under customers/.../label.json, the marker doc)."""
+def _tenant_ids(client: Any) -> list[str]:
+    """List the tenants (objects under tenants/.../label.json, the marker doc)."""
     listing = client.list_objects_v2(
-        Bucket=os.environ["STORE_BUCKET"], Prefix="customers/"
+        Bucket=os.environ["STORE_BUCKET"], Prefix="tenants/"
     )
     return [
-        item["Key"].removeprefix("customers/").removesuffix("/label.json")
+        item["Key"].removeprefix("tenants/").removesuffix("/label.json")
         for item in listing.get("Contents", [])
         if item["Key"].endswith("/label.json")
     ]
 
 
 def _cascade(client: Any) -> None:
-    """(Re)create every customer's WAN (any customer may use this provider)."""
-    for customer in _customer_ids(client):
+    """(Re)create every tenant's WAN (any tenant may use this provider)."""
+    for tenant in _tenant_ids(client):
         _lambda().invoke(
             FunctionName=os.environ["WAN_FUNCTION"],
             InvocationType="Event",
             Payload=json.dumps(
-                {"httpMethod": "POST", "pathParameters": {"customer": customer}}
+                {"httpMethod": "POST", "pathParameters": {"tenant": tenant}}
             ).encode(),
         )
 

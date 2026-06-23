@@ -26,7 +26,7 @@ locals {
   openapi_spec = templatefile("${path.module}/../../../www/api/openapi.json", {
     CarriersHandlerArn  = local.integration.carriers
     providersHandlerArn      = local.integration.providers
-    CustomersHandlerArn = local.integration.customers
+    TenantsHandlerArn = local.integration.tenants
     MergeHandlerArn     = local.integration.merge
     WanHandlerArn       = local.integration.wan
   })

@@ -1,4 +1,4 @@
-"""Per-collection JSON views of a computed customer WAN.
+"""Per-collection JSON views of a computed tenant WAN.
 
 The synthesizer's ``design_payload`` (output.py) is one coherent computation; the
 entrypoint slices it into the atomic collections the REST API serves (vertices,
@@ -12,13 +12,13 @@ from typing import Any
 
 
 def vertices(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """The vertices of a computed customer WAN (each carries kind + tier_role)."""
+    """The vertices of a computed tenant WAN (each carries kind + tier_role)."""
     result: list[dict[str, Any]] = payload["vertices"]
     return result
 
 
 def edges(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """Every edge of a computed customer WAN: access homings plus carrier fiber."""
+    """Every edge of a computed tenant WAN: access homings plus carrier fiber."""
     result: list[dict[str, Any]] = payload["access_edges"] + payload["physical_edges"]
     return result
 

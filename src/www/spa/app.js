@@ -5,10 +5,10 @@
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIB = "© OpenStreetMap contributors";
 
-// The REST API: a customer's WAN is served as vertices + edges collections.
+// The REST API: a tenant's WAN is served as vertices + edges collections.
 const API_BASE = "https://api.10ulabs.com/wan-graph-synthesizer";
 
-// The customer shown on first load, before the operator picks one.
+// The tenant shown on first load, before the operator picks one.
 const DEFAULT_MAP_ID = "military-installations";
 
 // Vertex color and radius. provider regions are colored by kind; every other
@@ -192,14 +192,14 @@ function showCounts(vertices) {
   counts.textContent = `CORE ${tally.core} AGGR ${tally.aggregation} ACCESS ${tally.access}`;
 }
 
-async function render(customerId) {
+async function render(tenantId) {
   clear();
   let vertices;
   let edges;
   try {
     [vertices, edges] = await Promise.all([
-      getJSON(`${API_BASE}/customers/${customerId}/vertices`),
-      getJSON(`${API_BASE}/customers/${customerId}/edges`),
+      getJSON(`${API_BASE}/tenants/${tenantId}/vertices`),
+      getJSON(`${API_BASE}/tenants/${tenantId}/edges`),
     ]);
   } catch (error) {
     document.getElementById("counts").textContent = "WAN not built yet";
@@ -229,8 +229,8 @@ function select(link, mapId) {
 
 async function init() {
   const tenants = document.getElementById("tenants");
-  const customers = await getJSON(`${API_BASE}/customers`);
-  const entries = customers.map(({ id, label }) => {
+  const tenants = await getJSON(`${API_BASE}/tenants`);
+  const entries = tenants.map(({ id, label }) => {
     const link = document.createElement("a");
     link.href = "#";
     link.textContent = label;

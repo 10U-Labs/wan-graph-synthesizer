@@ -8,8 +8,8 @@
     DELETE /wan-graph-synthesizer/carriers/{carrier}           -> remove the carrier
 
 A write persists to the store and then auto-rebuilds the dependents (the carrier
-merge is the shared substrate, so every customer's WAN depends on it): it invokes
-the merge create and then a WAN create for each customer. Self-contained (stdlib +
+merge is the shared substrate, so every tenant's WAN depends on it): it invokes
+the merge create and then a WAN create for each tenant. Self-contained (stdlib +
 boto3); deployed as a single-file Lambda.
 """
 
@@ -57,13 +57,13 @@ def _carrier_ids(client: Any) -> list[str]:
     ]
 
 
-def _customer_ids(client: Any) -> list[str]:
-    """List the customers (objects under customers/.../label.json, the marker doc)."""
+def _tenant_ids(client: Any) -> list[str]:
+    """List the tenants (objects under tenants/.../label.json, the marker doc)."""
     listing = client.list_objects_v2(
-        Bucket=os.environ["STORE_BUCKET"], Prefix="customers/"
+        Bucket=os.environ["STORE_BUCKET"], Prefix="tenants/"
     )
     return [
-        item["Key"].removeprefix("customers/").removesuffix("/label.json")
+        item["Key"].removeprefix("tenants/").removesuffix("/label.json")
         for item in listing.get("Contents", [])
         if item["Key"].endswith("/label.json")
     ]
@@ -77,12 +77,12 @@ def _invoke(function: str, payload: dict[str, Any]) -> None:
 
 
 def _cascade(client: Any) -> None:
-    """Rebuild the substrate, then (re)create every customer's WAN."""
+    """Rebuild the substrate, then (re)create every tenant's WAN."""
     _invoke(os.environ["MERGE_FUNCTION"], {"httpMethod": "POST"})
-    for customer in _customer_ids(client):
+    for tenant in _tenant_ids(client):
         _invoke(
             os.environ["WAN_FUNCTION"],
-            {"httpMethod": "POST", "pathParameters": {"customer": customer}},
+            {"httpMethod": "POST", "pathParameters": {"tenant": tenant}},
         )
 
 

@@ -27,7 +27,7 @@ output "lambda_handler_names" {
   value = {
     carriers  = "wan-graph-synthesizer-carriers"
     providers      = "wan-graph-synthesizer-providers"
-    customers = "wan-graph-synthesizer-customers"
+    tenants = "wan-graph-synthesizer-tenants"
     merge     = "wan-graph-synthesizer-merge"
     wan       = "wan-graph-synthesizer-wan"
   }

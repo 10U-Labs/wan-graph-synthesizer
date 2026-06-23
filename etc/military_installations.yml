@@ -38,7 +38,7 @@ inputs:
       - data/vertices/providers/providers.csv
       - data/vertices/providers/providers.csv
   locations:
-    Military Installations: data/vertices/customers/military_installations.csv
+    Military Installations: data/vertices/tenants/military_installations.csv
   off_net: data/vertices/utilities/off_net.csv
 knobs:
   cluster_max_radius_miles: 150.0

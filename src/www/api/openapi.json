@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "wan-graph-synthesizer",
-    "description": "Graphs as REST resources: carriers, providers, the carrier merge (substrate), and customers' WANs. Inputs are writable; computed graphs are read-only. One JSON format throughout.",
+    "description": "Graphs as REST resources: carriers, providers, the carrier merge (substrate), and tenants' WANs. Inputs are writable; computed graphs are read-only. One JSON format throughout.",
     "version": "1.0.0"
   },
   "paths": {
@@ -194,352 +194,352 @@
         }
       }
     },
-    "/wan-graph-synthesizer/customers": {
+    "/wan-graph-synthesizer/tenants": {
       "get": {
-        "summary": "List customers.",
-        "responses": { "200": { "description": "The customers, each as an {id, label} entry." } },
+        "summary": "List tenants.",
+        "responses": { "200": { "description": "The tenants, each as an {id, label} entry." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/vertices": {
+    "/wan-graph-synthesizer/tenants/{tenant}/vertices": {
       "get": {
-        "summary": "A customer WAN's vertices.",
+        "summary": "A tenant WAN's vertices.",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The WAN's vertices." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/edges": {
+    "/wan-graph-synthesizer/tenants/{tenant}/edges": {
       "get": {
-        "summary": "A customer WAN's edges.",
+        "summary": "A tenant WAN's edges.",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The WAN's edges." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/core-nodes": {
+    "/wan-graph-synthesizer/tenants/{tenant}/core-nodes": {
       "get": {
-        "summary": "A customer WAN's core tier.",
+        "summary": "A tenant WAN's core tier.",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The core nodes." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/aggregation-points": {
+    "/wan-graph-synthesizer/tenants/{tenant}/aggregation-points": {
       "get": {
-        "summary": "A customer WAN's aggregation tier.",
+        "summary": "A tenant WAN's aggregation tier.",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The aggregation points." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/access-nodes": {
+    "/wan-graph-synthesizer/tenants/{tenant}/access-nodes": {
       "get": {
-        "summary": "A customer WAN's access tier.",
+        "summary": "A tenant WAN's access tier.",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The access nodes." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/locations": {
+    "/wan-graph-synthesizer/tenants/{tenant}/locations": {
       "get": {
-        "summary": "A customer's demand locations (input).",
+        "summary": "A tenant's demand locations (input).",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The locations." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       },
       "put": {
-        "summary": "Replace a customer's demand locations (re-creates the WAN).",
+        "summary": "Replace a tenant's demand locations (re-creates the WAN).",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The locations were replaced." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/provider-regions": {
+    "/wan-graph-synthesizer/tenants/{tenant}/provider-regions": {
       "get": {
-        "summary": "A customer's selected provider regions (input).",
+        "summary": "A tenant's selected provider regions (input).",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The provider regions." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       },
       "put": {
-        "summary": "Replace a customer's provider regions (re-creates the WAN).",
+        "summary": "Replace a tenant's provider regions (re-creates the WAN).",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The provider regions were replaced." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/off-net": {
+    "/wan-graph-synthesizer/tenants/{tenant}/off-net": {
       "get": {
-        "summary": "A customer's off-net candidate seats (input).",
+        "summary": "A tenant's off-net candidate seats (input).",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The off-net seats." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       },
       "put": {
-        "summary": "Replace a customer's off-net seats (re-creates the WAN).",
+        "summary": "Replace a tenant's off-net seats (re-creates the WAN).",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The off-net seats were replaced." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/forced-core-nodes": {
+    "/wan-graph-synthesizer/tenants/{tenant}/forced-core-nodes": {
       "get": {
-        "summary": "A customer's forced core nodes (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's forced core nodes (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The forced core nodes." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's forced core nodes (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's forced core nodes (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The forced core nodes were replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/forced-aggregation-points": {
+    "/wan-graph-synthesizer/tenants/{tenant}/forced-aggregation-points": {
       "get": {
-        "summary": "A customer's forced aggregation points (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's forced aggregation points (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The forced aggregation points." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's forced aggregation points (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's forced aggregation points (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The forced aggregation points were replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/forced-connections": {
+    "/wan-graph-synthesizer/tenants/{tenant}/forced-connections": {
       "get": {
-        "summary": "A customer's forced connections (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's forced connections (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The forced connections." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's forced connections (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's forced connections (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The forced connections were replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/prohibited-core-nodes": {
+    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-core-nodes": {
       "get": {
-        "summary": "A customer's prohibited core nodes (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's prohibited core nodes (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The prohibited core nodes." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's prohibited core nodes (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's prohibited core nodes (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The prohibited core nodes were replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/prohibited-aggregation-points": {
+    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-aggregation-points": {
       "get": {
-        "summary": "A customer's prohibited aggregation points (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's prohibited aggregation points (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The prohibited aggregation points." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's prohibited aggregation points (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's prohibited aggregation points (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The prohibited aggregation points were replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/prohibited-connections": {
+    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-connections": {
       "get": {
-        "summary": "A customer's prohibited connections (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's prohibited connections (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The prohibited connections." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's prohibited connections (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's prohibited connections (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The prohibited connections were replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/core-node-count": {
+    "/wan-graph-synthesizer/tenants/{tenant}/core-node-count": {
       "get": {
-        "summary": "A customer's core node count, min and max (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's core node count, min and max (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The core node count." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's core node count (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's core node count (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The core node count was replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/core-mesh-degree": {
+    "/wan-graph-synthesizer/tenants/{tenant}/core-mesh-degree": {
       "get": {
-        "summary": "A customer's core mesh degree (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's core mesh degree (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The core mesh degree." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's core mesh degree (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's core mesh degree (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The core mesh degree was replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/aggregation-homing-degree": {
+    "/wan-graph-synthesizer/tenants/{tenant}/aggregation-homing-degree": {
       "get": {
-        "summary": "A customer's aggregation homing degree (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's aggregation homing degree (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The aggregation homing degree." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's aggregation homing degree (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's aggregation homing degree (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The aggregation homing degree was replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/access-homing-degree": {
+    "/wan-graph-synthesizer/tenants/{tenant}/access-homing-degree": {
       "get": {
-        "summary": "A customer's access homing degree (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's access homing degree (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The access homing degree." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's access homing degree (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's access homing degree (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The access homing degree was replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/knobs": {
+    "/wan-graph-synthesizer/tenants/{tenant}/knobs": {
       "get": {
-        "summary": "A customer's algorithm knobs (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's algorithm knobs (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The knobs." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's algorithm knobs (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's algorithm knobs (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The knobs were replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/label": {
+    "/wan-graph-synthesizer/tenants/{tenant}/label": {
       "get": {
-        "summary": "A customer's display label (input).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "A tenant's display label (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The label." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a customer's display label (re-creates the WAN).",
-        "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "summary": "Replace a tenant's display label (re-creates the WAN).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The label was replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}": {
+    "/wan-graph-synthesizer/tenants/{tenant}": {
       "delete": {
-        "summary": "Remove a customer and all its inputs and outputs.",
+        "summary": "Remove a tenant and all its inputs and outputs.",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The customer was removed." } },
+        "responses": { "200": { "description": "The tenant was removed." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${CustomersHandlerArn}",
+          "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       }
     },
-    "/wan-graph-synthesizer/customers/{customer}/wan": {
+    "/wan-graph-synthesizer/tenants/{tenant}/wan": {
       "post": {
-        "summary": "Create (synthesize) the customer's WAN.",
+        "summary": "Create (synthesize) the tenant's WAN.",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "202": { "description": "Create started." },
@@ -552,9 +552,9 @@
         }
       },
       "get": {
-        "summary": "The customer's WAN and its status.",
+        "summary": "The tenant's WAN and its status.",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": { "200": { "description": "The WAN." } },
         "x-amazon-apigateway-integration": {
@@ -566,7 +566,7 @@
       "options": {
         "summary": "CORS preflight.",
         "parameters": [
-          { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "200": {

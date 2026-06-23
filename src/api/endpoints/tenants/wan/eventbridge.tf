@@ -1,6 +1,6 @@
 # Spot-interruption recovery. ECS emits a "Task State Change" event when our
 # Fargate task stops; on a Spot reclaim the dispatching Lambda (same function)
-# relaunches the build for that customer up to a cap. Keeps the cost of Spot
+# relaunches the build for that tenant up to a cap. Keeps the cost of Spot
 # without leaving an interrupted WAN stuck "building".
 
 resource "aws_cloudwatch_event_rule" "task_stopped" {

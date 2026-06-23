@@ -1,6 +1,6 @@
 """Unit tests for the per-endpoint Lambda handlers.
 
-One file, parametrized over the read endpoints (carriers, providers, customers) and with
+One file, parametrized over the read endpoints (carriers, providers, tenants) and with
 explicit cases for the merge and wan endpoints. Consolidated so the shared loading
 and caching scaffolding lives once -- repeating it per endpoint would be duplicate
 code. Each handler is loaded the way the Lambda runtime loads it (by path).
@@ -73,10 +73,10 @@ _READERS: list[dict[str, Any]] = [
         },
     },
     {
-        "endpoint": "customers",
-        "list_keys": ["customers/f-35/label.json", "customers/joint/label.json"],
+        "endpoint": "tenants",
+        "list_keys": ["tenants/f-35/label.json", "tenants/joint/label.json"],
         "ids": [{"id": "f-35", "label": "f-35"}, {"id": "joint", "label": "joint"}],
-        "stored_key": "customers/f-35/wan.json",
+        "stored_key": "tenants/f-35/wan.json",
         "stored": {
             "vertices": [],
             "edges": [],
@@ -85,17 +85,17 @@ _READERS: list[dict[str, Any]] = [
             "access-nodes": [],
         },
         "serve_event": {
-            "pathParameters": {"customer": "f-35"},
-            "path": "/x/customers/f-35/core-nodes",
+            "pathParameters": {"tenant": "f-35"},
+            "path": "/x/tenants/f-35/core-nodes",
         },
         "serve_expect": [{"id": "P"}],
         "unknown_event": {
-            "pathParameters": {"customer": "f-35"},
-            "path": "/x/customers/f-35/bogus",
+            "pathParameters": {"tenant": "f-35"},
+            "path": "/x/tenants/f-35/bogus",
         },
         "notbuilt_event": {
-            "pathParameters": {"customer": "joint"},
-            "path": "/x/customers/joint/edges",
+            "pathParameters": {"tenant": "joint"},
+            "path": "/x/tenants/joint/edges",
         },
     },
 ]
@@ -287,10 +287,10 @@ def test_write_updates_an_existing_graph(
 def test_write_cascades_to_dependents(
     cfg: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A PUT (re)creates the dependent graphs for every customer."""
+    """A PUT (re)creates the dependent graphs for every tenant."""
     module = _writer(cfg, monkeypatch)
     invocations: list[dict[str, Any]] = []
-    store = {"customers/a/label.json": b"{}", "customers/b/label.json": b"{}"}
+    store = {"tenants/a/label.json": b"{}", "tenants/b/label.json": b"{}"}
     with patch("boto3.client", side_effect=_write_clients(store, invocations)):
         module.lambda_handler(_write_event(cfg, "vertices", []), None)
     assert len(invocations) == cfg["invokes"]
@@ -341,27 +341,27 @@ def test_carrier_put_preserves_other_collections(monkeypatch: pytest.MonkeyPatch
     assert json.loads(objects["carriers/lumen.json"])["edges"] == [{"e": 1}]
 
 
-def _customer(monkeypatch: pytest.MonkeyPatch) -> Any:
-    """Load the customers handler with the WAN-create function configured."""
-    return _load("customers", monkeypatch, WAN_FUNCTION="wan-fn")
+def _tenant(monkeypatch: pytest.MonkeyPatch) -> Any:
+    """Load the tenants handler with the WAN-create function configured."""
+    return _load("tenants", monkeypatch, WAN_FUNCTION="wan-fn")
 
 
-def _customer_put(collection: str, body: Any) -> dict[str, Any]:
-    """A customer input-document PUT event."""
+def _tenant_put(collection: str, body: Any) -> dict[str, Any]:
+    """A tenant input-document PUT event."""
     return {
         "httpMethod": "PUT",
-        "pathParameters": {"customer": "f-35"},
-        "path": f"/x/customers/f-35/{collection}",
+        "pathParameters": {"tenant": "f-35"},
+        "path": f"/x/tenants/f-35/{collection}",
         "body": json.dumps(body),
     }
 
 
-def test_customers_list_surfaces_each_label(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The customers collection returns each customer's display label document."""
-    module = _customer(monkeypatch)
+def test_tenants_list_surfaces_each_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The tenants collection returns each tenant's display label document."""
+    module = _tenant(monkeypatch)
     objects = {
-        "customers/f-35-redundant/label.json": json.dumps({"label": "F-35 (redundant)"}).encode(),
-        "customers/joint/label.json": json.dumps({"label": "Joint"}).encode(),
+        "tenants/f-35-redundant/label.json": json.dumps({"label": "F-35 (redundant)"}).encode(),
+        "tenants/joint/label.json": json.dumps({"label": "Joint"}).encode(),
     }
     with patch("boto3.client", return_value=fake_s3(objects)):
         response = module.lambda_handler({}, None)
@@ -371,73 +371,73 @@ def test_customers_list_surfaces_each_label(monkeypatch: pytest.MonkeyPatch) -> 
     ]
 
 
-def test_customers_list_falls_back_to_id_without_a_label(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A customer whose label document is empty is listed with its id as the label."""
-    module = _customer(monkeypatch)
-    with patch("boto3.client", return_value=fake_s3({"customers/joint/label.json": b"{}"})):
+def test_tenants_list_falls_back_to_id_without_a_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A tenant whose label document is empty is listed with its id as the label."""
+    module = _tenant(monkeypatch)
+    with patch("boto3.client", return_value=fake_s3({"tenants/joint/label.json": b"{}"})):
         response = module.lambda_handler({}, None)
     assert json.loads(response["body"]) == [{"id": "joint", "label": "joint"}]
 
 
-def test_customer_get_serves_an_input_document(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tenant_get_serves_an_input_document(monkeypatch: pytest.MonkeyPatch) -> None:
     """A GET on an input collection returns the whole stored document."""
-    module = _customer(monkeypatch)
-    stored = {"customers/f-35/locations.json": json.dumps({"vertices": [{"id": "S"}]}).encode()}
-    event = {"pathParameters": {"customer": "f-35"}, "path": "/x/customers/f-35/locations"}
+    module = _tenant(monkeypatch)
+    stored = {"tenants/f-35/locations.json": json.dumps({"vertices": [{"id": "S"}]}).encode()}
+    event = {"pathParameters": {"tenant": "f-35"}, "path": "/x/tenants/f-35/locations"}
     with patch("boto3.client", side_effect=_write_clients(stored, [])):
         response = module.lambda_handler(event, None)
     assert json.loads(response["body"]) == {"vertices": [{"id": "S"}]}
 
 
-def test_customer_put_persists_an_input(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tenant_put_persists_an_input(monkeypatch: pytest.MonkeyPatch) -> None:
     """A PUT stores the input document under its own key."""
-    module = _customer(monkeypatch)
+    module = _tenant(monkeypatch)
     objects: dict[str, bytes] = {}
     with patch("boto3.client", side_effect=_write_clients(objects, [])):
-        module.lambda_handler(_customer_put("provider-regions", {"vertices": []}), None)
-    assert "customers/f-35/provider-regions.json" in objects
+        module.lambda_handler(_tenant_put("provider-regions", {"vertices": []}), None)
+    assert "tenants/f-35/provider-regions.json" in objects
 
 
-def test_customer_put_404_for_unknown_collection(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tenant_put_404_for_unknown_collection(monkeypatch: pytest.MonkeyPatch) -> None:
     """A PUT to a non-input collection is a 404."""
-    module = _customer(monkeypatch)
+    module = _tenant(monkeypatch)
     with patch("boto3.client", side_effect=_write_clients({}, [])):
-        response = module.lambda_handler(_customer_put("vertices", {}), None)
+        response = module.lambda_handler(_tenant_put("vertices", {}), None)
     assert response["statusCode"] == 404
 
 
-def test_customer_put_recreates_the_wan(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tenant_put_recreates_the_wan(monkeypatch: pytest.MonkeyPatch) -> None:
     """Each input PUT re-creates the WAN (two PUTs reuse the cached client)."""
-    module = _customer(monkeypatch)
+    module = _tenant(monkeypatch)
     invocations: list[dict[str, Any]] = []
     with patch("boto3.client", side_effect=_write_clients({}, invocations)):
-        module.lambda_handler(_customer_put("forced-core-nodes", []), None)
-        module.lambda_handler(_customer_put("forced-core-nodes", []), None)
+        module.lambda_handler(_tenant_put("forced-core-nodes", []), None)
+        module.lambda_handler(_tenant_put("forced-core-nodes", []), None)
     assert len(invocations) == 2
 
 
-def test_customer_delete_removes_every_object(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A DELETE removes all of the customer's stored objects."""
-    module = _customer(monkeypatch)
-    objects = {"customers/f-35/config.json": b"{}", "customers/f-35/wan.json": b"{}"}
-    event = {"httpMethod": "DELETE", "pathParameters": {"customer": "f-35"}}
+def test_tenant_delete_removes_every_object(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A DELETE removes all of the tenant's stored objects."""
+    module = _tenant(monkeypatch)
+    objects = {"tenants/f-35/config.json": b"{}", "tenants/f-35/wan.json": b"{}"}
+    event = {"httpMethod": "DELETE", "pathParameters": {"tenant": "f-35"}}
     with patch("boto3.client", side_effect=_write_clients(objects, [])):
         module.lambda_handler(event, None)
     assert not objects
 
 
-def test_customer_delete_with_no_objects_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Deleting a customer with nothing stored still succeeds."""
-    module = _customer(monkeypatch)
-    event = {"httpMethod": "DELETE", "pathParameters": {"customer": "ghost"}}
+def test_tenant_delete_with_no_objects_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Deleting a tenant with nothing stored still succeeds."""
+    module = _tenant(monkeypatch)
+    event = {"httpMethod": "DELETE", "pathParameters": {"tenant": "ghost"}}
     with patch("boto3.client", side_effect=_write_clients({}, [])):
         response = module.lambda_handler(event, None)
     assert response["statusCode"] == 200
 
 
-def test_customer_write_404_when_no_customer(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A non-GET request without a customer is a 404."""
-    module = _customer(monkeypatch)
+def test_tenant_write_404_when_no_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-GET request without a tenant is a 404."""
+    module = _tenant(monkeypatch)
     with patch("boto3.client", side_effect=_write_clients({}, [])):
         response = module.lambda_handler({"httpMethod": "PUT"}, None)
     assert response["statusCode"] == 404
@@ -446,7 +446,7 @@ def test_customer_write_404_when_no_customer(monkeypatch: pytest.MonkeyPatch) ->
 def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
     """Load the wan handler with the create task's environment configured."""
     return _load(
-        "customers/wan",
+        "tenants/wan",
         monkeypatch,
         CLUSTER_ARN="arn:cluster",
         TASK_DEFINITION_ARN="arn:task",
@@ -487,7 +487,7 @@ def _stopped_event(
 def test_wan_post_returns_202(monkeypatch: pytest.MonkeyPatch) -> None:
     """Starting a create acknowledges with 202."""
     module = _wan(monkeypatch)
-    event = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
+    event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
     with patch("boto3.client", side_effect=_wan_clients({}, [])):
         response = module.lambda_handler(event, None)
     assert response["statusCode"] == 202
@@ -497,7 +497,7 @@ def test_wan_post_launches_one_task(monkeypatch: pytest.MonkeyPatch) -> None:
     """A create launches exactly one synthesizer task."""
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
-    event = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
+    event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
     with patch("boto3.client", side_effect=_wan_clients({}, started)):
         module.lambda_handler(event, None)
     assert len(started) == 1
@@ -507,34 +507,34 @@ def test_wan_post_launches_on_spot(monkeypatch: pytest.MonkeyPatch) -> None:
     """The create runs on Fargate Spot for cost (interruptions are recovered)."""
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
-    event = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
+    event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
     with patch("boto3.client", side_effect=_wan_clients({}, started)):
         module.lambda_handler(event, None)
     assert started[0]["capacityProviderStrategy"][0]["capacityProvider"] == "FARGATE_SPOT"
 
 
 def test_wan_post_tags_task_for_retry(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The first attempt is tagged Customer + Attempt 1 so a reclaim can be relaunched."""
+    """The first attempt is tagged Tenant + Attempt 1 so a reclaim can be relaunched."""
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
-    event = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
+    event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
     with patch("boto3.client", side_effect=_wan_clients({}, started)):
         module.lambda_handler(event, None)
     assert started[0]["tags"] == [
-        {"key": "Customer", "value": "f-35"},
+        {"key": "Tenant", "value": "f-35"},
         {"key": "Attempt", "value": "1"},
     ]
 
 
 def test_spot_interruption_relaunches_with_next_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A Spot-interrupted build relaunches for the same customer at the next attempt."""
+    """A Spot-interrupted build relaunches for the same tenant at the next attempt."""
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
-    tags = {"Customer": "f-35", "Attempt": "1"}
+    tags = {"Tenant": "f-35", "Attempt": "1"}
     with patch("boto3.client", side_effect=_wan_clients({}, started, tags)):
         module.lambda_handler(_stopped_event(), None)
     assert started[0]["tags"] == [
-        {"key": "Customer", "value": "f-35"},
+        {"key": "Tenant", "value": "f-35"},
         {"key": "Attempt", "value": "2"},
     ]
 
@@ -544,10 +544,10 @@ def test_spot_interruption_past_cap_marks_failed(monkeypatch: pytest.MonkeyPatch
     module = _wan(monkeypatch)
     objects: dict[str, bytes] = {}
     started: list[dict[str, Any]] = []
-    tags = {"Customer": "f-35", "Attempt": str(module.MAX_ATTEMPTS)}
+    tags = {"Tenant": "f-35", "Attempt": str(module.MAX_ATTEMPTS)}
     with patch("boto3.client", side_effect=_wan_clients(objects, started, tags)):
         module.lambda_handler(_stopped_event(), None)
-    assert json.loads(objects["customers/f-35/wan-status.json"])["status"] == "failed"
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
 
 
 def test_non_spot_stop_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -555,7 +555,7 @@ def test_non_spot_stop_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
     event = _stopped_event(stop_code="EssentialContainerExited", reason="container exited")
-    with patch("boto3.client", side_effect=_wan_clients({}, started, {"Customer": "f-35"})):
+    with patch("boto3.client", side_effect=_wan_clients({}, started, {"Tenant": "f-35"})):
         module.lambda_handler(event, None)
     assert not started
 
@@ -564,13 +564,13 @@ def test_running_task_event_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     """A non-STOPPED task-state event is ignored."""
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
-    with patch("boto3.client", side_effect=_wan_clients({}, started, {"Customer": "f-35"})):
+    with patch("boto3.client", side_effect=_wan_clients({}, started, {"Tenant": "f-35"})):
         result = module.lambda_handler(_stopped_event(last_status="RUNNING"), None)
     assert result["handled"] is False
 
 
 def test_stop_of_unknown_task_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A Spot stop of a task with no Customer tag (or already gone) is not relaunched."""
+    """A Spot stop of a task with no Tenant tag (or already gone) is not relaunched."""
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
     with patch("boto3.client", side_effect=_wan_clients({}, started, None)):
@@ -578,7 +578,7 @@ def test_stop_of_unknown_task_is_ignored(monkeypatch: pytest.MonkeyPatch) -> Non
     assert not started
 
 
-def test_stop_without_customer_tag_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stop_without_tenant_tag_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     """A Spot stop of a tagged-but-not-ours task is not relaunched."""
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
@@ -591,40 +591,40 @@ def test_wan_post_marks_status_creating(monkeypatch: pytest.MonkeyPatch) -> None
     """A create records a 'creating' status marker in the store."""
     module = _wan(monkeypatch)
     objects: dict[str, bytes] = {}
-    event = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
+    event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
     with patch("boto3.client", side_effect=_wan_clients(objects, [])):
         module.lambda_handler(event, None)
-    assert "customers/f-35/wan-status.json" in objects
+    assert "tenants/f-35/wan-status.json" in objects
 
 
 def test_wan_get_404_before_any_create(monkeypatch: pytest.MonkeyPatch) -> None:
     """A WAN status read before any create is a 404."""
     module = _wan(monkeypatch)
     with patch("boto3.client", side_effect=_wan_clients({}, [])):
-        response = module.lambda_handler({"pathParameters": {"customer": "f-35"}}, None)
+        response = module.lambda_handler({"pathParameters": {"tenant": "f-35"}}, None)
     assert response["statusCode"] == 404
 
 
 def test_wan_get_200_while_creating(monkeypatch: pytest.MonkeyPatch) -> None:
     """A WAN still being created reports 200 with its status."""
     module = _wan(monkeypatch)
-    objects = {"customers/f-35/wan-status.json": json.dumps({"status": "creating"}).encode()}
+    objects = {"tenants/f-35/wan-status.json": json.dumps({"status": "creating"}).encode()}
     with patch("boto3.client", side_effect=_wan_clients(objects, [])):
-        response = module.lambda_handler({"pathParameters": {"customer": "f-35"}}, None)
+        response = module.lambda_handler({"pathParameters": {"tenant": "f-35"}}, None)
     assert response["statusCode"] == 200
 
 
 def test_wan_get_422_when_no_valid_wan(monkeypatch: pytest.MonkeyPatch) -> None:
     """A failed create reports 422 (no valid WAN was possible)."""
     module = _wan(monkeypatch)
-    objects = {"customers/f-35/wan-status.json": json.dumps({"status": "failed"}).encode()}
+    objects = {"tenants/f-35/wan-status.json": json.dumps({"status": "failed"}).encode()}
     with patch("boto3.client", side_effect=_wan_clients(objects, [])):
-        response = module.lambda_handler({"pathParameters": {"customer": "f-35"}}, None)
+        response = module.lambda_handler({"pathParameters": {"tenant": "f-35"}}, None)
     assert response["statusCode"] == 422
 
 
-def test_wan_404_when_no_customer(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A request without a customer path parameter is a 404."""
+def test_wan_404_when_no_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A request without a tenant path parameter is a 404."""
     module = _wan(monkeypatch)
     with patch("boto3.client", side_effect=_wan_clients({}, [])):
         response = module.lambda_handler({}, None)
@@ -634,7 +634,7 @@ def test_wan_404_when_no_customer(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_wan_caches_clients(monkeypatch: pytest.MonkeyPatch) -> None:
     """Two creates build the S3 and ECS clients once each, then reuse them."""
     module = _wan(monkeypatch)
-    post = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
+    post = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
     with patch("boto3.client", side_effect=_wan_clients({}, [])) as mock_client:
         module.lambda_handler(post, None)
         module.lambda_handler(post, None)

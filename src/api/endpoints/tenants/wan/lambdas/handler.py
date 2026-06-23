@@ -1,7 +1,7 @@
-"""WAN create endpoint: run a customer's synthesize on Fargate and report its status.
+"""WAN create endpoint: run a tenant's synthesize on Fargate and report its status.
 
-    POST /wan-graph-synthesizer/customers/{customer}/wan -> 202; start the create
-    GET  /wan-graph-synthesizer/customers/{customer}/wan -> the WAN's status (422 if failed)
+    POST /wan-graph-synthesizer/tenants/{tenant}/wan -> 202; start the create
+    GET  /wan-graph-synthesizer/tenants/{tenant}/wan -> the WAN's status (422 if failed)
 
 The synthesize math is slow, so a POST launches a Fargate Spot task (the synthesizer
 container) and returns immediately; the task writes the finished WAN and a status marker
@@ -10,7 +10,7 @@ first create.
 
 The task runs on Fargate Spot for cost. A Spot reclaim kills it mid-build, so the same
 Lambda also receives ECS "task stopped" events from EventBridge: on a Spot interruption
-it relaunches the build for that customer (tracked by an Attempt tag) up to a cap, then
+it relaunches the build for that tenant (tracked by an Attempt tag) up to a cap, then
 records a failed status. Self-contained (stdlib + boto3); single-file Lambda.
 """
 
@@ -55,15 +55,15 @@ def _response(status: int, body: Any) -> dict[str, Any]:
     return {"statusCode": status, "headers": dict(_HEADERS), "body": json.dumps(body)}
 
 
-def _status_key(customer: str) -> str:
-    """The S3 key holding a customer's WAN status marker."""
-    return f"customers/{customer}/wan-status.json"
+def _status_key(tenant: str) -> str:
+    """The S3 key holding a tenant's WAN status marker."""
+    return f"tenants/{tenant}/wan-status.json"
 
 
-def _run_synthesizer_task(customer: str, attempt: int) -> None:
-    """Launch the Fargate Spot synthesizer for a customer, tagged for retry.
+def _run_synthesizer_task(tenant: str, attempt: int) -> None:
+    """Launch the Fargate Spot synthesizer for a tenant, tagged for retry.
 
-    The Customer and Attempt tags let the task-stopped handler relaunch this exact
+    The Tenant and Attempt tags let the task-stopped handler relaunch this exact
     build (and count attempts) when Spot reclaims the task mid-run.
     """
     _ecs().run_task(
@@ -80,34 +80,34 @@ def _run_synthesizer_task(customer: str, attempt: int) -> None:
         overrides={
             "containerOverrides": [
                 {"name": "synthesizer", "environment": [
-                    {"name": "CUSTOMER", "value": customer}]}
+                    {"name": "TENANT", "value": tenant}]}
             ]
         },
         tags=[
-            {"key": "Customer", "value": customer},
+            {"key": "Tenant", "value": tenant},
             {"key": "Attempt", "value": str(attempt)},
         ],
     )
 
 
-def _start_create(customer: str) -> None:
+def _start_create(tenant: str) -> None:
     """Mark the WAN as creating and launch the first synthesizer attempt."""
-    marker = json.dumps({"status": "creating", "customer": customer}).encode()
+    marker = json.dumps({"status": "creating", "tenant": tenant}).encode()
     _s3().put_object(
-        Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer), Body=marker
+        Bucket=os.environ["STORE_BUCKET"], Key=_status_key(tenant), Body=marker
     )
-    _run_synthesizer_task(customer, 1)
+    _run_synthesizer_task(tenant, 1)
 
 
-def _read_status(customer: str) -> dict[str, Any]:
-    """Serve a customer's WAN status: 422 when failed, 404 before any create."""
+def _read_status(tenant: str) -> dict[str, Any]:
+    """Serve a tenant's WAN status: 422 when failed, 404 before any create."""
     client = _s3()
     try:
         body = client.get_object(
-            Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer)
+            Bucket=os.environ["STORE_BUCKET"], Key=_status_key(tenant)
         )["Body"].read()
     except client.exceptions.NoSuchKey:
-        return _response(404, {"error": f"no wan: {customer}"})
+        return _response(404, {"error": f"no wan: {tenant}"})
     status = json.loads(body)
     code = 422 if status.get("status") == "failed" else 200
     return _response(code, status)
@@ -138,32 +138,32 @@ def _handle_task_stopped(event: dict[str, Any]) -> dict[str, Any]:
     if not _is_spot_interruption(detail.get("stopCode", ""), detail.get("stoppedReason", "")):
         return {"handled": False, "reason": "not a spot interruption"}
     tags = _task_tags(detail.get("taskArn", ""), detail.get("clusterArn", ""))
-    customer = tags.get("Customer")
-    if not customer:
+    tenant = tags.get("Tenant")
+    if not tenant:
         return {"handled": False, "reason": "not a synthesizer task"}
     attempt = int(tags.get("Attempt", "1"))
     if attempt >= MAX_ATTEMPTS:
-        logger.warning("Giving up on %s after %d Spot interruptions", customer, attempt)
+        logger.warning("Giving up on %s after %d Spot interruptions", tenant, attempt)
         marker = json.dumps(
             {"status": "failed", "reason": f"interrupted {attempt} times by Spot reclaims"}
         ).encode()
         _s3().put_object(
-            Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer), Body=marker
+            Bucket=os.environ["STORE_BUCKET"], Key=_status_key(tenant), Body=marker
         )
-        return {"handled": True, "retried": False, "customer": customer}
-    logger.info("Relaunching %s after Spot interruption (attempt %d)", customer, attempt + 1)
-    _run_synthesizer_task(customer, attempt + 1)
-    return {"handled": True, "retried": True, "customer": customer}
+        return {"handled": True, "retried": False, "tenant": tenant}
+    logger.info("Relaunching %s after Spot interruption (attempt %d)", tenant, attempt + 1)
+    _run_synthesizer_task(tenant, attempt + 1)
+    return {"handled": True, "retried": True, "tenant": tenant}
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     """Dispatch: EventBridge task-stopped events, or API Gateway create/status calls."""
     if event.get("source") == "aws.ecs":
         return _handle_task_stopped(event)
-    customer = (event.get("pathParameters") or {}).get("customer")
-    if not customer:
-        return _response(404, {"error": "customer required"})
+    tenant = (event.get("pathParameters") or {}).get("tenant")
+    if not tenant:
+        return _response(404, {"error": "tenant required"})
     if event.get("httpMethod") == "POST":
-        _start_create(customer)
-        return _response(202, {"status": "creating", "customer": customer})
-    return _read_status(customer)
+        _start_create(tenant)
+        return _response(202, {"status": "creating", "tenant": tenant})
+    return _read_status(tenant)

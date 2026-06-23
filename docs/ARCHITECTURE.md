@@ -4,7 +4,7 @@ How WAN Graph Synthesizer is built, deployed, and served.
 
 ## Purpose
 
-Interconnect a customer's installations with each other — a wide-area network
+Interconnect a tenant's installations with each other — a wide-area network
 tying their own sites together over shared carrier fiber — and give those
 installations reach to the cloud providers (providers). The core and aggregation
 hubs exist primarily to knit the installations together; provider reach is an added
@@ -16,7 +16,7 @@ Every graph is vertices + edges + properties. A vertex's `kind` is one of:
 
 - `pop` — belongs to a carrier
 - `provider` — a cloud region (a `provider`: aws, provider, or provider)
-- `installation` — belongs to a customer
+- `installation` — belongs to a tenant
 
 The graph kinds:
 
@@ -26,15 +26,15 @@ The graph kinds:
 - **substrate** — derived; all carriers stitched into one shared fiber mesh.
   It is a singleton, read and created via `carriers/merge`. Carriers are the
   only genuinely shared input.
-- **customer → wan** — derived; synthesize over the substrate plus this
-  customer's installations and its selected provider regions, tiered into core /
+- **tenant → wan** — derived; synthesize over the substrate plus this
+  tenant's installations and its selected provider regions, tiered into core /
   aggregation / access (f-35, joint, military-installations).
 
 Lineage: carriers → (merge) → substrate → (+ installations, synthesize) → a
-customer's WAN.
+tenant's WAN.
 
-A customer has exactly one WAN (a singleton, overwritten on each re-create).
-provider regions are per-customer (for example, F-35 uses only the provider region
+A tenant has exactly one WAN (a singleton, overwritten on each re-create).
+provider regions are per-tenant (for example, F-35 uses only the provider region
 region of each provider); they are not part of the shared substrate.
 
 ## The REST API
@@ -52,21 +52,21 @@ Inputs (writable):
 /carriers/{carrier}/vertices
 /carriers/{carrier}/edges
 /providers/{provider}/vertices
-/customers/{customer}/installations
-/customers/{customer}/provider-regions
-/customers/{customer}/forced-core-nodes
-/customers/{customer}/forced-aggregation-points
-/customers/{customer}/prohibited-core-nodes
-/customers/{customer}/prohibited-aggregation-points
-/customers/{customer}/forced-edges
-/customers/{customer}/prohibited-edges
+/tenants/{tenant}/installations
+/tenants/{tenant}/provider-regions
+/tenants/{tenant}/forced-core-nodes
+/tenants/{tenant}/forced-aggregation-points
+/tenants/{tenant}/prohibited-core-nodes
+/tenants/{tenant}/prohibited-aggregation-points
+/tenants/{tenant}/forced-edges
+/tenants/{tenant}/prohibited-edges
 ```
 
 Creates (produce derived graphs):
 
 ```text
 POST /carriers/merge            -> the substrate (fast, synchronous)
-POST /customers/{customer}/wan  -> the customer's WAN (async -> 202)
+POST /tenants/{tenant}/wan  -> the tenant's WAN (async -> 202)
 ```
 
 Reads (the latest successful results):
@@ -74,12 +74,12 @@ Reads (the latest successful results):
 ```text
 GET /carriers/merge/vertices
 GET /carriers/merge/edges
-GET /customers/{customer}/wan
-GET /customers/{customer}/vertices
-GET /customers/{customer}/edges
-GET /customers/{customer}/core-nodes
-GET /customers/{customer}/aggregation-points
-GET /customers/{customer}/access-nodes
+GET /tenants/{tenant}/wan
+GET /tenants/{tenant}/vertices
+GET /tenants/{tenant}/edges
+GET /tenants/{tenant}/core-nodes
+GET /tenants/{tenant}/aggregation-points
+GET /tenants/{tenant}/access-nodes
 ```
 
 A create either returns the graph or errors `422` if no valid WAN is possible.
@@ -92,9 +92,9 @@ tier collections are views over `/vertices`.
 The only way to change an input is the HTTPS write endpoint. A write persists
 to the store and auto-creates the dependent graph(s):
 
-- a customer input — re-creates that customer's WAN
-- a provider — re-creates the WANs of customers using it
-- a carrier — re-creates the substrate, then every customer's WAN
+- a tenant input — re-creates that tenant's WAN
+- a provider — re-creates the WANs of tenants using it
+- a carrier — re-creates the substrate, then every tenant's WAN
 
 Inputs are authored in git (`data/`, `etc/`) for review and history; a CI
 client (`scripts/seed.py`) reads changed files and issues the same `PUT`s. git is
@@ -116,7 +116,7 @@ shared state bucket `10ulabs-terraform-state-us-east-2`, and GitHub OIDC.
 - **Read endpoints** — Lambdas (Python 3.13) that serve stored JSON from S3.
 - **`carriers/merge`** — a fast Lambda that stitches all carriers into the
   substrate.
-- **`customers/{c}/wan`** — `POST` starts a single Fargate Spot task that runs
+- **`tenants/{c}/wan`** — `POST` starts a single Fargate Spot task that runs
   the whole pipeline (home, constrain, synthesize, validate) in memory and writes
   the WAN JSON to S3, or records a `422` reason. Async because the synthesizer
   can exceed API Gateway's ~29s synchronous cap; Spot because a create is
@@ -129,15 +129,15 @@ shared state bucket `10ulabs-terraform-state-us-east-2`, and GitHub OIDC.
 ## Code layout
 
 - `data/` — git-authored inputs, grouped by concept (`carriers/`, `providers/`,
-  `customers/`).
-- `etc/` — operator settings per customer.
+  `tenants/`).
+- `etc/` — operator settings per tenant.
 - `lib/python/wan_synthesizer/` — core logic, reused by every endpoint and the
   synthesizer.
 - `lib/opentofu/` — only OpenTofu modules reused across stacks.
 - `src/api/common/` — shared infra: the API Gateway (`routing/`) and the S3
   bucket (`storage/`).
 - `src/api/endpoints/` — one folder per resource: `carriers`, `providers`,
-  `customers`, `merge`, `wan` (with `wan/synthesizer/` for the container).
+  `tenants`, `merge`, `wan` (with `wan/synthesizer/` for the container).
 - `src/www/spa/` — the static single-page UI (synced to the site root);
   `src/www/api/` — the OpenAPI spec (deployed separately).
 - `docs/tenets/tests/` — the four test tiers, per `10ulabs.com`.

@@ -5,7 +5,7 @@
     GET  /wan-graph-synthesizer/carriers/merge/edges    -> the substrate's fiber
 
 The substrate is just every carrier's PoPs and fiber unioned -- cross-carrier
-colocation is resolved later, per customer, by the synthesizer. So the merge needs no
+colocation is resolved later, per tenant, by the synthesizer. So the merge needs no
 design logic and stays a self-contained (stdlib + boto3) single-file Lambda.
 """
 

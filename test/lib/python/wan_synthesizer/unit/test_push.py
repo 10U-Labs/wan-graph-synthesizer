@@ -25,7 +25,7 @@ _REGION_CSV = "name,latitude,longitude,kind\nus-east-1,38.0,-79.0,provider regio
 _OFFNET_CSV = "name,latitude,longitude\nDulles,39.0,-77.4\n"
 _LOC_CSV = "name,latitude,longitude,kind\nHill AFB,41.1,-111.9,Military installation\n"
 
-_CUSTOMER_YML_WITH_OFFNET = """\
+_TENANT_YML_WITH_OFFNET = """\
 inputs:
   locations:
     F-35: data/loc.csv
@@ -38,7 +38,7 @@ aggregation_homing_degree: 2
 access_homing_degree: 2
 """
 
-_CUSTOMER_YML_MINIMAL = """\
+_TENANT_YML_MINIMAL = """\
 core_mesh_degree: 3
 aggregation_homing_degree: 2
 access_homing_degree: 2
@@ -78,8 +78,8 @@ def _setup_providers(root: Path) -> None:
     (aws / "regions.csv").write_text(_REGION_CSV, encoding="utf-8")
 
 
-def _setup_customer(root: Path, name: str, yaml_text: str) -> None:
-    """Write a customer config plus the CSVs an off-net config references."""
+def _setup_tenant(root: Path, name: str, yaml_text: str) -> None:
+    """Write a tenant config plus the CSVs an off-net config references."""
     etc = root / "etc"
     etc.mkdir(exist_ok=True)
     (etc / f"{name}.yml").write_text(yaml_text, encoding="utf-8")
@@ -90,12 +90,12 @@ def _setup_customer(root: Path, name: str, yaml_text: str) -> None:
     (data / "offnet.csv").write_text(_OFFNET_CSV, encoding="utf-8")
 
 
-def _run_push_customers(root: Path, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
-    """Redirect the etc/ + repo roots at ``root`` and run push_customers."""
+def _run_push_tenants(root: Path, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    """Redirect the etc/ + repo roots at ``root`` and run push_tenants."""
     requests = _capture_requests(monkeypatch)
     monkeypatch.setattr(seed,"ETC", root / "etc")
     monkeypatch.setattr(seed,"REPO_ROOT", root)
-    seed.push_customers("http://api")
+    seed.push_tenants("http://api")
     return requests
 
 
@@ -104,7 +104,7 @@ def _stub_pushes(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     seen: list[str] = []
     monkeypatch.setattr(seed,"push_carriers", seen.append)
     monkeypatch.setattr(seed,"push_providers", _noop)
-    monkeypatch.setattr(seed,"push_customers", _noop)
+    monkeypatch.setattr(seed,"push_tenants", _noop)
     return seen
 
 
@@ -133,21 +133,21 @@ def test_push_providers_skips_providers_without_region_files(
     assert [r.full_url for r in requests] == ["http://api/providers"]
 
 
-def test_push_customers_puts_every_resource(
+def test_push_tenants_puts_every_resource(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A customer with locations, provider regions, and off-net PUTs all 15 resources."""
-    _setup_customer(tmp_path, "f-35", _CUSTOMER_YML_WITH_OFFNET)
-    requests = _run_push_customers(tmp_path, monkeypatch)
+    """A tenant with locations, provider regions, and off-net PUTs all 15 resources."""
+    _setup_tenant(tmp_path, "f-35", _TENANT_YML_WITH_OFFNET)
+    requests = _run_push_tenants(tmp_path, monkeypatch)
     assert len(requests) == 15
 
 
-def test_push_customers_handles_a_customer_without_off_net(
+def test_push_tenants_handles_a_tenant_without_off_net(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A customer with no off-net config PUTs an empty off-net graph."""
-    _setup_customer(tmp_path, "plain", _CUSTOMER_YML_MINIMAL)
-    requests = _run_push_customers(tmp_path, monkeypatch)
+    """A tenant with no off-net config PUTs an empty off-net graph."""
+    _setup_tenant(tmp_path, "plain", _TENANT_YML_MINIMAL)
+    requests = _run_push_tenants(tmp_path, monkeypatch)
     off_net = next(r for r in requests if r.full_url.endswith("/off-net"))
     assert json.loads(off_net.data)["vertices"] == []
 

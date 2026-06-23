@@ -52,9 +52,9 @@ inputs:
       - data/vertices/providers region.csv
     provider: data/vertices/providers/providers.csv
   locations:
-    AFLCMC: data/vertices/customers/aflcmc.csv
-    AFNWC/NI: data/vertices/customers/afnwc_ni.csv
-    F-35: data/vertices/customers/f_35.csv
+    AFLCMC: data/vertices/tenants/aflcmc.csv
+    AFNWC/NI: data/vertices/tenants/afnwc_ni.csv
+    F-35: data/vertices/tenants/f_35.csv
   off_net: data/vertices/utilities/off_net.csv
 knobs:
   cluster_max_radius_miles: 500.0
