@@ -67,6 +67,10 @@ from wan_synthesizer.strength import core_strength
 
 logger = logging.getLogger(__name__)
 
+# How often the core-set scan logs a progress heartbeat. A single size can enumerate
+# millions of sets; without this the scan goes silent between "new best" lines.
+_SEARCH_LOG_INTERVAL = 50_000
+
 
 @dataclass(frozen=True)
 class AggregationHoming:
@@ -672,6 +676,8 @@ def best_design_at_size(
     best_key: tuple[float, float] | None = None
     best_strength = -math.inf
     for index, core_set in enumerate(combos, start=1):
+        if index % _SEARCH_LOG_INTERVAL == 0:
+            logger.info("  scanned %d/%d core sets", index, len(combos))
         strength = core_set_strength(core_set, plan)
         if strength < best_strength:
             logger.info("  strongest feasible cores locked at set %d/%d", index, len(combos))

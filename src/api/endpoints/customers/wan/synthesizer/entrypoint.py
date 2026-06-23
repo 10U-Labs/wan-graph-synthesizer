@@ -11,6 +11,7 @@ compute-on-demand path.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,8 @@ from wan_synthesizer.synthesize import synthesize_three_tier_design
 from wan_synthesizer.output import design_payload
 from wan_synthesizer.overrides import apply_role_overrides
 from wan_synthesizer.stages import dual_home, finalize
+
+logger = logging.getLogger(__name__)
 
 # The customer config resources, each its own stored document, assembled back into a
 # single AppConfig. The three degrees are required; the rest default when empty.
@@ -65,6 +68,7 @@ def _write_json(client: Any, key: str, body: Any) -> None:
 
 def _build_wan(client: Any, customer: str) -> dict[str, Any]:
     """Run the whole design pipeline for one customer; shape its WAN collections."""
+    logger.info("Loading substrate and inputs for %s", customer)
     carrier_pops, physical_edges = load_input_graph(
         _read_json(client, "merge/substrate.json")
     )
@@ -83,6 +87,9 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
     }
     config = app_config_from_parts(parts)
     graph = carrier_pops + locations + regions
+    logger.info(
+        "Dual-homing %d vertices over %d substrate edges", len(graph), len(physical_edges)
+    )
     graph, physical_edges = dual_home(graph, physical_edges, config.params, off_net)
     graph, physical_edges, overrides = apply_role_overrides(
         graph,
@@ -91,7 +98,9 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
         config.forced_connections,
         config.excluded_connections,
     )
+    logger.info("Synthesizing three-tier design (this is the long step)")
     design = synthesize_three_tier_design(graph, physical_edges, config.params, overrides)
+    logger.info("Finalizing and validating the design")
     graph, physical_edges, design, validation = finalize(
         graph, physical_edges, design, config.params
     )
@@ -99,6 +108,7 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
         SourceFiles((), Path("store")),
         DesignArtifacts(graph, physical_edges, design, validation),
     )
+    logger.info("Publishing WAN for %s", customer)
     return {
         "vertices": vertices(payload),
         "edges": edges(payload),
@@ -110,18 +120,27 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
 
 def main() -> None:
     """Build the customer's WAN and publish it, or record why it failed."""
+    # Emit INFO progress to stdout so a long build is observable in CloudWatch
+    # (the default root level is WARNING, which would drop every progress line).
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     client = boto3.client("s3", region_name="us-east-2")
     customer = os.environ["CUSTOMER"]
     status_key = f"customers/{customer}/wan-status.json"
     # Mark the task as actively building (distinct from the handler's "creating",
     # which only means a create was requested) so a stuck task is observable.
     _write_json(client, status_key, {"status": "building", "customer": customer})
+    logger.info("Build started for %s", customer)
     # Any failure (infeasible design, or an unexpected error) must be recorded as
     # the WAN's status rather than crash the task and leave it stuck "creating".
     try:
         wan = _build_wan(client, customer)
     except Exception as exc:
+        logger.warning("Build failed for %s: %s", customer, exc)
         _write_json(client, status_key, {"status": "failed", "reason": str(exc)})
         return
     _write_json(client, f"customers/{customer}/wan.json", wan)
     _write_json(client, status_key, {"status": "ready"})
+    logger.info("Build ready for %s", customer)

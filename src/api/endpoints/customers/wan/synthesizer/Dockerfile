@@ -16,6 +16,8 @@ COPY src/api/endpoints/customers/wan/synthesizer/ /app/synthesizer/
 RUN pip install --no-cache-dir boto3 PyYAML
 
 ENV PYTHONPATH=/app/lib/python:/app/synthesizer
+# Unbuffered stdout/stderr so progress logs reach CloudWatch live, not at exit.
+ENV PYTHONUNBUFFERED=1
 
 # Call main() directly (rather than running the file as __main__) so the module
 # stays import-clean for unit tests with no uncoverable __main__ guard.
