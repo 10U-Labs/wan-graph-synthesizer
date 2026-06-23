@@ -12,7 +12,7 @@ jobs:
         uses: actions/cache@v5
         with:
           key: >-
-            pip-design-test-${{ hashFiles('.github/workflows/wan_graph_designer.yml') }}
+            pip-design-test-${{ hashFiles('.github/workflows/wan_graph_synthesizer.yml') }}
           path: ~/.cache/pip
           restore-keys: |
             pip-design-test-
@@ -32,7 +32,7 @@ jobs:
         uses: actions/cache@v5
         with:
           key: >-
-            pip-design-static-${{ hashFiles('.github/workflows/wan_graph_designer.yml') }}
+            pip-design-static-${{ hashFiles('.github/workflows/wan_graph_synthesizer.yml') }}
           path: ~/.cache/pip
           restore-keys: |
             pip-design-static-
@@ -55,7 +55,7 @@ jobs:
           yamllint --strict \
             --config-data \
             "{extends: default, rules: {$RULES}}" \
-            .github/workflows/wan_graph_designer.yml
+            .github/workflows/wan_graph_synthesizer.yml
       - name: Assert no inline directives
         run: >-
           assert-no-inline-directives
@@ -132,7 +132,7 @@ jobs:
         uses: actions/cache@v5
         with:
           key: >-
-            pip-design-test-${{ hashFiles('.github/workflows/wan_graph_designer.yml') }}
+            pip-design-test-${{ hashFiles('.github/workflows/wan_graph_synthesizer.yml') }}
           path: ~/.cache/pip
           restore-keys: |
             pip-design-test-
@@ -154,7 +154,7 @@ name: wan-graph-synthesizer
 on:
   pull_request:
     paths:
-      - .github/workflows/wan_graph_designer.yml
+      - .github/workflows/wan_graph_synthesizer.yml
       - data/**
       - lib/**
       - src/**
@@ -162,7 +162,7 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/wan_graph_designer.yml
+      - .github/workflows/wan_graph_synthesizer.yml
       - data/**
       - lib/**
       - src/**

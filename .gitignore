@@ -9,3 +9,6 @@ outputs/
 .serve.pid
 .serve.log
 .ci-venv/
+.terraform/
+*.tfstate
+*.tfstate.*
