@@ -434,10 +434,10 @@ def assign_access(
     # common head chosen for the cluster as a whole.
     feasible_pops = [pop_by_id[aggregation_id] for aggregation_id in feasible_ids]
     for members in plan.cluster_plan.clusters:
-        member_vertices = [access_by_id[member] for member in members]
         selected.update(
             cluster_local_heads(
-                member_vertices, feasible_pops, selected, links, plan.cluster_plan.radius
+                [access_by_id[member] for member in members],
+                feasible_pops, selected, links, plan.cluster_plan.radius,
             )
         )
 
