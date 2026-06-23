@@ -61,7 +61,7 @@ def test_isolated_forced_site_raises() -> None:
         _realize(fixtures.off_net_site("remote", 0.0, 10.0), forced=frozenset({"remote"}))
 
 
-def test_name_colliding_with_a_carrier_pop_raises() -> None:
-    """A forced off-net name that is also a carrier PoP is ambiguous and rejected."""
-    with pytest.raises(ValueError):
-        _realize(fixtures.off_net_site("P0", 0.0, 0.5), forced=frozenset({"P0"}))
+def test_a_forced_site_already_on_net_seats_without_a_twin() -> None:
+    """A forced off-net name that is also a carrier PoP seats on-net; no twin is built."""
+    result = _realize(fixtures.off_net_site("P0", 0.0, 0.5), forced=frozenset({"P0"}))
+    assert result.seat_ids == frozenset()
