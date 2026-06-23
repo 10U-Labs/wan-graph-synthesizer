@@ -186,6 +186,7 @@ def feasible_aggregation_ids(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
+    known_feasible: set[str] | None = None,
 ) -> set[str]:
     """Eligible aggregations that can dual-home to two of the given cores.
 
@@ -194,14 +195,24 @@ def feasible_aggregation_ids(
     aggregation. Only feasibility is computed here -- routed paths are reconstructed
     once for the winning core set -- because the design is ranked solely on last-mile
     mileage and core strength, neither of which depends on those paths.
+
+    ``known_feasible`` names aggregations already proven feasible for a *subset* of
+    ``core_ids``; they are taken as feasible without recomputation. Vertex-disjoint
+    homing is monotonic in the core set -- adding a core only adds candidate
+    disjoint paths to distinct cores, never removes one -- so a subset's feasible
+    aggregations stay feasible. Coverage growth passes the current set's feasible
+    aggregations so each candidate core re-runs the max-flow only for those still
+    infeasible, which is the bulk of the per-candidate cost.
     """
     homes = plan.tuning.aggregation_homing_degree
     candidates = inputs.eligible_aggregation_ids - set(core_ids)
-    feasible = {
+    floor = candidates & known_feasible if known_feasible else set()
+    feasible = set(floor)
+    feasible.update(
         aggregation_id
-        for aggregation_id in candidates
+        for aggregation_id in candidates - floor
         if aggregation_homes(aggregation_id, core_ids, homes, inputs, plan.feasibility_cache)
-    }
+    )
     return feasible | feasible_colocation_twins(core_ids, plan, homes)
 
 def cores_have_backbone_peers(
@@ -352,6 +363,7 @@ def forced_aggregations_can_home(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
+    known_feasible: set[str] | None = None,
 ) -> bool:
     """True if every forced aggregation can home to the required number of cores.
 
@@ -359,7 +371,7 @@ def forced_aggregations_can_home(
     :func:`feasible_aggregation_ids` already vets both plain aggregations and twins --
     so a cored pin is vetted through its twin, never a bare-id path to itself.
     """
-    feasible = feasible_aggregation_ids(core_ids, inputs, plan)
+    feasible = feasible_aggregation_ids(core_ids, inputs, plan, known_feasible)
     return effective_forced_aggregations(plan, core_ids) <= feasible
 
 def prune_unused_aggregations(
@@ -385,6 +397,7 @@ def assign_access(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
+    known_feasible: set[str] | None = None,
 ) -> tuple[list[AccessEdge], set[str]] | None:
     """Home every access vertex by clustering: cluster heads first, then reuse.
 
@@ -398,7 +411,7 @@ def assign_access(
     cannot reach the configured number of facilities.
     """
     links = plan.tuning.access_aggregation_links
-    feasible_ids = feasible_aggregation_ids(core_ids, inputs, plan)
+    feasible_ids = feasible_aggregation_ids(core_ids, inputs, plan, known_feasible)
     if len(feasible_ids) < links:
         return None
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
@@ -454,21 +467,23 @@ def evaluate_cores(
     core_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
+    known_feasible: set[str] | None = None,
 ) -> tuple[list[AccessEdge], set[str]] | None:
     """Score a core set's feasibility and access homing without routing paths.
 
     Returns None when a core cannot reach enough peers to wire its backbone links, a
     forced aggregation cannot home to the required cores, or some access vertex cannot
     reach its facilities. Routed paths are deferred to the winning set, since they do
-    not affect the strength ranking.
+    not affect the strength ranking. ``known_feasible`` is forwarded to the feasibility
+    pass so a superset evaluation skips re-proving a subset's feasible aggregations.
     """
     if not cores_have_backbone_peers(
         core_ids, inputs.all_distances, plan.tuning.core_links_per_core
     ):
         return None
-    if not forced_aggregations_can_home(core_ids, inputs, plan):
+    if not forced_aggregations_can_home(core_ids, inputs, plan, known_feasible):
         return None
-    return assign_access(core_ids, inputs, plan)
+    return assign_access(core_ids, inputs, plan, known_feasible)
 
 def physical_edges_with_twins(
     selected: set[str],
@@ -740,10 +755,14 @@ def coverage_candidate_totals(
     Infeasible additions (a candidate whose promotion strands demand) are dropped, so
     every returned pair is a buildable grown set ranked by how short it leaves the haul.
     """
+    # Every candidate set is a superset of the current cores, so aggregations already
+    # feasible for the current set stay feasible -- compute that floor once and let each
+    # candidate skip re-proving them (the bulk of the per-candidate max-flow cost).
+    floor = feasible_aggregation_ids(core_ids, inputs, plan)
     totals: list[tuple[float, str]] = []
     for candidate_id in free:
         candidate_cores = tuple(sorted((*core_ids, candidate_id)))
-        evaluation = evaluate_cores(candidate_cores, inputs, plan)
+        evaluation = evaluate_cores(candidate_cores, inputs, plan, floor)
         if evaluation is None:
             continue
         _worst, total = aggregation_haul_miles(candidate_cores, evaluation[1], pop_by_id)
