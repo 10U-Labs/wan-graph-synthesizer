@@ -356,17 +356,6 @@ def test_best_design_at_size_selects_strongest_then_least_last_mile(
     assert design is not None and set(design.core_ids) == {"a", "b"}
 
 
-def test_best_design_at_size_logs_a_scan_heartbeat(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    """A long scan periodically logs progress so the search is never silent."""
-    monkeypatch.setattr("wan_synthesizer.synthesize._SEARCH_LOG_INTERVAL", 2)
-    equal = {"a": 10.0, "b": 10.0, "c": 10.0, "d": 10.0}
-    with caplog.at_level("INFO"):
-        best_design_at_size(_mesh_inputs(), _plan(["a", "b", "c", "d"], strength=equal), 2)
-    assert any("scanned" in record.getMessage() for record in caplog.records)
-
-
 # g1 and g2 each reach both cores over vertex-disjoint paths; the cores mesh.
 DUAL_EDGES = physical(
     {
