@@ -236,6 +236,7 @@ _WRITERS: list[dict[str, Any]] = [
         "id": "lumen",
         "env": {"MERGE_FUNCTION": "merge-fn", "WAN_FUNCTION": "wan-fn"},
         "invokes": 3,
+        "valid": [{"municipality": "Denver", "state": "CO", "latitude": 1.0, "longitude": 2.0}],
     },
     {
         "endpoint": "csps",
@@ -244,6 +245,8 @@ _WRITERS: list[dict[str, Any]] = [
         "id": "aws",
         "env": {"WAN_FUNCTION": "wan-fn"},
         "invokes": 2,
+        "valid": [{"name": "r", "municipality": "Denver", "state": "CO",
+                   "latitude": 1.0, "longitude": 2.0}],
     },
 ]
 
@@ -281,8 +284,8 @@ def test_write_persists_the_collection(
     module = _writer(cfg, monkeypatch)
     objects: dict[str, bytes] = {}
     with patch("boto3.client", side_effect=_write_clients(objects, [])):
-        module.lambda_handler(_write_event(cfg, "vertices", [{"id": "P"}]), None)
-    assert json.loads(objects[cfg["key"]]) == [{"id": "P"}]
+        module.lambda_handler(_write_event(cfg, "vertices", cfg["valid"]), None)
+    assert json.loads(objects[cfg["key"]]) == cfg["valid"]
 
 
 @_WRITER
@@ -291,10 +294,42 @@ def test_write_replaces_an_existing_collection(
 ) -> None:
     """A PUT over an existing collection replaces that collection's rows."""
     module = _writer(cfg, monkeypatch)
-    objects = {cfg["key"]: json.dumps([{"id": "old"}]).encode()}
+    objects = {cfg["key"]: json.dumps([{"stale": 1}]).encode()}
     with patch("boto3.client", side_effect=_write_clients(objects, [])):
-        module.lambda_handler(_write_event(cfg, "vertices", [{"id": "new"}]), None)
-    assert json.loads(objects[cfg["key"]]) == [{"id": "new"}]
+        module.lambda_handler(_write_event(cfg, "vertices", cfg["valid"]), None)
+    assert json.loads(objects[cfg["key"]]) == cfg["valid"]
+
+
+@_WRITER
+def test_write_rejects_a_malformed_row(
+    cfg: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A PUT whose rows lack the required geographic fields is rejected."""
+    module = _writer(cfg, monkeypatch)
+    with patch("boto3.client", side_effect=_write_clients({}, [])):
+        response = module.lambda_handler(_write_event(cfg, "vertices", [{"oops": 1}]), None)
+    assert response["statusCode"] == 400
+
+
+@_WRITER
+def test_write_rejects_a_non_list_body(
+    cfg: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A PUT body that is not a list of rows is rejected."""
+    module = _writer(cfg, monkeypatch)
+    with patch("boto3.client", side_effect=_write_clients({}, [])):
+        response = module.lambda_handler(_write_event(cfg, "vertices", {"not": "a list"}), None)
+    assert response["statusCode"] == 400
+
+
+def test_carrier_edges_accept_the_endpoint_columns(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A carrier edges PUT with the four endpoint columns is stored."""
+    module = _load("carriers", monkeypatch, MERGE_FUNCTION="merge-fn", WAN_FUNCTION="wan-fn")
+    objects: dict[str, bytes] = {}
+    row = {"a_municipality": "A", "a_state": "X", "z_municipality": "B", "z_state": "Y"}
+    with patch("boto3.client", side_effect=_write_clients(objects, [])):
+        module.lambda_handler(_write_event(_WRITERS[0], "edges", [row]), None)
+    assert json.loads(objects["carriers/lumen/edges.json"]) == [row]
 
 
 @_WRITER
@@ -349,7 +384,7 @@ def test_carrier_put_leaves_the_other_collection_file(monkeypatch: pytest.Monkey
     """A carrier vertices PUT writes only the vertices file, leaving edges untouched."""
     module = _load("carriers", monkeypatch, MERGE_FUNCTION="merge-fn", WAN_FUNCTION="wan-fn")
     objects = {"carriers/lumen/edges.json": json.dumps([{"e": 1}]).encode()}
-    event = _write_event(_WRITERS[0], "vertices", [{"id": "P"}])
+    event = _write_event(_WRITERS[0], "vertices", _WRITERS[0]["valid"])
     with patch("boto3.client", side_effect=_write_clients(objects, [])):
         module.lambda_handler(event, None)
     assert json.loads(objects["carriers/lumen/edges.json"]) == [{"e": 1}]
@@ -408,8 +443,24 @@ def test_tenant_put_persists_an_input(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _tenant(monkeypatch)
     objects: dict[str, bytes] = {}
     with patch("boto3.client", side_effect=_write_clients(objects, [])):
-        module.lambda_handler(_tenant_put("csp-regions", {"vertices": []}), None)
+        module.lambda_handler(_tenant_put("csp-regions", []), None)
     assert "tenants/f-35/csp-regions.json" in objects
+
+
+def test_tenant_rejects_a_malformed_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A locations PUT whose rows lack the required fields is rejected."""
+    module = _tenant(monkeypatch)
+    with patch("boto3.client", side_effect=_write_clients({}, [])):
+        response = module.lambda_handler(_tenant_put("locations", [{"oops": 1}]), None)
+    assert response["statusCode"] == 400
+
+
+def test_tenant_rejects_a_non_list_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An off-net PUT that is not a list of rows is rejected."""
+    module = _tenant(monkeypatch)
+    with patch("boto3.client", side_effect=_write_clients({}, [])):
+        response = module.lambda_handler(_tenant_put("off-net", {"not": "a list"}), None)
+    assert response["statusCode"] == 400
 
 
 def test_tenant_put_404_for_unknown_collection(monkeypatch: pytest.MonkeyPatch) -> None:

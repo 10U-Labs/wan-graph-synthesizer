@@ -64,7 +64,7 @@ def test_substrate_skips_a_connection_to_an_unserved_city() -> None:
     dangling = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
                  "z_municipality": "Nowhere", "z_state": "ZZ"}]
     _pops, edges = load_substrate(_SUBSTRATE_VERTICES, dangling)
-    assert edges == {}
+    assert not edges
 
 
 def test_substrate_computes_connection_distance() -> None:
@@ -88,7 +88,7 @@ def test_substrate_skips_an_intra_city_self_loop() -> None:
     loop = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
              "z_municipality": "Denver", "z_state": "CO"}]
     _pops, edges = load_substrate(_SUBSTRATE_VERTICES, loop)
-    assert edges == {}
+    assert not edges
 
 
 def test_regions_are_cloud_data_centers() -> None:

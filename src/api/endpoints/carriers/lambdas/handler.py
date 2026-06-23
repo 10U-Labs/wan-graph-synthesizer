@@ -21,6 +21,19 @@ import boto3
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+# A carrier's points and connections are bare geographic rows; reject anything else.
+_VERTEX_FIELDS = {"municipality", "state", "latitude", "longitude"}
+_EDGE_FIELDS = {"a_municipality", "a_state", "z_municipality", "z_state"}
+
+
+def _validate_rows(body: Any, required: set[str]) -> str | None:
+    """Return an error message if body is not a list of rows each having exactly the fields."""
+    if not isinstance(body, list):
+        return "expected a list of rows"
+    for row in body:
+        if not isinstance(row, dict) or set(row) != required:
+            return "each row must have exactly: " + ", ".join(sorted(required))
+    return None
 
 
 def _s3() -> Any:
@@ -114,9 +127,12 @@ def _put(client: Any, carrier: str, event: dict[str, Any]) -> dict[str, Any]:
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in ("vertices", "edges"):
         return _response(404, {"error": collection})
+    rows = json.loads(event["body"])
+    error = _validate_rows(rows, _VERTEX_FIELDS if collection == "vertices" else _EDGE_FIELDS)
+    if error:
+        return _response(400, {"error": error})
     key = f"carriers/{carrier}/{collection}.json"
-    body = json.dumps(json.loads(event["body"])).encode()
-    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=body)
+    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(rows).encode())
     _cascade(client)
     return _response(200, {"updated": f"{carrier}/{collection}"})
 

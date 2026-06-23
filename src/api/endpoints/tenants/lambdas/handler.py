@@ -42,6 +42,25 @@ _INPUTS = frozenset({
 })
 # Tenants are enumerated by this marker document (every tenant has a label).
 _TENANT_MARKER = "label.json"
+# The vertex-list inputs are bare geographic rows with a known field set; the remaining
+# config resources (forced-*, degrees, knobs, label) are validated only by the schema
+# their consumers expect, so they pass through unchecked here.
+_SITE_FIELDS = {"name", "municipality", "state", "latitude", "longitude"}
+_VERTEX_INPUT_FIELDS = {
+    "locations": _SITE_FIELDS,
+    "csp-regions": _SITE_FIELDS,
+    "off-net": {"municipality", "state", "latitude", "longitude"},
+}
+
+
+def _validate_rows(body: Any, required: set[str]) -> str | None:
+    """Return an error message if body is not a list of rows each having exactly the fields."""
+    if not isinstance(body, list):
+        return "expected a list of rows"
+    for row in body:
+        if not isinstance(row, dict) or set(row) != required:
+            return "each row must have exactly: " + ", ".join(sorted(required))
+    return None
 
 
 def _s3() -> Any:
@@ -133,9 +152,14 @@ def _put(client: Any, tenant: str, event: dict[str, Any]) -> dict[str, Any]:
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in _INPUTS:
         return _response(404, {"error": collection})
+    document = json.loads(event["body"])
+    fields = _VERTEX_INPUT_FIELDS.get(collection)
+    if fields is not None:
+        error = _validate_rows(document, fields)
+        if error:
+            return _response(400, {"error": error})
     key = f"tenants/{tenant}/{collection}.json"
-    body = json.dumps(json.loads(event["body"])).encode()
-    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=body)
+    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(document).encode())
     _cascade(tenant)
     return _response(200, {"updated": f"{tenant}/{collection}"})
 
