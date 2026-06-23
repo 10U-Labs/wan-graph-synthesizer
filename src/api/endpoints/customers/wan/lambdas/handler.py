@@ -54,10 +54,13 @@ def _start_create(customer: str) -> None:
     _s3().put_object(
         Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer), Body=marker
     )
+    # On-demand Fargate, not Spot: a synthesize can run for minutes, and a Spot
+    # reclaim (SIGKILL) skips the task's failure handler, leaving the WAN stuck
+    # "building" forever. On-demand removes that interruption entirely.
     _ecs().run_task(
         cluster=os.environ["CLUSTER_ARN"],
         taskDefinition=os.environ["TASK_DEFINITION_ARN"],
-        capacityProviderStrategy=[{"capacityProvider": "FARGATE_SPOT", "weight": 1}],
+        launchType="FARGATE",
         networkConfiguration={
             "awsvpcConfiguration": {
                 "subnets": [os.environ["SUBNET_ID"]],

@@ -480,6 +480,16 @@ def test_wan_post_launches_one_task(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(started) == 1
 
 
+def test_wan_post_launches_on_demand_not_spot(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The create runs on on-demand Fargate so a Spot reclaim can't strand it building."""
+    module = _wan(monkeypatch)
+    started: list[dict[str, Any]] = []
+    event = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
+    with patch("boto3.client", side_effect=_wan_clients({}, started)):
+        module.lambda_handler(event, None)
+    assert started[0]["launchType"] == "FARGATE"
+
+
 def test_wan_post_marks_status_creating(monkeypatch: pytest.MonkeyPatch) -> None:
     """A create records a 'creating' status marker in the store."""
     module = _wan(monkeypatch)

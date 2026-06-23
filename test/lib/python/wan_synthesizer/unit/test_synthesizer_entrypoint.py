@@ -71,6 +71,9 @@ def _inputs(module: Any) -> dict[str, bytes]:
 def _run_main(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) -> dict[str, bytes]:
     """Stub the pipeline (optionally failing the synthesize), run main, return the store."""
     _stub_pipeline(module, monkeypatch)
+    # Don't install a real SIGTERM handler in the test process; main's registration
+    # line still runs (covered) against this no-op.
+    monkeypatch.setattr(module.signal, "signal", lambda *_args: None)
     if fail:
 
         def _raise(*_args: Any) -> Any:
@@ -98,6 +101,25 @@ def test_marks_status_ready_on_success(entrypoint: Any, monkeypatch: pytest.Monk
 def test_records_failed_when_no_valid_wan(entrypoint: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """When the synthesizer reports infeasibility, the status is recorded as failed."""
     objects = _run_main(entrypoint, monkeypatch, fail=True)
+    assert json.loads(objects["customers/f-35/wan-status.json"])["status"] == "failed"
+
+
+def test_stop_signal_records_failed_not_stuck_building(
+    entrypoint: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A SIGTERM (Spot reclaim/stop) records 'failed', never leaving it 'building'."""
+    _stub_pipeline(entrypoint, monkeypatch)
+    handlers: dict[int, Any] = {}
+    monkeypatch.setattr(
+        entrypoint.signal, "signal", lambda sig, handler: handlers.__setitem__(sig, handler)
+    )
+    objects = _inputs(entrypoint)
+    with patch("boto3.client", return_value=fake_s3(objects)):
+        entrypoint.main()
+        try:
+            handlers[entrypoint.signal.SIGTERM](entrypoint.signal.SIGTERM, None)
+        except SystemExit:
+            pass
     assert json.loads(objects["customers/f-35/wan-status.json"])["status"] == "failed"
 
 
