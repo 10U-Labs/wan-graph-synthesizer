@@ -1,9 +1,9 @@
 """providers endpoint: read and write a cloud provider's regions in the S3 store.
 
-    GET    /wan-graph-designer/providers                      -> the provider ids
-    GET    /wan-graph-designer/providers/{provider}/vertices  -> that provider's regions
-    PUT    /wan-graph-designer/providers/{provider}/vertices  -> replace its regions
-    DELETE /wan-graph-designer/providers/{provider}           -> remove the provider
+    GET    /wan-graph-synthesizer/providers                      -> the provider ids
+    GET    /wan-graph-synthesizer/providers/{provider}/vertices  -> that provider's regions
+    PUT    /wan-graph-synthesizer/providers/{provider}/vertices  -> replace its regions
+    DELETE /wan-graph-synthesizer/providers/{provider}           -> remove the provider
 
 A provider graph is regions only (no fiber), so it exposes vertices but no edges. provider
 regions are not part of the substrate, so a write does not rebuild the merge; it

@@ -1,5 +1,5 @@
 resource "aws_iam_role" "lambda" {
-  name = "wan-graph-designer-wan-lambda"
+  name = "wan-graph-synthesizer-wan-lambda"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -32,7 +32,7 @@ resource "aws_iam_role_policy" "dispatch" {
       {
         Effect   = "Allow"
         Action   = ["ecs:RunTask"]
-        Resource = ["${aws_ecs_task_definition.optimizer.arn_without_revision}:*"]
+        Resource = ["${aws_ecs_task_definition.synthesizer.arn_without_revision}:*"]
       },
       {
         Effect   = "Allow"

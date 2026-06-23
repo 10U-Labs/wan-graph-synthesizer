@@ -1,11 +1,11 @@
 """Carriers endpoint: read and write a carrier's input graph in the S3 store.
 
-    GET    /wan-graph-designer/carriers                     -> the carrier ids
-    GET    /wan-graph-designer/carriers/{carrier}/vertices  -> that carrier's PoPs
-    GET    /wan-graph-designer/carriers/{carrier}/edges     -> that carrier's fiber
-    PUT    /wan-graph-designer/carriers/{carrier}/vertices  -> replace its PoPs
-    PUT    /wan-graph-designer/carriers/{carrier}/edges     -> replace its fiber
-    DELETE /wan-graph-designer/carriers/{carrier}           -> remove the carrier
+    GET    /wan-graph-synthesizer/carriers                     -> the carrier ids
+    GET    /wan-graph-synthesizer/carriers/{carrier}/vertices  -> that carrier's PoPs
+    GET    /wan-graph-synthesizer/carriers/{carrier}/edges     -> that carrier's fiber
+    PUT    /wan-graph-synthesizer/carriers/{carrier}/vertices  -> replace its PoPs
+    PUT    /wan-graph-synthesizer/carriers/{carrier}/edges     -> replace its fiber
+    DELETE /wan-graph-synthesizer/carriers/{carrier}           -> remove the carrier
 
 A write persists to the store and then auto-rebuilds the dependents (the carrier
 merge is the shared substrate, so every customer's WAN depends on it): it invokes

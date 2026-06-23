@@ -16,9 +16,9 @@ jobs:
         with:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      - name: Sync the site to 10ulabs.com/wan-graph-designer/
+      - name: Sync the site to 10ulabs.com/wan-graph-synthesizer/
         run: |
-          aws s3 sync src/www/spa/ s3://www-10ulabs-com/wan-graph-designer/ \
+          aws s3 sync src/www/spa/ s3://www-10ulabs-com/wan-graph-synthesizer/ \
             --delete --exclude "api/*"
       - name: Invalidate the website CloudFront path
         run: |
@@ -26,7 +26,7 @@ jobs:
             --query "DistributionList.Items[?contains(Aliases.Items, \
               '10ulabs.com')].Id | [0]" --output text)
           aws cloudfront create-invalidation --distribution-id "$DIST" \
-            --paths "/wan-graph-designer/*"
+            --paths "/wan-graph-synthesizer/*"
 name: Deploy website
 'on':
   push:

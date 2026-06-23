@@ -69,12 +69,12 @@ jobs:
         run: pip install pytest pytest-cov pyyaml
       - name: Run seed tests with a 100% coverage gate
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/customers/wan/optimizer
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/customers/wan/synthesizer
           python3 -m pytest
-          test/lib/python/wan_designer/unit/test_parsing.py
-          test/lib/python/wan_designer/unit/test_offnet.py
-          test/lib/python/wan_designer/unit/test_graph_helpers.py
-          test/lib/python/wan_designer/unit/test_push.py
+          test/lib/python/wan_synthesizer/unit/test_parsing.py
+          test/lib/python/wan_synthesizer/unit/test_offnet.py
+          test/lib/python/wan_synthesizer/unit/test_graph_helpers.py
+          test/lib/python/wan_synthesizer/unit/test_push.py
           --verbose --pythonwarnings=error
           --cov=seed
           --cov-branch
@@ -89,10 +89,10 @@ on:
       - etc/**
       - lib/python/**
       - scripts/**
-      - test/lib/python/wan_designer/unit/test_graph_helpers.py
-      - test/lib/python/wan_designer/unit/test_offnet.py
-      - test/lib/python/wan_designer/unit/test_parsing.py
-      - test/lib/python/wan_designer/unit/test_push.py
+      - test/lib/python/wan_synthesizer/unit/test_graph_helpers.py
+      - test/lib/python/wan_synthesizer/unit/test_offnet.py
+      - test/lib/python/wan_synthesizer/unit/test_parsing.py
+      - test/lib/python/wan_synthesizer/unit/test_push.py
   push:
     branches: [main]
     paths:
@@ -101,8 +101,8 @@ on:
       - etc/**
       - lib/python/**
       - scripts/**
-      - test/lib/python/wan_designer/unit/test_graph_helpers.py
-      - test/lib/python/wan_designer/unit/test_offnet.py
-      - test/lib/python/wan_designer/unit/test_parsing.py
-      - test/lib/python/wan_designer/unit/test_push.py
+      - test/lib/python/wan_synthesizer/unit/test_graph_helpers.py
+      - test/lib/python/wan_synthesizer/unit/test_offnet.py
+      - test/lib/python/wan_synthesizer/unit/test_parsing.py
+      - test/lib/python/wan_synthesizer/unit/test_push.py
   workflow_dispatch: {}

@@ -4,8 +4,8 @@ provider "aws" {
   default_tags {
     tags = {
       ManagedBy  = "OpenTofu"
-      Project    = "wan-graph-designer"
-      Repository = "10U-Labs/wan-graph-designer"
+      Project    = "wan-graph-synthesizer"
+      Repository = "10U-Labs/wan-graph-synthesizer"
       Stack      = "common/routing"
     }
   }

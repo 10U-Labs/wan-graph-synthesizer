@@ -1,6 +1,6 @@
-# WAN Graph Designer
+# WAN Graph Synthesizer
 
-WAN Graph Designer is a web application for designing wide area network
+WAN Graph Synthesizer is a web application for designing wide area network
 layouts as mathematical graphs. In this context, a graph is limited to
 vertices and edges: vertices represent network locations, and edges represent
 allowed connections between those locations.

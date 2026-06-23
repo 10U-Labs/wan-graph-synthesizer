@@ -4,8 +4,8 @@ provider "aws" {
   default_tags {
     tags = {
       ManagedBy  = "OpenTofu"
-      Project    = "wan-graph-designer"
-      Repository = "10U-Labs/wan-graph-designer"
+      Project    = "wan-graph-synthesizer"
+      Repository = "10U-Labs/wan-graph-synthesizer"
       Stack      = "endpoints/carriers"
     }
   }
@@ -17,7 +17,7 @@ module "common" {
 
 locals {
   function_name = module.common.lambda_handler_names.carriers
-  role_name     = "wan-graph-designer-carriers-lambda"
+  role_name     = "wan-graph-synthesizer-carriers-lambda"
 
   lambda_arn_prefix = "arn:aws:lambda:${module.common.aws_region}:${module.common.aws_account_id}:function"
   cascade_function_arns = [
@@ -31,7 +31,7 @@ data "terraform_remote_state" "routing" {
 
   config = {
     bucket = module.common.state_bucket
-    key    = "wan-graph-designer/common/routing/terraform.tfstate"
+    key    = "wan-graph-synthesizer/common/routing/terraform.tfstate"
     region = module.common.aws_region
   }
 }
@@ -41,7 +41,7 @@ data "terraform_remote_state" "storage" {
 
   config = {
     bucket = module.common.state_bucket
-    key    = "wan-graph-designer/common/storage/terraform.tfstate"
+    key    = "wan-graph-synthesizer/common/storage/terraform.tfstate"
     region = module.common.aws_region
   }
 }

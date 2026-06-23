@@ -21,7 +21,7 @@ from seed import (
     slugify,
 )
 from wan_graph.model import PhysicalEdge, Vertex, edge_key
-from wan_designer.model import (
+from wan_synthesizer.model import (
     KIND_ROADM,
     DesignArtifacts,
     DesignParams,
@@ -31,10 +31,10 @@ from wan_designer.model import (
     SourceFiles,
     is_carrier_pop,
 )
-from wan_designer.optimize import optimize_three_tier_design
-from wan_designer.overrides import apply_role_overrides, materialize_selected_colocation_twins
-from wan_designer.stages import dual_home, finalize
-from wan_designer.validation import validate_design
+from wan_synthesizer.synthesize import synthesize_three_tier_design
+from wan_synthesizer.overrides import apply_role_overrides, materialize_selected_colocation_twins
+from wan_synthesizer.stages import dual_home, finalize
+from wan_synthesizer.validation import validate_design
 
 VERTEX_HEADER = ["name", "latitude", "longitude", "kind", "shown_in_map", "description"]
 
@@ -216,7 +216,7 @@ def run_design(
     """Drive the whole pipeline from CSV paths -- the suite's design driver.
 
     Mirrors the steps the Fargate entrypoint runs inline (dual-home -> overrides ->
-    optimize -> finalize); kept in test support because no shipped code drives a
+    synthesize -> finalize); kept in test support because no shipped code drives a
     design from raw files.
     """
     vertices, physical_edges = load_design_inputs(paths)
@@ -225,7 +225,7 @@ def run_design(
     vertices, physical_edges, overrides = apply_role_overrides(
         vertices, physical_edges, params, forced_connections, excluded_connections
     )
-    design = optimize_three_tier_design(vertices, physical_edges, params, overrides)
+    design = synthesize_three_tier_design(vertices, physical_edges, params, overrides)
     vertices, physical_edges, design, validation = finalize(
         vertices, physical_edges, design, params
     )
@@ -238,9 +238,9 @@ def _ring_inputs() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
 
 
 def ring_artifacts() -> DesignArtifacts:
-    """Run the optimizer over the in-memory ring and bundle the artifacts."""
+    """Run the synthesizer over the in-memory ring and bundle the artifacts."""
     vertices, edges = _ring_inputs()
-    design = optimize_three_tier_design(vertices, edges, ring_params())
+    design = synthesize_three_tier_design(vertices, edges, ring_params())
     vertices, edges = materialize_selected_colocation_twins(vertices, edges, design)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 
@@ -263,7 +263,7 @@ def _forced_artifacts(
     inputs: RingInputs | None = None,
     forced_connections: tuple[ForcedConnection, ...] = (),
 ) -> DesignArtifacts:
-    """Run the ring optimizer with operator pins resolved through the CLI's path.
+    """Run the ring synthesizer with operator pins resolved through the CLI's path.
 
     Resolving via ``apply_role_overrides`` -- the same step ``run_design`` takes --
     means the artifacts reflect genuinely honored force-core/force-aggregation
@@ -271,7 +271,7 @@ def _forced_artifacts(
     """
     vertices, edges = inputs if inputs is not None else _ring_inputs()
     vertices, edges, overrides = apply_role_overrides(vertices, edges, params, forced_connections)
-    design = optimize_three_tier_design(vertices, edges, params, overrides)
+    design = synthesize_three_tier_design(vertices, edges, params, overrides)
     vertices, edges = materialize_selected_colocation_twins(vertices, edges, design)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 
