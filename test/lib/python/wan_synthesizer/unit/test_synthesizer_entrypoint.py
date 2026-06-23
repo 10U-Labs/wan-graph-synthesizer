@@ -7,6 +7,7 @@ these tests cover the entrypoint's own orchestration and S3 I/O.
 from __future__ import annotations
 
 import json
+import logging
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
@@ -98,3 +99,13 @@ def test_records_failed_when_no_valid_wan(entrypoint: Any, monkeypatch: pytest.M
     """When the synthesizer reports infeasibility, the status is recorded as failed."""
     objects = _run_main(entrypoint, monkeypatch, fail=True)
     assert json.loads(objects["customers/f-35/wan-status.json"])["status"] == "failed"
+
+
+def test_main_logs_progress_at_info(
+    entrypoint: Any, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A run emits INFO progress so a long build is observable, not silent."""
+    with caplog.at_level(logging.INFO):
+        _run_main(entrypoint, monkeypatch)
+    messages = " ".join(record.getMessage() for record in caplog.records)
+    assert "f-35" in messages and "Publishing" in messages
