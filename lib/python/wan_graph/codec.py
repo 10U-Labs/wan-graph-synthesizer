@@ -86,29 +86,30 @@ def load_off_net(rows: list[dict[str, Any]]) -> list[Vertex]:
 def load_substrate(
     vertex_rows: list[dict[str, Any]], edge_rows: list[dict[str, Any]]
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
-    """Load the merged carrier substrate: PoPs plus the fiber that connects them.
+    """Load the merged carrier substrate: one point per city, plus the fiber between them.
 
-    Each row carries the internal ``carrier`` tag the merge stamped from its source
-    endpoint, so a connection resolves to its own carrier's points (two carriers may
-    each have a PoP in the same city). Connections list their endpoints by city+state;
-    distance is the great-circle miles between the resolved PoPs.
+    The cleaned data keys carrier points by city, so colocated points from different
+    carriers are one backbone node; every carrier's connections (listed by their two
+    endpoints' city+state) resolve against that shared, city-keyed set. Distance is the
+    great-circle miles between the resolved points. Connections within a single city
+    (self-loops) and connections to a city no carrier serves (dangling) are dropped.
     """
     used: set[str] = set()
     pops: list[Vertex] = []
-    by_endpoint: dict[tuple[str, str, str], Vertex] = {}
+    by_city: dict[tuple[str, str], Vertex] = {}
     for row in vertex_rows:
+        city = (row["municipality"], row["state"])
+        if city in by_city:
+            continue
         name = _city(row)
-        vertex_id = _unique(f"{_slug(row['carrier'])}-{_slug(name)}", used)
-        vertex = _place(row, vertex_id, name, CARRIER_KIND, shown=False)
+        vertex = _place(row, _unique(_slug(name), used), name, CARRIER_KIND, shown=False)
         pops.append(vertex)
-        by_endpoint[(row["carrier"], row["municipality"], row["state"])] = vertex
+        by_city[city] = vertex
     edges: dict[tuple[str, str], PhysicalEdge] = {}
     for row in edge_rows:
-        source = by_endpoint[(row["carrier"], row["a_municipality"], row["a_state"])]
-        target = by_endpoint[(row["carrier"], row["z_municipality"], row["z_state"])]
-        if source.id == target.id:
-            # An intra-city connection (both endpoints the same city) collapses to a
-            # self-loop at city granularity and carries no backbone topology -- skip it.
+        source = by_city.get((row["a_municipality"], row["a_state"]))
+        target = by_city.get((row["z_municipality"], row["z_state"]))
+        if source is None or target is None or source.id == target.id:
             continue
         key = edge_key(source.id, target.id)
         edges[key] = PhysicalEdge(

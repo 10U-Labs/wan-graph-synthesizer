@@ -47,18 +47,24 @@ def test_substrate_points_are_not_shown_on_the_map() -> None:
     assert not any(pop.shown_in_map for pop in pops)
 
 
-def test_substrate_namespaces_ids_by_carrier() -> None:
-    """Two carriers' points in the same city stay distinct (id namespaced by carrier)."""
+def test_substrate_collapses_a_city_across_carriers() -> None:
+    """Colocated points from different carriers collapse to one city node."""
     pops, _edges = load_substrate(_SUBSTRATE_VERTICES, [])
-    assert {pop.id for pop in pops} == {
-        "lumen-denver-co", "lumen-kansas-city-mo", "zayo-denver-co"
-    }
+    assert {pop.id for pop in pops} == {"denver-co", "kansas-city-mo"}
 
 
-def test_substrate_resolves_a_connection_to_its_carriers_points() -> None:
-    """A connection resolves both endpoints to the right carrier's point ids."""
+def test_substrate_resolves_a_connection_by_city() -> None:
+    """A connection resolves both endpoints to the shared city nodes."""
     _pops, edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
-    assert list(edges) == [("lumen-denver-co", "lumen-kansas-city-mo")]
+    assert list(edges) == [("denver-co", "kansas-city-mo")]
+
+
+def test_substrate_skips_a_connection_to_an_unserved_city() -> None:
+    """A connection to a city no carrier serves is dropped, not an error."""
+    dangling = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
+                 "z_municipality": "Nowhere", "z_state": "ZZ"}]
+    _pops, edges = load_substrate(_SUBSTRATE_VERTICES, dangling)
+    assert edges == {}
 
 
 def test_substrate_computes_connection_distance() -> None:
