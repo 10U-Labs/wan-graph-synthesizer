@@ -14,22 +14,11 @@ from wan_synthesizer.graphs import (
     reconstruct_path,
 )
 from wan_graph.model import Vertex, edge_key, haversine_miles
-from seed import slugify
 
 
 def make_vertex(vertex_id: str, lat: float, lon: float) -> Vertex:
     """Test helper: build make vertex."""
-    return Vertex(id=vertex_id, name=vertex_id, tenant="Lumen", kind="PoP", coords=(lat, lon))
-
-
-def test_slugify_replaces_punctuation() -> None:
-    """Slugify replaces punctuation."""
-    assert slugify("St. Louis, MO") == "st_louis_mo"
-
-
-def test_slugify_empty_falls_back() -> None:
-    """Slugify empty falls back."""
-    assert slugify("!!!") == "vertex"
+    return Vertex(id=vertex_id, name=vertex_id, kind="PoP", coords=(lat, lon))
 
 
 def test_edge_key_orders_pair() -> None:

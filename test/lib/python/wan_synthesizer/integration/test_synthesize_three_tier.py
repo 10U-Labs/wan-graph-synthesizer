@@ -6,8 +6,6 @@ vertex-disjoint paths; a degree-one spur confirms such PoPs are never aggregatio
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import fixtures
 from wan_graph.model import edge_key
 from fixtures import run_design
@@ -136,44 +134,48 @@ def test_access_vertices_dual_homed() -> None:
     assert ARTIFACTS.validation["access_vertices_with_required_aggregation_links"] is True
 
 
-def _forced_installation_artifacts(directory: Path) -> DesignArtifacts:
+def _forced_installation_artifacts() -> DesignArtifacts:
     """Synthesize over the ring of installations with A1 forced as an aggregation."""
-    paths = fixtures.write_solvable_design_paths(directory)
     params = DesignParams(min_core_count=2, forced_aggregation_names=("A1",))
-    return run_design(paths, params)
+    return run_design(fixtures.ring_vertices(), fixtures.ring_physical_edges(), params)
 
 
-def test_forced_installation_is_seated_as_an_aggregation(tmp_path: Path) -> None:
+def test_forced_installation_is_seated_as_an_aggregation() -> None:
     """A forced installation's facility twin lands on the aggregation tier."""
-    design = _forced_installation_artifacts(tmp_path).design
+    design = _forced_installation_artifacts().design
     assert any(aggregation.startswith("fac_") for aggregation in design.aggregation_ids)
 
 
-def test_forced_design_dual_homes_every_aggregation(tmp_path: Path) -> None:
+def test_forced_design_dual_homes_every_aggregation() -> None:
     """Every aggregation -- installation facilities included -- dual-homes to two cores."""
-    artifacts = _forced_installation_artifacts(tmp_path)
+    artifacts = _forced_installation_artifacts()
     assert artifacts.validation["aggregations_dual_homed_to_cores"] is True
 
 
-def test_forced_design_dual_homes_every_access_vertex(tmp_path: Path) -> None:
+def test_forced_design_dual_homes_every_access_vertex() -> None:
     """Every access vertex still reaches two aggregation facilities."""
-    artifacts = _forced_installation_artifacts(tmp_path)
+    artifacts = _forced_installation_artifacts()
     assert artifacts.validation["access_vertices_with_required_aggregation_links"] is True
 
 
-def test_forced_off_net_site_is_seated_as_an_aggregation(tmp_path: Path) -> None:
+def _forced_off_net_artifacts() -> DesignArtifacts:
+    """Synthesize over the ring with an off-net site forced as an aggregation."""
+    params = DesignParams(min_core_count=2, forced_aggregation_names=("Dulles Hub",))
+    return run_design(
+        fixtures.ring_vertices(),
+        fixtures.ring_physical_edges(),
+        params,
+        off_net_sites=[fixtures.off_net_site("Dulles Hub", 40.5, -100.0)],
+    )
+
+
+def test_forced_off_net_site_is_seated_as_an_aggregation() -> None:
     """A forced off-net site's local-fiber twin lands on the aggregation tier."""
-    paths, name = fixtures.write_off_net_solvable_inputs(tmp_path)
-    design = run_design(
-        paths, DesignParams(min_core_count=2, forced_aggregation_names=(name,))
-    ).design
+    design = _forced_off_net_artifacts().design
     assert any(aggregation.startswith("offnet_") for aggregation in design.aggregation_ids)
 
 
-def test_off_net_design_dual_homes_every_aggregation(tmp_path: Path) -> None:
+def test_off_net_design_dual_homes_every_aggregation() -> None:
     """An off-net aggregation twin dual-homes to two cores like any other aggregation."""
-    paths, name = fixtures.write_off_net_solvable_inputs(tmp_path)
-    artifacts = run_design(
-        paths, DesignParams(min_core_count=2, forced_aggregation_names=(name,))
-    )
+    artifacts = _forced_off_net_artifacts()
     assert artifacts.validation["aggregations_dual_homed_to_cores"] is True

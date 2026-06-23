@@ -15,7 +15,7 @@ from wan_graph.model import Vertex, edge_key
 def make_pop(vertex_id: str) -> Vertex:
     """Test helper: build make pop."""
     return Vertex(
-        id=vertex_id, name=vertex_id, tenant="Lumen",
+        id=vertex_id, name=vertex_id,
         kind="PoP", coords=(0.0, 0.0),
     )
 

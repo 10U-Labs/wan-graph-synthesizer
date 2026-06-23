@@ -34,10 +34,10 @@ def _load(endpoint: str, monkeypatch: pytest.MonkeyPatch, **env: str) -> Any:
 _READERS: list[dict[str, Any]] = [
     {
         "endpoint": "carriers",
-        "list_keys": ["carriers/lumen.json", "carriers/zayo.json"],
+        "list_keys": ["carriers/lumen/vertices.json", "carriers/zayo/vertices.json"],
         "ids": ["lumen", "zayo"],
-        "stored_key": "carriers/lumen.json",
-        "stored": {"vertices": [{"id": "P"}], "edges": []},
+        "stored_key": "carriers/lumen/vertices.json",
+        "stored": [{"id": "P"}],
         "serve_event": {
             "pathParameters": {"carrier": "lumen"},
             "path": "/x/carriers/lumen/vertices",
@@ -57,7 +57,7 @@ _READERS: list[dict[str, Any]] = [
         "list_keys": ["providers", "providers"],
         "ids": ["providers"],
         "stored_key": "providers",
-        "stored": {"vertices": [{"id": "us-east"}]},
+        "stored": [{"id": "us-east"}],
         "serve_event": {
             "pathParameters": {"provider": "aws"},
             "path": "/x/providers",
@@ -156,35 +156,49 @@ def test_caches_the_s3_client(cfg: dict[str, Any], monkeypatch: pytest.MonkeyPat
     assert mock_client.call_count == 1
 
 
-def _carrier_graph() -> bytes:
-    """A stored carrier graph (one PoP, no edges) as JSON bytes."""
-    return json.dumps({"vertices": [{"id": "P"}], "edges": []}).encode()
+def _merge_objects() -> dict[str, bytes]:
+    """Two carriers' point/connection files: 2 points and 1 connection in total."""
+    return {
+        "carriers/a/vertices.json": json.dumps([{"municipality": "X"}]).encode(),
+        "carriers/a/edges.json": json.dumps([{"a_municipality": "X"}]).encode(),
+        "carriers/b/vertices.json": json.dumps([{"municipality": "Y"}]).encode(),
+    }
 
 
 def test_merge_post_unions_carriers(monkeypatch: pytest.MonkeyPatch) -> None:
-    """POST counts the vertices unioned from carriers (skipping non-JSON keys)."""
+    """POST counts the points and connections unioned (and skips the merge's own output)."""
     module = _load("carriers/merge", monkeypatch)
-    objects = {"carriers/a.json": _carrier_graph(), "carriers/b.json": _carrier_graph()}
-    fake = fake_s3(objects, keys=[*objects, "carriers/_notes.txt"])
+    objects = _merge_objects()
+    fake = fake_s3(objects, keys=[*objects, "carriers/merge/vertices.json"])
     with patch("boto3.client", return_value=fake):
         response = module.lambda_handler({"httpMethod": "POST"}, None)
-    assert json.loads(response["body"]) == {"vertices": 2, "edges": 0}
+    assert json.loads(response["body"]) == {"vertices": 2, "edges": 1}
+
+
+def test_merge_post_tags_points_with_their_carrier(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each merged point carries the carrier id taken from its source path."""
+    module = _load("carriers/merge", monkeypatch)
+    objects = _merge_objects()
+    with patch("boto3.client", return_value=fake_s3(objects, keys=[*objects])):
+        module.lambda_handler({"httpMethod": "POST"}, None)
+    merged = json.loads(objects["carriers/merge/vertices.json"])
+    assert {row["carrier"] for row in merged} == {"a", "b"}
 
 
 def test_merge_post_stores_the_substrate(monkeypatch: pytest.MonkeyPatch) -> None:
-    """POST writes the merged substrate back to the store."""
+    """POST writes the merged substrate's vertices and edges back to the store."""
     objects: dict[str, bytes] = {}
     module = _load("carriers/merge", monkeypatch)
     with patch("boto3.client", return_value=fake_s3(objects, keys=[])):
         module.lambda_handler({"httpMethod": "POST"}, None)
-    assert "merge/substrate.json" in objects
+    assert "carriers/merge/vertices.json" in objects and "carriers/merge/edges.json" in objects
 
 
 def test_merge_get_serves_vertices(monkeypatch: pytest.MonkeyPatch) -> None:
     """GET vertices returns the stored substrate's vertices."""
     module = _load("carriers/merge", monkeypatch)
-    stored = json.dumps({"vertices": [{"id": "P"}], "edges": []}).encode()
-    with patch("boto3.client", return_value=fake_s3({"merge/substrate.json": stored})):
+    stored = json.dumps([{"id": "P"}]).encode()
+    with patch("boto3.client", return_value=fake_s3({"carriers/merge/vertices.json": stored})):
         response = module.lambda_handler({"path": "/x/carriers/merge/vertices"}, None)
     assert json.loads(response["body"]) == [{"id": "P"}]
 
@@ -218,7 +232,7 @@ _WRITERS: list[dict[str, Any]] = [
     {
         "endpoint": "carriers",
         "param": "carrier",
-        "key": "carriers/lumen.json",
+        "key": "carriers/lumen/vertices.json",
         "id": "lumen",
         "env": {"MERGE_FUNCTION": "merge-fn", "WAN_FUNCTION": "wan-fn"},
         "invokes": 3,
@@ -268,19 +282,19 @@ def test_write_persists_the_collection(
     objects: dict[str, bytes] = {}
     with patch("boto3.client", side_effect=_write_clients(objects, [])):
         module.lambda_handler(_write_event(cfg, "vertices", [{"id": "P"}]), None)
-    assert json.loads(objects[cfg["key"]])["vertices"] == [{"id": "P"}]
+    assert json.loads(objects[cfg["key"]]) == [{"id": "P"}]
 
 
 @_WRITER
-def test_write_updates_an_existing_graph(
+def test_write_replaces_an_existing_collection(
     cfg: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A PUT over an existing graph replaces that collection (read-modify-write)."""
+    """A PUT over an existing collection replaces that collection's rows."""
     module = _writer(cfg, monkeypatch)
-    objects = {cfg["key"]: json.dumps({"vertices": [{"id": "old"}]}).encode()}
+    objects = {cfg["key"]: json.dumps([{"id": "old"}]).encode()}
     with patch("boto3.client", side_effect=_write_clients(objects, [])):
         module.lambda_handler(_write_event(cfg, "vertices", [{"id": "new"}]), None)
-    assert json.loads(objects[cfg["key"]])["vertices"] == [{"id": "new"}]
+    assert json.loads(objects[cfg["key"]]) == [{"id": "new"}]
 
 
 @_WRITER
@@ -331,14 +345,14 @@ def test_write_404_when_no_resource(
     assert response["statusCode"] == 404
 
 
-def test_carrier_put_preserves_other_collections(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A carrier PUT keeps the other collection (read-modify-write of the whole graph)."""
+def test_carrier_put_leaves_the_other_collection_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A carrier vertices PUT writes only the vertices file, leaving edges untouched."""
     module = _load("carriers", monkeypatch, MERGE_FUNCTION="merge-fn", WAN_FUNCTION="wan-fn")
-    objects = {"carriers/lumen.json": json.dumps({"edges": [{"e": 1}]}).encode()}
+    objects = {"carriers/lumen/edges.json": json.dumps([{"e": 1}]).encode()}
     event = _write_event(_WRITERS[0], "vertices", [{"id": "P"}])
     with patch("boto3.client", side_effect=_write_clients(objects, [])):
         module.lambda_handler(event, None)
-    assert json.loads(objects["carriers/lumen.json"])["edges"] == [{"e": 1}]
+    assert json.loads(objects["carriers/lumen/edges.json"]) == [{"e": 1}]
 
 
 def _tenant(monkeypatch: pytest.MonkeyPatch) -> Any:

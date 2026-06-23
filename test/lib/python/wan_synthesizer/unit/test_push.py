@@ -2,7 +2,7 @@
 
 The network and filesystem are mocked -- ``urlopen`` is replaced so no real PUTs
 leave the process, and the data/ + etc/ roots are redirected at ``tmp_path``. The
-private helpers (``_put``, ``_slug``, ``_carrier_names``, ``_tenant_vertices``,
+private helpers (``_put``, ``_slug``, ``_carrier_names``, ``_rows``, ``_mapping_rows``,
 ``_degree_doc``) are exercised through the public ``push_*`` / ``main`` entry points.
 """
 
@@ -19,11 +19,11 @@ import pytest
 
 import seed
 
-_POP_CSV = "name,latitude,longitude,kind\nDenver,39.7,-104.9,PoP\nOmaha,41.2,-96.0,PoP\n"
-_EDGE_CSV = "source,target,distance_miles\nDenver,Omaha,100\n"
-_REGION_CSV = "name,latitude,longitude,kind\nus-east-1,38.0,-79.0,provider region\n"
-_OFFNET_CSV = "name,latitude,longitude\nDulles,39.0,-77.4\n"
-_LOC_CSV = "name,latitude,longitude,kind\nHill AFB,41.1,-111.9,Military installation\n"
+_POP_CSV = "Municipality,State,Latitude,Longitude\nDenver,CO,39.7,-104.9\nOmaha,NE,41.2,-96.0\n"
+_EDGE_CSV = "A_Municipality,A_State,Z_Municipality,Z_State\nDenver,CO,Omaha,NE\n"
+_REGION_CSV = "Name,Municipality,State,Latitude,Longitude\nus-east-1,Ashburn,VA,38.0,-79.0\n"
+_OFFNET_CSV = "Municipality,State,Latitude,Longitude\nDulles,VA,39.0,-77.4\n"
+_LOC_CSV = "Name,Municipality,State,Latitude,Longitude\nHill AFB,Layton,UT,41.1,-111.9\n"
 
 _TENANT_YML_WITH_OFFNET = """\
 inputs:
@@ -39,6 +39,14 @@ access_homing_degree: 2
 """
 
 _TENANT_YML_MINIMAL = """\
+core_mesh_degree: 3
+aggregation_homing_degree: 2
+access_homing_degree: 2
+"""
+
+_TENANT_YML_BAD_OFFNET = """\
+inputs:
+  off_net: data/missing.csv
 core_mesh_degree: 3
 aggregation_homing_degree: 2
 access_homing_degree: 2
@@ -149,7 +157,16 @@ def test_push_tenants_handles_a_tenant_without_off_net(
     _setup_tenant(tmp_path, "plain", _TENANT_YML_MINIMAL)
     requests = _run_push_tenants(tmp_path, monkeypatch)
     off_net = next(r for r in requests if r.full_url.endswith("/off-net"))
-    assert json.loads(off_net.data)["vertices"] == []
+    assert json.loads(off_net.data) == []
+
+
+def test_push_tenants_rejects_a_missing_input_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A config that points at an absent CSV is reported as an error."""
+    _setup_tenant(tmp_path, "bad", _TENANT_YML_BAD_OFFNET)
+    with pytest.raises(ValueError):
+        _run_push_tenants(tmp_path, monkeypatch)
 
 
 def test_main_defaults_to_the_public_api(monkeypatch: pytest.MonkeyPatch) -> None:

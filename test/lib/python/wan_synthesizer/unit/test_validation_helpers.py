@@ -16,7 +16,7 @@ from wan_synthesizer.validation import (
 def pop(vertex_id: str) -> Vertex:
     """Test helper: build a carrier PoP vertex."""
     return Vertex(
-        id=vertex_id, name=vertex_id, tenant="Lumen", kind="PoP", coords=(0.0, 0.0)
+        id=vertex_id, name=vertex_id, kind="PoP", coords=(0.0, 0.0)
     )
 
 
@@ -43,7 +43,7 @@ def make_design(
 def test_vertex_role_access_for_non_pop() -> None:
     """Vertex role access for non pop."""
     access = Vertex(
-        id="s", name="s", tenant="F-35", kind="Military installation", coords=(0.0, 0.0)
+        id="s", name="s", kind="Military installation", coords=(0.0, 0.0)
     )
     assert vertex_role("s", make_design([]), access) == "access"
 

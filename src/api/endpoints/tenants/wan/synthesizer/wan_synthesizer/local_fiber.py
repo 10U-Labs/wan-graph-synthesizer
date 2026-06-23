@@ -92,7 +92,6 @@ def build_local_fiber_twin(
     twin = Vertex(
         id=twin_id,
         name=site.name,
-        tenant=site.tenant,
         kind=KIND_POP,
         coords=site.coords,
         info=site.info,

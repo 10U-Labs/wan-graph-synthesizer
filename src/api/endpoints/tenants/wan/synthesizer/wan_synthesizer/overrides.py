@@ -80,7 +80,6 @@ def colocated_twin(core: Vertex) -> Vertex:
     return Vertex(
         id=twin_vertex_id(core.id),
         name=f"AGGR {core.name}",
-        tenant=core.tenant,
         kind=core.kind,
         coords=core.coords,
         info=core.info,

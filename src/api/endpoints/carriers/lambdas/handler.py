@@ -48,13 +48,13 @@ def _response(status: int, body: Any) -> dict[str, Any]:
 
 
 def _carrier_ids(client: Any) -> list[str]:
-    """List the stored carrier ids (objects under the carriers/ prefix)."""
+    """List the carrier ids: the first path segment under carriers/, minus the merge."""
     listing = client.list_objects_v2(Bucket=os.environ["STORE_BUCKET"], Prefix="carriers/")
-    return [
-        item["Key"].removeprefix("carriers/").removesuffix(".json")
+    ids = {
+        item["Key"].removeprefix("carriers/").split("/", 1)[0]
         for item in listing.get("Contents", [])
-        if item["Key"].endswith(".json")
-    ]
+    }
+    return sorted(ids - {"merge"})
 
 
 def _tenant_ids(client: Any) -> list[str]:
@@ -86,9 +86,9 @@ def _cascade(client: Any) -> None:
         )
 
 
-def _read_carrier(client: Any, carrier: str) -> Any:
-    """Read a carrier's stored graph, or None when it is not built."""
-    key = f"carriers/{carrier}.json"
+def _read_collection(client: Any, carrier: str, collection: str) -> Any:
+    """Read one of a carrier's stored row lists, or None when it is absent."""
+    key = f"carriers/{carrier}/{collection}.json"
     try:
         body = client.get_object(Bucket=os.environ["STORE_BUCKET"], Key=key)["Body"].read()
     except client.exceptions.NoSuchKey:
@@ -103,21 +103,20 @@ def _get(client: Any, carrier: str | None, event: dict[str, Any]) -> dict[str, A
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in ("vertices", "edges"):
         return _response(404, {"error": collection})
-    graph = _read_carrier(client, carrier)
-    if graph is None:
+    rows = _read_collection(client, carrier, collection)
+    if rows is None:
         return _response(404, {"error": f"not built: {carrier}"})
-    return _response(200, graph[collection])
+    return _response(200, rows)
 
 
 def _put(client: Any, carrier: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace one of a carrier's collections, then cascade the rebuild."""
+    """Replace one of a carrier's collections (its own file), then cascade the rebuild."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in ("vertices", "edges"):
         return _response(404, {"error": collection})
-    graph = _read_carrier(client, carrier) or {}
-    graph[collection] = json.loads(event["body"])
-    key = f"carriers/{carrier}.json"
-    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(graph).encode())
+    key = f"carriers/{carrier}/{collection}.json"
+    body = json.dumps(json.loads(event["body"])).encode()
+    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=body)
     _cascade(client)
     return _response(200, {"updated": f"{carrier}/{collection}"})
 
@@ -132,7 +131,9 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     if not carrier:
         return _response(404, {"error": "carrier required"})
     if method == "DELETE":
-        client.delete_object(Bucket=os.environ["STORE_BUCKET"], Key=f"carriers/{carrier}.json")
+        bucket = os.environ["STORE_BUCKET"]
+        for collection in ("vertices", "edges"):
+            client.delete_object(Bucket=bucket, Key=f"carriers/{carrier}/{collection}.json")
         _cascade(client)
         return _response(200, {"deleted": carrier})
     return _put(client, carrier, event)

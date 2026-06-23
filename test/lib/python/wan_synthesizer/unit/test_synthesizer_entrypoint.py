@@ -32,9 +32,9 @@ def entrypoint_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
 
 def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace the heavy design pipeline with light canned stand-ins."""
-    pop = Vertex(id="P", name="P", tenant="Lumen", kind="PoP", coords=(0.0, 0.0))
+    pop = Vertex(id="P", name="P", kind="PoP", coords=(0.0, 0.0))
     site = Vertex(
-        id="S", name="S", tenant="F-35", kind="Military installation", coords=(1.0, 1.0)
+        id="S", name="S", kind="Military installation", coords=(1.0, 1.0)
     )
     graph = [pop, site]
     config = SimpleNamespace(
@@ -47,7 +47,10 @@ def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
         "access_edges": [],
         "physical_edges": [],
     }
-    monkeypatch.setattr(module, "load_input_graph", lambda _p: (graph, {}))
+    monkeypatch.setattr(module, "load_substrate", lambda *_a: (graph, {}))
+    monkeypatch.setattr(module, "load_sites", lambda _p: [])
+    monkeypatch.setattr(module, "load_regions", lambda _p: [])
+    monkeypatch.setattr(module, "load_off_net", lambda _p: [])
     monkeypatch.setattr(module, "app_config_from_parts", lambda _p: config)
     monkeypatch.setattr(module, "dual_home", lambda *_a: (graph, {}))
     monkeypatch.setattr(module, "apply_role_overrides", lambda *_a: (graph, {}, object()))
@@ -59,7 +62,8 @@ def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
 def _inputs(module: Any) -> dict[str, bytes]:
     """Every object the entrypoint reads (content unused; pipeline stubbed)."""
     keys = [
-        "merge/substrate.json",
+        "carriers/merge/vertices.json",
+        "carriers/merge/edges.json",
         "tenants/f-35/locations.json",
         "tenants/f-35/provider-regions.json",
         "tenants/f-35/off-net.json",

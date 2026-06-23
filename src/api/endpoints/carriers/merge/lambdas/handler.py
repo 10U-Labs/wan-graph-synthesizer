@@ -4,9 +4,11 @@
     GET  /wan-graph-synthesizer/carriers/merge/vertices -> the substrate's PoPs
     GET  /wan-graph-synthesizer/carriers/merge/edges    -> the substrate's fiber
 
-The substrate is just every carrier's PoPs and fiber unioned -- cross-carrier
-colocation is resolved later, per tenant, by the synthesizer. So the merge needs no
-design logic and stays a self-contained (stdlib + boto3) single-file Lambda.
+The substrate is just every carrier's points and connections unioned, each row tagged
+with the carrier it came from (taken from its endpoint path) so a connection resolves to
+its own carrier's points. Cross-carrier colocation is resolved later, per tenant, by the
+synthesizer. So the merge needs no design logic and stays a self-contained (stdlib +
+boto3) single-file Lambda.
 """
 
 import json
@@ -17,7 +19,7 @@ import boto3
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-_SUBSTRATE_KEY = "merge/substrate.json"
+_MERGE_KEYS = {"vertices": "carriers/merge/vertices.json", "edges": "carriers/merge/edges.json"}
 
 
 def _s3() -> Any:
@@ -38,20 +40,25 @@ def _response(status: int, body: Any) -> dict[str, Any]:
 
 
 def _build_substrate(client: Any) -> dict[str, int]:
-    """Union every carrier's vertices and edges, store the substrate, return its size."""
+    """Union every carrier's points and connections (each tagged with its carrier).
+
+    Reads ``carriers/{c}/vertices.json`` and ``carriers/{c}/edges.json`` for every
+    carrier (skipping the merge's own output), stamps each row with its carrier id, and
+    writes the two merged row lists. Returns their sizes.
+    """
     bucket = os.environ["STORE_BUCKET"]
     listing = client.list_objects_v2(Bucket=bucket, Prefix="carriers/")
     vertices: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
     for item in listing.get("Contents", []):
-        key = item["Key"]
-        if not key.endswith(".json"):
+        carrier, _, name = item["Key"].removeprefix("carriers/").partition("/")
+        if carrier == "merge":
             continue
-        graph = json.loads(client.get_object(Bucket=bucket, Key=key)["Body"].read())
-        vertices.extend(graph["vertices"])
-        edges.extend(graph["edges"])
-    substrate = {"vertices": vertices, "edges": edges}
-    client.put_object(Bucket=bucket, Key=_SUBSTRATE_KEY, Body=json.dumps(substrate).encode())
+        rows = json.loads(client.get_object(Bucket=bucket, Key=item["Key"])["Body"].read())
+        tagged = [{"carrier": carrier, **row} for row in rows]
+        (vertices if name == "vertices.json" else edges).extend(tagged)
+    client.put_object(Bucket=bucket, Key=_MERGE_KEYS["vertices"], Body=json.dumps(vertices).encode())
+    client.put_object(Bucket=bucket, Key=_MERGE_KEYS["edges"], Body=json.dumps(edges).encode())
     return {"vertices": len(vertices), "edges": len(edges)}
 
 
@@ -61,10 +68,10 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     if event.get("httpMethod") == "POST":
         return _response(200, _build_substrate(client))
     collection = event.get("path", "").rsplit("/", 1)[-1]
-    if collection not in ("vertices", "edges"):
+    if collection not in _MERGE_KEYS:
         return _response(404, {"error": collection})
     try:
-        body = client.get_object(Bucket=os.environ["STORE_BUCKET"], Key=_SUBSTRATE_KEY)
+        body = client.get_object(Bucket=os.environ["STORE_BUCKET"], Key=_MERGE_KEYS[collection])
     except client.exceptions.NoSuchKey:
         return _response(404, {"error": "not built: substrate"})
-    return _response(200, json.loads(body["Body"].read())[collection])
+    return _response(200, json.loads(body["Body"].read()))

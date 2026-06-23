@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 import fixtures
-from seed import load_off_net_sites
 from wan_synthesizer.offnet import RealizedOffNet, realize_off_net_sites
 from wan_synthesizer.model import is_carrier_pop
 from wan_graph.model import Vertex
@@ -68,16 +65,3 @@ def test_name_colliding_with_a_carrier_pop_raises() -> None:
     """A forced off-net name that is also a carrier PoP is ambiguous and rejected."""
     with pytest.raises(ValueError):
         _realize(fixtures.off_net_site("P0", 0.0, 0.5), forced=frozenset({"P0"}))
-
-
-def test_load_off_net_sites_reads_coordinates(tmp_path: Path) -> None:
-    """The loader parses name and coordinates into a site vertex."""
-    path = tmp_path / "off_net.csv"
-    path.write_text('name,latitude,longitude\n"Dulles, VA",38.95,-77.46\n', encoding="utf-8")
-    assert load_off_net_sites(path)[0].coords == (38.95, -77.46)
-
-
-def test_load_off_net_sites_missing_file_raises(tmp_path: Path) -> None:
-    """A configured off-net file that does not exist is reported as an error."""
-    with pytest.raises(ValueError):
-        load_off_net_sites(tmp_path / "absent.csv")

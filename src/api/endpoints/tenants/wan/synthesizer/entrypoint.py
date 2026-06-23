@@ -18,7 +18,7 @@ from typing import Any
 
 import boto3
 
-from wan_graph.codec import load_input_graph
+from wan_graph.codec import load_off_net, load_regions, load_sites, load_substrate
 from wan_synthesizer.collections import (
     access_nodes,
     aggregation_points,
@@ -69,18 +69,13 @@ def _write_json(client: Any, key: str, body: Any) -> None:
 def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
     """Run the whole design pipeline for one tenant; shape its WAN collections."""
     logger.info("Loading substrate and inputs for %s", tenant)
-    carrier_pops, physical_edges = load_input_graph(
-        _read_json(client, "merge/substrate.json")
+    carrier_pops, physical_edges = load_substrate(
+        _read_json(client, "carriers/merge/vertices.json"),
+        _read_json(client, "carriers/merge/edges.json"),
     )
-    locations, _ = load_input_graph(
-        _read_json(client, f"tenants/{tenant}/locations.json")
-    )
-    regions, _ = load_input_graph(
-        _read_json(client, f"tenants/{tenant}/provider-regions.json")
-    )
-    off_net, _ = load_input_graph(
-        _read_json(client, f"tenants/{tenant}/off-net.json")
-    )
+    locations = load_sites(_read_json(client, f"tenants/{tenant}/locations.json"))
+    regions = load_regions(_read_json(client, f"tenants/{tenant}/provider-regions.json"))
+    off_net = load_off_net(_read_json(client, f"tenants/{tenant}/off-net.json"))
     parts = {
         resource: _read_json(client, f"tenants/{tenant}/{resource}.json")
         for resource in CONFIG_RESOURCES

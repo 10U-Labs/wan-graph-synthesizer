@@ -38,6 +38,8 @@ const map = L.map("map").setView(VIEW_CENTER, 4);
 L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(map);
 
 let drawn = [];
+// The tenant currently being viewed; shown on its own (non-provider) access sites.
+let viewedTenant = "";
 
 function styleFor(vertex) {
   if (vertex.kind === provider_KIND) {
@@ -68,14 +70,17 @@ function displayName(vertex) {
   return prefix ? `${prefix} ${cityName(vertex)}` : vertex.name;
 }
 
-// Tooltip: the role-prefixed display name, its municipality/state beneath, then
-// the tenant.
+// Tooltip: the role-prefixed display name, its municipality/state beneath, and --
+// only for the tenant's own (non-provider) access sites -- the tenant being viewed.
 function vertexLabel(vertex) {
   const info = vertex.info || {};
   const located = info.municipality && info.state
     ? `<br>${info.municipality}, ${info.state}`
     : "";
-  return `<strong>${displayName(vertex)}</strong>${located}<br>Tenant: ${vertex.tenant}`;
+  const owned = vertex.tier_role === "access" && vertex.kind !== provider_KIND
+    ? `<br>Tenant: ${viewedTenant}`
+    : "";
+  return `<strong>${displayName(vertex)}</strong>${located}${owned}`;
 }
 
 function edgeLabel(source, target) {
@@ -194,6 +199,7 @@ function showCounts(vertices) {
 
 async function render(tenantId) {
   clear();
+  viewedTenant = tenantId;
   let vertices;
   let edges;
   try {
@@ -228,7 +234,7 @@ function select(link, mapId) {
 }
 
 async function init() {
-  const tenants = document.getElementById("tenants");
+  const nav = document.getElementById("tenants");
   const tenants = await getJSON(`${API_BASE}/tenants`);
   const entries = tenants.map(({ id, label }) => {
     const link = document.createElement("a");
@@ -238,7 +244,7 @@ async function init() {
       event.preventDefault();
       select(link, id);
     });
-    tenants.appendChild(link);
+    nav.appendChild(link);
     return { link, id };
   });
   const start = entries.find((entry) => entry.id === DEFAULT_MAP_ID) || entries[0];

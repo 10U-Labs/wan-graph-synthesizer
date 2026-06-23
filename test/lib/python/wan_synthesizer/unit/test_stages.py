@@ -2,33 +2,26 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import fixtures
-from seed import load_off_net_sites
 from wan_synthesizer.stages import dual_home, finalize
-from wan_synthesizer.model import DesignParams, DesignPaths
+from wan_synthesizer.model import DesignParams
 
 
-def test_dual_home_returns_a_graph_without_off_net(tmp_path: Path) -> None:
-    """dual_home attaches demand when no off-net file is configured."""
-    vertex_files, edges = fixtures.write_solvable_inputs(tmp_path)
-    vertices, physical_edges = fixtures.load_design_inputs(
-        DesignPaths(vertex_files, edges)
-    )
+def test_dual_home_returns_a_graph_without_off_net() -> None:
+    """dual_home attaches demand when no off-net site is configured."""
     homed_vertices, homed_edges = dual_home(
-        vertices, physical_edges, fixtures.ring_params(), []
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), fixtures.ring_params(), []
     )
     assert homed_vertices and homed_edges
 
 
-def test_dual_home_realizes_a_forced_off_net_site(tmp_path: Path) -> None:
+def test_dual_home_realizes_a_forced_off_net_site() -> None:
     """dual_home synthesizes a local-fiber twin for a forced off-net seat."""
-    paths, name = fixtures.write_off_net_solvable_inputs(tmp_path)
-    params = DesignParams(min_core_count=2, forced_core_names=(name,))
-    vertices, physical_edges = fixtures.load_design_inputs(paths)
-    sites = load_off_net_sites(paths.off_net_path) if paths.off_net_path else []
-    homed_vertices, _edges = dual_home(vertices, physical_edges, params, sites)
+    params = DesignParams(min_core_count=2, forced_core_names=("Dulles Hub",))
+    sites = [fixtures.off_net_site("Dulles Hub", 40.5, -100.0)]
+    homed_vertices, _edges = dual_home(
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), params, sites
+    )
     assert any(vertex.id.startswith("offnet_") for vertex in homed_vertices)
 
 

@@ -33,17 +33,16 @@ class VertexInfo:
 class Vertex:
     """A geographic vertex: an access site, a cloud region, or a carrier PoP.
 
-    ``tenant`` is the operator or program the vertex belongs to (e.g. ``Lumen``,
-    ``F-35``, ``AWS``, ``DCN``); ``kind`` is the facility type (``PoP``,
-    ``ROADM``, ``Military installation``, ``provider region``, ``UARC``,
-    ``Corporate office``). Carrier PoPs are the vertices whose ``kind`` marks them
-    as routable backbone nodes (see ``wan_synthesizer.model.is_carrier_pop``);
-    everything else is an access/demand vertex.
+    ``kind`` is the facility type derived from the endpoint the place was sent to
+    (``PoP`` for carriers, ``provider region`` for cloud regions, an access kind for
+    tenant sites and off-net candidates). Carrier PoPs are the vertices whose ``kind``
+    marks them as routable backbone nodes (see ``wan_synthesizer.model.is_carrier_pop``);
+    everything else is an access/demand vertex. Who *owns* a place is the tenant the WAN
+    is being built for -- known from the endpoint path -- so it is not stored per vertex.
     """
 
     id: str
     name: str
-    tenant: str
     kind: str
     coords: tuple[float, float]  # (latitude, longitude)
     # Descriptive (non-structural) attributes: source notes plus the serving

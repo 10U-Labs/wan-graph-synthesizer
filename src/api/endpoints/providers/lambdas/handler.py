@@ -46,13 +46,12 @@ def _response(status: int, body: Any) -> dict[str, Any]:
 
 
 def _provider_ids(client: Any) -> list[str]:
-    """List the stored provider ids (objects under the providers/ prefix)."""
+    """List the provider ids: the first path segment under the providers/ prefix."""
     listing = client.list_objects_v2(Bucket=os.environ["STORE_BUCKET"], Prefix="providers/")
-    return [
-        item["Key"].removeprefix("providers/").removesuffix(".json")
+    return sorted({
+        item["Key"].removeprefix("providers/").split("/", 1)[0]
         for item in listing.get("Contents", [])
-        if item["Key"].endswith(".json")
-    ]
+    })
 
 
 def _tenant_ids(client: Any) -> list[str]:
@@ -79,9 +78,9 @@ def _cascade(client: Any) -> None:
         )
 
 
-def _read_provider(client: Any, provider: str) -> Any:
-    """Read a provider's stored graph, or None when it is not built."""
-    key = f"providers/{provider}.json"
+def _read_regions(client: Any, provider: str) -> Any:
+    """Read a provider's stored regions (its vertices file), or None when absent."""
+    key = f"providers/{provider}/vertices.json"
     try:
         body = client.get_object(Bucket=os.environ["STORE_BUCKET"], Key=key)["Body"].read()
     except client.exceptions.NoSuchKey:
@@ -96,21 +95,20 @@ def _get(client: Any, provider: str | None, event: dict[str, Any]) -> dict[str, 
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection != "vertices":
         return _response(404, {"error": collection})
-    graph = _read_provider(client, provider)
-    if graph is None:
+    rows = _read_regions(client, provider)
+    if rows is None:
         return _response(404, {"error": f"not built: {provider}"})
-    return _response(200, graph[collection])
+    return _response(200, rows)
 
 
 def _put(client: Any, provider: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace a provider's regions, then cascade the rebuild."""
+    """Replace a provider's regions (its vertices file), then cascade the rebuild."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection != "vertices":
         return _response(404, {"error": collection})
-    graph = _read_provider(client, provider) or {}
-    graph[collection] = json.loads(event["body"])
-    key = f"providers/{provider}.json"
-    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(graph).encode())
+    key = f"providers/{provider}/vertices.json"
+    body = json.dumps(json.loads(event["body"])).encode()
+    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=body)
     _cascade(client)
     return _response(200, {"updated": f"{provider}/{collection}"})
 
@@ -125,7 +123,9 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     if not provider:
         return _response(404, {"error": "provider required"})
     if method == "DELETE":
-        client.delete_object(Bucket=os.environ["STORE_BUCKET"], Key=f"providers/{provider}.json")
+        client.delete_object(
+            Bucket=os.environ["STORE_BUCKET"], Key=f"providers/{provider}/vertices.json"
+        )
         _cascade(client)
         return _response(200, {"deleted": provider})
     return _put(client, provider, event)
