@@ -464,24 +464,26 @@ def assign_access(
     return access_edges, selected
 
 def evaluate_cores(
-    core_ids: tuple[str, ...], inputs: DesignInputs, plan: _SearchPlan,
-    known_feasible: set[str] | None = None,
+    core_ids: tuple[str, ...],
+    inputs: DesignInputs,
+    plan: _SearchPlan,
+    feasible_floor: set[str] | None = None,
 ) -> tuple[list[AccessEdge], set[str]] | None:
     """Score a core set's feasibility and access homing without routing paths.
 
     Returns None when a core cannot reach enough peers to wire its backbone links, a
     forced aggregation cannot home to the required cores, or some access vertex cannot
     reach its facilities. Routed paths are deferred to the winning set, since they do
-    not affect the strength ranking. ``known_feasible`` is forwarded to the feasibility
+    not affect the strength ranking. ``feasible_floor`` is forwarded to the feasibility
     pass so a superset evaluation skips re-proving a subset's feasible aggregations.
     """
     if not cores_have_backbone_peers(
         core_ids, inputs.all_distances, plan.tuning.core_links_per_core
     ):
         return None
-    if not forced_aggregations_can_home(core_ids, inputs, plan, known_feasible):
+    if not forced_aggregations_can_home(core_ids, inputs, plan, feasible_floor):
         return None
-    return assign_access(core_ids, inputs, plan, known_feasible)
+    return assign_access(core_ids, inputs, plan, feasible_floor)
 
 def physical_edges_with_twins(
     selected: set[str],
