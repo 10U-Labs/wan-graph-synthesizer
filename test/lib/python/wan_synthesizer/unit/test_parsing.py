@@ -31,25 +31,25 @@ def test_slug_empty_falls_back() -> None:
 
 def test_substrate_names_a_pop_by_its_city() -> None:
     """A carrier point's display name is its ``City, ST``."""
-    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, [])
+    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
     assert pops[0].name == "Denver, CO"
 
 
 def test_substrate_points_are_carrier_pops() -> None:
     """Every substrate point classifies as a carrier PoP."""
-    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, [])
+    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
     assert all(is_carrier_pop(pop) for pop in pops)
 
 
 def test_substrate_points_are_not_shown_on_the_map() -> None:
     """Carrier points are backbone infrastructure, not drawn on the map."""
-    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, [])
+    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
     assert not any(pop.shown_in_map for pop in pops)
 
 
 def test_substrate_collapses_a_city_across_carriers() -> None:
     """Colocated points from different carriers collapse to one city node."""
-    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, [])
+    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
     assert {pop.id for pop in pops} == {"denver-co", "kansas-city-mo"}
 
 
@@ -71,6 +71,16 @@ def test_substrate_computes_connection_distance() -> None:
     """A connection's distance is the great-circle miles between its points."""
     _pops, edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
     assert round(next(iter(edges.values())).distance_miles) == 557
+
+
+def test_substrate_drops_an_isolated_point() -> None:
+    """A point no surviving connection touches is dropped from the substrate."""
+    extra = _SUBSTRATE_VERTICES + [
+        {"carrier": "lumen", "municipality": "Boise", "state": "ID",
+         "latitude": 43.6, "longitude": -116.2},
+    ]
+    pops, _edges = load_substrate(extra, _SUBSTRATE_EDGES)
+    assert "boise-id" not in {pop.id for pop in pops}
 
 
 def test_substrate_skips_an_intra_city_self_loop() -> None:

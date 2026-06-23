@@ -106,6 +106,7 @@ def load_substrate(
         pops.append(vertex)
         by_city[city] = vertex
     edges: dict[tuple[str, str], PhysicalEdge] = {}
+    connected: set[str] = set()
     for row in edge_rows:
         source = by_city.get((row["a_municipality"], row["a_state"]))
         target = by_city.get((row["z_municipality"], row["z_state"]))
@@ -115,4 +116,8 @@ def load_substrate(
         edges[key] = PhysicalEdge(
             source=key[0], target=key[1], distance_miles=haversine_miles(source, target)
         )
+        connected.update(key)
+    # A point no surviving connection touches is not a usable backbone node; drop it so
+    # the substrate's points and its fiber graph stay consistent.
+    pops = [vertex for vertex in by_city.values() if vertex.id in connected]
     return pops, edges
