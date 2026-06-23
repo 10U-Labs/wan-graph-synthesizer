@@ -67,6 +67,14 @@ def test_substrate_computes_connection_distance() -> None:
     assert round(next(iter(edges.values())).distance_miles) == 557
 
 
+def test_substrate_skips_an_intra_city_self_loop() -> None:
+    """A connection whose two endpoints are the same city is dropped, not a self-loop."""
+    loop = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
+             "z_municipality": "Denver", "z_state": "CO"}]
+    _pops, edges = load_substrate(_SUBSTRATE_VERTICES, loop)
+    assert edges == {}
+
+
 def test_regions_are_cloud_data_centers() -> None:
     """Cloud regions carry the provider kind so the map colours them."""
     regions = load_regions([

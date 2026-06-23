@@ -106,6 +106,10 @@ def load_substrate(
     for row in edge_rows:
         source = by_endpoint[(row["carrier"], row["a_municipality"], row["a_state"])]
         target = by_endpoint[(row["carrier"], row["z_municipality"], row["z_state"])]
+        if source.id == target.id:
+            # An intra-city connection (both endpoints the same city) collapses to a
+            # self-loop at city granularity and carries no backbone topology -- skip it.
+            continue
         key = edge_key(source.id, target.id)
         edges[key] = PhysicalEdge(
             source=key[0], target=key[1], distance_miles=haversine_miles(source, target)
