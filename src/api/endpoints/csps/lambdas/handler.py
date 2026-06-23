@@ -1,9 +1,9 @@
 """CSPs endpoint: read and write a cloud provider's regions in the S3 store.
 
-    GET    /wan-graph-designer/csps                      -> the provider ids
-    GET    /wan-graph-designer/csps/{provider}/vertices  -> that provider's regions
-    PUT    /wan-graph-designer/csps/{provider}/vertices  -> replace its regions
-    DELETE /wan-graph-designer/csps/{provider}           -> remove the provider
+    GET    /wan-graph-synthesizer/csps                      -> the provider ids
+    GET    /wan-graph-synthesizer/csps/{provider}/vertices  -> that provider's regions
+    PUT    /wan-graph-synthesizer/csps/{provider}/vertices  -> replace its regions
+    DELETE /wan-graph-synthesizer/csps/{provider}           -> remove the provider
 
 A CSP graph is regions only (no fiber), so it exposes vertices but no edges. CSP
 regions are not part of the substrate, so a write does not rebuild the merge; it

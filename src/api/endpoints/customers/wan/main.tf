@@ -1,5 +1,5 @@
 # The WAN-create worker: a Fargate Spot task that runs the whole pipeline
-# (home -> constrain -> optimize -> validate) in one process and writes the
+# (home -> constrain -> synthesize -> validate) in one process and writes the
 # customer's WAN JSON to the S3 store, or records a 422 reason. The dispatching
 # Lambda starts this task (ecs:RunTask) on a customer create and on the carrier
 # cascade. Async + Spot because a create can exceed API Gateway's ~29s cap and
@@ -9,8 +9,8 @@ locals {
   store_bucket = data.terraform_remote_state.storage.outputs.bucket_name
 }
 
-resource "aws_ecr_repository" "optimizer" {
-  name                 = "wan-graph-designer-optimizer"
+resource "aws_ecr_repository" "synthesizer" {
+  name                 = "wan-graph-synthesizer"
   image_tag_mutability = "MUTABLE"
   image_scanning_configuration {
     scan_on_push = true
@@ -22,7 +22,7 @@ resource "aws_vpc" "this" {
   cidr_block           = "10.80.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support   = true
-  tags                 = { Name = "wan-graph-designer" }
+  tags                 = { Name = "wan-graph-synthesizer" }
 }
 
 resource "aws_internet_gateway" "this" {
@@ -50,7 +50,7 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_security_group" "task" {
-  name   = "wan-graph-designer-task"
+  name   = "wan-graph-synthesizer-task"
   vpc_id = aws_vpc.this.id
   egress {
     from_port   = 0
@@ -61,7 +61,7 @@ resource "aws_security_group" "task" {
 }
 
 resource "aws_ecs_cluster" "this" {
-  name = "wan-graph-designer"
+  name = "wan-graph-synthesizer"
 }
 
 # Associate Fargate Spot (and on-demand) so run_task's FARGATE_SPOT capacity
@@ -71,14 +71,14 @@ resource "aws_ecs_cluster_capacity_providers" "this" {
   capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 }
 
-resource "aws_cloudwatch_log_group" "optimizer" {
-  name              = "/ecs/wan-graph-designer-optimizer"
+resource "aws_cloudwatch_log_group" "synthesizer" {
+  name              = "/ecs/wan-graph-synthesizer"
   retention_in_days = 14
 }
 
 # Pull-image + logs role for the Fargate agent.
 resource "aws_iam_role" "execution" {
-  name = "wan-graph-designer-task-execution"
+  name = "wan-graph-synthesizer-task-execution"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -94,9 +94,9 @@ resource "aws_iam_role_policy_attachment" "execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# The optimizer's own role: read inputs + write published/working graph JSON.
+# The synthesizer's own role: read inputs + write published/working graph JSON.
 resource "aws_iam_role" "task" {
-  name = "wan-graph-designer-optimizer"
+  name = "wan-graph-synthesizer-task"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -123,8 +123,8 @@ resource "aws_iam_role_policy" "task_s3" {
   })
 }
 
-resource "aws_ecs_task_definition" "optimizer" {
-  family                   = "wan-graph-designer-optimizer"
+resource "aws_ecs_task_definition" "synthesizer" {
+  family                   = "wan-graph-synthesizer"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "8192"
@@ -133,8 +133,8 @@ resource "aws_ecs_task_definition" "optimizer" {
   task_role_arn            = aws_iam_role.task.arn
 
   container_definitions = jsonencode([{
-    name      = "optimizer"
-    image     = "${aws_ecr_repository.optimizer.repository_url}:latest"
+    name      = "synthesizer"
+    image     = "${aws_ecr_repository.synthesizer.repository_url}:latest"
     essential = true
     environment = [
       { name = "STORE_BUCKET", value = local.store_bucket },
@@ -142,9 +142,9 @@ resource "aws_ecs_task_definition" "optimizer" {
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.optimizer.name
+        "awslogs-group"         = aws_cloudwatch_log_group.synthesizer.name
         "awslogs-region"        = "us-east-2"
-        "awslogs-stream-prefix" = "optimizer"
+        "awslogs-stream-prefix" = "synthesizer"
       }
     }
   }])

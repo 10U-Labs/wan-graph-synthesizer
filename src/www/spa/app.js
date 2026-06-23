@@ -6,7 +6,7 @@ const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIB = "© OpenStreetMap contributors";
 
 // The REST API: a customer's WAN is served as vertices + edges collections.
-const API_BASE = "https://api.10ulabs.com/wan-graph-designer";
+const API_BASE = "https://api.10ulabs.com/wan-graph-synthesizer";
 
 // The customer shown on first load, before the operator picks one.
 const DEFAULT_MAP_ID = "military-installations";

@@ -9,8 +9,8 @@ output "lambda_function_name" {
 }
 
 output "ecr_repository_url" {
-  description = "ECR repo the build_image workflow pushes the optimizer image to."
-  value       = aws_ecr_repository.optimizer.repository_url
+  description = "ECR repo the build_image workflow pushes the synthesizer image to."
+  value       = aws_ecr_repository.synthesizer.repository_url
 }
 
 output "cluster_arn" {
@@ -19,8 +19,8 @@ output "cluster_arn" {
 }
 
 output "task_definition_arn" {
-  description = "Fargate task definition for the WAN-create optimizer."
-  value       = aws_ecs_task_definition.optimizer.arn
+  description = "Fargate task definition for the WAN-create synthesizer."
+  value       = aws_ecs_task_definition.synthesizer.arn
 }
 
 output "subnet_id" {
@@ -34,7 +34,7 @@ output "security_group_id" {
 }
 
 output "task_role_arn" {
-  description = "The optimizer task role (read inputs, write graph JSON)."
+  description = "The synthesizer task role (read inputs, write graph JSON)."
   value       = aws_iam_role.task.arn
 }
 

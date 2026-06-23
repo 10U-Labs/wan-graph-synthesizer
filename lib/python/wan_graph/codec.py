@@ -2,7 +2,7 @@
 
 :func:`input_graph` shapes a graph's vertices and carrier edges as JSON (the inputs
 script writes it); :func:`load_input_graph` is its inverse, rebuilding the dataclasses
-so the optimizer can read the stored graph back. Keeping both halves here gives the
+so the synthesizer can read the stored graph back. Keeping both halves here gives the
 on-the-wire format a single definition the writer and reader cannot drift apart from.
 """
 
@@ -34,7 +34,7 @@ def load_input_graph(
     """Rebuild a graph's vertices and physical edges from its stored JSON.
 
     The inverse of :func:`input_graph`: the ``Vertex`` and ``PhysicalEdge``
-    dataclasses are reconstructed so the stored substrate can feed the optimizer.
+    dataclasses are reconstructed so the stored substrate can feed the synthesizer.
     """
     loaded_vertices = [_load_vertex(vertex) for vertex in payload["vertices"]]
     loaded_edges: dict[tuple[str, str], PhysicalEdge] = {}

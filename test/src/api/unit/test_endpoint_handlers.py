@@ -471,7 +471,7 @@ def test_wan_post_returns_202(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_wan_post_launches_one_task(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A create launches exactly one optimizer task."""
+    """A create launches exactly one synthesizer task."""
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
     event = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}

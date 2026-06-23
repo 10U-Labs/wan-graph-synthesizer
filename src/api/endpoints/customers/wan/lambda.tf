@@ -7,7 +7,7 @@ data "terraform_remote_state" "routing" {
 
   config = {
     bucket = "10ulabs-terraform-state-us-east-2"
-    key    = "wan-graph-designer/common/routing/terraform.tfstate"
+    key    = "wan-graph-synthesizer/common/routing/terraform.tfstate"
     region = "us-east-2"
   }
 }
@@ -28,13 +28,13 @@ resource "aws_lambda_function" "handler" {
   architectures    = ["arm64"]
   timeout          = 10
   memory_size      = 128
-  description      = "WAN create endpoint: start the Fargate optimize, report status."
+  description      = "WAN create endpoint: start the Fargate synthesize, report status."
 
   environment {
     variables = {
       STORE_BUCKET        = local.store_bucket
       CLUSTER_ARN         = aws_ecs_cluster.this.arn
-      TASK_DEFINITION_ARN = aws_ecs_task_definition.optimizer.arn
+      TASK_DEFINITION_ARN = aws_ecs_task_definition.synthesizer.arn
       SUBNET_ID           = aws_subnet.public.id
       SECURITY_GROUP_ID   = aws_security_group.task.id
     }

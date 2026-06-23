@@ -1,14 +1,14 @@
 """Customers endpoint: read a computed WAN and read/write a customer's inputs.
 
-    GET    /wan-graph-designer/customers                              -> [{id, label}]
-    GET    /wan-graph-designer/customers/{c}/vertices|edges           -> the WAN graph
-    GET    /wan-graph-designer/customers/{c}/core-nodes|...           -> the WAN tiers
-    GET    /wan-graph-designer/customers/{c}/locations|forced-core-nodes|... -> an input
-    PUT    /wan-graph-designer/customers/{c}/locations|forced-core-nodes|... -> set input
-    DELETE /wan-graph-designer/customers/{c}                          -> remove the customer
+    GET    /wan-graph-synthesizer/customers                              -> [{id, label}]
+    GET    /wan-graph-synthesizer/customers/{c}/vertices|edges           -> the WAN graph
+    GET    /wan-graph-synthesizer/customers/{c}/core-nodes|...           -> the WAN tiers
+    GET    /wan-graph-synthesizer/customers/{c}/locations|forced-core-nodes|... -> an input
+    PUT    /wan-graph-synthesizer/customers/{c}/locations|forced-core-nodes|... -> set input
+    DELETE /wan-graph-synthesizer/customers/{c}                          -> remove the customer
 
 The computed collections come from the published ``wan.json``; each operator input is
-its own document (the optimizer reads them all). A PUT persists the input and
+its own document (the synthesizer reads them all). A PUT persists the input and
 re-creates this customer's WAN. Self-contained (stdlib + boto3); single-file Lambda.
 """
 

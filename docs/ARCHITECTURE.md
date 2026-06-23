@@ -1,6 +1,6 @@
 # Architecture
 
-How WAN Graph Designer is built, deployed, and served.
+How WAN Graph Synthesizer is built, deployed, and served.
 
 ## Purpose
 
@@ -26,11 +26,11 @@ The graph kinds:
 - **substrate** — derived; all carriers stitched into one shared fiber mesh.
   It is a singleton, read and created via `carriers/merge`. Carriers are the
   only genuinely shared input.
-- **customer → wan** — derived; optimize over the substrate plus this
+- **customer → wan** — derived; synthesize over the substrate plus this
   customer's installations and its selected CSP regions, tiered into core /
   aggregation / access (f-35, joint, military-installations).
 
-Lineage: carriers → (merge) → substrate → (+ installations, optimize) → a
+Lineage: carriers → (merge) → substrate → (+ installations, synthesize) → a
 customer's WAN.
 
 A customer has exactly one WAN (a singleton, overwritten on each re-create).
@@ -40,7 +40,7 @@ region of each provider); they are not part of the shared substrate.
 ## The REST API
 
 Everything backend is a REST resource. The API is this repo's own API Gateway,
-served at `api.10ulabs.com/wan-graph-designer/*`. Grammar: kebab-case, plural
+served at `api.10ulabs.com/wan-graph-synthesizer/*`. Grammar: kebab-case, plural
 collections, `{snake_case}` path params, no version segment.
 
 Inputs are writable (`PUT` / `POST` / `DELETE`); computed graphs are read-only
@@ -106,24 +106,24 @@ script, or UI issuing the same `PUT` is identical.
 Reuses the `../10ulabs.com` precedent: account 781581267945, us-east-2, the
 shared state bucket `10ulabs-terraform-state-us-east-2`, and GitHub OIDC.
 
-- **Website** — static, synced to `s3://www-10ulabs-com/wan-graph-designer/`,
-  served at `10ulabs.com/wan-graph-designer/`. The public path comes from the
+- **Website** — static, synced to `s3://www-10ulabs-com/wan-graph-synthesizer/`,
+  served at `10ulabs.com/wan-graph-synthesizer/`. The public path comes from the
   sync destination, not a nested folder.
 - **API host** — `api.10ulabs.com` is a CloudFront distribution that
   path-routes to origins. This repo is wired in once with one origin (its API
-  Gateway) plus one behavior for `/wan-graph-designer/*`. The wildcard means
+  Gateway) plus one behavior for `/wan-graph-synthesizer/*`. The wildcard means
   new endpoints need no further `10ulabs.com` changes.
 - **Read endpoints** — Lambdas (Python 3.13) that serve stored JSON from S3.
 - **`carriers/merge`** — a fast Lambda that stitches all carriers into the
   substrate.
 - **`customers/{c}/wan`** — `POST` starts a single Fargate Spot task that runs
-  the whole pipeline (home, constrain, optimize, validate) in memory and writes
-  the WAN JSON to S3, or records a `422` reason. Async because the optimizer
+  the whole pipeline (home, constrain, synthesize, validate) in memory and writes
+  the WAN JSON to S3, or records a `422` reason. Async because the synthesizer
   can exceed API Gateway's ~29s synchronous cap; Spot because a create is
   fully retryable.
 - **Store** — S3 JSON files. One format (JSON) end to end: the same JSON a step
   produces is what the API serves; no internal serialization.
-- **Idle cost** is static hosting plus S3 storage only; the optimizer runs only
+- **Idle cost** is static hosting plus S3 storage only; the synthesizer runs only
   during a create.
 
 ## Code layout
@@ -131,22 +131,22 @@ shared state bucket `10ulabs-terraform-state-us-east-2`, and GitHub OIDC.
 - `data/` — git-authored inputs, grouped by concept (`carriers/`, `csps/`,
   `customers/`).
 - `etc/` — operator settings per customer.
-- `lib/python/wan_designer/` — core logic, reused by every endpoint and the
-  optimizer.
+- `lib/python/wan_synthesizer/` — core logic, reused by every endpoint and the
+  synthesizer.
 - `lib/opentofu/` — only OpenTofu modules reused across stacks.
 - `src/api/common/` — shared infra: the API Gateway (`routing/`) and the S3
   bucket (`storage/`).
 - `src/api/endpoints/` — one folder per resource: `carriers`, `csps`,
-  `customers`, `merge`, `wan` (with `wan/optimizer/` for the container).
+  `customers`, `merge`, `wan` (with `wan/synthesizer/` for the container).
 - `src/www/spa/` — the static single-page UI (synced to the site root);
   `src/www/api/` — the OpenAPI spec (deployed separately).
 - `docs/tenets/tests/` — the four test tiers, per `10ulabs.com`.
 
 Reusable code lives in `lib/`; single-use code lives in its `src/` stack. The
 shared graph interchange — the vertex/edge types and the input-graph JSON codec
-— is `lib/python/wan_graph/`; the optimizer's own design vocabulary, pipeline
-steps (`wan_designer/stages.py`), and per-collection JSON views
-(`wan_designer/collections.py`) live with the optimizer engine. The inputs
+— is `lib/python/wan_graph/`; the synthesizer's own design vocabulary, pipeline
+steps (`wan_synthesizer/stages.py`), and per-collection JSON views
+(`wan_synthesizer/collections.py`) live with the synthesizer engine. The inputs
 script's CSV readers live in `scripts/seed.py`.
 
 ## Out of scope (deferred)

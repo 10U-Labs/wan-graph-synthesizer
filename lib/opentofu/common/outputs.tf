@@ -19,16 +19,16 @@ output "state_bucket" {
 
 output "github_repo_full" {
   description = "owner/name of this repository (for resource tags)."
-  value       = "10U-Labs/wan-graph-designer"
+  value       = "10U-Labs/wan-graph-synthesizer"
 }
 
 output "lambda_handler_names" {
   description = "Deterministic Lambda function names, one per REST resource."
   value = {
-    carriers  = "wan-graph-designer-carriers"
-    csps      = "wan-graph-designer-csps"
-    customers = "wan-graph-designer-customers"
-    merge     = "wan-graph-designer-merge"
-    wan       = "wan-graph-designer-wan"
+    carriers  = "wan-graph-synthesizer-carriers"
+    csps      = "wan-graph-synthesizer-csps"
+    customers = "wan-graph-synthesizer-customers"
+    merge     = "wan-graph-synthesizer-merge"
+    wan       = "wan-graph-synthesizer-wan"
   }
 }

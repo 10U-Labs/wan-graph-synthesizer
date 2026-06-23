@@ -2,8 +2,8 @@
 
 The vertex/edge dataclasses and geographic helpers used on *both* sides of the JSON
 interchange: the inputs script (which writes these shapes as JSON via
-:mod:`wan_graph.codec`) and the optimizer (which reads them back). The optimizer's
-own design vocabulary -- tiers, tuning, validation -- lives in ``wan_designer.model``;
+:mod:`wan_graph.codec`) and the synthesizer (which reads them back). The synthesizer's
+own design vocabulary -- tiers, tuning, validation -- lives in ``wan_synthesizer.model``;
 this module holds only what the two programs share.
 """
 
@@ -37,7 +37,7 @@ class Vertex:
     ``F-35``, ``AWS``, ``DCN``); ``kind`` is the facility type (``PoP``,
     ``ROADM``, ``Military installation``, ``CSP data center``, ``UARC``,
     ``Corporate office``). Carrier PoPs are the vertices whose ``kind`` marks them
-    as routable backbone nodes (see ``wan_designer.model.is_carrier_pop``);
+    as routable backbone nodes (see ``wan_synthesizer.model.is_carrier_pop``);
     everything else is an access/demand vertex.
     """
 

@@ -1,7 +1,7 @@
 ---
 concurrency:
   cancel-in-progress: false
-  group: build-optimizer-image
+  group: build-synthesizer-image
 jobs:
   build:
     if: github.ref == 'refs/heads/main'
@@ -21,17 +21,17 @@ jobs:
           aws ecr get-login-password --region us-east-2 \
             | docker login --username AWS --password-stdin \
               781581267945.dkr.ecr.us-east-2.amazonaws.com
-      - name: Build and push the optimizer image
+      - name: Build and push the synthesizer image
         run: |
-          REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-designer-optimizer
-          docker build -f src/api/endpoints/customers/wan/optimizer/Dockerfile \
+          REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-synthesizer
+          docker build -f src/api/endpoints/customers/wan/synthesizer/Dockerfile \
             -t "$REPO:latest" .
           docker push "$REPO:latest"
-name: Build optimizer image
+name: Build synthesizer image
 'on':
   push:
     branches: [main]
     paths:
-      - src/api/endpoints/customers/wan/optimizer/**
+      - src/api/endpoints/customers/wan/synthesizer/**
       - lib/python/**
   workflow_dispatch: {}

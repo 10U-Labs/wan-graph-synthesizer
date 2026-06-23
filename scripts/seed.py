@@ -1,4 +1,4 @@
-"""Seed the wan-graph-designer API from the git-authored data/ + etc/ inputs.
+"""Seed the wan-graph-synthesizer API from the git-authored data/ + etc/ inputs.
 
 One script, three steps: read the raw per-tenant vertex CSVs, the carrier fiber-edge
 CSVs, and the off-net candidate CSV into :class:`wan_graph.model` objects (extract);
@@ -27,7 +27,7 @@ from repo_utils import REPO_ROOT
 from wan_graph.codec import input_graph
 from wan_graph.model import PhysicalEdge, Vertex, VertexInfo, edge_key, haversine_miles
 
-DEFAULT_API = "https://api.10ulabs.com/wan-graph-designer"
+DEFAULT_API = "https://api.10ulabs.com/wan-graph-synthesizer"
 DATA = REPO_ROOT / "data"
 ETC = REPO_ROOT / "etc"
 CSP_PROVIDERS = ("aws", "azure", "oci")

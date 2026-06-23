@@ -1,12 +1,12 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "wan-graph-designer",
+    "title": "wan-graph-synthesizer",
     "description": "Graphs as REST resources: carriers, CSPs, the carrier merge (substrate), and customers' WANs. Inputs are writable; computed graphs are read-only. One JSON format throughout.",
     "version": "1.0.0"
   },
   "paths": {
-    "/wan-graph-designer/carriers": {
+    "/wan-graph-synthesizer/carriers": {
       "get": {
         "summary": "List carriers.",
         "responses": { "200": { "description": "The carriers." } },
@@ -17,7 +17,7 @@
         }
       }
     },
-    "/wan-graph-designer/carriers/{carrier}/vertices": {
+    "/wan-graph-synthesizer/carriers/{carrier}/vertices": {
       "get": {
         "summary": "A carrier's PoPs.",
         "parameters": [
@@ -43,7 +43,7 @@
         }
       }
     },
-    "/wan-graph-designer/carriers/{carrier}/edges": {
+    "/wan-graph-synthesizer/carriers/{carrier}/edges": {
       "get": {
         "summary": "A carrier's fiber.",
         "parameters": [
@@ -69,7 +69,7 @@
         }
       }
     },
-    "/wan-graph-designer/carriers/{carrier}": {
+    "/wan-graph-synthesizer/carriers/{carrier}": {
       "delete": {
         "summary": "Remove a carrier (cascades a rebuild).",
         "parameters": [
@@ -83,7 +83,7 @@
         }
       }
     },
-    "/wan-graph-designer/carriers/merge": {
+    "/wan-graph-synthesizer/carriers/merge": {
       "post": {
         "summary": "Merge all carriers into the substrate (fast).",
         "responses": { "200": { "description": "The substrate." } },
@@ -121,7 +121,7 @@
         }
       }
     },
-    "/wan-graph-designer/carriers/merge/vertices": {
+    "/wan-graph-synthesizer/carriers/merge/vertices": {
       "get": {
         "summary": "The substrate's vertices.",
         "responses": { "200": { "description": "Substrate vertices." } },
@@ -132,7 +132,7 @@
         }
       }
     },
-    "/wan-graph-designer/carriers/merge/edges": {
+    "/wan-graph-synthesizer/carriers/merge/edges": {
       "get": {
         "summary": "The substrate's edges.",
         "responses": { "200": { "description": "Substrate edges." } },
@@ -143,7 +143,7 @@
         }
       }
     },
-    "/wan-graph-designer/csps": {
+    "/wan-graph-synthesizer/csps": {
       "get": {
         "summary": "List CSPs.",
         "responses": { "200": { "description": "The CSPs." } },
@@ -154,7 +154,7 @@
         }
       }
     },
-    "/wan-graph-designer/csps/{provider}/vertices": {
+    "/wan-graph-synthesizer/csps/{provider}/vertices": {
       "get": {
         "summary": "A CSP's regions.",
         "parameters": [
@@ -180,7 +180,7 @@
         }
       }
     },
-    "/wan-graph-designer/csps/{provider}": {
+    "/wan-graph-synthesizer/csps/{provider}": {
       "delete": {
         "summary": "Remove a CSP (cascades a rebuild).",
         "parameters": [
@@ -194,7 +194,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers": {
+    "/wan-graph-synthesizer/customers": {
       "get": {
         "summary": "List customers.",
         "responses": { "200": { "description": "The customers, each as an {id, label} entry." } },
@@ -205,7 +205,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/vertices": {
+    "/wan-graph-synthesizer/customers/{customer}/vertices": {
       "get": {
         "summary": "A customer WAN's vertices.",
         "parameters": [
@@ -219,7 +219,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/edges": {
+    "/wan-graph-synthesizer/customers/{customer}/edges": {
       "get": {
         "summary": "A customer WAN's edges.",
         "parameters": [
@@ -233,7 +233,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/core-nodes": {
+    "/wan-graph-synthesizer/customers/{customer}/core-nodes": {
       "get": {
         "summary": "A customer WAN's core tier.",
         "parameters": [
@@ -247,7 +247,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/aggregation-points": {
+    "/wan-graph-synthesizer/customers/{customer}/aggregation-points": {
       "get": {
         "summary": "A customer WAN's aggregation tier.",
         "parameters": [
@@ -261,7 +261,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/access-nodes": {
+    "/wan-graph-synthesizer/customers/{customer}/access-nodes": {
       "get": {
         "summary": "A customer WAN's access tier.",
         "parameters": [
@@ -275,7 +275,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/locations": {
+    "/wan-graph-synthesizer/customers/{customer}/locations": {
       "get": {
         "summary": "A customer's demand locations (input).",
         "parameters": [
@@ -301,7 +301,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/csp-regions": {
+    "/wan-graph-synthesizer/customers/{customer}/csp-regions": {
       "get": {
         "summary": "A customer's selected CSP regions (input).",
         "parameters": [
@@ -327,7 +327,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/off-net": {
+    "/wan-graph-synthesizer/customers/{customer}/off-net": {
       "get": {
         "summary": "A customer's off-net candidate seats (input).",
         "parameters": [
@@ -353,7 +353,7 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/forced-core-nodes": {
+    "/wan-graph-synthesizer/customers/{customer}/forced-core-nodes": {
       "get": {
         "summary": "A customer's forced core nodes (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -367,7 +367,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/forced-aggregation-points": {
+    "/wan-graph-synthesizer/customers/{customer}/forced-aggregation-points": {
       "get": {
         "summary": "A customer's forced aggregation points (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -381,7 +381,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/forced-connections": {
+    "/wan-graph-synthesizer/customers/{customer}/forced-connections": {
       "get": {
         "summary": "A customer's forced connections (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -395,7 +395,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/prohibited-core-nodes": {
+    "/wan-graph-synthesizer/customers/{customer}/prohibited-core-nodes": {
       "get": {
         "summary": "A customer's prohibited core nodes (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -409,7 +409,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/prohibited-aggregation-points": {
+    "/wan-graph-synthesizer/customers/{customer}/prohibited-aggregation-points": {
       "get": {
         "summary": "A customer's prohibited aggregation points (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -423,7 +423,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/prohibited-connections": {
+    "/wan-graph-synthesizer/customers/{customer}/prohibited-connections": {
       "get": {
         "summary": "A customer's prohibited connections (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -437,7 +437,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/core-node-count": {
+    "/wan-graph-synthesizer/customers/{customer}/core-node-count": {
       "get": {
         "summary": "A customer's core node count, min and max (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -451,7 +451,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/core-mesh-degree": {
+    "/wan-graph-synthesizer/customers/{customer}/core-mesh-degree": {
       "get": {
         "summary": "A customer's core mesh degree (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -465,7 +465,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/aggregation-homing-degree": {
+    "/wan-graph-synthesizer/customers/{customer}/aggregation-homing-degree": {
       "get": {
         "summary": "A customer's aggregation homing degree (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -479,7 +479,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/access-homing-degree": {
+    "/wan-graph-synthesizer/customers/{customer}/access-homing-degree": {
       "get": {
         "summary": "A customer's access homing degree (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -493,7 +493,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/knobs": {
+    "/wan-graph-synthesizer/customers/{customer}/knobs": {
       "get": {
         "summary": "A customer's algorithm knobs (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -507,7 +507,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}/label": {
+    "/wan-graph-synthesizer/customers/{customer}/label": {
       "get": {
         "summary": "A customer's display label (input).",
         "parameters": [ { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -521,7 +521,7 @@
         "x-amazon-apigateway-integration": { "uri": "${CustomersHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-designer/customers/{customer}": {
+    "/wan-graph-synthesizer/customers/{customer}": {
       "delete": {
         "summary": "Remove a customer and all its inputs and outputs.",
         "parameters": [
@@ -535,9 +535,9 @@
         }
       }
     },
-    "/wan-graph-designer/customers/{customer}/wan": {
+    "/wan-graph-synthesizer/customers/{customer}/wan": {
       "post": {
-        "summary": "Create (optimize) the customer's WAN.",
+        "summary": "Create (synthesize) the customer's WAN.",
         "parameters": [
           { "name": "customer", "in": "path", "required": true, "schema": { "type": "string" } }
         ],

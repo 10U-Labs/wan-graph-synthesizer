@@ -6,7 +6,7 @@
 # Builds write here; every read endpoint serves from here.
 
 resource "aws_s3_bucket" "store" {
-  bucket = "wan-graph-designer-store-us-east-2"
+  bucket = "wan-graph-synthesizer-store-us-east-2"
 }
 
 resource "aws_s3_bucket_public_access_block" "store" {

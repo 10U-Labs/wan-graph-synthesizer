@@ -1,9 +1,9 @@
-"""WAN create endpoint: run a customer's optimize on Fargate and report its status.
+"""WAN create endpoint: run a customer's synthesize on Fargate and report its status.
 
-    POST /wan-graph-designer/customers/{customer}/wan -> 202; start the create
-    GET  /wan-graph-designer/customers/{customer}/wan -> the WAN's status (422 if failed)
+    POST /wan-graph-synthesizer/customers/{customer}/wan -> 202; start the create
+    GET  /wan-graph-synthesizer/customers/{customer}/wan -> the WAN's status (422 if failed)
 
-The optimize math is slow, so a POST launches a Fargate task (the optimizer container)
+The synthesize math is slow, so a POST launches a Fargate task (the synthesizer container)
 and returns immediately; the task writes the finished WAN and a status marker to S3. A
 GET reads that marker -- 422 when no valid WAN was possible, 404 before the first create.
 Self-contained (stdlib + boto3); single-file Lambda.
@@ -49,7 +49,7 @@ def _status_key(customer: str) -> str:
 
 
 def _start_create(customer: str) -> None:
-    """Mark the WAN as creating and launch the Fargate optimizer task."""
+    """Mark the WAN as creating and launch the Fargate synthesizer task."""
     marker = json.dumps({"status": "creating", "customer": customer}).encode()
     _s3().put_object(
         Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer), Body=marker
@@ -67,7 +67,7 @@ def _start_create(customer: str) -> None:
         },
         overrides={
             "containerOverrides": [
-                {"name": "optimizer", "environment": [
+                {"name": "synthesizer", "environment": [
                     {"name": "CUSTOMER", "value": customer}]}
             ]
         },
