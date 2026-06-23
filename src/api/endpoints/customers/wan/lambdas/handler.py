@@ -3,20 +3,32 @@
     POST /wan-graph-synthesizer/customers/{customer}/wan -> 202; start the create
     GET  /wan-graph-synthesizer/customers/{customer}/wan -> the WAN's status (422 if failed)
 
-The synthesize math is slow, so a POST launches a Fargate task (the synthesizer container)
-and returns immediately; the task writes the finished WAN and a status marker to S3. A
-GET reads that marker -- 422 when no valid WAN was possible, 404 before the first create.
-Self-contained (stdlib + boto3); single-file Lambda.
+The synthesize math is slow, so a POST launches a Fargate Spot task (the synthesizer
+container) and returns immediately; the task writes the finished WAN and a status marker
+to S3. A GET reads that marker -- 422 when no valid WAN was possible, 404 before the
+first create.
+
+The task runs on Fargate Spot for cost. A Spot reclaim kills it mid-build, so the same
+Lambda also receives ECS "task stopped" events from EventBridge: on a Spot interruption
+it relaunches the build for that customer (tracked by an Attempt tag) up to a cap, then
+records a failed status. Self-contained (stdlib + boto3); single-file Lambda.
 """
 
 import json
+import logging
 import os
 from typing import Any
 
 import boto3
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+# How many times a Spot-interrupted build is relaunched before giving up. The build is
+# deterministic and self-contained, so a fresh attempt simply restarts it.
+MAX_ATTEMPTS = 5
 
 
 def _s3() -> Any:
@@ -48,19 +60,16 @@ def _status_key(customer: str) -> str:
     return f"customers/{customer}/wan-status.json"
 
 
-def _start_create(customer: str) -> None:
-    """Mark the WAN as creating and launch the Fargate synthesizer task."""
-    marker = json.dumps({"status": "creating", "customer": customer}).encode()
-    _s3().put_object(
-        Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer), Body=marker
-    )
-    # On-demand Fargate, not Spot: a synthesize can run for minutes, and a Spot
-    # reclaim (SIGKILL) skips the task's failure handler, leaving the WAN stuck
-    # "building" forever. On-demand removes that interruption entirely.
+def _run_synthesizer_task(customer: str, attempt: int) -> None:
+    """Launch the Fargate Spot synthesizer for a customer, tagged for retry.
+
+    The Customer and Attempt tags let the task-stopped handler relaunch this exact
+    build (and count attempts) when Spot reclaims the task mid-run.
+    """
     _ecs().run_task(
         cluster=os.environ["CLUSTER_ARN"],
         taskDefinition=os.environ["TASK_DEFINITION_ARN"],
-        launchType="FARGATE",
+        capacityProviderStrategy=[{"capacityProvider": "FARGATE_SPOT", "weight": 1}],
         networkConfiguration={
             "awsvpcConfiguration": {
                 "subnets": [os.environ["SUBNET_ID"]],
@@ -74,7 +83,20 @@ def _start_create(customer: str) -> None:
                     {"name": "CUSTOMER", "value": customer}]}
             ]
         },
+        tags=[
+            {"key": "Customer", "value": customer},
+            {"key": "Attempt", "value": str(attempt)},
+        ],
     )
+
+
+def _start_create(customer: str) -> None:
+    """Mark the WAN as creating and launch the first synthesizer attempt."""
+    marker = json.dumps({"status": "creating", "customer": customer}).encode()
+    _s3().put_object(
+        Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer), Body=marker
+    )
+    _run_synthesizer_task(customer, 1)
 
 
 def _read_status(customer: str) -> dict[str, Any]:
@@ -91,8 +113,53 @@ def _read_status(customer: str) -> dict[str, Any]:
     return _response(code, status)
 
 
+def _is_spot_interruption(stop_code: str, stopped_reason: str) -> bool:
+    """True if an ECS task stop looks like a Spot reclaim (vs a normal exit)."""
+    text = f"{stop_code} {stopped_reason}".lower()
+    return "spot" in text or "capacity" in text
+
+
+def _task_tags(task_arn: str, cluster_arn: str) -> dict[str, str]:
+    """The tag key/value pairs of a (possibly stopped) ECS task."""
+    response = _ecs().describe_tasks(
+        cluster=cluster_arn, tasks=[task_arn], include=["TAGS"]
+    )
+    tasks = response.get("tasks", [])
+    if not tasks:
+        return {}
+    return {tag["key"]: tag["value"] for tag in tasks[0].get("tags", [])}
+
+
+def _handle_task_stopped(event: dict[str, Any]) -> dict[str, Any]:
+    """Relaunch a Spot-interrupted synthesizer build, or fail it past the cap."""
+    detail = event.get("detail", {})
+    if detail.get("lastStatus") != "STOPPED":
+        return {"handled": False, "reason": "not stopped"}
+    if not _is_spot_interruption(detail.get("stopCode", ""), detail.get("stoppedReason", "")):
+        return {"handled": False, "reason": "not a spot interruption"}
+    tags = _task_tags(detail.get("taskArn", ""), detail.get("clusterArn", ""))
+    customer = tags.get("Customer")
+    if not customer:
+        return {"handled": False, "reason": "not a synthesizer task"}
+    attempt = int(tags.get("Attempt", "1"))
+    if attempt >= MAX_ATTEMPTS:
+        logger.warning("Giving up on %s after %d Spot interruptions", customer, attempt)
+        marker = json.dumps(
+            {"status": "failed", "reason": f"interrupted {attempt} times by Spot reclaims"}
+        ).encode()
+        _s3().put_object(
+            Bucket=os.environ["STORE_BUCKET"], Key=_status_key(customer), Body=marker
+        )
+        return {"handled": True, "retried": False, "customer": customer}
+    logger.info("Relaunching %s after Spot interruption (attempt %d)", customer, attempt + 1)
+    _run_synthesizer_task(customer, attempt + 1)
+    return {"handled": True, "retried": True, "customer": customer}
+
+
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    """Start a WAN create (POST) or report a customer's WAN status (GET)."""
+    """Dispatch: EventBridge task-stopped events, or API Gateway create/status calls."""
+    if event.get("source") == "aws.ecs":
+        return _handle_task_stopped(event)
     customer = (event.get("pathParameters") or {}).get("customer")
     if not customer:
         return _response(404, {"error": "customer required"})

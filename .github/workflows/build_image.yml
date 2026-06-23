@@ -16,17 +16,21 @@ jobs:
         with:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Log in to Amazon ECR
         run: |
           aws ecr get-login-password --region us-east-2 \
             | docker login --username AWS --password-stdin \
               781581267945.dkr.ecr.us-east-2.amazonaws.com
-      - name: Build and push the synthesizer image
+      - name: Build and push the synthesizer image (arm64/Graviton)
         run: |
           REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-synthesizer
-          docker build -f src/api/endpoints/customers/wan/synthesizer/Dockerfile \
-            -t "$REPO:latest" .
-          docker push "$REPO:latest"
+          docker buildx build --platform linux/arm64 \
+            -f src/api/endpoints/customers/wan/synthesizer/Dockerfile \
+            -t "$REPO:latest" --push .
 name: Build synthesizer image
 'on':
   push:

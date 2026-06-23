@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import signal
 from pathlib import Path
 from typing import Any
 
@@ -119,27 +118,6 @@ def _build_wan(client: Any, customer: str) -> dict[str, Any]:
     }
 
 
-def _on_stop_signal(client: Any, customer: str, status_key: str) -> Any:
-    """A SIGTERM handler that records the interruption and exits, never hanging.
-
-    ECS sends SIGTERM (with a grace period) before it kills a task -- on a deploy, a
-    manual stop, or a Spot reclaim. Without this the kill skips ``main``'s
-    except-handler, leaving the status stuck at ``building`` forever. Recording a
-    failed status instead keeps the WAN observable and re-creatable.
-    """
-
-    def _handle(_signum: int, _frame: Any) -> None:
-        logger.warning("Received stop signal; marking %s interrupted", customer)
-        _write_json(
-            client,
-            status_key,
-            {"status": "failed", "reason": "task interrupted before the WAN was built"},
-        )
-        raise SystemExit(1)
-
-    return _handle
-
-
 def main() -> None:
     """Build the customer's WAN and publish it, or record why it failed."""
     # Emit INFO progress to stdout so a long build is observable in CloudWatch
@@ -151,9 +129,9 @@ def main() -> None:
     client = boto3.client("s3", region_name="us-east-2")
     customer = os.environ["CUSTOMER"]
     status_key = f"customers/{customer}/wan-status.json"
-    signal.signal(signal.SIGTERM, _on_stop_signal(client, customer, status_key))
-    # Mark the task as actively building (distinct from the handler's "creating",
-    # which only means a create was requested) so a stuck task is observable.
+    # A Spot reclaim kills this task without warning; leave the status at "building"
+    # so the ecs-task-stopped handler can relaunch it. Only an in-process failure
+    # (below) records "failed".
     _write_json(client, status_key, {"status": "building", "customer": customer})
     logger.info("Build started for %s", customer)
     # Any failure (infeasible design, or an unexpected error) must be recorded as

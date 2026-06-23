@@ -52,15 +52,27 @@ def fake_s3(objects: dict[str, bytes], keys: list[str] | None = None) -> Any:
     )
 
 
-def fake_ecs(started: list[dict[str, Any]]) -> Any:
-    """Build a stand-in ECS client that records each run_task call into ``started``."""
+def fake_ecs(
+    started: list[dict[str, Any]], task_tags: dict[str, str] | None = None
+) -> Any:
+    """Build a stand-in ECS client recording run_task calls and serving task tags.
+
+    ``task_tags`` is the tag map ``describe_tasks`` reports for the (stopped) task;
+    ``None`` simulates a task that no longer exists (no task returned).
+    """
 
     def run_task(**kwargs: Any) -> dict[str, Any]:
         """Record the run_task request and return a canned task arn."""
         started.append(kwargs)
         return {"tasks": [{"taskArn": "arn:aws:ecs:task/fake"}]}
 
-    return SimpleNamespace(run_task=run_task)
+    def describe_tasks(**_kwargs: Any) -> dict[str, Any]:
+        """Return one task carrying ``task_tags``, or no task when ``task_tags`` is None."""
+        if task_tags is None:
+            return {"tasks": []}
+        return {"tasks": [{"tags": [{"key": k, "value": v} for k, v in task_tags.items()]}]}
+
+    return SimpleNamespace(run_task=run_task, describe_tasks=describe_tasks)
 
 
 def fake_lambda(invocations: list[dict[str, Any]]) -> Any:

@@ -132,6 +132,13 @@ resource "aws_ecs_task_definition" "synthesizer" {
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.task.arn
 
+  # ARM64 Graviton: ~20% cheaper than x86 and typically better Fargate Spot
+  # availability. The image is built for linux/arm64 by build_image.yml.
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "ARM64"
+  }
+
   container_definitions = jsonencode([{
     name      = "synthesizer"
     image     = "${aws_ecr_repository.synthesizer.repository_url}:latest"

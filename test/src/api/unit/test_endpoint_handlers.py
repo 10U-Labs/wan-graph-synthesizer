@@ -455,10 +455,33 @@ def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
     )
 
 
-def _wan_clients(objects: dict[str, bytes], started: list[dict[str, Any]]) -> Any:
+def _wan_clients(
+    objects: dict[str, bytes],
+    started: list[dict[str, Any]],
+    task_tags: dict[str, str] | None = None,
+) -> Any:
     """A boto3.client side effect handing back the S3 and ECS fakes by service."""
-    fakes = {"s3": fake_s3(objects), "ecs": fake_ecs(started)}
+    fakes = {"s3": fake_s3(objects), "ecs": fake_ecs(started, task_tags)}
     return lambda service, **_kwargs: fakes[service]
+
+
+def _stopped_event(
+    stop_code: str = "SpotInterruption",
+    reason: str = "Your Spot Task was interrupted.",
+    last_status: str = "STOPPED",
+) -> dict[str, Any]:
+    """An EventBridge ECS Task State Change event for the synthesizer cluster."""
+    return {
+        "source": "aws.ecs",
+        "detail-type": "ECS Task State Change",
+        "detail": {
+            "lastStatus": last_status,
+            "stopCode": stop_code,
+            "stoppedReason": reason,
+            "taskArn": "arn:aws:ecs:task/abc",
+            "clusterArn": "arn:cluster",
+        },
+    }
 
 
 def test_wan_post_returns_202(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -480,14 +503,88 @@ def test_wan_post_launches_one_task(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(started) == 1
 
 
-def test_wan_post_launches_on_demand_not_spot(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The create runs on on-demand Fargate so a Spot reclaim can't strand it building."""
+def test_wan_post_launches_on_spot(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The create runs on Fargate Spot for cost (interruptions are recovered)."""
     module = _wan(monkeypatch)
     started: list[dict[str, Any]] = []
     event = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
     with patch("boto3.client", side_effect=_wan_clients({}, started)):
         module.lambda_handler(event, None)
-    assert started[0]["launchType"] == "FARGATE"
+    assert started[0]["capacityProviderStrategy"][0]["capacityProvider"] == "FARGATE_SPOT"
+
+
+def test_wan_post_tags_task_for_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The first attempt is tagged Customer + Attempt 1 so a reclaim can be relaunched."""
+    module = _wan(monkeypatch)
+    started: list[dict[str, Any]] = []
+    event = {"httpMethod": "POST", "pathParameters": {"customer": "f-35"}}
+    with patch("boto3.client", side_effect=_wan_clients({}, started)):
+        module.lambda_handler(event, None)
+    assert started[0]["tags"] == [
+        {"key": "Customer", "value": "f-35"},
+        {"key": "Attempt", "value": "1"},
+    ]
+
+
+def test_spot_interruption_relaunches_with_next_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A Spot-interrupted build relaunches for the same customer at the next attempt."""
+    module = _wan(monkeypatch)
+    started: list[dict[str, Any]] = []
+    tags = {"Customer": "f-35", "Attempt": "1"}
+    with patch("boto3.client", side_effect=_wan_clients({}, started, tags)):
+        module.lambda_handler(_stopped_event(), None)
+    assert started[0]["tags"] == [
+        {"key": "Customer", "value": "f-35"},
+        {"key": "Attempt", "value": "2"},
+    ]
+
+
+def test_spot_interruption_past_cap_marks_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Past the attempt cap the build is recorded failed instead of relaunched again."""
+    module = _wan(monkeypatch)
+    objects: dict[str, bytes] = {}
+    started: list[dict[str, Any]] = []
+    tags = {"Customer": "f-35", "Attempt": str(module.MAX_ATTEMPTS)}
+    with patch("boto3.client", side_effect=_wan_clients(objects, started, tags)):
+        module.lambda_handler(_stopped_event(), None)
+    assert json.loads(objects["customers/f-35/wan-status.json"])["status"] == "failed"
+
+
+def test_non_spot_stop_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A normal (non-Spot) task stop is not relaunched."""
+    module = _wan(monkeypatch)
+    started: list[dict[str, Any]] = []
+    event = _stopped_event(stop_code="EssentialContainerExited", reason="container exited")
+    with patch("boto3.client", side_effect=_wan_clients({}, started, {"Customer": "f-35"})):
+        module.lambda_handler(event, None)
+    assert not started
+
+
+def test_running_task_event_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-STOPPED task-state event is ignored."""
+    module = _wan(monkeypatch)
+    started: list[dict[str, Any]] = []
+    with patch("boto3.client", side_effect=_wan_clients({}, started, {"Customer": "f-35"})):
+        result = module.lambda_handler(_stopped_event(last_status="RUNNING"), None)
+    assert result["handled"] is False
+
+
+def test_stop_of_unknown_task_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A Spot stop of a task with no Customer tag (or already gone) is not relaunched."""
+    module = _wan(monkeypatch)
+    started: list[dict[str, Any]] = []
+    with patch("boto3.client", side_effect=_wan_clients({}, started, None)):
+        module.lambda_handler(_stopped_event(), None)
+    assert not started
+
+
+def test_stop_without_customer_tag_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A Spot stop of a tagged-but-not-ours task is not relaunched."""
+    module = _wan(monkeypatch)
+    started: list[dict[str, Any]] = []
+    with patch("boto3.client", side_effect=_wan_clients({}, started, {"Other": "x"})):
+        module.lambda_handler(_stopped_event(), None)
+    assert not started
 
 
 def test_wan_post_marks_status_creating(monkeypatch: pytest.MonkeyPatch) -> None:

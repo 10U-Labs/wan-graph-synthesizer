@@ -31,13 +31,19 @@ resource "aws_iam_role_policy" "dispatch" {
       },
       {
         Effect   = "Allow"
-        Action   = ["ecs:RunTask"]
+        Action   = ["ecs:RunTask", "ecs:TagResource"]
         Resource = ["${aws_ecs_task_definition.synthesizer.arn_without_revision}:*"]
       },
       {
         Effect   = "Allow"
         Action   = ["iam:PassRole"]
         Resource = [aws_iam_role.task.arn, aws_iam_role.execution.arn]
+      },
+      {
+        # Read a stopped task's tags (Customer/Attempt) to relaunch on Spot reclaim.
+        Effect   = "Allow"
+        Action   = ["ecs:DescribeTasks"]
+        Resource = ["*"]
       }
     ]
   })
