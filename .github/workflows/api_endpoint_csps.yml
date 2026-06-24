@@ -1,0 +1,121 @@
+---
+concurrency:
+  cancel-in-progress: false
+  group: api-endpoint-csps-${{ github.ref }}
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    name: Deploy csps endpoint
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: |
+          pip install \
+            assert-no-inline-directives \
+            assert-no-linter-config-files \
+            assert-one-assert-per-pytest \
+            boto3 boto3-stubs mypy pylint pytest pytest-cov pyyaml \
+            types-PyYAML yamllint
+          npm install -g jscpd
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/api_endpoint_csps.yml
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/lib/python ${{ github.workspace }}/src ${{ github.workspace }}/test
+      - name: Assert no linter config files
+        run: >-
+          assert-no-linter-config-files
+          --linters pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}
+      - name: Assert one assert per pytest
+        run: >-
+          assert-one-assert-per-pytest
+          --verbose
+          ${{ github.workspace }}/test
+      - name: Run pylint on source
+        run: >-
+          PYTHONPATH=lib/python:src
+          python3 -m pylint
+          src/api/endpoints/csps/lambdas/handler.py
+          --fail-on=C,R,W --fail-under=10.0
+      - name: Run mypy on source
+        run: >-
+          MYPYPATH=lib/python:src
+          python3 -m mypy --strict
+          --explicit-package-bases src/api/endpoints/csps/lambdas/handler.py
+      - name: Detect copy-paste in source
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console
+          lib/python/ src/api/endpoints/csps/lambdas/
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src
+          python3 -m pytest
+          test/api/endpoints/csps/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=src/api/endpoints/csps/lambdas
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+      - name: Run pylint on tests
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan
+          python3 -m pylint --recursive=y
+          test/
+          --fail-on=C,R,W --fail-under=10.0
+      - name: Run mypy on tests
+        run: >-
+          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan
+          python3 -m mypy --strict
+          --explicit-package-bases test/
+      - name: Detect copy-paste in tests
+        run: >-
+          jscpd --pattern "test/**/*.py" --threshold 0 --reporters console
+          --ignore "test/**/pre_deployment/unit/test_handler.py" test/
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+      - name: Validate the stack
+        run: |
+          tofu -chdir=src/api/endpoints/csps init -backend=false -input=false
+          tofu -chdir=src/api/endpoints/csps validate
+      - name: Apply the stack
+        run: |
+          tofu -chdir=src/api/endpoints/csps init -input=false
+          tofu -chdir=src/api/endpoints/csps apply -auto-approve -input=false
+name: API endpoint csps
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/api/endpoints/csps/**
+      - test/api/endpoints/csps/**
+      - lib/python/**
+      - lib/opentofu/common/**
+      - .github/workflows/api_endpoint_csps.yml
+  workflow_dispatch: {}

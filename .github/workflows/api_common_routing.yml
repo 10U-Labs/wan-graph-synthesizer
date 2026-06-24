@@ -1,0 +1,53 @@
+---
+concurrency:
+  cancel-in-progress: false
+  group: api-common-routing-${{ github.ref }}
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    name: Deploy API common routing
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/api_common_routing.yml
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+      - name: Validate the stack
+        run: |
+          tofu -chdir=src/api/common/routing init -backend=false -input=false
+          tofu -chdir=src/api/common/routing validate
+      - name: Apply the stack
+        run: |
+          tofu -chdir=src/api/common/routing init -input=false
+          tofu -chdir=src/api/common/routing apply -auto-approve -input=false
+name: API common routing
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/api/common/routing/**
+      - src/www/api/openapi.json
+      - lib/opentofu/common/**
+      - .github/workflows/api_common_routing.yml
+  workflow_dispatch: {}

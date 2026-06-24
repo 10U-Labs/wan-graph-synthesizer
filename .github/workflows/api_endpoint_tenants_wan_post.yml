@@ -1,0 +1,132 @@
+---
+concurrency:
+  cancel-in-progress: false
+  group: api-endpoint-tenants-wan-post-${{ github.ref }}
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    name: POST tenants/wan (build the synthesizer image)
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: |
+          pip install \
+            assert-no-inline-directives \
+            assert-no-linter-config-files \
+            assert-one-assert-per-pytest \
+            boto3 boto3-stubs mypy pylint pytest pytest-cov pyyaml \
+            types-PyYAML yamllint
+          npm install -g jscpd
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/api_endpoint_tenants_wan_post.yml
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/lib/python ${{ github.workspace }}/src ${{ github.workspace }}/test
+      - name: Assert no linter config files
+        run: >-
+          assert-no-linter-config-files
+          --linters pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}
+      - name: Assert one assert per pytest
+        run: >-
+          assert-one-assert-per-pytest
+          --verbose
+          ${{ github.workspace }}/test
+      - name: Run pylint on source
+        run: >-
+          PYTHONPATH=lib/python:src:src/api/endpoints/tenants/wan
+          python3 -m pylint
+          src/api/endpoints/tenants/wan/synthesizer/ src/api/endpoints/tenants/wan/entrypoint.py
+          --fail-on=C,R,W --fail-under=10.0
+      - name: Run mypy on source
+        run: >-
+          MYPYPATH=lib/python:src:src/api/endpoints/tenants/wan
+          python3 -m mypy --strict
+          --explicit-package-bases src/api/endpoints/tenants/wan/synthesizer/ src/api/endpoints/tenants/wan/entrypoint.py
+      - name: Detect copy-paste in source
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console
+          lib/python/ src/api/endpoints/tenants/wan/synthesizer/
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
+          python3 -m pytest
+          test/api/endpoints/tenants/wan/
+          --ignore=test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=src/api/endpoints/tenants/wan
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+      - name: Run integration tests
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
+          python3 -m pytest
+          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration/
+          --verbose --pythonwarnings=error
+      - name: Run pylint on tests
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan
+          python3 -m pylint --recursive=y
+          test/
+          --fail-on=C,R,W --fail-under=10.0
+      - name: Run mypy on tests
+        run: >-
+          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan
+          python3 -m mypy --strict
+          --explicit-package-bases test/
+      - name: Detect copy-paste in tests
+        run: >-
+          jscpd --pattern "test/**/*.py" --threshold 0 --reporters console
+          --ignore "test/**/pre_deployment/unit/test_handler.py" test/
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region us-east-2 \
+            | docker login --username AWS --password-stdin \
+              781581267945.dkr.ecr.us-east-2.amazonaws.com
+      - name: Build and push the synthesizer image (arm64/Graviton)
+        run: |
+          REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-synthesizer
+          docker buildx build --platform linux/arm64 \
+            -f src/api/endpoints/tenants/wan/Dockerfile \
+            -t "$REPO:latest" --push .
+name: POST tenants/wan (synthesizer image)
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/api/endpoints/tenants/wan/Dockerfile
+      - src/api/endpoints/tenants/wan/entrypoint.py
+      - src/api/endpoints/tenants/wan/synthesizer/**
+      - test/api/endpoints/tenants/wan/**
+      - lib/python/**
+      - .github/workflows/api_endpoint_tenants_wan_post.yml
+  workflow_dispatch: {}
