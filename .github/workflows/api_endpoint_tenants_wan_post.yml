@@ -5,7 +5,7 @@ concurrency:
 jobs:
   post-deployment-integration-test:
     if: github.ref == 'refs/heads/main'
-    name: Post-deployment integration tests
+    name: post-deployment-integration-test
     needs: reconcile
     permissions:
       contents: read
@@ -28,7 +28,7 @@ jobs:
           --import-mode=importlib --confcutdir=test
           --verbose
   pre-deployment-integration-test:
-    name: Pre-deployment integration tests
+    name: pre-deployment-integration-test
     needs: unit-test
     runs-on: ubuntu-24.04
     steps:
@@ -43,7 +43,7 @@ jobs:
           --verbose --pythonwarnings=error
   reconcile:
     if: github.ref == 'refs/heads/main'
-    name: Reconcile the synthesizer image in ECR
+    name: reconcile
     needs: pre-deployment-integration-test
     permissions:
       contents: read
@@ -72,7 +72,7 @@ jobs:
             -f src/api/endpoints/tenants/wan/Dockerfile \
             -t "$REPO:latest" --push .
   static-analysis:
-    name: Static analysis
+    name: static-analysis
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -171,7 +171,7 @@ jobs:
           --ignore "test/**/pre_deployment/unit/test_handler.py"
           test/api/endpoints/tenants/wan/synthesizer
   unit-test:
-    name: Unit tests
+    name: unit-test
     needs: static-analysis
     runs-on: ubuntu-24.04
     steps:
