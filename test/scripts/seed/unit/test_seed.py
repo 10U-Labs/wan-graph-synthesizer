@@ -207,7 +207,7 @@ def test_push_carriers_puts_the_vertices_path(
     """push_carriers PUTs the carrier vertices."""
     _one_carrier(tmp_path, monkeypatch)
     push_carriers("http://api")
-    assert "carriers/lumen/vertices" in [call[1] for call in put_recorder.calls]
+    assert "carriers/lumen/vertices" in put_recorder.nth(1)
 
 
 def test_push_carriers_puts_the_edges_path(
@@ -216,7 +216,7 @@ def test_push_carriers_puts_the_edges_path(
     """push_carriers PUTs the carrier edges."""
     _one_carrier(tmp_path, monkeypatch)
     push_carriers("http://api")
-    assert "carriers/lumen/edges" in [call[1] for call in put_recorder.calls]
+    assert "carriers/lumen/edges" in put_recorder.nth(1)
 
 
 def test_push_providers_pushes_provider_regions(
@@ -225,7 +225,7 @@ def test_push_providers_pushes_provider_regions(
     """push_providers PUTs the combined regions for a provider that has files."""
     _one_provider(tmp_path, monkeypatch)
     push_providers("http://api")
-    assert "providers" in [call[1] for call in put_recorder.calls]
+    assert "providers" in put_recorder.nth(1)
 
 
 def test_push_providers_skips_providers_without_files(
@@ -234,7 +234,7 @@ def test_push_providers_skips_providers_without_files(
     """push_providers does not PUT for providers that have no region files."""
     _one_provider(tmp_path, monkeypatch)
     push_providers("http://api")
-    assert "providers" not in [call[1] for call in put_recorder.calls]
+    assert "providers" not in put_recorder.nth(1)
 
 
 def test_push_tenants_puts_the_label_resource(
@@ -243,7 +243,7 @@ def test_push_tenants_puts_the_label_resource(
     """push_tenants PUTs the tenant label."""
     _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
     push_tenants("http://api")
-    assert "tenants/f-35/label" in [call[1] for call in put_recorder.calls]
+    assert "tenants/f-35/label" in put_recorder.nth(1)
 
 
 def test_push_tenants_reads_off_net_when_present(
@@ -252,7 +252,7 @@ def test_push_tenants_reads_off_net_when_present(
     """push_tenants sends the off-net rows when an off_net file is given."""
     _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
     push_tenants("http://api")
-    bodies = {call[1]: call[2] for call in put_recorder.calls}
+    bodies = dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
     assert bodies["tenants/f-35/off-net"] == [{"city": "Edge", "state": "TX"}]
 
 
@@ -263,7 +263,7 @@ def test_push_tenants_uses_empty_off_net_when_absent(
     _one_tenant(tmp_path, monkeypatch, _TENANT_YML.replace(
         "  off_net: offnet/off.csv\n", ""))
     push_tenants("http://api")
-    bodies = {call[1]: call[2] for call in put_recorder.calls}
+    bodies = dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
     assert bodies["tenants/f-35/off-net"] == []
 
 

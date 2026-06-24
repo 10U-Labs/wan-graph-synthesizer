@@ -60,6 +60,10 @@ class CallRecorder:
         """Record one call's positional arguments."""
         self.calls.append(args)
 
+    def nth(self, index: int) -> list[Any]:
+        """The *index*-th positional argument of every recorded call."""
+        return [call[index] for call in self.calls]
+
 
 class _RecordingHandler(socketserver.StreamRequestHandler):
     """Read one HTTP request, record it, and reply with the server's status."""
