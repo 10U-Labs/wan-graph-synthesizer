@@ -1,7 +1,7 @@
 ---
 concurrency:
   cancel-in-progress: false
-  group: deploy-www
+  group: www-spa
 jobs:
   deploy:
     if: github.ref == 'refs/heads/main'
