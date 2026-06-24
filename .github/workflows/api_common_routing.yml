@@ -3,10 +3,64 @@ concurrency:
   cancel-in-progress: false
   group: api-common-routing-${{ github.ref }}
 jobs:
+  post-deployment-integration-test:
+    if: github.ref == 'refs/heads/main'
+    name: post-deployment-integration-test
+    needs: reconcile
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Install tools
+        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8'
+      - name: Run post-deployment integration tests against live AWS
+        run: >-
+          PYTHONPATH=.:lib/python
+          python3 -m pytest
+          test/api/common/routing/post_deployment/integration/
+          --import-mode=importlib --confcutdir=test
+          --verbose
+  pre-deployment-integration-test:
+    if: github.ref == 'refs/heads/main'
+    name: pre-deployment-integration-test
+    needs: unit-test
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+      - name: Install tools
+        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8'
+      - name: Initialize the stack for state inspection
+        run: tofu -chdir=src/api/common/routing init -input=false
+      - name: Run pre-deployment integration tests
+        run: >-
+          PYTHONPATH=.:lib/python
+          python3 -m pytest
+          test/api/common/routing/pre_deployment/integration/
+          --import-mode=importlib --confcutdir=test
+          --verbose
   reconcile:
     if: github.ref == 'refs/heads/main'
-    name: Reconcile API common routing
-    needs: static-analysis
+    name: reconcile
+    needs: pre-deployment-integration-test
     permissions:
       contents: read
       id-token: write
@@ -27,12 +81,19 @@ jobs:
           tofu -chdir=src/api/common/routing init -input=false
           tofu -chdir=src/api/common/routing apply -auto-approve -input=false
   static-analysis:
-    name: Static analysis
+    name: static-analysis
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install yamllint
+        run: |
+          pip install \
+            assert-no-inline-directives \
+            assert-no-linter-config-files \
+            assert-one-assert-per-pytest \
+            boto3 boto3-stubs botocore-stubs mypy pylint pytest \
+            'python-hcl2<8' yamllint
+          npm install -g jscpd
       - name: Lint YAML
         run: |
           EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
@@ -44,7 +105,62 @@ jobs:
           yamllint --strict \
             --config-data \
             "{extends: default, rules: {$RULES}}" \
-            .github/workflows/api_common_routing.yml
+            .github/workflows/api_common_storage.yml
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/lib/python ${{ github.workspace }}/test/api/common/routing
+      - name: Assert no linter config files
+        run: >-
+          assert-no-linter-config-files
+          --linters pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}
+      - name: Assert one assert per pytest
+        run: >-
+          assert-one-assert-per-pytest
+          --verbose
+          ${{ github.workspace }}/test/api/common/routing
+      - name: Run pylint on source
+        run: >-
+          PYTHONPATH=lib/python
+          python3 -m pylint
+          lib/python/test_terraform_config
+          lib/python/test_terraform_drift
+          lib/python/test_fixtures
+          --fail-on=C,R,W --fail-under=10.0
+      - name: Run mypy on source
+        run: >-
+          MYPYPATH=lib/python
+          python3 -m mypy --strict --explicit-package-bases
+          --ignore-missing-imports
+          lib/python/test_terraform_config
+          lib/python/test_terraform_drift
+          lib/python/test_fixtures
+      - name: Detect copy-paste in source
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console
+          lib/python/test_terraform_config
+          lib/python/test_terraform_drift
+          lib/python/test_fixtures
+      - name: Run pylint on tests
+        run: >-
+          PYTHONPATH=.:lib/python
+          python3 -m pylint --recursive=y
+          test/api/common/routing/
+          --fail-on=C,R,W --fail-under=10.0
+      - name: Run mypy on tests
+        run: >-
+          MYPYPATH=lib/python
+          python3 -m mypy --strict --explicit-package-bases
+          --ignore-missing-imports
+          test/api/common/routing/
+      - name: Detect copy-paste in tests
+        run: >-
+          jscpd --pattern "test/api/common/routing/**/*.py" --threshold 0
+          --reporters console test/api/common/routing/
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v1
         with:
@@ -53,6 +169,21 @@ jobs:
         run: |
           tofu -chdir=src/api/common/routing init -backend=false -input=false
           tofu -chdir=src/api/common/routing validate
+  unit-test:
+    name: unit-test
+    needs: static-analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pytest 'python-hcl2<8'
+      - name: Run unit tests
+        run: >-
+          PYTHONPATH=.:lib/python
+          python3 -m pytest
+          test/api/common/routing/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
 name: api_common_routing
 on:
   push:
@@ -61,5 +192,7 @@ on:
       - src/api/common/routing/**
       - src/www/api/openapi.json
       - lib/opentofu/common/**
+      - lib/python/**
+      - test/api/common/routing/**
       - .github/workflows/api_common_routing.yml
   workflow_dispatch: {}
