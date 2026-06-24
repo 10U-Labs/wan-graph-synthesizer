@@ -111,7 +111,9 @@ def push_csps(api: str) -> None:
 def push_tenants(api: str) -> None:
     """Push each tenant's inputs: sites, CSP regions, off-net, and every config resource."""
     for path in sorted(ETC.glob("*.yml")):
-        config = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        config = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if not config:
+            continue
         tid = _slug(path.stem)
         inputs = config.get("inputs", {})
         locations = _mapping_rows(inputs.get("locations", {}))
