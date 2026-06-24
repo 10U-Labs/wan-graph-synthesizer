@@ -57,8 +57,10 @@ def _build_substrate(client: Any) -> dict[str, int]:
         rows = json.loads(client.get_object(Bucket=bucket, Key=item["Key"])["Body"].read())
         tagged = [{"carrier": carrier, **row} for row in rows]
         (vertices if name == "vertices.json" else edges).extend(tagged)
-    client.put_object(Bucket=bucket, Key=_MERGE_KEYS["vertices"], Body=json.dumps(vertices).encode())
-    client.put_object(Bucket=bucket, Key=_MERGE_KEYS["edges"], Body=json.dumps(edges).encode())
+    client.put_object(
+        Bucket=bucket, Key=_MERGE_KEYS["vertices"], Body=json.dumps(vertices).encode())
+    client.put_object(
+        Bucket=bucket, Key=_MERGE_KEYS["edges"], Body=json.dumps(edges).encode())
     return {"vertices": len(vertices), "edges": len(edges)}
 
 
