@@ -64,9 +64,8 @@ class CallRecorder:
 class _RecordingHandler(socketserver.StreamRequestHandler):
     """Read one HTTP request, record it, and reply with the server's status."""
 
-    def handle(self) -> None:
-        """Parse the request line, headers, and body; record then respond."""
-        server = cast("_RecordingServer", self.server)
+    def read_request(self) -> tuple[str, str, str]:
+        """Read and return the (method, path, body) of one HTTP request."""
         request_line = self.rfile.readline().decode("ascii", "replace")
         parts = request_line.split()
         method, path = (parts[0], parts[1]) if len(parts) >= 2 else ("", "")
@@ -78,8 +77,12 @@ class _RecordingHandler(socketserver.StreamRequestHandler):
             name, _, value = header.partition(":")
             if name.strip().lower() == "content-length":
                 length = int(value.strip() or "0")
-        body = self.rfile.read(length).decode("utf-8", "replace")
-        server.records.append((method, path, body))
+        return method, path, self.rfile.read(length).decode("utf-8", "replace")
+
+    def handle(self) -> None:
+        """Record one request and reply with the server's configured status."""
+        server = cast("_RecordingServer", self.server)
+        server.records.append(self.read_request())
         reason = "OK" if server.status < 400 else "Error"
         self.wfile.write(
             f"HTTP/1.1 {server.status} {reason}\r\n"
@@ -110,8 +113,8 @@ class StubApi:
     @property
     def url(self) -> str:
         """The base URL clients should target, e.g. ``http://127.0.0.1:54321``."""
-        port = self._server.server_address[1]
-        return f"http://127.0.0.1:{port}"
+        address = cast("tuple[str, int]", self._server.server_address)
+        return f"http://127.0.0.1:{address[1]}"
 
     @property
     def records(self) -> list[tuple[str, str, str]]:
