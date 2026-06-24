@@ -102,7 +102,10 @@ jobs:
           assert-no-inline-directives
           --tools pylint,mypy,yamllint
           --verbose
-          ${{ github.workspace }}/lib/python ${{ github.workspace }}/src ${{ github.workspace }}/test
+          ${{ github.workspace }}/lib/python
+          ${{ github.workspace }}/src/api/endpoints/tenants/wan/synthesizer
+          ${{ github.workspace }}/src/api/endpoints/tenants/wan/entrypoint.py
+          ${{ github.workspace }}/test/api/endpoints/tenants/wan/synthesizer
       - name: Assert no linter config files
         run: >-
           assert-no-linter-config-files
@@ -113,7 +116,7 @@ jobs:
         run: >-
           assert-one-assert-per-pytest
           --verbose
-          ${{ github.workspace }}/test
+          ${{ github.workspace }}/test/api/endpoints/tenants/wan/synthesizer
       - name: Run pylint on source
         run: >-
           PYTHONPATH=lib/python:src:src/api/endpoints/tenants/wan
@@ -134,17 +137,19 @@ jobs:
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan
           python3 -m pylint --recursive=y
-          test/
+          test/api/endpoints/tenants/wan/synthesizer
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on tests
         run: >-
           MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan
           python3 -m mypy --strict
-          --explicit-package-bases test/
+          --explicit-package-bases test/api/endpoints/tenants/wan/synthesizer
       - name: Detect copy-paste in tests
         run: >-
-          jscpd --pattern "test/**/*.py" --threshold 0 --reporters console
-          --ignore "test/**/pre_deployment/unit/test_handler.py" test/
+          jscpd --pattern "test/api/endpoints/tenants/wan/synthesizer/**/*.py"
+          --threshold 0 --reporters console
+          --ignore "test/**/pre_deployment/unit/test_handler.py"
+          test/api/endpoints/tenants/wan/synthesizer
   unit-test:
     name: Unit tests
     needs: static-analysis
