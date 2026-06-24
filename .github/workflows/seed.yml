@@ -7,7 +7,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs:
       - static-analysis
-      - test-seed
+      - unit-test
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -60,7 +60,7 @@ jobs:
         run: >-
           MYPYPATH=lib/python:scripts python3 -m mypy --strict
           --explicit-package-bases scripts/seed.py
-  test-seed:
+  unit-test:
     needs: static-analysis
     runs-on: ubuntu-24.04
     steps:

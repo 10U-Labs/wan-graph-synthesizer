@@ -3,12 +3,52 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-tenants-wan-post-${{ github.ref }}
 jobs:
-  deploy:
+  pre-deployment-integration-test:
+    name: Pre-deployment integration tests
+    needs: unit-test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install boto3 boto3-stubs pytest pyyaml
+      - name: Run pre-deployment integration tests
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
+          python3 -m pytest
+          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration/
+          --verbose --pythonwarnings=error
+  reconcile:
     if: github.ref == 'refs/heads/main'
-    name: POST tenants/wan (build the synthesizer image)
+    name: Reconcile the synthesizer image in ECR
+    needs: pre-deployment-integration-test
     permissions:
       contents: read
       id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region us-east-2 \
+            | docker login --username AWS --password-stdin \
+              781581267945.dkr.ecr.us-east-2.amazonaws.com
+      - name: Build and push the synthesizer image (arm64/Graviton)
+        run: |
+          REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-synthesizer
+          docker buildx build --platform linux/arm64 \
+            -f src/api/endpoints/tenants/wan/Dockerfile \
+            -t "$REPO:latest" --push .
+  static-analysis:
+    name: Static analysis
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -65,24 +105,6 @@ jobs:
         run: >-
           jscpd --pattern "**/*.py" --threshold 0 --reporters console
           lib/python/ src/api/endpoints/tenants/wan/synthesizer/
-      - name: Run unit tests with a 100% coverage gate
-        run: >-
-          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
-          python3 -m pytest
-          test/api/endpoints/tenants/wan/
-          --ignore=test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration
-          --import-mode=importlib --confcutdir=test
-          --verbose --pythonwarnings=error
-          --cov=src/api/endpoints/tenants/wan
-          --cov-branch
-          --cov-report=term-missing
-          --cov-fail-under=100
-      - name: Run integration tests
-        run: >-
-          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
-          python3 -m pytest
-          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration/
-          --verbose --pythonwarnings=error
       - name: Run pylint on tests
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan
@@ -98,26 +120,26 @@ jobs:
         run: >-
           jscpd --pattern "test/**/*.py" --threshold 0 --reporters console
           --ignore "test/**/pre_deployment/unit/test_handler.py" test/
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: us-east-2
-          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Log in to Amazon ECR
-        run: |
-          aws ecr get-login-password --region us-east-2 \
-            | docker login --username AWS --password-stdin \
-              781581267945.dkr.ecr.us-east-2.amazonaws.com
-      - name: Build and push the synthesizer image (arm64/Graviton)
-        run: |
-          REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-synthesizer
-          docker buildx build --platform linux/arm64 \
-            -f src/api/endpoints/tenants/wan/Dockerfile \
-            -t "$REPO:latest" --push .
+  unit-test:
+    name: Unit tests
+    needs: static-analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install boto3 boto3-stubs pytest pytest-cov pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
+          python3 -m pytest
+          test/api/endpoints/tenants/wan/
+          --ignore=test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=src/api/endpoints/tenants/wan
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
 name: POST tenants/wan (synthesizer image)
 on:
   push:
