@@ -1,18 +1,14 @@
-"""Boto3 fixtures for the routing post-deployment integration tier.
+"""Derived fixtures for the routing post-deployment integration tier.
 
-These run against live AWS after the gateway is reconciled. ``api_id`` resolves
-the product's REST API by name so the existence/config/wiring layers can inspect
-it without hardcoding a generated id.
+``api_id`` resolves the product's REST API by name (the ``apigateway_client``
+fixture comes from the parent post-deployment conftest) so the existence,
+configuration, and wiring layers inspect it without hardcoding a generated id.
 """
 from __future__ import annotations
 
 from typing import Any
 
 import pytest
-
-from test_fixtures.aws import apigateway_client
-
-__all__ = ["apigateway_client"]
 
 API_NAME = "wan-graph-synthesizer"
 
