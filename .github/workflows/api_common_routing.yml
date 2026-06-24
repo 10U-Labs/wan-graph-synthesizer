@@ -53,7 +53,7 @@ jobs:
         run: |
           tofu -chdir=src/api/common/routing init -backend=false -input=false
           tofu -chdir=src/api/common/routing validate
-name: API common routing
+name: api_common_routing
 on:
   push:
     branches: [main]

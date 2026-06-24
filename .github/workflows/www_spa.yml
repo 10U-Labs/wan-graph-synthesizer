@@ -27,7 +27,7 @@ jobs:
               '10ulabs.com')].Id | [0]" --output text)
           aws cloudfront create-invalidation --distribution-id "$DIST" \
             --paths "/wan-graph-synthesizer/*"
-name: Deploy website
+name: www_spa
 'on':
   push:
     branches: [main]

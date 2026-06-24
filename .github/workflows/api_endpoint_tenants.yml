@@ -126,7 +126,7 @@ jobs:
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
-name: API endpoint tenants
+name: api_endpoint_tenants
 on:
   push:
     branches: [main]

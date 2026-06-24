@@ -140,7 +140,7 @@ jobs:
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
-name: POST tenants/wan (synthesizer image)
+name: api_endpoint_tenants_wan_post
 on:
   push:
     branches: [main]

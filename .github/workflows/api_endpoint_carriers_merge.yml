@@ -126,7 +126,7 @@ jobs:
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
-name: API endpoint carriers/merge
+name: api_endpoint_carriers_merge
 on:
   push:
     branches: [main]
