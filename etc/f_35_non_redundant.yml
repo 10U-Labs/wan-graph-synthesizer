@@ -4,19 +4,15 @@
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 access_homing_degree: 1
 aggregation_homing_degree: 1
-core_mesh_degree: 3
+core_mesh_degree: 2
 core_node_count:
   max: 3
   min: 3
 forced_aggregation_points:
   - Dulles, VA
-  - Los Angeles, CA
-  - Tallahassee, FL
 forced_connections: []
 forced_core_nodes:
   - Dulles, VA
-  - Los Angeles, CA
-  - Tallahassee, FL
 inputs:
   csps:
     AWS:
