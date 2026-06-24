@@ -3,6 +3,30 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-tenants-wan-post-${{ github.ref }}
 jobs:
+  post-deployment-integration-test:
+    if: github.ref == 'refs/heads/main'
+    name: Post-deployment integration tests
+    needs: reconcile
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Install tools
+        run: pip install boto3 boto3-stubs pytest
+      - name: Run post-deployment integration tests against live AWS
+        run: >-
+          PYTHONPATH=.:lib/python
+          python3 -m pytest
+          test/api/endpoints/tenants/wan/synthesizer/post_deployment/integration/
+          --import-mode=importlib --confcutdir=test
+          --verbose
   pre-deployment-integration-test:
     name: Pre-deployment integration tests
     needs: unit-test
@@ -127,13 +151,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install boto3 boto3-stubs pytest pytest-cov pyyaml
+        run: pip install boto3 boto3-stubs pytest pytest-cov 'python-hcl2<8' pyyaml
       - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
           python3 -m pytest
           test/api/endpoints/tenants/wan/
+          --ignore=test/api/endpoints/tenants/wan/pre_deployment/integration
+          --ignore=test/api/endpoints/tenants/wan/post_deployment
           --ignore=test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration
+          --ignore=test/api/endpoints/tenants/wan/synthesizer/post_deployment/integration
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
           --cov=src/api/endpoints/tenants/wan
