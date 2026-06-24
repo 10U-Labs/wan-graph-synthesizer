@@ -159,7 +159,8 @@ def _put(client: Any, tenant: str, event: dict[str, Any]) -> dict[str, Any]:
         if error:
             return _response(400, {"error": error})
     key = f"tenants/{tenant}/{collection}.json"
-    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(document).encode())
+    client.put_object(
+        Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(document).encode())
     _cascade(tenant)
     return _response(200, {"updated": f"{tenant}/{collection}"})
 
