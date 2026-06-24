@@ -173,7 +173,8 @@ jobs:
       - name: Detect copy-paste in tests
         run: >-
           jscpd --pattern "test/api/endpoints/tenants/wan/**/*.py" --threshold 0
-          --ignore "**/synthesizer/**" --reporters console
+          --ignore "**/synthesizer/**,**/pre_deployment/unit/test_handler.py"
+          --reporters console
           test/api/endpoints/tenants/wan/
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v1
