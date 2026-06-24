@@ -22,7 +22,7 @@ jobs:
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
           python3 -m pytest
-          test/src/api/endpoints/tenants/wan/synthesizer/integration/
+          test/api/endpoints/tenants/wan/synthesizer/integration/
           --verbose --pythonwarnings=error
   static-analysis:
     runs-on: ubuntu-24.04
@@ -142,7 +142,7 @@ jobs:
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
           python3 -m pytest
-          test/src/api/endpoints/tenants/wan/synthesizer/unit/ test/src/api/unit/
+          test/api/endpoints/tenants/wan/synthesizer/unit/ test/api/unit/
           --verbose --pythonwarnings=error
           --cov=synthesizer
           --cov=api
