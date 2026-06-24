@@ -24,3 +24,11 @@ def put_recorder(monkeypatch: pytest.MonkeyPatch) -> CallRecorder:
     recorder = CallRecorder()
     monkeypatch.setattr(seed, "_put", recorder)
     return recorder
+
+
+@pytest.fixture
+def post_recorder(monkeypatch: pytest.MonkeyPatch) -> CallRecorder:
+    """Replace seed._post with a recorder of its (api, path) calls."""
+    recorder = CallRecorder()
+    monkeypatch.setattr(seed, "_post", recorder)
+    return recorder

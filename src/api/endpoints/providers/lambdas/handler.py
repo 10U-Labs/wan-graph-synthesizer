@@ -5,9 +5,9 @@
     PUT    /wan-graph-synthesizer/providers/{provider}/vertices  -> replace its regions
     DELETE /wan-graph-synthesizer/providers/{provider}           -> remove the provider
 
-A provider graph is regions only (no fiber), so it exposes vertices but no edges. provider
-regions are not part of the substrate, so a write does not rebuild the merge; it
-re-creates every tenant's WAN (a tenant may select any provider's regions).
+A provider graph is regions only (no fiber), so it exposes vertices but no edges. A write
+only stores the regions; building a tenant's WAN is a separate operation
+(``POST /tenants/{t}/wan``), so a write endpoint never triggers a build.
 Self-contained (stdlib + boto3); deployed as a single-file Lambda.
 """
 
@@ -40,13 +40,6 @@ def _s3() -> Any:
     return _CLIENTS["s3"]
 
 
-def _lambda() -> Any:
-    """Return the cached Lambda client, creating it on first use."""
-    if "lambda" not in _CLIENTS:
-        _CLIENTS["lambda"] = boto3.client("lambda", region_name="us-east-2")
-    return _CLIENTS["lambda"]
-
-
 def clear_clients() -> None:
     """Drop cached clients (tests reset between cases)."""
     _CLIENTS.clear()
@@ -64,30 +57,6 @@ def _provider_ids(client: Any) -> list[str]:
         item["Key"].removeprefix("providers/").split("/", 1)[0]
         for item in listing.get("Contents", [])
     })
-
-
-def _tenant_ids(client: Any) -> list[str]:
-    """List the tenants (objects under tenants/.../label.json, the marker doc)."""
-    listing = client.list_objects_v2(
-        Bucket=os.environ["STORE_BUCKET"], Prefix="tenants/"
-    )
-    return [
-        item["Key"].removeprefix("tenants/").removesuffix("/label.json")
-        for item in listing.get("Contents", [])
-        if item["Key"].endswith("/label.json")
-    ]
-
-
-def _cascade(client: Any) -> None:
-    """(Re)create every tenant's WAN (any tenant may use this provider)."""
-    for tenant in _tenant_ids(client):
-        _lambda().invoke(
-            FunctionName=os.environ["WAN_FUNCTION"],
-            InvocationType="Event",
-            Payload=json.dumps(
-                {"httpMethod": "POST", "pathParameters": {"tenant": tenant}}
-            ).encode(),
-        )
 
 
 def _read_regions(client: Any, provider: str) -> Any:
@@ -114,7 +83,7 @@ def _get(client: Any, provider: str | None, event: dict[str, Any]) -> dict[str, 
 
 
 def _put(client: Any, provider: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace a provider's regions (its vertices file), then cascade the rebuild."""
+    """Replace a provider's regions (its vertices file). Rebuilds are a separate POST."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection != "vertices":
         return _response(404, {"error": collection})
@@ -124,7 +93,6 @@ def _put(client: Any, provider: str, event: dict[str, Any]) -> dict[str, Any]:
         return _response(400, {"error": error})
     key = f"providers/{provider}/vertices.json"
     client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(rows).encode())
-    _cascade(client)
     return _response(200, {"updated": f"{provider}/{collection}"})
 
 
@@ -141,6 +109,5 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         client.delete_object(
             Bucket=os.environ["STORE_BUCKET"], Key=f"providers/{provider}/vertices.json"
         )
-        _cascade(client)
         return _response(200, {"deleted": provider})
     return _put(client, provider, event)

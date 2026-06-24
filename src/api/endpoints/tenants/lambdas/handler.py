@@ -8,8 +8,9 @@
     DELETE /wan-graph-synthesizer/tenants/{c}                          -> remove the tenant
 
 The computed collections come from the published ``wan.json``; each operator input is
-its own document (the synthesizer reads them all). A PUT persists the input and
-re-creates this tenant's WAN. Self-contained (stdlib + boto3); single-file Lambda.
+its own document (the synthesizer reads them all). A PUT persists the input and nothing
+else: building the WAN is a separate operation (``POST /tenants/{c}/wan``), so a write
+endpoint never triggers a build. Self-contained (stdlib + boto3); single-file Lambda.
 """
 
 import json
@@ -70,13 +71,6 @@ def _s3() -> Any:
     return _CLIENTS["s3"]
 
 
-def _lambda() -> Any:
-    """Return the cached Lambda client, creating it on first use."""
-    if "lambda" not in _CLIENTS:
-        _CLIENTS["lambda"] = boto3.client("lambda", region_name="us-east-2")
-    return _CLIENTS["lambda"]
-
-
 def clear_clients() -> None:
     """Drop cached clients (tests reset between cases)."""
     _CLIENTS.clear()
@@ -124,17 +118,6 @@ def _serve(client: Any, tenant: str, key: str, field: str | None = None) -> dict
     return _response(200, doc if field is None else doc[field])
 
 
-def _cascade(tenant: str) -> None:
-    """Re-create this tenant's WAN after an input change."""
-    _lambda().invoke(
-        FunctionName=os.environ["WAN_FUNCTION"],
-        InvocationType="Event",
-        Payload=json.dumps(
-            {"httpMethod": "POST", "pathParameters": {"tenant": tenant}}
-        ).encode(),
-    )
-
-
 def _get(client: Any, tenant: str | None, event: dict[str, Any]) -> dict[str, Any]:
     """Serve the tenants collection, a WAN collection, or an input document."""
     if not tenant:
@@ -148,7 +131,7 @@ def _get(client: Any, tenant: str | None, event: dict[str, Any]) -> dict[str, An
 
 
 def _put(client: Any, tenant: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace one of a tenant's input documents, then re-create its WAN."""
+    """Replace one of a tenant's input documents. Building the WAN is a separate POST."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in _INPUTS:
         return _response(404, {"error": collection})
@@ -161,7 +144,6 @@ def _put(client: Any, tenant: str, event: dict[str, Any]) -> dict[str, Any]:
     key = f"tenants/{tenant}/{collection}.json"
     client.put_object(
         Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(document).encode())
-    _cascade(tenant)
     return _response(200, {"updated": f"{tenant}/{collection}"})
 
 

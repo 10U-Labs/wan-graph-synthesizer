@@ -32,11 +32,6 @@ resource "aws_iam_role_policy" "store_access" {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = [data.terraform_remote_state.storage.outputs.bucket_arn]
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["lambda:InvokeFunction"]
-        Resource = [local.wan_function_arn]
       }
     ]
   })

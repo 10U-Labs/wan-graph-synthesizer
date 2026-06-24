@@ -13,9 +13,12 @@ from seed import (
     _carrier_names,
     _degree_doc,
     _mapping_rows,
+    _post,
     _put,
     _rows,
     _slug,
+    build_substrate,
+    build_tenants,
     main,
     push_carriers,
     push_providers,
@@ -202,6 +205,31 @@ def test_put_prints_the_response_status(capsys: pytest.CaptureFixture[str]) -> N
     assert "-> 200" in capsys.readouterr().out
 
 
+def test_post_uses_the_post_method(urlopen_recorder: UrlopenRecorder) -> None:
+    """_post issues an HTTP POST."""
+    _post("http://api", "carriers/merge")
+    assert urlopen_recorder.requests[0].method == "POST"
+
+
+def test_post_targets_the_api_path(urlopen_recorder: UrlopenRecorder) -> None:
+    """_post targets the api base joined with the operation path."""
+    _post("http://api", "tenants/f-35/wan")
+    assert urlopen_recorder.requests[0].full_url == "http://api/tenants/f-35/wan"
+
+
+def test_post_sends_no_body(urlopen_recorder: UrlopenRecorder) -> None:
+    """_post sends an empty body (the build operation takes none)."""
+    _post("http://api", "carriers/merge")
+    assert urlopen_recorder.requests[0].data == b""
+
+
+@pytest.mark.usefixtures("urlopen_recorder")
+def test_post_prints_the_response_status(capsys: pytest.CaptureFixture[str]) -> None:
+    """_post prints the response status."""
+    _post("http://api", "carriers/merge")
+    assert "-> 200" in capsys.readouterr().out
+
+
 def test_push_carriers_puts_the_vertices_path(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
@@ -277,14 +305,48 @@ def test_push_tenants_skips_empty_config_files(
     assert put_recorder.calls == []
 
 
+@pytest.mark.usefixtures("put_recorder")
+def test_push_tenants_returns_the_tenant_ids(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """push_tenants returns the id of every tenant it pushed."""
+    _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
+    assert push_tenants("http://api") == ["f-35"]
+
+
+def test_build_substrate_posts_the_merge(post_recorder: CallRecorder) -> None:
+    """build_substrate POSTs the carrier merge."""
+    build_substrate("http://api")
+    assert post_recorder.calls == [("http://api", "carriers/merge")]
+
+
+def test_build_tenants_posts_a_wan_build_for_each(post_recorder: CallRecorder) -> None:
+    """build_tenants POSTs a WAN build for every tenant id."""
+    build_tenants("http://api", ["f-35", "joint"])
+    assert post_recorder.nth(1) == ["tenants/f-35/wan", "tenants/joint/wan"]
+
+
+def test_build_tenants_posts_nothing_without_tenants(post_recorder: CallRecorder) -> None:
+    """build_tenants makes no request when there are no tenants."""
+    build_tenants("http://api", [])
+    assert post_recorder.calls == []
+
+
 def _run_main(
         monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> list[tuple[str, str]]:
-    """Run main() with stubbed push_* and *argv*; return the (name, api) calls."""
+    """Run main() with every step stubbed and *argv*; return the (name, api) calls."""
     calls: list[tuple[str, str]] = []
+
+    def _push_tenants(api: str) -> list[str]:
+        calls.append(("tenants", api))
+        return ["t"]
+
     monkeypatch.setattr(sys, "argv", argv)
     monkeypatch.setattr(seed, "push_carriers", lambda api: calls.append(("carriers", api)))
+    monkeypatch.setattr(seed, "build_substrate", lambda api: calls.append(("merge", api)))
     monkeypatch.setattr(seed, "push_providers", lambda api: calls.append(("providers", api)))
-    monkeypatch.setattr(seed, "push_tenants", lambda api: calls.append(("tenants", api)))
+    monkeypatch.setattr(seed, "push_tenants", _push_tenants)
+    monkeypatch.setattr(
+        seed, "build_tenants", lambda api, _tenants: calls.append(("build", api)))
     main()
     return calls
 
@@ -299,8 +361,8 @@ def test_main_uses_the_cli_argument_when_given(monkeypatch: pytest.MonkeyPatch) 
     assert _run_main(monkeypatch, ["seed", "http://custom"])[0][1] == "http://custom"
 
 
-def test_main_seeds_carriers_then_providers_then_tenants(
+def test_main_seeds_inputs_then_triggers_builds_in_order(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """main seeds carriers, then providers, then tenants, in order."""
+    """main pushes carriers, rebuilds the substrate, pushes providers and tenants, then builds."""
     assert [name for name, _ in _run_main(monkeypatch, ["seed"])] == [
-        "carriers", "providers", "tenants"]
+        "carriers", "merge", "providers", "tenants", "build"]

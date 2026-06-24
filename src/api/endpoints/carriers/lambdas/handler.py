@@ -7,10 +7,10 @@
     PUT    /wan-graph-synthesizer/carriers/{carrier}/edges     -> replace its fiber
     DELETE /wan-graph-synthesizer/carriers/{carrier}           -> remove the carrier
 
-A write persists to the store and then auto-rebuilds the dependents (the carrier
-merge is the shared substrate, so every tenant's WAN depends on it): it invokes
-the merge create and then a WAN create for each tenant. Self-contained (stdlib +
-boto3); deployed as a single-file Lambda.
+A write persists to the store and nothing else. Rebuilding the dependents (the carrier
+merge substrate and each tenant's WAN) is done by explicit operations the caller invokes
+(``POST /carriers/merge`` and ``POST /tenants/{t}/wan``), so a write endpoint never
+triggers a build. Self-contained (stdlib + boto3); deployed as a single-file Lambda.
 """
 
 import json
@@ -43,13 +43,6 @@ def _s3() -> Any:
     return _CLIENTS["s3"]
 
 
-def _lambda() -> Any:
-    """Return the cached Lambda client, creating it on first use."""
-    if "lambda" not in _CLIENTS:
-        _CLIENTS["lambda"] = boto3.client("lambda", region_name="us-east-2")
-    return _CLIENTS["lambda"]
-
-
 def clear_clients() -> None:
     """Drop cached clients (tests reset between cases)."""
     _CLIENTS.clear()
@@ -68,35 +61,6 @@ def _carrier_ids(client: Any) -> list[str]:
         for item in listing.get("Contents", [])
     }
     return sorted(ids - {"merge"})
-
-
-def _tenant_ids(client: Any) -> list[str]:
-    """List the tenants (objects under tenants/.../label.json, the marker doc)."""
-    listing = client.list_objects_v2(
-        Bucket=os.environ["STORE_BUCKET"], Prefix="tenants/"
-    )
-    return [
-        item["Key"].removeprefix("tenants/").removesuffix("/label.json")
-        for item in listing.get("Contents", [])
-        if item["Key"].endswith("/label.json")
-    ]
-
-
-def _invoke(function: str, payload: dict[str, Any]) -> None:
-    """Fire a downstream create Lambda asynchronously (fire-and-forget)."""
-    _lambda().invoke(
-        FunctionName=function, InvocationType="Event", Payload=json.dumps(payload).encode()
-    )
-
-
-def _cascade(client: Any) -> None:
-    """Rebuild the substrate, then (re)create every tenant's WAN."""
-    _invoke(os.environ["MERGE_FUNCTION"], {"httpMethod": "POST"})
-    for tenant in _tenant_ids(client):
-        _invoke(
-            os.environ["WAN_FUNCTION"],
-            {"httpMethod": "POST", "pathParameters": {"tenant": tenant}},
-        )
 
 
 def _read_collection(client: Any, carrier: str, collection: str) -> Any:
@@ -123,7 +87,7 @@ def _get(client: Any, carrier: str | None, event: dict[str, Any]) -> dict[str, A
 
 
 def _put(client: Any, carrier: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace one of a carrier's collections (its own file), then cascade the rebuild."""
+    """Replace one of a carrier's collections (its own file). Rebuilds are a separate POST."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in ("vertices", "edges"):
         return _response(404, {"error": collection})
@@ -133,7 +97,6 @@ def _put(client: Any, carrier: str, event: dict[str, Any]) -> dict[str, Any]:
         return _response(400, {"error": error})
     key = f"carriers/{carrier}/{collection}.json"
     client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(rows).encode())
-    _cascade(client)
     return _response(200, {"updated": f"{carrier}/{collection}"})
 
 
@@ -150,6 +113,5 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         bucket = os.environ["STORE_BUCKET"]
         for collection in ("vertices", "edges"):
             client.delete_object(Bucket=bucket, Key=f"carriers/{carrier}/{collection}.json")
-        _cascade(client)
         return _response(200, {"deleted": carrier})
     return _put(client, carrier, event)

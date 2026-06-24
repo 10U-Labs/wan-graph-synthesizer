@@ -39,7 +39,7 @@ def test_lambda_entrypoint(carriers_main: dict[str, object]) -> None:
     assert handler["handler"] == "handler.lambda_handler"
 
 
-@pytest.mark.parametrize("variable", ["STORE_BUCKET", "MERGE_FUNCTION", "WAN_FUNCTION"])
+@pytest.mark.parametrize("variable", ["STORE_BUCKET"])
 def test_lambda_environment_declares_variable(
         carriers_main: dict[str, object], variable: str) -> None:
     """The handler Lambda is given each environment variable it reads."""

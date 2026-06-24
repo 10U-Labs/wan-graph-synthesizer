@@ -36,8 +36,6 @@ _WRITER: dict[str, Any] = {
     "param": "provider",
     "key": "providers",
     "id": "aws",
-    "env": {"WAN_FUNCTION": "wan-fn"},
-    "invokes": 2,
     "valid": [{"name": "r", "municipality": "Denver", "state": "CO",
                "latitude": 1.0, "longitude": 2.0}],
 }

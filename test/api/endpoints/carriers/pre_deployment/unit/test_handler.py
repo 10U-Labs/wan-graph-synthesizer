@@ -46,8 +46,6 @@ _WRITER: dict[str, Any] = {
     "param": "carrier",
     "key": "carriers/lumen/vertices.json",
     "id": "lumen",
-    "env": {"MERGE_FUNCTION": "merge-fn", "WAN_FUNCTION": "wan-fn"},
-    "invokes": 3,
     "valid": [{"municipality": "Denver", "state": "CO", "latitude": 1.0, "longitude": 2.0}],
 }
 
@@ -66,7 +64,7 @@ class TestCarriersWriter(WriterContract):
 
 def test_carrier_edges_accept_the_endpoint_columns(monkeypatch: pytest.MonkeyPatch) -> None:
     """A carrier edges PUT with the four endpoint columns is stored."""
-    module = load_handler("carriers", monkeypatch, MERGE_FUNCTION="merge-fn", WAN_FUNCTION="wan-fn")
+    module = load_handler("carriers", monkeypatch)
     objects: dict[str, bytes] = {}
     row = {"a_municipality": "A", "a_state": "X", "z_municipality": "B", "z_state": "Y"}
     with patch("boto3.client", side_effect=write_clients(objects, [])):
@@ -76,7 +74,7 @@ def test_carrier_edges_accept_the_endpoint_columns(monkeypatch: pytest.MonkeyPat
 
 def test_carrier_put_leaves_the_other_collection_file(monkeypatch: pytest.MonkeyPatch) -> None:
     """A carrier vertices PUT writes only the vertices file, leaving edges untouched."""
-    module = load_handler("carriers", monkeypatch, MERGE_FUNCTION="merge-fn", WAN_FUNCTION="wan-fn")
+    module = load_handler("carriers", monkeypatch)
     objects = {"carriers/lumen/edges.json": json.dumps([{"e": 1}]).encode()}
     event = write_event(_WRITER, "vertices", _WRITER["valid"])
     with patch("boto3.client", side_effect=write_clients(objects, [])):

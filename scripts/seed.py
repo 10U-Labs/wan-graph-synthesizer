@@ -6,8 +6,9 @@ endpoint. What each place *is* comes from the endpoint it is sent to, so nothing
 classified or shaped here; carrier connections (``A_/Z_`` city+state) are forwarded as
 they stand and resolved server-side. Carriers push their points and connections; providers
 push their regions; each tenant pushes its sites, provider-region selection, off-net
-candidates, and per-concern config resources. A write triggers the API's auto-create
-cascade (substrate merge + WAN builds). The HTTPS PUT endpoint is the only write path.
+candidates, and per-concern config resources. Writes only store inputs -- they trigger
+nothing -- so the seed then explicitly rebuilds the shared substrate
+(``POST carriers/merge``) and each tenant's WAN (``POST tenants/{t}/wan``).
 
 Usage: python scripts/seed.py [api_base_url]
 """
@@ -64,16 +65,26 @@ def _slug(stem: str) -> str:
     return stem.replace("_", "-")
 
 
-def _put(api: str, path: str, body: Any) -> None:
-    """PUT a JSON body to an API collection, raising on a non-2xx response."""
+def _send(api: str, path: str, method: str, body: bytes) -> None:
+    """Send a JSON request to the API, raising on a non-2xx response."""
     request = urllib.request.Request(
         f"{api}/{path}",
-        data=json.dumps(body).encode(),
-        method="PUT",
+        data=body,
+        method=method,
         headers={"Content-Type": "application/json"},
     )
     with urllib.request.urlopen(request, timeout=60) as response:
-        print(f"  PUT /{path} -> {response.status}")
+        print(f"  {method} /{path} -> {response.status}")
+
+
+def _put(api: str, path: str, body: Any) -> None:
+    """PUT a JSON body to an API collection, raising on a non-2xx response."""
+    _send(api, path, "PUT", json.dumps(body).encode())
+
+
+def _post(api: str, path: str) -> None:
+    """POST to a build operation (no body), raising on a non-2xx response."""
+    _send(api, path, "POST", b"")
 
 
 def _degree_doc(value: Any) -> dict[str, Any]:
@@ -108,13 +119,15 @@ def push_providers(api: str) -> None:
         _put(api, f"providers/{provider}/vertices", regions)
 
 
-def push_tenants(api: str) -> None:
-    """Push each tenant's inputs: sites, provider regions, off-net, and every config resource."""
+def push_tenants(api: str) -> list[str]:
+    """Push each tenant's inputs and return the tenant ids (for the build step)."""
+    tenant_ids: list[str] = []
     for path in sorted(ETC.glob("*.yml")):
         config = yaml.safe_load(path.read_text(encoding="utf-8"))
         if not config:
             continue
         tid = _slug(path.stem)
+        tenant_ids.append(tid)
         inputs = config.get("inputs", {})
         locations = _mapping_rows(inputs.get("locations", {}))
         regions = _mapping_rows(inputs.get("providers", {}))
@@ -143,14 +156,30 @@ def push_tenants(api: str) -> None:
              _degree_doc(config["access_homing_degree"]))
         _put(api, f"tenants/{tid}/knobs", config.get("knobs", {}))
         _put(api, f"tenants/{tid}/label", {"label": config.get("label", "")})
+    return tenant_ids
+
+
+def build_substrate(api: str) -> None:
+    """Rebuild the shared carrier substrate from the pushed carriers."""
+    print("merge: rebuilding substrate")
+    _post(api, "carriers/merge")
+
+
+def build_tenants(api: str, tenants: list[str]) -> None:
+    """Trigger one WAN build per tenant (the only build trigger)."""
+    for tid in tenants:
+        print(f"tenant {tid}: building WAN")
+        _post(api, f"tenants/{tid}/wan")
 
 
 def main() -> None:
-    """Seed carriers, providers, then tenants (whose writes cascade to WAN builds)."""
+    """Seed inputs, then explicitly rebuild the substrate and each tenant's WAN."""
     api = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_API
     push_carriers(api)
+    build_substrate(api)
     push_providers(api)
-    push_tenants(api)
+    tenants = push_tenants(api)
+    build_tenants(api, tenants)
 
 
 if __name__ == "__main__":  # pragma: no cover

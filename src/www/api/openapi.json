@@ -31,7 +31,7 @@
         }
       },
       "put": {
-        "summary": "Replace a carrier's PoPs (cascades a rebuild).",
+        "summary": "Replace a carrier's PoPs (stores only).",
         "parameters": [
           { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -57,7 +57,7 @@
         }
       },
       "put": {
-        "summary": "Replace a carrier's fiber (cascades a rebuild).",
+        "summary": "Replace a carrier's fiber (stores only).",
         "parameters": [
           { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -71,7 +71,7 @@
     },
     "/wan-graph-synthesizer/carriers/{carrier}": {
       "delete": {
-        "summary": "Remove a carrier (cascades a rebuild).",
+        "summary": "Remove a carrier.",
         "parameters": [
           { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -168,7 +168,7 @@
         }
       },
       "put": {
-        "summary": "Replace a provider's regions (cascades a rebuild).",
+        "summary": "Replace a provider's regions (stores only).",
         "parameters": [
           { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -182,7 +182,7 @@
     },
     "/wan-graph-synthesizer/providers/{provider}": {
       "delete": {
-        "summary": "Remove a provider (cascades a rebuild).",
+        "summary": "Remove a provider.",
         "parameters": [
           { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -289,7 +289,7 @@
         }
       },
       "put": {
-        "summary": "Replace a tenant's demand locations (re-creates the WAN).",
+        "summary": "Replace a tenant's demand locations (stores only).",
         "parameters": [
           { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -315,7 +315,7 @@
         }
       },
       "put": {
-        "summary": "Replace a tenant's provider regions (re-creates the WAN).",
+        "summary": "Replace a tenant's provider regions (stores only).",
         "parameters": [
           { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -341,7 +341,7 @@
         }
       },
       "put": {
-        "summary": "Replace a tenant's off-net seats (re-creates the WAN).",
+        "summary": "Replace a tenant's off-net seats (stores only).",
         "parameters": [
           { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
@@ -361,7 +361,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's forced core nodes (re-creates the WAN).",
+        "summary": "Replace a tenant's forced core nodes (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The forced core nodes were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -375,7 +375,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's forced aggregation points (re-creates the WAN).",
+        "summary": "Replace a tenant's forced aggregation points (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The forced aggregation points were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -389,7 +389,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's forced connections (re-creates the WAN).",
+        "summary": "Replace a tenant's forced connections (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The forced connections were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -403,7 +403,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's prohibited core nodes (re-creates the WAN).",
+        "summary": "Replace a tenant's prohibited core nodes (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The prohibited core nodes were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -417,7 +417,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's prohibited aggregation points (re-creates the WAN).",
+        "summary": "Replace a tenant's prohibited aggregation points (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The prohibited aggregation points were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -431,7 +431,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's prohibited connections (re-creates the WAN).",
+        "summary": "Replace a tenant's prohibited connections (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The prohibited connections were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -445,7 +445,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's core node count (re-creates the WAN).",
+        "summary": "Replace a tenant's core node count (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The core node count was replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -459,7 +459,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's core mesh degree (re-creates the WAN).",
+        "summary": "Replace a tenant's core mesh degree (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The core mesh degree was replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -473,7 +473,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's aggregation homing degree (re-creates the WAN).",
+        "summary": "Replace a tenant's aggregation homing degree (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The aggregation homing degree was replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -487,7 +487,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's access homing degree (re-creates the WAN).",
+        "summary": "Replace a tenant's access homing degree (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The access homing degree was replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -501,7 +501,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's algorithm knobs (re-creates the WAN).",
+        "summary": "Replace a tenant's algorithm knobs (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The knobs were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
@@ -515,7 +515,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's display label (re-creates the WAN).",
+        "summary": "Replace a tenant's display label (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "responses": { "200": { "description": "The label was replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }

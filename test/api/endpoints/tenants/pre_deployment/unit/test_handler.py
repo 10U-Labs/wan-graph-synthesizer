@@ -50,8 +50,8 @@ class TestTenantsReader(ReaderContract):
 
 
 def _tenant(monkeypatch: pytest.MonkeyPatch) -> Any:
-    """Load the tenants handler with the WAN-create function configured."""
-    return load_handler("tenants", monkeypatch, WAN_FUNCTION="wan-fn")
+    """Load the tenants handler."""
+    return load_handler("tenants", monkeypatch)
 
 
 def _tenant_put(collection: str, body: Any) -> dict[str, Any]:
@@ -158,14 +158,13 @@ def test_tenant_put_404_for_unknown_collection(monkeypatch: pytest.MonkeyPatch) 
     assert response["statusCode"] == 404
 
 
-def test_tenant_put_recreates_the_wan(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Each input PUT re-creates the WAN (two PUTs reuse the cached client)."""
+def test_tenant_put_does_not_trigger_a_build(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT only stores the input; building is a separate POST, so nothing is invoked."""
     module = _tenant(monkeypatch)
     invocations: list[dict[str, Any]] = []
     with patch("boto3.client", side_effect=write_clients({}, invocations)):
         module.lambda_handler(_tenant_put("forced-core-nodes", []), None)
-        module.lambda_handler(_tenant_put("forced-core-nodes", []), None)
-    assert len(invocations) == 2
+    assert invocations == []
 
 
 def test_tenant_delete_removes_every_object(monkeypatch: pytest.MonkeyPatch) -> None:

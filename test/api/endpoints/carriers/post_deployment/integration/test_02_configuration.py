@@ -33,7 +33,7 @@ def test_entrypoint(lambda_config: dict[str, Any]) -> None:
     assert lambda_config["Handler"] == "handler.lambda_handler"
 
 
-@pytest.mark.parametrize("variable", ["STORE_BUCKET", "MERGE_FUNCTION", "WAN_FUNCTION"])
+@pytest.mark.parametrize("variable", ["STORE_BUCKET"])
 def test_environment_variable_is_set(lambda_config: dict[str, Any], variable: str) -> None:
     """The live Lambda carries each environment variable it reads."""
     assert variable in lambda_config["Environment"]["Variables"]

@@ -18,9 +18,6 @@ module "common" {
 locals {
   function_name = module.common.lambda_handler_names.tenants
   role_name     = "wan-graph-synthesizer-tenants-lambda"
-
-  lambda_arn_prefix = "arn:aws:lambda:${module.common.aws_region}:${module.common.aws_account_id}:function"
-  wan_function_arn  = "${local.lambda_arn_prefix}:${module.common.lambda_handler_names.wan}"
 }
 
 data "terraform_remote_state" "routing" {
@@ -64,7 +61,6 @@ resource "aws_lambda_function" "handler" {
   environment {
     variables = {
       STORE_BUCKET = data.terraform_remote_state.storage.outputs.bucket_name
-      WAN_FUNCTION = module.common.lambda_handler_names.wan
     }
   }
 

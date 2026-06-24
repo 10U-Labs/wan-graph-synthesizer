@@ -21,15 +21,19 @@ from test_http_doubles import UrlopenRecorder
 _API = "http://stub"
 
 
-def _put_templates() -> set[str]:
-    """The PUT path templates declared in the OpenAPI spec, minus the prefix."""
+def _write_templates() -> set[str]:
+    """The PUT/POST path templates declared in the OpenAPI spec, minus the prefix.
+
+    Seed both stores inputs (PUT) and triggers builds (POST ``carriers/merge`` and
+    ``tenants/{t}/wan``), so a declared write is either method.
+    """
     spec = json.loads(
         (REPO_ROOT / "src/www/api/openapi.json").read_text(encoding="utf-8"))
     prefix = "/wan-graph-synthesizer/"
     return {
         path[len(prefix):]
         for path, operations in spec["paths"].items()
-        if "put" in operations and path.startswith(prefix)
+        if ("put" in operations or "post" in operations) and path.startswith(prefix)
     }
 
 
@@ -48,8 +52,8 @@ def _seed(recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> list[st
 
 def test_every_written_path_is_declared_in_openapi(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Every resource seed writes is a declared PUT in the OpenAPI spec."""
-    templates = _put_templates()
+    """Every path seed sends (PUT input or POST build) is declared in the OpenAPI spec."""
+    templates = _write_templates()
     undeclared = [
         path for path in _seed(urlopen_recorder, monkeypatch)
         if not any(_matches(path, template) for template in templates)

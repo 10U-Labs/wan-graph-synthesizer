@@ -99,14 +99,14 @@ class ReaderContract:
 class WriterContract:
     """The write-side tests shared by the carrier and provider endpoints.
 
-    A subclass sets ``CFG`` to the endpoint's key, id, cascade env and a valid row.
+    A subclass sets ``CFG`` to the endpoint's key, id and a valid row.
     """
 
     CFG: dict[str, Any]
 
     def _writer(self, monkeypatch: pytest.MonkeyPatch) -> Any:
-        """Load the endpoint's handler with its cascade env configured."""
-        return load_handler(self.CFG["endpoint"], monkeypatch, **self.CFG["env"])
+        """Load the endpoint's handler."""
+        return load_handler(self.CFG["endpoint"], monkeypatch)
 
     def test_write_persists_the_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A PUT into an empty store stores the new vertices."""
@@ -142,14 +142,14 @@ class WriterContract:
             )
         assert response["statusCode"] == 400
 
-    def test_write_cascades_to_dependents(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A PUT (re)creates the dependent graphs for every tenant."""
+    def test_write_does_not_trigger_a_build(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A PUT only stores the collection; building is a separate POST, so nothing is invoked."""
         module = self._writer(monkeypatch)
         invocations: list[dict[str, Any]] = []
         store = {"tenants/a/label.json": b"{}", "tenants/b/label.json": b"{}"}
         with patch("boto3.client", side_effect=write_clients(store, invocations)):
             module.lambda_handler(write_event(self.CFG, "vertices", []), None)
-        assert len(invocations) == self.CFG["invokes"]
+        assert invocations == []
 
     def test_write_404_for_unknown_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A PUT to an unknown sub-collection is a 404."""
@@ -159,7 +159,7 @@ class WriterContract:
         assert response["statusCode"] == 404
 
     def test_delete_removes_the_object(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A DELETE removes the resource object (and cascades a rebuild)."""
+        """A DELETE removes the resource object."""
         module = self._writer(monkeypatch)
         objects = {self.CFG["key"]: b"{}"}
         event = {"httpMethod": "DELETE", "pathParameters": {self.CFG["param"]: self.CFG["id"]}}

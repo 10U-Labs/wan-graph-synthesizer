@@ -1,9 +1,9 @@
 # The WAN-create worker: a Fargate Spot task that runs the whole pipeline
 # (home -> constrain -> synthesize -> validate) in one process and writes the
 # tenant's WAN JSON to the S3 store, or records a 422 reason. The dispatching
-# Lambda starts this task (ecs:RunTask) on a tenant create and on the carrier
-# cascade. Async + Spot because a create can exceed API Gateway's ~29s cap and
-# is fully retryable.
+# Lambda starts this task (ecs:RunTask) on a WAN create (POST /tenants/{t}/wan),
+# the only build trigger. Async + Spot because a create can exceed API Gateway's
+# ~29s cap and is fully retryable.
 
 locals {
   store_bucket = data.terraform_remote_state.storage.outputs.bucket_name
