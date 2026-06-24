@@ -129,13 +129,12 @@ def main() -> None:
     # (below) records "failed".
     _write_json(client, status_key, {"status": "building", "tenant": tenant})
     logger.info("Build started for %s", tenant)
-    # An infeasible design (the pipeline raises ValueError) is recorded as the
-    # WAN's status rather than crashing the task and leaving it stuck "creating".
-    # Genuinely unexpected errors are left to propagate so ECS marks the task
-    # failed and the Spot-recovery handler / operators can see them.
+    # Any failure (an infeasible design raises ValueError, but an S3 read error or
+    # an unforeseen bug can raise anything) must be recorded as the WAN's status
+    # rather than crash the task and leave the tenant stuck "building" forever.
     try:
         wan = _build_wan(client, tenant)
-    except ValueError as exc:
+    except Exception as exc:
         logger.warning("Build failed for %s: %s", tenant, exc)
         _write_json(client, status_key, {"status": "failed", "reason": str(exc)})
         return
