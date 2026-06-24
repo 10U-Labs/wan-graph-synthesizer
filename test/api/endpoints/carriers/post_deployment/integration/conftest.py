@@ -6,7 +6,7 @@ the existence, configuration, and wiring layers share a single API call.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -14,4 +14,5 @@ import pytest
 @pytest.fixture(name="lambda_config")
 def lambda_config_fixture(lambda_client: Any, function_name: str) -> dict[str, Any]:
     """Return the live carriers Lambda's configuration block."""
-    return lambda_client.get_function(FunctionName=function_name)["Configuration"]
+    response = lambda_client.get_function(FunctionName=function_name)
+    return cast("dict[str, Any]", response["Configuration"])
