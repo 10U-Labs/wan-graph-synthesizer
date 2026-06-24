@@ -3,7 +3,7 @@
 Centralized so unit, integration, and e2e tests reuse identical inputs without
 duplicating data (which copy-paste detection would otherwise flag). Designs are driven
 from in-memory ``Vertex``/``PhysicalEdge`` objects -- production reads the stored simple
-rows via :mod:`wan_graph.codec`; only the suite builds a design straight from objects.
+rows via :mod:`synthesizer.codec`; only the suite builds a design straight from objects.
 """
 
 from __future__ import annotations
@@ -11,9 +11,9 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 
-from wan_graph.codec import OFF_NET_KIND
-from wan_graph.model import PhysicalEdge, Vertex, edge_key
-from wan_synthesizer.model import (
+from synthesizer.codec import OFF_NET_KIND
+from synthesizer.input_graph import PhysicalEdge, Vertex, edge_key
+from synthesizer.model import (
     KIND_ROADM,
     DesignArtifacts,
     DesignParams,
@@ -21,10 +21,10 @@ from wan_synthesizer.model import (
     RoleExclusions,
     SourceFiles,
 )
-from wan_synthesizer.synthesize import synthesize_three_tier_design
-from wan_synthesizer.overrides import apply_role_overrides, materialize_selected_colocation_twins
-from wan_synthesizer.stages import dual_home, finalize
-from wan_synthesizer.validation import validate_design
+from synthesizer.synthesize import synthesize_three_tier_design
+from synthesizer.overrides import apply_role_overrides, materialize_selected_colocation_twins
+from synthesizer.stages import dual_home, finalize
+from synthesizer.validation import validate_design
 
 RING_COORDS = {
     "P0": (40.0, -100.0),
