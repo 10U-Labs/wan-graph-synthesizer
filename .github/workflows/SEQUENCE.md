@@ -1,25 +1,14 @@
 # SEQUENCE
 
-Deploy order across `src/`. Each node is one stack (its `src/` path), plus the
-two image/data steps (`build`, `seed`). `A + B └─→ C` means C reads A and B.
+Dependency order across `src/` — common infra, endpoints, and subendpoints.
+`A ─→ B` means B is built on A: every endpoint reads the common `storage` +
+`routing` state, and a carrier/tenant write cascades into its subendpoint
+builder (`carriers/merge`, `tenants/wan`).
 
 ```text
-api/common/storage
-api/common/routing
-
-api/common/storage + api/common/routing
-    ├─→ api/endpoints/carriers
-    ├─→ api/endpoints/providers
-    ├─→ api/endpoints/tenants
-    ├─→ api/endpoints/carriers/merge
-    └─→ api/endpoints/tenants/wan
-
-api/endpoints/tenants/wan
-    └─→ build
-
-api/common/routing + api/endpoints/tenants
-    └─→ www/spa
-
-api/endpoints/* + build
-    └─→ seed
+api/common/storage ─┐
+api/common/routing ─┤
+                    ├─→ api/endpoints/carriers ─→ api/endpoints/carriers/merge
+                    ├─→ api/endpoints/providers
+                    └─→ api/endpoints/tenants ──→ api/endpoints/tenants/wan
 ```
