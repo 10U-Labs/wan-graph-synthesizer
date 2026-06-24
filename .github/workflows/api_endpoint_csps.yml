@@ -3,12 +3,31 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-csps-${{ github.ref }}
 jobs:
-  deploy:
+  reconcile:
     if: github.ref == 'refs/heads/main'
-    name: Deploy csps endpoint
+    name: Reconcile csps endpoint
+    needs: unit-test
     permissions:
       contents: read
       id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+      - name: Reconcile the stack to its declared state
+        run: |
+          tofu -chdir=src/api/endpoints/csps init -input=false
+          tofu -chdir=src/api/endpoints/csps apply -auto-approve -input=false
+  static-analysis:
+    name: Static analysis
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -65,17 +84,6 @@ jobs:
         run: >-
           jscpd --pattern "**/*.py" --threshold 0 --reporters console
           lib/python/ src/api/endpoints/csps/lambdas/
-      - name: Run unit tests with a 100% coverage gate
-        run: >-
-          PYTHONPATH=.:lib/python:scripts:src
-          python3 -m pytest
-          test/api/endpoints/csps/pre_deployment/unit/
-          --import-mode=importlib --confcutdir=test
-          --verbose --pythonwarnings=error
-          --cov=src/api/endpoints/csps/lambdas
-          --cov-branch
-          --cov-report=term-missing
-          --cov-fail-under=100
       - name: Run pylint on tests
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan
@@ -91,11 +99,6 @@ jobs:
         run: >-
           jscpd --pattern "test/**/*.py" --threshold 0 --reporters console
           --ignore "test/**/pre_deployment/unit/test_handler.py" test/
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: us-east-2
-          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v1
         with:
@@ -104,10 +107,25 @@ jobs:
         run: |
           tofu -chdir=src/api/endpoints/csps init -backend=false -input=false
           tofu -chdir=src/api/endpoints/csps validate
-      - name: Apply the stack
-        run: |
-          tofu -chdir=src/api/endpoints/csps init -input=false
-          tofu -chdir=src/api/endpoints/csps apply -auto-approve -input=false
+  unit-test:
+    name: Unit tests
+    needs: static-analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install boto3 boto3-stubs pytest pytest-cov pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src
+          python3 -m pytest
+          test/api/endpoints/csps/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=src/api/endpoints/csps/lambdas
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
 name: API endpoint csps
 on:
   push:
