@@ -25,4 +25,4 @@ def _has_existing_state() -> bool:
 )
 def test_no_orphaned_resources() -> None:
     """No resource the stack would create already exists unmanaged in AWS."""
-    assert find_orphaned_resources(STORAGE_DIR) == []
+    assert not find_orphaned_resources(STORAGE_DIR)
