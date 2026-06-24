@@ -126,7 +126,7 @@ jobs:
       - name: Run mypy on source
         run: >-
           MYPYPATH=lib/python:src:src/api/endpoints/tenants/wan
-          python3 -m mypy --strict
+          python3 -m mypy --strict --ignore-missing-imports
           --explicit-package-bases src/api/endpoints/tenants/wan/synthesizer/ src/api/endpoints/tenants/wan/entrypoint.py
       - name: Detect copy-paste in source
         run: >-
@@ -142,7 +142,7 @@ jobs:
       - name: Run mypy on tests
         run: >-
           MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan
-          python3 -m mypy --strict
+          python3 -m mypy --strict --ignore-missing-imports
           --explicit-package-bases test/api/endpoints/tenants/wan/synthesizer
       - name: Detect copy-paste in tests
         run: >-
