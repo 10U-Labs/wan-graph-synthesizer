@@ -20,9 +20,9 @@ jobs:
         run: pip install pytest pyyaml
       - name: Run integration tests
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/synthesizer
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
           python3 -m pytest
-          test/lib/python/wan_synthesizer/integration/
+          test/lib/python/synthesizer/integration/
           --verbose --pythonwarnings=error
   static-analysis:
     runs-on: ubuntu-24.04
@@ -75,25 +75,25 @@ jobs:
           ${{ github.workspace }}/test
       - name: Run pylint on source
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/synthesizer
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
           python3 -m pylint
-          lib/python/wan_graph/ src/api/
-          src/api/endpoints/tenants/wan/synthesizer/wan_synthesizer/
+          src/api/
+          src/api/endpoints/tenants/wan/synthesizer/
           --fail-on=C,R,W --fail-under=10.0
       - name: Run pylint on tests
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/synthesizer
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan
           python3 -m pylint --recursive=y
           test/
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on source
         run: >-
-          MYPYPATH=lib/python:scripts:src:src/api/endpoints/tenants/wan/synthesizer
+          MYPYPATH=lib/python:scripts:src:src/api/endpoints/tenants/wan
           python3 -m mypy --strict
           --explicit-package-bases lib/python/ src/
       - name: Run mypy on tests
         run: >-
-          MYPYPATH=lib/python:scripts:src:test:src/api/endpoints/tenants/wan/synthesizer
+          MYPYPATH=lib/python:scripts:src:test:src/api/endpoints/tenants/wan
           python3 -m mypy --strict
           --explicit-package-bases test/
       - name: Detect copy-paste in source
@@ -140,12 +140,11 @@ jobs:
         run: pip install boto3 pytest pytest-cov pyyaml
       - name: Run unit tests with a 100% coverage gate
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/synthesizer
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
           python3 -m pytest
-          test/lib/python/wan_synthesizer/unit/ test/src/api/unit/
+          test/lib/python/synthesizer/unit/ test/src/api/unit/
           --verbose --pythonwarnings=error
-          --cov=wan_synthesizer
-          --cov=wan_graph
+          --cov=synthesizer
           --cov=api
           --cov-branch
           --cov-report=term-missing
