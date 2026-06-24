@@ -107,7 +107,7 @@ jobs:
       - name: Detect copy-paste in tests
         run: >-
           jscpd --pattern "test/**/*.py" --threshold 0 --reporters console
-          --ignore "test/**/test_endpoint_handlers.py" test/
+          --ignore "test/**/pre_deployment/unit/test_handler.py" test/
   terraform:
     runs-on: ubuntu-24.04
     steps:
@@ -142,7 +142,9 @@ jobs:
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
           python3 -m pytest
-          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/ test/api/unit/
+          test/api/
+          --ignore=test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration
+          --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
           --cov=synthesizer
           --cov=api
