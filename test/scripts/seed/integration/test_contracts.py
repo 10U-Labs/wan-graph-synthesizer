@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 
 import pytest
 
@@ -40,7 +41,7 @@ def _matches(path: str, template: str) -> bool:
 
 def _seed(recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> list[str]:
     """Run seed.main over the real inputs and return the written resource paths."""
-    monkeypatch.setattr(seed.sys, "argv", ["seed", _API])
+    monkeypatch.setattr(sys, "argv", ["seed", _API])
     seed.main()
     return recorder.paths(_API)
 

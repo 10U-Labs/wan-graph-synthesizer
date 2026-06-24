@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -280,7 +281,7 @@ def _run_main(
         monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> list[tuple[str, str]]:
     """Run main() with stubbed push_* and *argv*; return the (name, api) calls."""
     calls: list[tuple[str, str]] = []
-    monkeypatch.setattr(seed.sys, "argv", argv)
+    monkeypatch.setattr(sys, "argv", argv)
     monkeypatch.setattr(seed, "push_carriers", lambda api: calls.append(("carriers", api)))
     monkeypatch.setattr(seed, "push_providers", lambda api: calls.append(("providers", api)))
     monkeypatch.setattr(seed, "push_tenants", lambda api: calls.append(("tenants", api)))
