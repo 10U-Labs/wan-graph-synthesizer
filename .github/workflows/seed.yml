@@ -3,30 +3,60 @@ concurrency:
   cancel-in-progress: false
   group: seed
 jobs:
-  seed:
-    if: github.ref == 'refs/heads/main'
-    needs:
-      - static-analysis
-      - unit-test
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Install dependencies
-        run: pip install pyyaml
-      - name: Push the git-authored inputs to the API
-        run: PYTHONPATH=lib/python python scripts/seed.py
-  static-analysis:
+  e2e-test:
+    name: End-to-end tests
+    needs: integration-test
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
+        run: pip install pytest pyyaml
+      - name: Run end-to-end tests against a stub API
         run: >-
-          pip install assert-no-inline-directives assert-no-linter-config-files
-          mypy pylint pyyaml types-PyYAML yamllint
+          PYTHONPATH=.:lib/python:scripts:test
+          python3 -m pytest
+          test/scripts/seed/e2e/
+          --import-mode=importlib --confcutdir=test
+          --verbose
+  integration-test:
+    name: Integration tests
+    needs: unit-test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pytest pyyaml
+      - name: Run integration tests against a mocked API
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:test
+          python3 -m pytest
+          test/scripts/seed/integration/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+  seed:
+    if: github.ref == 'refs/heads/main'
+    name: Seed the API
+    needs: e2e-test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pyyaml
+      - name: Push the git-authored inputs to the API
+        run: PYTHONPATH=lib/python python3 scripts/seed.py
+  static-analysis:
+    name: Static analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: |
+          pip install \
+            assert-no-inline-directives \
+            assert-no-linter-config-files \
+            assert-one-assert-per-pytest \
+            mypy pylint pytest pyyaml types-PyYAML yamllint
+          npm install -g jscpd
       - name: Lint YAML
         run: |
           EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
@@ -44,37 +74,62 @@ jobs:
           assert-no-inline-directives
           --tools pylint,mypy,yamllint
           --verbose
-          ${{ github.workspace }}/scripts
+          ${{ github.workspace }}/lib/python ${{ github.workspace }}/scripts ${{ github.workspace }}/test/scripts
       - name: Assert no linter config files
         run: >-
           assert-no-linter-config-files
           --linters pylint,mypy,yamllint
           --verbose
-          ${{ github.workspace }}/scripts
-      - name: Run pylint
+          ${{ github.workspace }}
+      - name: Assert one assert per pytest
         run: >-
-          PYTHONPATH=lib/python:scripts python3 -m pylint
-          scripts/seed.py
+          assert-one-assert-per-pytest
+          --verbose
+          ${{ github.workspace }}/test/scripts/seed
+      - name: Run pylint on source
+        run: >-
+          PYTHONPATH=lib/python:scripts
+          python3 -m pylint
+          scripts/seed.py lib/python/http_test_doubles/
           --fail-on=C,R,W --fail-under=10.0
-      - name: Run mypy
+      - name: Run mypy on source
         run: >-
-          MYPYPATH=lib/python:scripts python3 -m mypy --strict
-          --explicit-package-bases scripts/seed.py
+          MYPYPATH=lib/python:scripts
+          python3 -m mypy --strict
+          --explicit-package-bases scripts/seed.py lib/python/http_test_doubles/
+      - name: Detect copy-paste in source
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console
+          scripts/seed.py lib/python/http_test_doubles/
+      - name: Run pylint on tests
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:test
+          python3 -m pylint --recursive=y
+          test/scripts/seed/
+          --fail-on=C,R,W --fail-under=10.0
+      - name: Run mypy on tests
+        run: >-
+          MYPYPATH=lib/python:scripts:test
+          python3 -m mypy --strict
+          --explicit-package-bases test/scripts/seed/
+      - name: Detect copy-paste in tests
+        run: >-
+          jscpd --pattern "test/scripts/seed/**/*.py" --threshold 0
+          --reporters console test/scripts/seed/
   unit-test:
+    name: Unit tests
     needs: static-analysis
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
         run: pip install pytest pytest-cov pyyaml
-      - name: Run seed tests with a 100% coverage gate
+      - name: Run unit tests with a 100% coverage gate
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan
+          PYTHONPATH=.:lib/python:scripts
           python3 -m pytest
-          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_parsing.py
-          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_offnet.py
-          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_graph_helpers.py
-          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_push.py
+          test/scripts/seed/unit/
+          --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
           --cov=seed
           --cov-branch
@@ -89,10 +144,8 @@ on:
       - etc/**
       - lib/python/**
       - scripts/**
-      - test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_graph_helpers.py
-      - test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_offnet.py
-      - test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_parsing.py
-      - test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_push.py
+      - src/www/api/openapi.json
+      - test/scripts/seed/**
   push:
     branches: [main]
     paths:
@@ -101,8 +154,6 @@ on:
       - etc/**
       - lib/python/**
       - scripts/**
-      - test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_graph_helpers.py
-      - test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_offnet.py
-      - test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_parsing.py
-      - test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/test_push.py
+      - src/www/api/openapi.json
+      - test/scripts/seed/**
   workflow_dispatch: {}
