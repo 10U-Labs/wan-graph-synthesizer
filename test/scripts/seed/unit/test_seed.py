@@ -194,8 +194,8 @@ def test_put_sets_the_json_content_type(urlopen_recorder: UrlopenRecorder) -> No
     assert urlopen_recorder.requests[0].get_header("Content-type") == "application/json"
 
 
-def test_put_prints_the_response_status(
-        urlopen_recorder: UrlopenRecorder, capsys: pytest.CaptureFixture[str]) -> None:
+@pytest.mark.usefixtures("urlopen_recorder")
+def test_put_prints_the_response_status(capsys: pytest.CaptureFixture[str]) -> None:
     """_put prints the response status."""
     _put("http://api", "carriers/lumen/vertices", [])
     assert "-> 200" in capsys.readouterr().out
