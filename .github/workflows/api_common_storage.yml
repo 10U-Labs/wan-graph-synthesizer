@@ -19,7 +19,7 @@ jobs:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
       - name: Install tools
-        run: pip install boto3 boto3-stubs pytest python-hcl2
+        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8'
       - name: Run post-deployment integration tests against live AWS
         run: >-
           PYTHONPATH=.:lib/python
@@ -47,7 +47,7 @@ jobs:
         with:
           tofu_wrapper: false
       - name: Install tools
-        run: pip install boto3 boto3-stubs pytest python-hcl2
+        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8'
       - name: Initialize the stack for state inspection
         run: tofu -chdir=src/api/common/storage init -input=false
       - name: Run pre-deployment integration tests
@@ -92,7 +92,7 @@ jobs:
             assert-no-linter-config-files \
             assert-one-assert-per-pytest \
             boto3 boto3-stubs botocore-stubs mypy pylint pytest \
-            python-hcl2 yamllint
+            'python-hcl2<8' yamllint
           npm install -g jscpd
       - name: Lint YAML
         run: |
@@ -176,7 +176,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install pytest python-hcl2
+        run: pip install pytest 'python-hcl2<8'
       - name: Run unit tests
         run: >-
           PYTHONPATH=.:lib/python
