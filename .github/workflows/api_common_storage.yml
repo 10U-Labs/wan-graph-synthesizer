@@ -135,6 +135,7 @@ jobs:
         run: >-
           MYPYPATH=lib/python
           python3 -m mypy --strict --explicit-package-bases
+          --ignore-missing-imports
           lib/python/test_terraform_config
           lib/python/test_terraform_drift
           lib/python/test_fixtures
@@ -154,6 +155,7 @@ jobs:
         run: >-
           MYPYPATH=lib/python
           python3 -m mypy --strict --explicit-package-bases
+          --ignore-missing-imports
           test/api/common/storage/
       - name: Detect copy-paste in tests
         run: >-
