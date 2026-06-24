@@ -164,7 +164,7 @@ def test_tenant_put_does_not_trigger_a_build(monkeypatch: pytest.MonkeyPatch) ->
     invocations: list[dict[str, Any]] = []
     with patch("boto3.client", side_effect=write_clients({}, invocations)):
         module.lambda_handler(_tenant_put("forced-core-nodes", []), None)
-    assert invocations == []
+    assert not invocations
 
 
 def test_tenant_delete_removes_every_object(monkeypatch: pytest.MonkeyPatch) -> None:

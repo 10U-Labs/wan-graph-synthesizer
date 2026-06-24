@@ -108,11 +108,13 @@ def _run_push_tenants(root: Path, monkeypatch: pytest.MonkeyPatch) -> list[Any]:
 
 
 def _stub_pushes(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    """Replace the three push steps; return the list push_carriers records into."""
+    """Replace the seed steps; return the list push_carriers records into."""
     seen: list[str] = []
     monkeypatch.setattr(seed,"push_carriers", seen.append)
+    monkeypatch.setattr(seed,"build_substrate", _noop)
     monkeypatch.setattr(seed,"push_csps", _noop)
-    monkeypatch.setattr(seed,"push_tenants", _noop)
+    monkeypatch.setattr(seed,"push_tenants", lambda _api: [])
+    monkeypatch.setattr(seed,"build_tenants", lambda _api, _tenants: None)
     return seen
 
 

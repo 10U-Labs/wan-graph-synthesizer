@@ -149,7 +149,7 @@ class WriterContract:
         store = {"tenants/a/label.json": b"{}", "tenants/b/label.json": b"{}"}
         with patch("boto3.client", side_effect=write_clients(store, invocations)):
             module.lambda_handler(write_event(self.CFG, "vertices", []), None)
-        assert invocations == []
+        assert not invocations
 
     def test_write_404_for_unknown_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A PUT to an unknown sub-collection is a 404."""
