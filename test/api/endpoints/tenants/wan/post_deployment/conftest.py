@@ -22,7 +22,6 @@ from test_terraform_config import TEST_AWS_REGION
 
 __all__ = [
     "ecr_client",
-    "ecs_client",
     "events_client",
     "iam_client",
     "lambda_client",
