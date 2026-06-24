@@ -93,7 +93,7 @@ jobs:
           --explicit-package-bases lib/python/ src/
       - name: Run mypy on tests
         run: >-
-          MYPYPATH=lib/python:scripts:src:test:src/api/endpoints/tenants/wan
+          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan
           python3 -m mypy --strict
           --explicit-package-bases test/
       - name: Detect copy-paste in source
