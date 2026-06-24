@@ -87,6 +87,34 @@ def test_tenants_list_falls_back_to_id_without_a_label(monkeypatch: pytest.Monke
     assert json.loads(response["body"]) == [{"id": "joint", "label": "joint"}]
 
 
+def test_tenants_list_skips_non_label_objects(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stored objects that are not a tenant's label marker are ignored in the listing."""
+    module = _tenant(monkeypatch)
+    objects = {
+        "tenants/joint/label.json": json.dumps({"label": "Joint"}).encode(),
+        "tenants/joint/wan.json": b"{}",
+    }
+    with patch("boto3.client", return_value=fake_s3(objects)):
+        response = module.lambda_handler({}, None)
+    assert json.loads(response["body"]) == [{"id": "joint", "label": "Joint"}]
+
+
+def test_tenant_accepts_a_well_formed_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A locations PUT whose rows carry exactly the required fields is stored."""
+    module = _tenant(monkeypatch)
+    objects: dict[str, bytes] = {}
+    row = {
+        "name": "Site",
+        "municipality": "Denver",
+        "state": "CO",
+        "latitude": 1.0,
+        "longitude": 2.0,
+    }
+    with patch("boto3.client", side_effect=write_clients(objects, [])):
+        module.lambda_handler(_tenant_put("locations", [row]), None)
+    assert json.loads(objects["tenants/f-35/locations.json"]) == [row]
+
+
 def test_tenant_get_serves_an_input_document(monkeypatch: pytest.MonkeyPatch) -> None:
     """A GET on an input collection returns the whole stored document."""
     module = _tenant(monkeypatch)
