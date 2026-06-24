@@ -15,8 +15,8 @@ import sys
 import pytest
 
 import seed
-from http_test_doubles import UrlopenRecorder
 from repo_utils import REPO_ROOT
+from test_http_doubles import UrlopenRecorder
 
 _API = "http://stub"
 

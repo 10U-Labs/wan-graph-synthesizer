@@ -6,7 +6,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from http_test_doubles import StubApi
+from test_http_doubles import StubApi
 
 
 @pytest.fixture

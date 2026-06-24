@@ -11,8 +11,8 @@ import os
 import subprocess
 import sys
 
-from http_test_doubles import StubApi
 from repo_utils import REPO_ROOT
+from test_http_doubles import StubApi
 
 
 def _run_seed(url: str) -> subprocess.CompletedProcess[str]:

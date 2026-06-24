@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 import seed
-from http_test_doubles import CallRecorder, UrlopenRecorder
+from test_http_doubles import CallRecorder, UrlopenRecorder
 from seed import (
     _carrier_names,
     _degree_doc,
