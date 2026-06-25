@@ -1,8 +1,8 @@
 """Unit tests for the design validation checks.
 
-The two requirements under test: every demand vertex must home to the configured number
-of distinct backbone nodes, and every backbone node must wire to its configured number
-of nearest backbone nodes on the mesh.
+The two requirements under test: every demand vertex must home to exactly the configured
+number of distinct backbone nodes, and every backbone node must wire to its configured
+number of nearest backbone nodes on the mesh.
 """
 
 from __future__ import annotations
@@ -85,6 +85,15 @@ def test_homing_passes_at_the_configured_count() -> None:
     """Demand homed to the configured number of backbone nodes passes the check."""
     report = validate_design(TRIPLE_HOMED_VERTICES, TRIPLE_HOMED, access_backbone_links=3)
     assert report["access_vertices_with_required_backbone_links"] is True
+
+
+def test_homing_fails_above_the_configured_count() -> None:
+    """Demand homed to more than the configured number of backbone nodes is flagged.
+
+    The homing requirement is exact, so three homes against a configured count of two
+    fails just as one home would.
+    """
+    assert demand_without_backbone_redundancy(TRIPLE_HOMED, 2) == ["s"]
 
 
 def test_homing_fails_below_the_configured_count() -> None:

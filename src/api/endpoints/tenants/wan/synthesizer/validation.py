@@ -58,11 +58,15 @@ def demand_backbone_homes(design: Design) -> dict[str, set[str]]:
     return homes
 
 def demand_without_backbone_redundancy(design: Design, homes: int) -> list[str]:
-    """Demand vertices homing to fewer than ``homes`` distinct backbone nodes."""
+    """Demand vertices homing to a number of distinct backbone nodes other than ``homes``.
+
+    The requirement is exact, not a floor: every demand vertex homes to exactly ``homes``
+    backbone nodes, so both too few and too many are flagged.
+    """
     return [
         demand_id
         for demand_id, targets in sorted(demand_backbone_homes(design).items())
-        if len(targets) < homes
+        if len(targets) != homes
     ]
 
 def backbone_mesh_pairs(design: Design) -> set[tuple[str, str]]:
@@ -99,8 +103,8 @@ def validate_design(
 ) -> ValidationReport:
     """Check a design against every hard structural requirement.
 
-    ``access_backbone_links`` is the number of backbone nodes each demand vertex is
-    required to home to; ``backbone_mesh_degree`` is the number of other backbone nodes
+    ``access_backbone_links`` is the exact number of backbone nodes each demand vertex
+    must home to; ``backbone_mesh_degree`` is the number of other backbone nodes
     each backbone node must link to on the mesh. Both are the operator's configured
     redundancy levels.
     """
