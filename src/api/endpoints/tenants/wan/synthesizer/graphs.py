@@ -80,18 +80,28 @@ def connected_components(vertex_ids: set[str], edges: set[tuple[str, str]]) -> l
         components.append(sorted(component))
     return components
 
+def bridges(vertex_ids: set[str], edges: set[tuple[str, str]]) -> set[tuple[str, str]]:
+    """Return the edges whose removal would raise the graph's component count.
+
+    A bridge lies on no cycle, so deleting it splits its component in two. Vertex
+    sets here are tiny (a handful of backbone nodes), so each edge is probed by
+    removal rather than via a linear-time bridge search.
+    """
+    base = len(connected_components(vertex_ids, edges))
+    return {
+        edge
+        for edge in edges
+        if len(connected_components(vertex_ids, edges - {edge})) > base
+    }
+
 def is_two_edge_connected(vertex_ids: set[str], edges: set[tuple[str, str]]) -> bool:
     """True if the graph is connected and survives the loss of any single edge.
 
-    A graph is 2-edge-connected when it is connected and bridgeless. Vertex sets
-    here are tiny (a handful of cores), so each edge is probed by removal rather
-    than via a linear-time bridge search.
+    A graph is 2-edge-connected when it is connected and bridgeless.
     """
     if len(connected_components(vertex_ids, edges)) != 1:
         return False
-    return all(
-        len(connected_components(vertex_ids, edges - {edge})) == 1 for edge in edges
-    )
+    return not bridges(vertex_ids, edges)
 
 def articulation_points(vertex_ids: set[str], edges: set[tuple[str, str]]) -> set[str]:
     """Return cut vertices whose removal would disconnect the design graph."""

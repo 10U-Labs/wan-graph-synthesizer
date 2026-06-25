@@ -8,6 +8,7 @@ import pytest
 
 from synthesizer.graphs import (
     articulation_points,
+    bridges,
     connected_components,
     dijkstra,
     path_edge_keys,
@@ -128,3 +129,16 @@ def test_connected_components_ignores_external_endpoints() -> None:
     """Connected components ignores external endpoints."""
     components = connected_components({"a", "b"}, {("a", "b"), ("a", "z")})
     assert components == [["a", "b"]]
+
+
+def test_bridges_names_every_cut_edge_in_a_chain() -> None:
+    """Every edge of a chain is a bridge, since removing it splits the chain."""
+    assert bridges({"a", "b", "c"}, {("a", "b"), ("b", "c")}) == {
+        edge_key("a", "b"),
+        edge_key("b", "c"),
+    }
+
+
+def test_cycle_has_no_bridges() -> None:
+    """A cycle has no bridges: every edge lies on a cycle, so none is a cut edge."""
+    assert bridges({"a", "b", "c"}, {("a", "b"), ("b", "c"), ("a", "c")}) == set()
