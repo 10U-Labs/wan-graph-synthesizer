@@ -3,10 +3,10 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-carriers-merge-${{ github.ref }}
 jobs:
-  post-deployment-integration-test:
+  post-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
-    name: post-deployment-integration-test
-    needs: reconcile
+    name: post-deployment-integration-tests
+    needs: reconciliation
     permissions:
       contents: read
       id-token: write
@@ -27,10 +27,10 @@ jobs:
           test/api/endpoints/carriers/merge/post_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose
-  pre-deployment-integration-test:
+  pre-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
-    name: pre-deployment-integration-test
-    needs: unit-test
+    name: pre-deployment-integration-tests
+    needs: unit-tests
     permissions:
       contents: read
       id-token: write
@@ -57,10 +57,10 @@ jobs:
           test/api/endpoints/carriers/merge/pre_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose
-  reconcile:
+  reconciliation:
     if: github.ref == 'refs/heads/main'
-    name: reconcile
-    needs: pre-deployment-integration-test
+    name: reconciliation
+    needs: pre-deployment-integration-tests
     permissions:
       contents: read
       id-token: write
@@ -181,8 +181,8 @@ jobs:
         run: |
           tofu -chdir=src/api/endpoints/carriers/merge init -backend=false -input=false
           tofu -chdir=src/api/endpoints/carriers/merge validate
-  unit-test:
-    name: unit-test
+  unit-tests:
+    name: unit-tests
     needs: static-analysis
     runs-on: ubuntu-24.04
     steps:

@@ -9,7 +9,7 @@ const TILE_ATTRIB = "© OpenStreetMap contributors";
 const API_BASE = "https://api.10ulabs.com/wan-graph-synthesizer";
 
 // The tenant shown on first load, before the operator picks one.
-const DEFAULT_MAP_ID = "military-installations";
+const DEFAULT_MAP_ID = "dow";
 
 // Vertex color and radius. CSP regions are colored by kind; every other drawn
 // vertex is colored by its tier role. Transit/unused carrier PoPs are not drawn.

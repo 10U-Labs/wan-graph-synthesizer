@@ -1,11 +1,11 @@
 ---
-# Military-installations WAN design across every carrier's fiber.
+# DoW WAN design across every carrier's fiber.
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 access_homing_degree: 2
 backbone_mesh_degree: 3
 backbone_node_count:
-  max: 11
-  min: 11
+  max: 99
+  min: 3
 forced_backbone_nodes:
   - Cheyenne, WY
   - Great Falls, MT
@@ -28,13 +28,13 @@ inputs:
       - data/vertices/csps/oci/oci_east.csv
       - data/vertices/csps/oci/oci_west.csv
   locations:
-    Military Installations: data/vertices/tenants/military_installations.csv
+    DoW: data/vertices/tenants/dow.csv
   off_net: data/vertices/utilities/off_net.csv
 knobs:
   backbone_coverage_target_miles: 200.0
   backbone_set_peak_bytes: 160
   compass_octants: 8
   enum_memory_fraction: 0.6
-label: Military Installations
+label: DoW
 prohibited_backbone_nodes: []
 prohibited_connections: []
