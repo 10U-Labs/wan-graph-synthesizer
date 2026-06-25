@@ -5,7 +5,7 @@
 access_homing_degree: 1
 backbone_mesh_degree: 2
 backbone_node_count:
-  max: 99
+  max: 3
   min: 3
 forced_backbone_nodes:
   - Jacksonville, FL
