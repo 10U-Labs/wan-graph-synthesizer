@@ -532,7 +532,9 @@ def search_best_design(
             logger.info("Feasible at %d nodes; growing for coverage", len(base.backbone_ids))
             break
     if base is None:
-        raise ValueError(f"No feasible design with at least {params.min_backbone_count} backbone nodes")
+        raise ValueError(
+            f"No feasible design with at least {params.min_backbone_count} backbone nodes"
+        )
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     design = grow_backbone_for_coverage(base, inputs, plan, params, pop_by_id)
     logger.info("Selected a %d-node backbone design", len(design.backbone_ids))
@@ -612,8 +614,13 @@ def synthesize_two_tier_design(
     """
     overrides = overrides if overrides is not None else RoleOverrides()
     if params.min_backbone_count < 2:
-        raise ValueError("min_backbone_count (the minimum number of backbone nodes) must be at least 2")
-    if params.max_backbone_count is not None and params.max_backbone_count < params.min_backbone_count:
+        raise ValueError(
+            "min_backbone_count (the minimum number of backbone nodes) must be at least 2"
+        )
+    if (
+        params.max_backbone_count is not None
+        and params.max_backbone_count < params.min_backbone_count
+    ):
         raise ValueError("max_backbone_count must be at least min_backbone_count")
     if (
         params.max_backbone_count is not None

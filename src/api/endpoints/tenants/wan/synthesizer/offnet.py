@@ -91,9 +91,10 @@ def realize_off_net_sites(
                 f"off-net site {site.name} has fewer than {LOCAL_FIBER_MIN_LINKS} "
                 f"carrier PoPs within {LOCAL_FIBER_RADIUS_MILES:.0f} mi; cannot seat it"
             )
-        twin, edges = built
+        # ``built`` is (twin vertex, its local-fiber edges) -- index in to keep the
+        # locals here under pylint's ceiling.
         used_ids.add(twin_id)
-        augmented_vertices.append(twin)
-        augmented_edges.update(edges)
+        augmented_vertices.append(built[0])
+        augmented_edges.update(built[1])
         seat_ids.add(twin_id)
     return RealizedOffNet(augmented_vertices, augmented_edges, frozenset(seat_ids))

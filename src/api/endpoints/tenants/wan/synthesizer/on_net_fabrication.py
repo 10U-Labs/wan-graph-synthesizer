@@ -109,9 +109,10 @@ def fabricate_missing_on_net_nodes(
                 LOCAL_FIBER_MIN_LINKS,
             )
             continue
-        twin, edges = built
+        # ``built`` is (twin vertex, its local-fiber edges) -- index in to keep the
+        # locals here under pylint's ceiling.
         used_ids.add(twin_id)
-        augmented_vertices.append(twin)
-        augmented_edges.update(edges)
+        augmented_vertices.append(built[0])
+        augmented_edges.update(built[1])
         on_net_ids.add(twin_id)
     return FabricatedOnNetNodes(augmented_vertices, augmented_edges, frozenset(on_net_ids))
