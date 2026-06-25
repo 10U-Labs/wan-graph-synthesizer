@@ -4,7 +4,7 @@ concurrency:
   group: seed
 jobs:
   e2e-tests:
-    name: End-to-end tests
+    name: e2e-tests
     needs: integration-tests
     runs-on: ubuntu-24.04
     steps:
@@ -19,7 +19,7 @@ jobs:
           --import-mode=importlib --confcutdir=test
           --verbose
   integration-tests:
-    name: Integration tests
+    name: integration-tests
     needs: unit-tests
     runs-on: ubuntu-24.04
     steps:
@@ -35,7 +35,7 @@ jobs:
           --verbose --pythonwarnings=error
   seeding:
     if: github.ref == 'refs/heads/main'
-    name: Seed the API
+    name: seeding
     needs: e2e-tests
     runs-on: ubuntu-24.04
     steps:
@@ -45,7 +45,7 @@ jobs:
       - name: Push the git-authored inputs to the API
         run: PYTHONPATH=lib/python python3 scripts/seed.py
   static-analysis:
-    name: Static analysis
+    name: static-analysis
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -117,7 +117,7 @@ jobs:
           jscpd --pattern "test/scripts/seed/**/*.py" --threshold 0
           --reporters console test/scripts/seed/
   unit-tests:
-    name: Unit tests
+    name: unit-tests
     needs: static-analysis
     runs-on: ubuntu-24.04
     steps:
