@@ -194,6 +194,104 @@
         }
       }
     },
+    "/wan-graph-synthesizer/data-centers": {
+      "get": {
+        "summary": "List data-center providers.",
+        "responses": { "200": { "description": "The data-center providers." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${DataCentersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-synthesizer/data-centers/{provider}/vertices": {
+      "get": {
+        "summary": "A provider's data-center facilities.",
+        "parameters": [
+          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The provider's facilities." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${DataCentersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "put": {
+        "summary": "Replace a provider's facilities (stores only).",
+        "parameters": [
+          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The provider's facilities were replaced." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${DataCentersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-synthesizer/data-centers/{provider}": {
+      "delete": {
+        "summary": "Remove a data-center provider.",
+        "parameters": [
+          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The provider was removed." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${DataCentersHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/wan-graph-synthesizer/data-centers/merge": {
+      "get": {
+        "summary": "The data-center union's facilities.",
+        "responses": { "200": { "description": "Union facilities." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${DataCentersMergeHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "post": {
+        "summary": "Union all providers' facilities (fast).",
+        "responses": { "200": { "description": "The data-center union." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${DataCentersMergeHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "options": {
+        "summary": "CORS preflight.",
+        "responses": {
+          "200": {
+            "description": "CORS.",
+            "headers": {
+              "Access-Control-Allow-Origin": { "schema": { "type": "string" } },
+              "Access-Control-Allow-Methods": { "schema": { "type": "string" } },
+              "Access-Control-Allow-Headers": { "schema": { "type": "string" } }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "requestTemplates": { "application/json": "{\"statusCode\": 200}" },
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'GET,POST,OPTIONS'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'"
+              }
+            }
+          }
+        }
+      }
+    },
     "/wan-graph-synthesizer/tenants": {
       "get": {
         "summary": "List tenants.",
