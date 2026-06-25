@@ -2,7 +2,7 @@
 # DoW WAN design across every carrier's fiber.
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 access_homing_degree: 2
-backbone_mesh_degree: 3
+backbone_mesh_degree: 2
 backbone_node_count:
   max: 99
   min: 3
