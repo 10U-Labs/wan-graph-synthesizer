@@ -11,23 +11,20 @@ const API_BASE = "https://api.10ulabs.com/wan-graph-synthesizer";
 // The tenant shown on first load, before the operator picks one.
 const DEFAULT_MAP_ID = "military-installations";
 
-// Vertex color and radius. CSP data centers are colored by kind; every other
-// drawn vertex is colored by its tier role. Transit/unused carrier PoPs are
-// not drawn.
+// Vertex color and radius. CSP regions are colored by kind; every other drawn
+// vertex is colored by its tier role. Transit/unused carrier PoPs are not drawn.
 const CSP_KIND = "CSP data center";
 const CSP_STYLE = { color: "#ef6c00", radius: 5 };
 const ROLE_STYLE = {
-  core: { color: "#6a1b9a", radius: 8 },
-  aggregation: { color: "#8bc34a", radius: 6 },
-  access: { color: "#1565c0", radius: 4 },
+  backbone: { color: "#6a1b9a", radius: 8 },
+  tenant: { color: "#1565c0", radius: 4 },
 };
 
-// Each link tier matches its vertices' color and grows thicker up the tiers:
-// access links are thinnest, aggregation links thicker, backbones thickest.
+// The two drawn link kinds: the thick backbone carries the meshed carrier graph
+// between backbone nodes; the thin access links home demand to the backbone.
 const EDGE_STYLE = {
-  access: { color: ROLE_STYLE.access.color, weight: 1.5 },
-  aggregation: { color: ROLE_STYLE.aggregation.color, weight: 3 },
-  backbone: { color: ROLE_STYLE.core.color, weight: 4.5 },
+  access: { color: ROLE_STYLE.tenant.color, weight: 1.5 },
+  backbone: { color: ROLE_STYLE.backbone.color, weight: 4.5 },
 };
 
 // The CONUS center the map opens on; also the meridian every vertex is anchored
@@ -38,7 +35,7 @@ const map = L.map("map").setView(VIEW_CENTER, 4);
 L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(map);
 
 let drawn = [];
-// The tenant currently being viewed; shown on its own (non-CSP) access sites.
+// The tenant currently being viewed; shown on its own tenant demand sites.
 let viewedTenant = "";
 
 function styleFor(vertex) {
@@ -48,23 +45,20 @@ function styleFor(vertex) {
   return ROLE_STYLE[vertex.tier_role] || null;
 }
 
-// Tier-role label prefixes, so every cored/aggregated vertex tooltip
-// announces its role up front. Untiered vertices (CSP, transit) get no prefix.
+// Tier-role label prefixes, so every backbone vertex tooltip announces its role
+// up front. Demand vertices (tenant, CSP) and transit nodes get no prefix.
 const TIER_PREFIX = {
-  core: "CORE",
-  aggregation: "AGGR",
+  backbone: "BACKBONE",
 };
 
-// The bare city: the vertex name stripped of any trailing ", ST" state and any
-// leading role prefix (co-located twins are named "AGGR <core>" server-side), so
-// the role-prefixed name reads "CORE Los Angeles", never "CORE Los Angeles, CA"
-// or a doubled "AGGR AGGR Los Angeles".
+// The bare city: the vertex name stripped of any trailing ", ST" state, so the
+// role-prefixed name reads "BACKBONE Los Angeles", never "BACKBONE Los Angeles, CA".
 function cityName(vertex) {
-  return vertex.name.replace(/^(?:CORE|AGGR)\s+/, "").replace(/,\s*[A-Z]{2}$/, "");
+  return vertex.name.replace(/,\s*[A-Z]{2}$/, "");
 }
 
-// Role-prefixed display name, e.g. "CORE Los Angeles". Untiered vertices (access,
-// CSP, transit) keep their full name unchanged.
+// Role-prefixed display name, e.g. "BACKBONE Los Angeles". Demand vertices
+// (tenant, CSP) and transit nodes keep their full name unchanged.
 function displayName(vertex) {
   const prefix = TIER_PREFIX[vertex.tier_role];
   return prefix ? `${prefix} ${cityName(vertex)}` : vertex.name;
@@ -77,7 +71,7 @@ function vertexLabel(vertex) {
   const located = info.municipality && info.state
     ? `<br>${info.municipality}, ${info.state}`
     : "";
-  const owned = vertex.tier_role === "access" && vertex.kind !== CSP_KIND
+  const owned = vertex.tier_role === "tenant"
     ? `<br>Tenant: ${viewedTenant}`
     : "";
   return `<strong>${displayName(vertex)}</strong>${located}${owned}`;
@@ -188,13 +182,13 @@ async function getJSON(path) {
 // served vertices (each carries its tier_role and whether it was included).
 function showCounts(vertices) {
   const counts = document.getElementById("counts");
-  const tally = { core: 0, aggregation: 0, access: 0 };
+  const tally = { backbone: 0, tenant: 0, csp: 0 };
   for (const vertex of vertices) {
     if (vertex.included !== false && tally[vertex.tier_role] !== undefined) {
       tally[vertex.tier_role] += 1;
     }
   }
-  counts.textContent = `CORE ${tally.core} AGGR ${tally.aggregation} ACCESS ${tally.access}`;
+  counts.textContent = `BACKBONE ${tally.backbone} TENANT ${tally.tenant} CSP ${tally.csp}`;
 }
 
 async function render(tenantId) {
@@ -215,7 +209,9 @@ async function render(tenantId) {
 
   const byId = indexById(vertices);
   const physical = edges.filter((edge) => edge.edge_kind === "carrier_physical");
-  const access = edges.filter((edge) => edge.edge_kind === "access_to_aggregation");
+  const access = edges.filter(
+    (edge) => edge.edge_kind === "tenant_to_backbone" || edge.edge_kind === "csp_to_backbone",
+  );
   drawEdges(physical, byId, EDGE_STYLE.backbone);
   drawEdges(access, byId, EDGE_STYLE.access);
   const points = drawVertices(vertices);
