@@ -3,9 +3,9 @@ concurrency:
   cancel-in-progress: false
   group: seed
 jobs:
-  e2e-test:
+  e2e-tests:
     name: End-to-end tests
-    needs: integration-test
+    needs: integration-tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -18,9 +18,9 @@ jobs:
           test/scripts/seed/e2e/
           --import-mode=importlib --confcutdir=test
           --verbose
-  integration-test:
+  integration-tests:
     name: Integration tests
-    needs: unit-test
+    needs: unit-tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -33,10 +33,10 @@ jobs:
           test/scripts/seed/integration/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
-  seed:
+  seeding:
     if: github.ref == 'refs/heads/main'
     name: Seed the API
-    needs: e2e-test
+    needs: e2e-tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -116,7 +116,7 @@ jobs:
         run: >-
           jscpd --pattern "test/scripts/seed/**/*.py" --threshold 0
           --reporters console test/scripts/seed/
-  unit-test:
+  unit-tests:
     name: Unit tests
     needs: static-analysis
     runs-on: ubuntu-24.04

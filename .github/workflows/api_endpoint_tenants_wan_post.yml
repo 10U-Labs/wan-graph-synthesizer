@@ -3,10 +3,10 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-tenants-wan-post-${{ github.ref }}
 jobs:
-  post-deployment-integration-test:
+  post-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
-    name: post-deployment-integration-test
-    needs: reconcile
+    name: post-deployment-integration-tests
+    needs: reconciliation
     permissions:
       contents: read
       id-token: write
@@ -27,9 +27,9 @@ jobs:
           test/api/endpoints/tenants/wan/synthesizer/post_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose
-  pre-deployment-integration-test:
-    name: pre-deployment-integration-test
-    needs: unit-test
+  pre-deployment-integration-tests:
+    name: pre-deployment-integration-tests
+    needs: unit-tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -41,10 +41,10 @@ jobs:
           python3 -m pytest
           test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration/
           --verbose --pythonwarnings=error
-  reconcile:
+  reconciliation:
     if: github.ref == 'refs/heads/main'
-    name: reconcile
-    needs: pre-deployment-integration-test
+    name: reconciliation
+    needs: pre-deployment-integration-tests
     permissions:
       contents: read
       id-token: write
@@ -170,8 +170,8 @@ jobs:
           --threshold 0 --reporters console
           --ignore "test/**/pre_deployment/unit/test_handler.py"
           test/api/endpoints/tenants/wan/synthesizer
-  unit-test:
-    name: unit-test
+  unit-tests:
+    name: unit-tests
     needs: static-analysis
     runs-on: ubuntu-24.04
     steps:
