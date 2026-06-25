@@ -12,21 +12,12 @@ forced_aggregation_points:
   - Cheyenne, WY
   - Chicago, IL
   - Dallas, TX
-  - Dulles, VA
   - Great Falls, MT
   - Las Vegas, NV
   - Los Angeles, CA
-  - Manassas, VA
-  - Minot, ND
   - New York, NY
-  - Portland, OR
   - Salt Lake City, UT
-  - San Antonio, TX
-  - Tallahassee, FL
 forced_connections:
-  - source: Minot, ND
-    target: Salt Lake City, UT
-    type: aggregation-core
   - source: Hanscom AFB
     target: New York, NY
     type: access-aggregation
@@ -38,7 +29,6 @@ forced_connections:
     type: access-aggregation
 forced_core_nodes:
   - Dallas, TX
-  - Dulles, VA
   - Los Angeles, CA
   - Salt Lake City, UT
 inputs:

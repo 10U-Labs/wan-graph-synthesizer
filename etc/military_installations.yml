@@ -9,18 +9,13 @@ core_node_count:
   min: 11
 forced_aggregation_points:
   - Cheyenne, WY
-  - Dulles, VA
   - Great Falls, MT
   - Los Angeles, CA
-  - Minot, ND
   - New York, NY
-  - Portland, OR
   - Salt Lake City, UT
-  - Virginia Beach, VA
 forced_connections: []
 forced_core_nodes:
   - Cheyenne, WY
-  - Dulles, VA
   - Los Angeles, CA
   - Salt Lake City, UT
 inputs:
