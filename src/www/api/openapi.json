@@ -331,13 +331,13 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/core-nodes": {
+    "/wan-graph-synthesizer/tenants/{tenant}/backbone-nodes": {
       "get": {
-        "summary": "A tenant WAN's core tier.",
+        "summary": "A tenant WAN's backbone tier.",
         "parameters": [
           { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The core nodes." } },
+        "responses": { "200": { "description": "The backbone nodes." } },
         "x-amazon-apigateway-integration": {
           "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
@@ -345,13 +345,13 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/aggregation-points": {
+    "/wan-graph-synthesizer/tenants/{tenant}/tenant-nodes": {
       "get": {
-        "summary": "A tenant WAN's aggregation tier.",
+        "summary": "A tenant WAN's tenant-site demand, homed to the backbone.",
         "parameters": [
           { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The aggregation points." } },
+        "responses": { "200": { "description": "The tenant nodes." } },
         "x-amazon-apigateway-integration": {
           "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
@@ -359,13 +359,13 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/access-nodes": {
+    "/wan-graph-synthesizer/tenants/{tenant}/csp-nodes": {
       "get": {
-        "summary": "A tenant WAN's access tier.",
+        "summary": "A tenant WAN's CSP-region demand, homed to the backbone.",
         "parameters": [
           { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The access nodes." } },
+        "responses": { "200": { "description": "The csp nodes." } },
         "x-amazon-apigateway-integration": {
           "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
@@ -451,31 +451,17 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/forced-core-nodes": {
+    "/wan-graph-synthesizer/tenants/{tenant}/forced-backbone-nodes": {
       "get": {
-        "summary": "A tenant's forced core nodes (input).",
+        "summary": "A tenant's forced backbone nodes (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The forced core nodes." } },
+        "responses": { "200": { "description": "The forced backbone nodes." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's forced core nodes (stores only).",
+        "summary": "Replace a tenant's forced backbone nodes (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The forced core nodes were replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
-      }
-    },
-    "/wan-graph-synthesizer/tenants/{tenant}/forced-aggregation-points": {
-      "get": {
-        "summary": "A tenant's forced aggregation points (input).",
-        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The forced aggregation points." } },
-        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
-      },
-      "put": {
-        "summary": "Replace a tenant's forced aggregation points (stores only).",
-        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The forced aggregation points were replaced." } },
+        "responses": { "200": { "description": "The forced backbone nodes were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
@@ -493,31 +479,17 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-core-nodes": {
+    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-backbone-nodes": {
       "get": {
-        "summary": "A tenant's prohibited core nodes (input).",
+        "summary": "A tenant's prohibited backbone nodes (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The prohibited core nodes." } },
+        "responses": { "200": { "description": "The prohibited backbone nodes." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's prohibited core nodes (stores only).",
+        "summary": "Replace a tenant's prohibited backbone nodes (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The prohibited core nodes were replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
-      }
-    },
-    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-aggregation-points": {
-      "get": {
-        "summary": "A tenant's prohibited aggregation points (input).",
-        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The prohibited aggregation points." } },
-        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
-      },
-      "put": {
-        "summary": "Replace a tenant's prohibited aggregation points (stores only).",
-        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The prohibited aggregation points were replaced." } },
+        "responses": { "200": { "description": "The prohibited backbone nodes were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
@@ -535,45 +507,31 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/core-node-count": {
+    "/wan-graph-synthesizer/tenants/{tenant}/backbone-node-count": {
       "get": {
-        "summary": "A tenant's core node count, min and max (input).",
+        "summary": "A tenant's backbone node count, min and max (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The core node count." } },
+        "responses": { "200": { "description": "The backbone node count." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's core node count (stores only).",
+        "summary": "Replace a tenant's backbone node count (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The core node count was replaced." } },
+        "responses": { "200": { "description": "The backbone node count was replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/core-mesh-degree": {
+    "/wan-graph-synthesizer/tenants/{tenant}/backbone-mesh-degree": {
       "get": {
-        "summary": "A tenant's core mesh degree (input).",
+        "summary": "A tenant's backbone mesh degree (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The core mesh degree." } },
+        "responses": { "200": { "description": "The backbone mesh degree." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's core mesh degree (stores only).",
+        "summary": "Replace a tenant's backbone mesh degree (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The core mesh degree was replaced." } },
-        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
-      }
-    },
-    "/wan-graph-synthesizer/tenants/{tenant}/aggregation-homing-degree": {
-      "get": {
-        "summary": "A tenant's aggregation homing degree (input).",
-        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The aggregation homing degree." } },
-        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
-      },
-      "put": {
-        "summary": "Replace a tenant's aggregation homing degree (stores only).",
-        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The aggregation homing degree was replaced." } },
+        "responses": { "200": { "description": "The backbone mesh degree was replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },

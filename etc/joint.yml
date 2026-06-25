@@ -1,14 +1,13 @@
 ---
-# Canonical three-tier WAN design. Operator choices live here, not in source.
+# Canonical two-tier WAN design. Operator choices live here, not in source.
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
-# The three redundancy degrees are required; carriers come from the merged substrate.
+# The two redundancy degrees are required; carriers come from the merged substrate.
 access_homing_degree: 2
-aggregation_homing_degree: 2
-core_mesh_degree: 3
-core_node_count:
+backbone_mesh_degree: 3
+backbone_node_count:
   max: 5
   min: 3
-forced_aggregation_points:
+forced_backbone_nodes:
   - Cheyenne, WY
   - Chicago, IL
   - Dallas, TX
@@ -20,17 +19,13 @@ forced_aggregation_points:
 forced_connections:
   - source: Hanscom AFB
     target: New York, NY
-    type: access-aggregation
+    type: access-backbone
   - source: Burlington ANGB
     target: New York, NY
-    type: access-aggregation
+    type: access-backbone
   - source: F.E. Warren AFB
     target: Salt Lake City, UT
-    type: access-aggregation
-forced_core_nodes:
-  - Dallas, TX
-  - Los Angeles, CA
-  - Salt Lake City, UT
+    type: access-backbone
 inputs:
   csps:
     AWS:
@@ -47,14 +42,10 @@ inputs:
     F-35: data/vertices/tenants/f_35.csv
   off_net: data/vertices/utilities/off_net.csv
 knobs:
-  cluster_max_radius_miles: 500.0
-  cluster_min_points: 2
-  cluster_min_radius_miles: 0.0
+  backbone_coverage_target_miles: 600.0
+  backbone_set_peak_bytes: 160
   compass_octants: 8
-  core_coverage_target_miles: 600.0
-  core_set_peak_bytes: 160
   enum_memory_fraction: 0.6
 label: Joint
-prohibited_aggregation_points: []
+prohibited_backbone_nodes: []
 prohibited_connections: []
-prohibited_core_nodes: []

@@ -152,20 +152,16 @@ def push_tenants(api: str) -> list[str]:
         _put(api, f"tenants/{tid}/locations", locations)
         _put(api, f"tenants/{tid}/csp-regions", regions)
         _put(api, f"tenants/{tid}/off-net", off_net)
-        _put(api, f"tenants/{tid}/forced-core-nodes", config.get("forced_core_nodes", []))
-        _put(api, f"tenants/{tid}/forced-aggregation-points",
-             config.get("forced_aggregation_points", []))
+        _put(api, f"tenants/{tid}/forced-backbone-nodes",
+             config.get("forced_backbone_nodes", []))
         _put(api, f"tenants/{tid}/forced-connections", config.get("forced_connections", []))
-        _put(api, f"tenants/{tid}/prohibited-core-nodes",
-             config.get("prohibited_core_nodes", []))
-        _put(api, f"tenants/{tid}/prohibited-aggregation-points",
-             config.get("prohibited_aggregation_points", []))
+        _put(api, f"tenants/{tid}/prohibited-backbone-nodes",
+             config.get("prohibited_backbone_nodes", []))
         _put(api, f"tenants/{tid}/prohibited-connections",
              config.get("prohibited_connections", []))
-        _put(api, f"tenants/{tid}/core-node-count", config.get("core_node_count", {}))
-        _put(api, f"tenants/{tid}/core-mesh-degree", _degree_doc(config["core_mesh_degree"]))
-        _put(api, f"tenants/{tid}/aggregation-homing-degree",
-             _degree_doc(config["aggregation_homing_degree"]))
+        _put(api, f"tenants/{tid}/backbone-node-count", config.get("backbone_node_count", {}))
+        _put(api, f"tenants/{tid}/backbone-mesh-degree",
+             _degree_doc(config["backbone_mesh_degree"]))
         _put(api, f"tenants/{tid}/access-homing-degree",
              _degree_doc(config["access_homing_degree"]))
         _put(api, f"tenants/{tid}/knobs", config.get("knobs", {}))

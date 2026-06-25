@@ -21,22 +21,19 @@ import boto3
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-_WAN_COLLECTIONS = ("vertices", "edges", "core-nodes", "aggregation-points", "access-nodes")
+_WAN_COLLECTIONS = ("vertices", "edges", "backbone-nodes", "tenant-nodes", "csp-nodes")
 # Each operator input is its own resource, stored as ``<collection>.json``. The former
 # ``config`` document is decomposed into the per-concern resources below.
 _INPUTS = frozenset({
     "locations",
     "csp-regions",
     "off-net",
-    "forced-core-nodes",
-    "forced-aggregation-points",
+    "forced-backbone-nodes",
     "forced-connections",
-    "prohibited-core-nodes",
-    "prohibited-aggregation-points",
+    "prohibited-backbone-nodes",
     "prohibited-connections",
-    "core-node-count",
-    "core-mesh-degree",
-    "aggregation-homing-degree",
+    "backbone-node-count",
+    "backbone-mesh-degree",
     "access-homing-degree",
     "knobs",
     "label",

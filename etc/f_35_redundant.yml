@@ -2,19 +2,15 @@
 # F-35-only WAN design: demand is F-35 installations only (no AFLCMC/AFNWC/NI).
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 access_homing_degree: 2
-aggregation_homing_degree: 2
-core_mesh_degree: 3
-core_node_count:
+backbone_mesh_degree: 3
+backbone_node_count:
   max: 3
   min: 3
-forced_aggregation_points:
+forced_backbone_nodes:
   - Atlanta, GA
   - Las Vegas, NV
   - Los Angeles, CA
 forced_connections: []
-forced_core_nodes:
-  - Atlanta, GA
-  - Los Angeles, CA
 inputs:
   csps:
     AWS:
@@ -25,13 +21,9 @@ inputs:
     F-35: data/vertices/tenants/f_35.csv
   off_net: data/vertices/utilities/off_net.csv
 knobs:
-  cluster_max_radius_miles: 250.0
-  cluster_min_points: 2
-  cluster_min_radius_miles: 0.0
+  backbone_set_peak_bytes: 160
   compass_octants: 8
-  core_set_peak_bytes: 160
   enum_memory_fraction: 0.6
 label: F-35 (redundant)
-prohibited_aggregation_points: []
+prohibited_backbone_nodes: []
 prohibited_connections: []
-prohibited_core_nodes: []
