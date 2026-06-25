@@ -132,6 +132,18 @@ def ring_params() -> DesignParams:
     return DesignParams(min_backbone_count=2, datacenter_cities=ring_datacenter_cities())
 
 
+def forced_off_net_case() -> tuple[Vertex, DesignParams]:
+    """An off-net site forced as backbone, plus params admitting its city to the gate."""
+    site = off_net_site("Dulles Hub", 40.5, -100.0)
+    params = DesignParams(
+        min_backbone_count=2,
+        forced_backbone_names=("Dulles Hub",),
+        datacenter_cities=ring_datacenter_cities()
+        | {(site.info.municipality, site.info.state)},
+    )
+    return site, params
+
+
 RingInputs = tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]
 
 

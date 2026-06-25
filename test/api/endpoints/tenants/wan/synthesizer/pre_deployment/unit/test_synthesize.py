@@ -208,7 +208,9 @@ def test_eligible_excludes_a_degree_one_spur() -> None:
     """A degree-one PoP can never route redundantly, so it is not eligible."""
     edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0, ("a", "spur"): 1.0})
     pops = [pop(name) for name in ("a", "b", "c", "spur")]
-    eligible = compute_eligible_backbone_ids(pops, build_adjacency(edges), _cities("a", "b", "c", "spur"))
+    eligible = compute_eligible_backbone_ids(
+        pops, build_adjacency(edges), _cities("a", "b", "c", "spur")
+    )
     assert "spur" not in eligible
 
 
@@ -492,7 +494,7 @@ def test_coverage_candidate_totals_drops_an_infeasible_addition() -> None:
     totals = coverage_candidate_totals(("c1", "c2"), ["z"], inputs, _plan([]), {
         "c1": pop("c1", 0.0, 0.0), "c2": pop("c2", 0.0, 0.1), "z": pop("z", 0.0, 0.2)
     })
-    assert totals == []
+    assert not totals
 
 
 def _far_demand_inputs_plan() -> tuple[DesignInputs, _SearchPlan]:
