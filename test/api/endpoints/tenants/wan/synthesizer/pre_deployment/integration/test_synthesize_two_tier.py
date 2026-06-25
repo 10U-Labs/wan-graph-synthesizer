@@ -77,13 +77,7 @@ def test_design_is_connected() -> None:
 
 def _forced_off_net_artifacts() -> DesignArtifacts:
     """Synthesize over the ring with an off-net site forced as a backbone node."""
-    site = fixtures.off_net_site("Dulles Hub", 40.5, -100.0)
-    params = DesignParams(
-        min_backbone_count=2,
-        forced_backbone_names=("Dulles Hub",),
-        datacenter_cities=fixtures.ring_datacenter_cities()
-        | {(site.info.municipality, site.info.state)},
-    )
+    site, params = fixtures.forced_off_net_case()
     return run_design(
         fixtures.ring_vertices(), fixtures.ring_physical_edges(), params, off_net_sites=[site]
     )

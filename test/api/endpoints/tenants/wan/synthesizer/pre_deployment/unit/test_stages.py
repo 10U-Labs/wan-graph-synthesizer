@@ -17,13 +17,7 @@ def test_dual_home_returns_a_graph_without_off_net() -> None:
 
 def test_dual_home_realizes_a_forced_off_net_site() -> None:
     """dual_home synthesizes a local-fiber twin for a forced off-net seat."""
-    site = fixtures.off_net_site("Dulles Hub", 40.5, -100.0)
-    params = DesignParams(
-        min_backbone_count=2,
-        forced_backbone_names=("Dulles Hub",),
-        datacenter_cities=fixtures.ring_datacenter_cities()
-        | {(site.info.municipality, site.info.state)},
-    )
+    site, params = fixtures.forced_off_net_case()
     homed_vertices, _edges = dual_home(
         fixtures.ring_vertices(), fixtures.ring_physical_edges(), params, [site]
     )
