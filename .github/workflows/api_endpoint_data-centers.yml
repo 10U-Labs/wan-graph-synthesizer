@@ -162,7 +162,7 @@ jobs:
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on tests
         run: >-
-          MYPYPATH=lib/python:src/api/endpoints/data-centers/lambdas
+          MYPYPATH=lib/python:src/api/endpoints/data-centers/lambdas:test/api/endpoints/data-centers
           python3 -m mypy --strict --explicit-package-bases
           --ignore-missing-imports
           test/api/endpoints/data-centers/conftest.py
