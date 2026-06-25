@@ -1,4 +1,4 @@
-"""REST API for the three-tier WAN designer.
+"""REST API for the two-tier WAN designer.
 
 One AWS Lambda handler per resource (``endpoints/<resource>/lambdas/handler.py``),
 deployed by the OpenTofu stack beside it; nested resources live under their parent
