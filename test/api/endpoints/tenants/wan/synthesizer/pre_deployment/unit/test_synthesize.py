@@ -428,9 +428,13 @@ def test_search_refuses_a_space_too_large_for_memory() -> None:
 
 
 def test_search_raises_when_no_size_is_feasible() -> None:
-    """The search raises when no backbone set of any size yields a feasible design."""
-    edges = physical({("c1", "g1"): 1.0, ("c2", "g1"): 1.0, ("c1", "c2"): 1.0, ("s", "g1"): 1.0})
-    inputs = _inputs_from_edges(["c1", "c2", "g1"], edges, {"c1", "c2"}, [access("s")])
+    """The search raises when no backbone set of any size yields a feasible design.
+
+    The two candidate backbone PoPs sit in separate components, so they can never reach
+    each other to wire their mesh links and no size is feasible.
+    """
+    edges = physical({("c1", "x"): 1.0, ("c2", "y"): 1.0})
+    inputs = _inputs_from_edges(["c1", "c2", "x", "y"], edges, {"c1", "c2"}, [access("s")])
     plan = _plan(["c1", "c2"])
     with pytest.raises(ValueError):
         search_best_design(inputs, DesignParams(min_backbone_count=2), plan)
