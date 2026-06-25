@@ -23,13 +23,13 @@ _READER: dict[str, Any] = {
     "stored": {
         "vertices": [],
         "edges": [],
-        "core-nodes": [{"id": "P"}],
-        "aggregation-points": [],
-        "access-nodes": [],
+        "backbone-nodes": [{"id": "P"}],
+        "tenant-nodes": [],
+        "csp-nodes": [],
     },
     "serve_event": {
         "pathParameters": {"tenant": "f-35"},
-        "path": "/x/tenants/f-35/core-nodes",
+        "path": "/x/tenants/f-35/backbone-nodes",
     },
     "serve_expect": [{"id": "P"}],
     "unknown_event": {
@@ -163,7 +163,7 @@ def test_tenant_put_does_not_trigger_a_build(monkeypatch: pytest.MonkeyPatch) ->
     module = _tenant(monkeypatch)
     invocations: list[dict[str, Any]] = []
     with patch("boto3.client", side_effect=write_clients({}, invocations)):
-        module.lambda_handler(_tenant_put("forced-core-nodes", []), None)
+        module.lambda_handler(_tenant_put("forced-backbone-nodes", []), None)
     assert not invocations
 
 
