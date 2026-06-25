@@ -2,9 +2,9 @@
 
     GET    /wan-graph-synthesizer/tenants                              -> [{id, label}]
     GET    /wan-graph-synthesizer/tenants/{c}/vertices|edges           -> the WAN graph
-    GET    /wan-graph-synthesizer/tenants/{c}/core-nodes|...           -> the WAN tiers
-    GET    /wan-graph-synthesizer/tenants/{c}/locations|forced-core-nodes|... -> an input
-    PUT    /wan-graph-synthesizer/tenants/{c}/locations|forced-core-nodes|... -> set input
+    GET    /wan-graph-synthesizer/tenants/{c}/backbone-nodes|...        -> the WAN tiers
+    GET    /wan-graph-synthesizer/tenants/{c}/locations|forced-backbone-nodes|... -> an input
+    PUT    /wan-graph-synthesizer/tenants/{c}/locations|forced-backbone-nodes|... -> set input
     DELETE /wan-graph-synthesizer/tenants/{c}                          -> remove the tenant
 
 The computed collections come from the published ``wan.json``; each operator input is
