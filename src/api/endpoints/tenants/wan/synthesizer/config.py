@@ -1,7 +1,7 @@
 """Resolve the WAN designer configuration from an already-parsed mapping.
 
 Everything the operator tunes -- the input paths, the role pins and exclusions,
-the core count, and the algorithm dials -- arrives as one parsed mapping (the
+the backbone count, and the algorithm dials -- arrives as one parsed mapping (the
 tenant's stored config JSON). Any key it omits falls back to the matching
 built-in default, so a partial (even empty) mapping still yields a valid
 configuration.
@@ -15,7 +15,6 @@ from typing import Any
 
 from synthesizer.model import (
     FORCED_CONNECTION_TYPES,
-    ClusterTuning,
     DesignPaths,
     DesignParams,
     EnumBudget,
@@ -81,10 +80,9 @@ def _str_list(data: dict[str, Any], key: str, default: list[str]) -> tuple[str, 
 def _required_int(data: dict[str, Any], key: str) -> int:
     """Return a required integer config value, rejecting an absent or non-int value.
 
-    The three redundancy degrees (``core-mesh-degree``,
-    ``aggregation-homing-degree``, ``access-homing-degree``) have no default: every
-    tenant must state each one, so a missing key is an error rather than a
-    silently-filled fallback.
+    The two redundancy degrees (``backbone-mesh-degree``, ``access-homing-degree``)
+    have no default: every tenant must state each one, so a missing key is an error
+    rather than a silently-filled fallback.
     """
     if key not in data:
         raise ValueError(f"config key '{key}' is required and has no default")
@@ -128,12 +126,14 @@ def _forced_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
 
 
 def _excluded_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
-    """Parse the operator-pruned ``excluded_connections`` (``core-core`` only).
+    """Parse the operator-pruned ``excluded_connections`` (``backbone-backbone`` only).
 
-    The only mesh link an operator may remove is a ``core-core`` pair, so ``type``
-    defaults to and must be ``core-core``.
+    The only mesh link an operator may remove is a ``backbone-backbone`` pair, so
+    ``type`` defaults to and must be ``backbone-backbone``.
     """
-    return _connection_list(design, "excluded_connections", frozenset({"core-core"}), "core-core")
+    return _connection_list(
+        design, "excluded_connections", frozenset({"backbone-backbone"}), "backbone-backbone"
+    )
 
 
 def _vertex_paths(tenant: object, value: object) -> list[tuple[str, Path]]:
@@ -172,24 +172,15 @@ def _tuning(tuning: dict[str, Any]) -> Tuning:
     """Resolve the tuning configuration into a :class:`Tuning`."""
     base = Tuning()
     return Tuning(
-        cluster=ClusterTuning(
-            min_points=tuning.get("cluster_min_points", base.cluster.min_points),
-            radius_miles=(
-                tuning.get("cluster_min_radius_miles", base.cluster.radius_miles[0]),
-                tuning.get("cluster_max_radius_miles", base.cluster.radius_miles[1]),
-            ),
-            k=tuning.get("cluster_k", base.cluster.k),
-        ),
         compass_octants=tuning.get("compass_octants", base.compass_octants),
-        core_links_per_core=_required_int(tuning, "core_links_per_core"),
-        aggregation_homing_degree=_required_int(tuning, "aggregation_homing_degree"),
-        core_coverage_target_miles=tuning.get(
-            "core_coverage_target_miles", base.core_coverage_target_miles
+        backbone_mesh_degree=_required_int(tuning, "backbone_mesh_degree"),
+        backbone_coverage_target_miles=tuning.get(
+            "backbone_coverage_target_miles", base.backbone_coverage_target_miles
         ),
-        access_aggregation_links=_required_int(tuning, "access_aggregation_links"),
+        access_backbone_links=_required_int(tuning, "access_backbone_links"),
         enum_budget=EnumBudget(
             memory_fraction=tuning.get("enum_memory_fraction", base.enum_budget.memory_fraction),
-            set_peak_bytes=tuning.get("core_set_peak_bytes", base.enum_budget.set_peak_bytes),
+            set_peak_bytes=tuning.get("backbone_set_peak_bytes", base.enum_budget.set_peak_bytes),
         ),
     )
 
@@ -198,13 +189,11 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
     """Resolve the design and tuning configuration into :class:`DesignParams`."""
     base = DesignParams()
     return DesignParams(
-        min_core_count=design.get("min_core_count", base.min_core_count),
-        max_core_count=design.get("max_core_count", base.max_core_count),
-        forced_core_names=_str_list(design, "forced_cores", []),
-        forced_aggregation_names=_str_list(design, "forced_aggregations", []),
+        min_backbone_count=design.get("min_backbone_count", base.min_backbone_count),
+        max_backbone_count=design.get("max_backbone_count", base.max_backbone_count),
+        forced_backbone_names=_str_list(design, "forced_backbone", []),
         exclusions=RoleExclusions(
-            prohibited_core_names=_str_list(design, "prohibited_cores", []),
-            prohibited_aggregation_names=_str_list(design, "prohibited_aggregations", []),
+            prohibited_backbone_names=_str_list(design, "prohibited_backbone", []),
         ),
         tuning=_tuning(tuning),
     )
@@ -214,7 +203,8 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
     """Resolve an already-parsed config mapping into a :class:`AppConfig`.
 
     Any key the mapping omits falls back to the matching built-in default, so a
-    partial (even empty) mapping still yields a valid configuration.
+    partial (even empty) mapping still yields a valid configuration. ``datacenter_cities``
+    is threaded by the entrypoint, not parsed from these documents.
     """
     design = _mapping(data, "design")
     return AppConfig(
@@ -242,32 +232,29 @@ def _degree(parts: dict[str, Any], resource: str) -> int:
 def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     """Assemble an :class:`AppConfig` from the per-resource tenant documents.
 
-    Each operator concern is its own stored document (``forced-core-nodes``,
-    ``prohibited-connections``, ``core-mesh-degree``, ``knobs``, ...). This reshapes
-    those documents into the canonical mapping :func:`config_from_data` expects and
-    delegates to it, so all parsing and validation stays in one place. The three
-    redundancy degrees are required -- a missing one raises in :func:`_degree`.
+    Each operator concern is its own stored document (``forced-backbone-nodes``,
+    ``prohibited-connections``, ``backbone-mesh-degree``, ``knobs``, ...). This
+    reshapes those documents into the canonical mapping :func:`config_from_data`
+    expects and delegates to it, so all parsing and validation stays in one place. The
+    two redundancy degrees are required -- a missing one raises in :func:`_degree`.
     ``paths`` is left at its defaults: the deployed synthesizer reads its substrate
     from the merged carriers, not from these documents.
     """
-    count = _mapping(parts, "core-node-count")
+    count = _mapping(parts, "backbone-node-count")
     design: dict[str, Any] = {
-        "forced_cores": parts.get("forced-core-nodes", []),
-        "forced_aggregations": parts.get("forced-aggregation-points", []),
-        "prohibited_cores": parts.get("prohibited-core-nodes", []),
-        "prohibited_aggregations": parts.get("prohibited-aggregation-points", []),
+        "forced_backbone": parts.get("forced-backbone-nodes", []),
+        "prohibited_backbone": parts.get("prohibited-backbone-nodes", []),
         "forced_connections": parts.get("forced-connections", []),
         "excluded_connections": parts.get("prohibited-connections", []),
     }
     if "min" in count:
-        design["min_core_count"] = count["min"]
+        design["min_backbone_count"] = count["min"]
     if "max" in count:
-        design["max_core_count"] = count["max"]
+        design["max_backbone_count"] = count["max"]
     tuning = {
         **_mapping(parts, "knobs"),
-        "core_links_per_core": _degree(parts, "core-mesh-degree"),
-        "aggregation_homing_degree": _degree(parts, "aggregation-homing-degree"),
-        "access_aggregation_links": _degree(parts, "access-homing-degree"),
+        "backbone_mesh_degree": _degree(parts, "backbone-mesh-degree"),
+        "access_backbone_links": _degree(parts, "access-homing-degree"),
     }
     label = parts.get("label", {})
     label_text = label.get("label", "") if isinstance(label, dict) else str(label)

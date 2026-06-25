@@ -3,7 +3,7 @@
 A one-shot container task (TENANT + STORE_BUCKET in the environment): read the
 substrate and the tenant's inputs from S3, run the whole design pipeline
 (dual-home -> overrides -> synthesize -> finalize), and publish the WAN -- or record
-a ``failed`` status when no valid WAN exists (``synthesize_three_tier_design`` raises
+a ``failed`` status when no valid WAN exists (``synthesize_two_tier_design`` raises
 ``ValueError``). ``main`` is invoked by the container command; there is no
 compute-on-demand path.
 """
@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -20,15 +21,15 @@ import boto3
 
 from synthesizer.codec import load_off_net, load_regions, load_sites, load_substrate
 from synthesizer.collections import (
-    access_nodes,
-    aggregation_points,
-    core_nodes,
+    backbone_nodes,
+    provider-nodes,
     edges,
+    tenant_nodes,
     vertices,
 )
 from synthesizer.config import app_config_from_parts
 from synthesizer.model import DesignArtifacts, SourceFiles
-from synthesizer.synthesize import synthesize_three_tier_design
+from synthesizer.synthesize import synthesize_two_tier_design
 from synthesizer.output import design_payload
 from synthesizer.overrides import apply_role_overrides
 from synthesizer.stages import dual_home, finalize
@@ -36,21 +37,28 @@ from synthesizer.stages import dual_home, finalize
 logger = logging.getLogger(__name__)
 
 # The tenant config resources, each its own stored document, assembled back into a
-# single AppConfig. The three degrees are required; the rest default when empty.
+# single AppConfig. The two degrees are required; the rest default when empty.
 CONFIG_RESOURCES = (
-    "forced-core-nodes",
-    "forced-aggregation-points",
+    "forced-backbone-nodes",
     "forced-connections",
-    "prohibited-core-nodes",
-    "prohibited-aggregation-points",
+    "prohibited-backbone-nodes",
     "prohibited-connections",
-    "core-node-count",
-    "core-mesh-degree",
-    "aggregation-homing-degree",
+    "backbone-node-count",
+    "backbone-mesh-degree",
     "access-homing-degree",
     "knobs",
     "label",
 )
+
+
+def _datacenter_cities(client: Any) -> frozenset[tuple[str, str]]:
+    """The ``(municipality, state)`` cities a colocation provider operates a cage in.
+
+    Read from the merged data-center facilities; a carrier PoP may serve as a backbone
+    node only at one of these cities (the gate threaded onto ``DesignParams``).
+    """
+    rows = _read_json(client, "data-centers/merge/vertices.json")
+    return frozenset((row["municipality"], row["state"]) for row in rows)
 
 
 def _read_json(client: Any, key: str) -> Any:
@@ -81,23 +89,27 @@ def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
         for resource in CONFIG_RESOURCES
     }
     config = app_config_from_parts(parts)
+    # Gate the backbone to data-center cities: a carrier PoP may be a backbone node
+    # only where a colocation provider operates a cage. The set threads through
+    # synthesis (eligibility) and the forced-pin/fabrication gates on DesignParams.
+    params = replace(config.params, datacenter_cities=_datacenter_cities(client))
     graph = carrier_pops + locations + regions
     logger.info(
         "Dual-homing %d vertices over %d substrate edges", len(graph), len(physical_edges)
     )
-    graph, physical_edges = dual_home(graph, physical_edges, config.params, off_net)
+    graph, physical_edges = dual_home(graph, physical_edges, params, off_net)
     graph, physical_edges, overrides = apply_role_overrides(
         graph,
         physical_edges,
-        config.params,
+        params,
         config.forced_connections,
         config.excluded_connections,
     )
-    logger.info("Synthesizing three-tier design (this is the long step)")
-    design = synthesize_three_tier_design(graph, physical_edges, config.params, overrides)
+    logger.info("Synthesizing two-tier design (this is the long step)")
+    design = synthesize_two_tier_design(graph, physical_edges, params, overrides)
     logger.info("Finalizing and validating the design")
     graph, physical_edges, design, validation = finalize(
-        graph, physical_edges, design, config.params
+        graph, physical_edges, design, params
     )
     payload = design_payload(
         SourceFiles((), Path("store")),
@@ -107,9 +119,9 @@ def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
     return {
         "vertices": vertices(payload),
         "edges": edges(payload),
-        "core-nodes": core_nodes(payload),
-        "aggregation-points": aggregation_points(payload),
-        "access-nodes": access_nodes(payload),
+        "backbone-nodes": backbone_nodes(payload),
+        "tenant-nodes": tenant_nodes(payload),
+        "provider-nodes": provider-nodes(payload),
     }
 
 

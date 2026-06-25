@@ -6,10 +6,11 @@ from collections.abc import Iterable
 from dataclasses import asdict
 from typing import Any
 
+from synthesizer.codec import provider_KIND
+from synthesizer.collections import vertex_role
 from synthesizer.input_graph import Vertex, edge_key
 from synthesizer.model import Design, DesignArtifacts, SourceFiles, is_carrier_pop
-from synthesizer.overrides import twin_vertex_id
-from synthesizer.validation import included_vertex_ids, vertex_role
+from synthesizer.validation import included_vertex_ids
 
 
 def sorted_physical_edges(design: Design) -> list[tuple[str, str]]:
@@ -17,35 +18,22 @@ def sorted_physical_edges(design: Design) -> list[tuple[str, str]]:
     return sorted(design.physical_edge_keys)
 
 
-def tier_breakdown(
-    core_ids: tuple[str, ...], aggregation_ids: tuple[str, ...]
-) -> dict[str, int]:
-    """Split the core and aggregation tiers into standalone vs co-located counts.
+def included_demand_count(vertices: Iterable[Vertex], design: Design) -> int:
+    """Count demand vertices actually homed into the design.
 
-    A core is dual-role (``CORE+AGGR``) when its co-located ``AGGR`` twin
-    (id :func:`twin_vertex_id`) is itself a seated aggregation. Standalone cores
-    are the rest; standalone aggregations are those that are not any core's twin.
-    """
-    aggregation_set = set(aggregation_ids)
-    colocated = [core_id for core_id in core_ids if twin_vertex_id(core_id) in aggregation_set]
-    twin_ids = {twin_vertex_id(core_id) for core_id in colocated}
-    return {
-        "standalone_core_count": len(core_ids) - len(colocated),
-        "colocated_core_count": len(colocated),
-        "standalone_aggregation_count": len(aggregation_set - twin_ids),
-    }
-
-def included_access_count(vertices: Iterable[Vertex], design: Design) -> int:
-    """Count access vertices actually homed into the design.
-
-    Mirrors the design-membership semantics of the core/aggregation counts: an
-    access vertex only counts once it is homed to an aggregation (i.e. it appears
-    in :func:`included_vertex_ids`), not merely because it was loaded as demand.
+    Mirrors the design-membership semantics of the backbone count: a demand vertex
+    only counts once it is homed to a backbone node (i.e. it appears in
+    :func:`included_vertex_ids`), not merely because it was loaded as demand.
     """
     included = included_vertex_ids(design)
     return sum(
         1 for vertex in vertices if not is_carrier_pop(vertex) and vertex.id in included
     )
+
+
+def _demand_edge_kind(source_vertex: Vertex) -> str:
+    """Label a demand-to-backbone access edge by its source vertex kind."""
+    return "provider_to_backbone" if source_vertex.kind == provider_KIND else "tenant_to_backbone"
 
 
 def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str, Any]:
@@ -63,17 +51,15 @@ def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str
         "vertices_files": [str(path) for path in sources.vertex_files],
         "physical_edge_file": str(sources.edge_path),
         "objective": (
-            "Three-tier WAN design: access vertices dual-home to Carrier aggregation PoPs, "
-            "aggregation PoPs dual-home to core PoPs over the physical Carrier graph, "
-            "and the core tier uses at least three strong vertices, with extra cores "
-            "added where they bring demand closer."
+            "Two-tier WAN design: demand vertices (tenant sites and provider regions) home "
+            "to a meshed backbone of selected Carrier PoPs over the physical Carrier "
+            "graph, with at least three strong backbone nodes and extra ones added "
+            "where they bring demand closer."
         ),
         "summary": {
-            "core_count": len(design.core_ids),
-            "aggregation_count": len(design.aggregation_ids),
-            **tier_breakdown(design.core_ids, design.aggregation_ids),
+            "backbone_count": len(design.backbone_ids),
             "transit_count": len(design.transit_ids),
-            "access_vertex_count": included_access_count(vertices, design),
+            "demand_vertex_count": included_demand_count(vertices, design),
             "access_edge_count": len(design.access_edges),
             "physical_edge_count": len(design.physical_edge_keys),
             "access_miles": round(design.metrics.access_miles, 3),
@@ -82,16 +68,15 @@ def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str
                 design.metrics.access_miles + design.metrics.physical_miles, 3
             ),
             "score": round(design.metrics.score, 3),
-            "cores": [vertices_by_id[vertex_id].name for vertex_id in design.core_ids],
-            "aggregations": [
-                vertices_by_id[vertex_id].name for vertex_id in design.aggregation_ids
+            "backbone_nodes": [
+                vertices_by_id[vertex_id].name for vertex_id in design.backbone_ids
             ],
         },
         "validation": validation,
         "vertices": [
             {
                 **asdict(vertex),
-                "tier_role": vertex_role(vertex.id, design, vertex),
+                "tier_role": vertex_role(vertex, design),
                 "included": vertex.id in included_vertex_ids(design),
             }
             for vertex in vertices
@@ -102,7 +87,7 @@ def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str
                 "source_name": vertices_by_id[edge.source].name,
                 "target_id": edge.target,
                 "target_name": vertices_by_id[edge.target].name,
-                "edge_kind": "access_to_aggregation",
+                "edge_kind": _demand_edge_kind(vertices_by_id[edge.source]),
                 "distance_miles": round(edge.distance_miles, 3),
             }
             for edge in sorted(design.access_edges, key=lambda item: (item.source, item.target))

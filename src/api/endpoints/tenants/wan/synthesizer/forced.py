@@ -2,10 +2,10 @@
 
 The overrides layer resolves the operator's forced connections into a
 :class:`~synthesizer.model.ForcedLinks` bundle; these helpers consume it while
-the synthesizer routes a design, so the pinned edges are honored: core-core pairs
-pruned from the backbone, aggregation-core links forced as routing sinks, and
-access-aggregation links pinned as homes. They depend only on the model, so the
-synthesizer imports them without a cycle.
+the synthesizer routes a design, so the pinned edges are honored:
+backbone-backbone pairs pruned from the mesh and access-backbone links pinned as
+homes. They depend only on the model, so the synthesizer imports them without a
+cycle.
 """
 
 from __future__ import annotations
@@ -14,25 +14,14 @@ from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.model import ForcedLinks
 
 
-def removed_core_pairs(
-    core_set: set[str], links: ForcedLinks
+def removed_backbone_pairs(
+    backbone_set: set[str], links: ForcedLinks
 ) -> frozenset[tuple[str, str]]:
-    """Operator-pruned core-core pairs whose both endpoints are in the current core set."""
+    """Operator-pruned backbone pairs whose both endpoints are in the current backbone."""
     return frozenset(
         pair
-        for pair in links.removed_core
-        if pair[0] in core_set and pair[1] in core_set
-    )
-
-
-def forced_cores_for_aggregation(
-    aggregation_id: str, core_set: set[str], links: ForcedLinks
-) -> frozenset[str]:
-    """Forced cores this aggregation must home to, within the current core set."""
-    return frozenset(
-        core_id
-        for agg_id, core_id in links.aggregation
-        if agg_id == aggregation_id and core_id in core_set
+        for pair in links.removed_backbone
+        if pair[0] in backbone_set and pair[1] in backbone_set
     )
 
 
@@ -41,18 +30,19 @@ def apply_forced_access_homes(
     completed: list[str],
     links: ForcedLinks,
     pop_by_id: dict[str, Vertex],
+    homes: int,
 ) -> list[str]:
-    """Pin operator-forced aggregations into an access vertex's two homes.
+    """Pin operator-forced backbone nodes into a demand vertex's homes.
 
-    Each aggregation the operator forced this access node onto leads, then the
-    nearest of its computed homes fill any remaining slot, capped at two. With no
-    forced link the homes are returned unchanged.
+    Each backbone node the operator forced this demand vertex onto leads, then the
+    nearest of its computed homes fill any remaining slot, capped at ``homes``. With
+    no forced link the homes are returned unchanged.
     """
-    required = [agg for acc, agg in sorted(links.access) if acc == access.id]
+    required = [backbone for acc, backbone in sorted(links.access) if acc == access.id]
     if not required:
         return completed
     nearest = sorted(
         (home for home in completed if home not in required),
         key=lambda home: haversine_miles(access, pop_by_id[home]),
     )
-    return (required + nearest)[:2]
+    return (required + nearest)[:homes]

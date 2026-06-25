@@ -1,19 +1,19 @@
 """Seat operator-forced off-net locations as local-fiber-attached carrier twins.
 
 An off-net seat is an operator location that is not itself a carrier PoP -- it has
-no backbone fiber of its own -- but that the operator wants seated as a core and/or
-an aggregation. Its coordinates come from a dedicated off-net CSV and never enter
-the main vertex pool, so it carries no access demand. When the operator force-pins
-such a seat we stand up a carrier-PoP twin at its coordinates, wired by synthetic
-local fiber to the nearest carrier PoPs (see :mod:`synthesizer.local_fiber`) -- the
-same mechanism that backs forced installations, except an off-net seat may be a
-core as well as an aggregation.
+no backbone fiber of its own -- but that the operator wants seated as a backbone
+node. Its coordinates come from a dedicated off-net CSV and never enter the main
+vertex pool, so it carries no access demand. When the operator force-pins such a seat
+we stand up a carrier-PoP twin at its coordinates, wired by synthetic local fiber to
+the nearest carrier PoPs (see :mod:`synthesizer.local_fiber`) -- the same mechanism
+that backs forced installations.
 
-Only forced off-net sites are realized; an unlisted site is ignored. Two failure
-modes are hard errors rather than silent skips, because the operator explicitly
-demanded the seat: a site that cannot reach two distinct carrier PoPs within range
-(it cannot biconnect into the backbone), and a site whose name collides with a real
-carrier PoP (the pin would be ambiguous).
+Only forced off-net sites are realized; an unlisted site is ignored. Failure modes
+are hard errors rather than silent skips, because the operator explicitly demanded
+the seat: a site whose city is not a data-center city (the backbone gate is
+absolute), a site that cannot reach two distinct carrier PoPs within range (it cannot
+biconnect into the backbone), and a site whose name collides with a real carrier PoP
+(the pin would be ambiguous).
 """
 
 from __future__ import annotations
@@ -53,14 +53,17 @@ def realize_off_net_sites(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     sites: list[Vertex],
     forced_names: frozenset[str],
+    datacenter_cities: frozenset[tuple[str, str]] = frozenset(),
 ) -> RealizedOffNet:
     """Seat a local-fiber twin for every off-net site the operator has force-pinned.
 
-    ``forced_names`` is the union of the operator's forced core and aggregation names.
-    A site whose name is not forced is ignored. A forced site whose name is also a
-    carrier PoP is already on-net -- the pin seats there, so no off-net twin is built.
-    A forced site that cannot reach :data:`~synthesizer.local_fiber.LOCAL_FIBER_MIN_LINKS`
-    carrier PoPs within range raises ``ValueError``.
+    ``forced_names`` is the operator's forced backbone names. A site whose name is not
+    forced is ignored. A forced site whose name is also a carrier PoP is already
+    on-net -- the pin seats there, so no off-net twin is built. A forced site whose
+    city is not in ``datacenter_cities`` raises ``ValueError`` (the backbone gate is
+    absolute). A forced site that cannot reach
+    :data:`~synthesizer.local_fiber.LOCAL_FIBER_MIN_LINKS` carrier PoPs within range
+    raises ``ValueError``.
     """
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     carrier_names = {pop.name for pop in carrier_pops}
@@ -74,6 +77,10 @@ def realize_off_net_sites(
         if site.name in carrier_names:
             # Already an on-net carrier PoP; the forced pin seats there, no twin needed.
             continue
+        if (site.info.municipality, site.info.state) not in datacenter_cities:
+            raise ValueError(
+                f"forced off-net site is not at a data-center city: {site.name}"
+            )
         twin_id = unique_twin_id(f"{OFF_NET_ID_PREFIX}{site.id}", used_ids)
         built = build_local_fiber_twin(
             site, twin_id, carrier_pops,

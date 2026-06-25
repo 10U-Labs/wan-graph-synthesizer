@@ -3,36 +3,36 @@
 from __future__ import annotations
 
 from synthesizer.input_graph import Vertex, edge_key
-from synthesizer.model import Design, ValidationReport, is_carrier_pop
+from synthesizer.model import Design, ValidationReport
 from synthesizer.graphs import (
     articulation_points,
     connected_components,
     is_two_edge_connected,
-    vertex_disjoint_paths_to_cores,
 )
 
 
-# Every core must link to at least ``core_links_per_core`` other cores -- but only
-# once the core tier is larger than that target, since fewer cores cannot reach it.
+# Every backbone node must link to at least ``mesh_degree`` other backbone nodes --
+# but only once the backbone is larger than that target, since fewer nodes cannot
+# reach it.
 
 
-def backbone_degree_deficient(
-    core_ids: tuple[str, ...],
+def backbone_mesh_deficient(
+    backbone_ids: tuple[str, ...],
     backbone_degrees: dict[str, int],
     vertices_by_id: dict[str, Vertex],
-    links_per_core: int,
+    mesh_degree: int,
 ) -> list[dict[str, object]]:
-    """Cores with fewer than ``links_per_core`` backbone links.
+    """Backbone nodes with fewer than ``mesh_degree`` mesh links.
 
-    With ``links_per_core`` or fewer cores the target cannot be met (a core has only
-    that many peers), so the list is empty.
+    With ``mesh_degree`` or fewer backbone nodes the target cannot be met (a node has
+    only that many peers), so the list is empty.
     """
-    if len(core_ids) <= links_per_core:
+    if len(backbone_ids) <= mesh_degree:
         return []
     return [
-        {"id": core_id, "name": vertices_by_id[core_id].name, "degree": degree}
-        for core_id, degree in sorted(backbone_degrees.items())
-        if degree < links_per_core
+        {"id": backbone_id, "name": vertices_by_id[backbone_id].name, "degree": degree}
+        for backbone_id, degree in sorted(backbone_degrees.items())
+        if degree < mesh_degree
     ]
 
 
@@ -44,46 +44,41 @@ def design_edge_set(design: Design) -> set[tuple[str, str]]:
 
 def included_vertex_ids(design: Design) -> set[str]:
     """Every vertex id that participates in the design."""
-    ids = set(design.core_ids) | set(design.aggregation_ids) | set(design.transit_ids)
+    ids = set(design.backbone_ids) | set(design.transit_ids)
     ids.update(vertex_id for edge in design.physical_edge_keys for vertex_id in edge)
     ids.update(edge.source for edge in design.access_edges)
     ids.update(edge.target for edge in design.access_edges)
     return ids
 
-def selected_physical_adjacency(design: Design) -> dict[str, list[tuple[str, float]]]:
-    """Unit-weight adjacency over only the physical edges the design selected."""
-    adjacency: dict[str, list[tuple[str, float]]] = {}
-    for left, right in design.physical_edge_keys:
-        adjacency.setdefault(left, []).append((right, 1.0))
-        adjacency.setdefault(right, []).append((left, 1.0))
-    return adjacency
+def demand_backbone_homes(design: Design) -> dict[str, set[str]]:
+    """The distinct backbone nodes each demand vertex homes to, by access edges."""
+    homes: dict[str, set[str]] = {}
+    for edge in design.access_edges:
+        homes.setdefault(edge.source, set()).add(edge.target)
+    return homes
 
-def aggregations_without_core_redundancy(design: Design, homes: int) -> list[str]:
-    """Aggregations lacking vertex-disjoint paths to ``homes`` distinct cores."""
-    adjacency = selected_physical_adjacency(design)
-    missing: list[str] = []
-    for aggregation_id in design.aggregation_ids:
-        _distance, paths = vertex_disjoint_paths_to_cores(
-            adjacency, aggregation_id, design.core_ids, homes
-        )
-        if len(paths) < homes:
-            missing.append(aggregation_id)
-    return missing
+def demand_without_backbone_redundancy(design: Design, homes: int) -> list[str]:
+    """Demand vertices homing to fewer than ``homes`` distinct backbone nodes."""
+    return [
+        demand_id
+        for demand_id, targets in sorted(demand_backbone_homes(design).items())
+        if len(targets) < homes
+    ]
 
-def core_backbone_pairs(design: Design) -> set[tuple[str, str]]:
-    """The logical core-to-core backbone links, one per ``core_mesh`` path use."""
+def backbone_mesh_pairs(design: Design) -> set[tuple[str, str]]:
+    """The logical backbone-to-backbone mesh links, one per ``backbone_mesh`` path use."""
     return {
         edge_key(use.source, use.target)
         for use in design.path_uses
-        if use.purpose == "core_mesh"
+        if use.purpose == "backbone_mesh"
     }
 
-def core_backbone_two_edge_connected(design: Design) -> bool:
-    """True if the core backbone connects every core and survives any single link loss."""
-    ids = set(design.core_ids)
+def backbone_mesh_two_edge_connected(design: Design) -> bool:
+    """True if the mesh connects every backbone node and survives any single link loss."""
+    ids = set(design.backbone_ids)
     if len(ids) < 2:
         return True
-    return is_two_edge_connected(ids, core_backbone_pairs(design))
+    return is_two_edge_connected(ids, backbone_mesh_pairs(design))
 
 def neighbor_degrees(
     ids: set[str], edges: set[tuple[str, str]]
@@ -96,27 +91,18 @@ def neighbor_degrees(
             neighbors[right].add(left)
     return {vertex_id: len(value) for vertex_id, value in neighbors.items()}
 
-def access_attachment_counts(design: Design) -> dict[str, int]:
-    """Number of aggregation links attached to each access vertex."""
-    counts: dict[str, int] = {}
-    for edge in design.access_edges:
-        counts[edge.source] = counts.get(edge.source, 0) + 1
-    return counts
-
 def validate_design(
     vertices: list[Vertex],
     design: Design,
-    access_aggregation_links: int = 2,
-    core_links_per_core: int = 3,
-    aggregation_homing_degree: int = 2,
+    access_backbone_links: int = 2,
+    backbone_mesh_degree: int = 3,
 ) -> ValidationReport:
     """Check a design against every hard structural requirement.
 
-    ``access_aggregation_links`` is the number of aggregation facilities each access
-    vertex is required to home to; ``aggregation_homing_degree`` is the number of
-    distinct cores each aggregation must reach over vertex-disjoint paths;
-    ``core_links_per_core`` is the number of other cores each core must link to on the
-    backbone. All three are the operator's configured redundancy levels.
+    ``access_backbone_links`` is the number of backbone nodes each demand vertex is
+    required to home to; ``backbone_mesh_degree`` is the number of other backbone nodes
+    each backbone node must link to on the mesh. Both are the operator's configured
+    redundancy levels.
     """
     vertices_by_id = {vertex.id: vertex for vertex in vertices}
     ids = included_vertex_ids(design)
@@ -124,13 +110,10 @@ def validate_design(
     components = connected_components(ids, edges)
     degrees = neighbor_degrees(ids, edges)
     articulations = articulation_points(ids, edges) if len(components) == 1 else set()
-    attachments = access_attachment_counts(design)
-    missing_core_redundancy = aggregations_without_core_redundancy(
-        design, aggregation_homing_degree
-    )
-    backbone_degrees = neighbor_degrees(set(design.core_ids), core_backbone_pairs(design))
-    backbone_deficient = backbone_degree_deficient(
-        design.core_ids, backbone_degrees, vertices_by_id, core_links_per_core
+    missing_redundancy = demand_without_backbone_redundancy(design, access_backbone_links)
+    backbone_degrees = neighbor_degrees(set(design.backbone_ids), backbone_mesh_pairs(design))
+    mesh_deficient = backbone_mesh_deficient(
+        design.backbone_ids, backbone_degrees, vertices_by_id, backbone_mesh_degree
     )
 
     return {
@@ -147,27 +130,12 @@ def validate_design(
             {"id": vertex_id, "name": vertices_by_id[vertex_id].name}
             for vertex_id in sorted(articulations)
         ],
-        "access_vertices_with_required_aggregation_links": all(
-            count == access_aggregation_links for count in attachments.values()
-        ),
-        "aggregations_dual_homed_to_cores": not missing_core_redundancy,
-        "aggregations_missing_core_redundancy": [
+        "access_vertices_with_required_backbone_links": not missing_redundancy,
+        "demand_missing_backbone_redundancy": [
             {"id": vertex_id, "name": vertices_by_id[vertex_id].name}
-            for vertex_id in missing_core_redundancy
+            for vertex_id in missing_redundancy
         ],
-        "cores_meet_backbone_link_target": not backbone_deficient,
-        "core_backbone_degree_deficient": backbone_deficient,
-        "core_backbone_two_edge_connected": core_backbone_two_edge_connected(design),
+        "backbone_meets_mesh_link_target": not mesh_deficient,
+        "backbone_mesh_degree_deficient": mesh_deficient,
+        "backbone_mesh_two_edge_connected": backbone_mesh_two_edge_connected(design),
     }
-
-def vertex_role(vertex_id: str, design: Design, vertex: Vertex) -> str:
-    """Return the tier role (access/core/aggregation/transit/unused) of a vertex."""
-    if not is_carrier_pop(vertex):
-        return "access"
-    if vertex_id in design.core_ids:
-        return "core"
-    if vertex_id in design.aggregation_ids:
-        return "aggregation"
-    if vertex_id in design.transit_ids:
-        return "transit"
-    return "unused"

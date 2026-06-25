@@ -1,14 +1,36 @@
-"""Per-collection JSON views of a computed tenant WAN.
+"""Per-collection JSON views of a computed tenant WAN, plus demand-role labelling.
 
 The synthesizer's ``design_payload`` (output.py) is one coherent computation; the
 entrypoint slices it into the atomic collections the REST API serves (vertices,
-edges, and the three tier views) and stores each separately. These are read-only
-slices over that already-serialized payload, so they take and return plain dicts.
+edges, and the tier views) and stores each separately. The slice helpers are
+read-only views over that already-serialized payload, so they take and return plain
+dicts. :func:`vertex_role` is the authoritative tier-role labeller -- it lives here
+because labelling demand as ``tenant`` vs ``provider`` needs the codec's vertex kinds.
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+from synthesizer.codec import provider_KIND
+from synthesizer.input_graph import Vertex
+from synthesizer.model import Design, is_carrier_pop
+
+
+def vertex_role(vertex: Vertex, design: Design) -> str:
+    """Return the tier role of a vertex.
+
+    A selected carrier PoP is ``backbone``; a routing-only PoP is ``transit``; an
+    unselected PoP is ``unused``. A demand vertex is ``provider`` when its kind is the
+    codec's cloud-region kind and ``tenant`` otherwise (a tenant site).
+    """
+    if not is_carrier_pop(vertex):
+        return "provider" if vertex.kind == provider_KIND else "tenant"
+    if vertex.id in design.backbone_ids:
+        return "backbone"
+    if vertex.id in design.transit_ids:
+        return "transit"
+    return "unused"
 
 
 def vertices(payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -27,16 +49,16 @@ def _tier(payload: dict[str, Any], tier_role: str) -> list[dict[str, Any]]:
     return [vertex for vertex in payload["vertices"] if vertex["tier_role"] == tier_role]
 
 
-def core_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """The carrier PoPs the design selected as core (national) hubs."""
-    return _tier(payload, "core")
+def backbone_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """The carrier PoPs the design selected as backbone hubs."""
+    return _tier(payload, "backbone")
 
 
-def aggregation_points(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """The carrier PoPs the design selected as aggregation (regional) hubs."""
-    return _tier(payload, "aggregation")
+def tenant_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """The tenant's own demand vertices (its access sites) homed into the design."""
+    return _tier(payload, "tenant")
 
 
-def access_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """The demand vertices (installations + provider regions) homed into the design."""
-    return _tier(payload, "access")
+def provider-nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """The provider cloud-region demand vertices homed into the design."""
+    return _tier(payload, "provider")

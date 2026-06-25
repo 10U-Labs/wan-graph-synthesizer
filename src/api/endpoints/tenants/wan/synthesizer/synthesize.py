@@ -1,25 +1,25 @@
-"""Synthesize a three-tier core/aggregation/access WAN over the carrier graph.
+"""Synthesize a two-tier backbone/demand WAN over the carrier graph.
 
-Cores are chosen for strength, not mileage (the source mapbook has no
-distances): each core's strength is its degree plus compass spread plus path
+Backbone nodes are chosen for strength, not mileage (the source mapbook has no
+distances): each node's strength is its degree plus compass spread plus path
 straightness, and the strongest feasible set of at least the configured
-``min_core_count`` wins, with total last-mile only breaking ties. The tier then
-grows past that floor while any aggregation is farther than
-``core_coverage_target_miles`` from every core, each added core being the one that
-most shortens the aggregation-to-core haul -- so extra cores appear only where they
-bring demand closer, never as a mileage cost minimized over candidate sets.
+``min_backbone_count`` wins, with total last-mile only breaking ties. The backbone
+then grows past that floor while any demand vertex is farther than
+``backbone_coverage_target_miles`` from every selected backbone node, each added node
+being the one that most shortens the demand-to-backbone haul -- so extra backbone
+nodes appear only where they bring demand closer, never as a mileage cost minimized
+over candidate sets.
 
-Access sites with no aggregation within the last-mile cap are exempt from the cap
-and home to their nearest ``access_aggregation_links`` regardless.
+Eligibility is gated twice: a carrier PoP may serve as a backbone node only if it has
+at least two physical links AND sits at a data-center city (a colocation provider
+operates a cage there). The operator's forced backbone pins are gated the same way
+(in ``synthesizer.overrides``).
 
+Every demand vertex (a unified tenant site or provider region) homes to its
+``access_backbone_links`` nearest selected backbone nodes over vertex-disjoint paths.
 On top of the algorithm, the operator may pin roles by PoP name (``RoleOverrides``,
-resolved by ``apply_role_overrides``): force a PoP to be a core, force it to be an
-aggregation, or exclude it from every selected role. A PoP forced as both a core
-and an aggregation is co-located: it is split into a distinct ``CORE`` vertex and a
-co-located ``AGGR`` vertex that share coordinates and a zero-mile in-facility
-cross-connect, with the core's fiber duplicated onto the aggregation's distinct
-hardware stack so the aggregation reaches its own co-located core as one of its two
-vertex-disjoint cores and a remote core as the other (see ``apply_role_overrides``).
+resolved by ``apply_role_overrides``): force a PoP onto the backbone, or exclude it
+from it.
 """
 
 from __future__ import annotations
@@ -43,8 +43,7 @@ from synthesizer.model import (
 )
 from synthesizer.forced import (
     apply_forced_access_homes,
-    forced_cores_for_aggregation,
-    removed_core_pairs,
+    removed_backbone_pairs,
 )
 from synthesizer.graphs import (
     build_adjacency,
@@ -52,265 +51,30 @@ from synthesizer.graphs import (
     vertex_disjoint_paths_to_cores,
     path_edge_keys,
 )
-from synthesizer.backbone import BackboneConstraints, core_mesh_paths, path_geometry_miles
-from synthesizer.clustering import cluster_access_vertices
-from synthesizer.on_net_fabrication import ON_NET_ID_PREFIX
-from synthesizer.offnet import OFF_NET_ID_PREFIX
-from synthesizer.overrides import (
-    AGGR_TWIN_PREFIX,
-    colocated_twin,
-    colocation_edges,
-    twin_vertex_id,
-)
-from synthesizer.search_plan import ClusterPlan, _AggregationPlan, _SearchPlan
-from synthesizer.strength import core_strength
+from synthesizer.backbone import BackboneConstraints, backbone_mesh_paths
+from synthesizer.search_plan import _SearchPlan
+from synthesizer.strength import backbone_strength
 
 logger = logging.getLogger(__name__)
 
-# How often the core-set scan logs a progress heartbeat. A single size can enumerate
-# millions of sets; without this the scan goes silent between "new best" lines.
+# How often the backbone-set scan logs a progress heartbeat. A single size can
+# enumerate millions of sets; without this the scan goes silent between "new best"
+# lines.
 _SEARCH_LOG_INTERVAL = 50_000
 
-
-@dataclass(frozen=True)
-class AggregationHoming:
-    """How an aggregation must home: the degree and any operator-required cores."""
-
-    degree: int
-    required_cores: frozenset[str] = frozenset()
-
-
-def aggregation_core_paths(
-    aggregation_id: str,
-    core_ids: tuple[str, ...],
-    adjacency: dict[str, list[tuple[str, float]]],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-    homing: AggregationHoming,
-) -> tuple[float, list[PathUse]]:
-    """Route an aggregation to ``homing.degree`` distinct cores over disjoint paths.
-
-    ``homing.required_cores`` are operator-forced cores this aggregation must home to;
-    each is forced to anchor one of the routed paths.
-    """
-    total, paths = vertex_disjoint_paths_to_cores(
-        adjacency, aggregation_id, core_ids, homing.degree, homing.required_cores
-    )
-    if not paths:
-        return math.inf, []
-    uses = [
-        PathUse(
-            "aggregation_to_core",
-            aggregation_id,
-            path[-1],
-            path,
-            path_geometry_miles(path, physical_edges),
-        )
-        for path in paths
-    ]
-    return total, uses
 
 @dataclass
 class _DesignDraft:
     access_edges: list[AccessEdge]
-    selected_aggregation_ids: set[str]
     path_uses: list[PathUse]
 
-def aggregation_homes(
-    aggregation_id: str,
-    core_ids: tuple[str, ...],
-    homes: int,
-    inputs: DesignInputs,
-    cache: dict[tuple[str, tuple[str, ...], int], bool],
-) -> bool:
-    """True if the aggregation reaches ``homes`` distinct cores over disjoint paths.
-
-    A single vertex-disjoint max-flow over the whole core set finds up to ``homes``
-    paths to distinct cores, so this answers feasibility for any homing degree:
-    degree 1 needs one reachable core, degree 2 needs two over vertex-disjoint paths.
-    Memoized per (aggregation, core set, degree).
-    """
-    key = (aggregation_id, core_ids, homes)
-    cached = cache.get(key)
-    if cached is None:
-        _cost, paths = vertex_disjoint_paths_to_cores(
-            inputs.adjacency, aggregation_id, core_ids, homes
-        )
-        cached = len(paths) >= homes
-        cache[key] = cached
-    return cached
-
-def cores_reachable_avoiding(
-    pop_id: str,
-    adjacency: dict[str, list[tuple[str, float]]],
-) -> set[str]:
-    """PoPs reachable from ``pop_id``'s neighbors without passing through ``pop_id``.
-
-    A co-located twin reaches its own (selected) core for free over the in-facility
-    cross-connect, so its second vertex-disjoint path only has to reach a *different*
-    core while bypassing the core they share. That second path exists exactly when
-    one of the core's neighbors can reach another core with the core itself removed,
-    which this breadth-first reachability answers once per candidate.
-    """
-    frontier = [
-        neighbor for neighbor, _weight in adjacency.get(pop_id, []) if neighbor != pop_id
-    ]
-    reached = set(frontier)
-    while frontier:
-        node = frontier.pop()
-        for neighbor, _weight in adjacency.get(node, []):
-            if neighbor != pop_id and neighbor not in reached:
-                reached.add(neighbor)
-                frontier.append(neighbor)
-    return reached
-
-def feasible_colocation_twins(
-    core_ids: tuple[str, ...], plan: _SearchPlan, homes: int
-) -> set[str]:
-    """Twin ids whose own core is selected and that keep their homing redundancy.
-
-    A core's twin reaches its own core for free over the cross-connect, so it needs
-    ``homes - 1`` further distinct cores reachable around it (bypassing the shared
-    core) to keep ``homes`` vertex-disjoint paths to distinct cores. Exact for the
-    supported degrees (1 and 2): at degree 1 every selected core's twin qualifies.
-    """
-    core_set = set(core_ids)
-    twins = plan.aggregations
-    return {
-        twin_id
-        for twin_id, core_id in twins.twin_to_core.items()
-        if core_id in core_set
-        and len(twins.reach_avoiding[core_id] & core_set) >= homes - 1
-    }
-
-def feasible_aggregation_ids(
-    core_ids: tuple[str, ...],
-    inputs: DesignInputs,
-    plan: _SearchPlan,
-    known_feasible: set[str] | None = None,
-) -> set[str]:
-    """Eligible aggregations that can dual-home to two of the given cores.
-
-    Includes the co-located twin of any selected core that can still home (see
-    :func:`feasible_colocation_twins`), so the search may let a core also serve as an
-    aggregation. Only feasibility is computed here -- routed paths are reconstructed
-    once for the winning core set -- because the design is ranked solely on last-mile
-    mileage and core strength, neither of which depends on those paths.
-
-    ``known_feasible`` names aggregations already proven feasible for a *subset* of
-    ``core_ids``; they are taken as feasible without recomputation. Vertex-disjoint
-    homing is monotonic in the core set -- adding a core only adds candidate
-    disjoint paths to distinct cores, never removes one -- so a subset's feasible
-    aggregations stay feasible. Coverage growth passes the current set's feasible
-    aggregations so each candidate core re-runs the max-flow only for those still
-    infeasible, which is the bulk of the per-candidate cost.
-    """
-    homes = plan.tuning.aggregation_homing_degree
-    candidates = inputs.eligible_aggregation_ids - set(core_ids)
-    floor = candidates & known_feasible if known_feasible else set()
-    feasible = set(floor)
-    feasible.update(
-        aggregation_id
-        for aggregation_id in candidates - floor
-        if aggregation_homes(aggregation_id, core_ids, homes, inputs, plan.feasibility_cache)
-    )
-    return feasible | feasible_colocation_twins(core_ids, plan, homes)
-
-def cores_have_backbone_peers(
-    core_ids: tuple[str, ...],
-    all_distances: dict[str, dict[str, float]],
-    links_per_core: int,
-) -> bool:
-    """True if every core can reach enough other cores to wire its backbone links."""
-    target = min(links_per_core, len(core_ids) - 1)
-    return all(
-        sum(
-            1
-            for right in core_ids
-            if right != left and math.isfinite(all_distances[left].get(right, math.inf))
-        )
-        >= target
-        for left in core_ids
-    )
-
-def cluster_diameter(members: list[Vertex]) -> float:
-    """The farthest great-circle distance between any two members of a cluster."""
-    return max(
-        (haversine_miles(left, right) for left in members for right in members),
-        default=0.0,
-    )
-
-def cluster_local_heads(
-    members: list[Vertex],
-    feasible_pops: list[Vertex],
-    selected: set[str],
-    count: int = 2,
-    radius: float = math.inf,
-) -> list[str]:
-    """Up to ``count`` distinct feasible PoPs local to a cluster, its heads.
-
-    A PoP is local when it sits within the cluster's locality of at least one
-    member: the smaller of the cluster's own extent (its diameter, the farthest
-    distance between two members) and the clustering ``radius`` (the scale at which
-    the cluster coheres). Capping at ``radius`` matters for a spread-out cluster --
-    one whose members are far apart yet still a group -- so its head is a genuinely
-    nearby PoP rather than a distant facility that merely falls inside the cluster's
-    wide diameter. Of the locals, an already-selected facility (a forced
-    aggregation, or a head placed for an earlier cluster) is always preferred over a
-    new build, so a cluster sitting on a pin reuses it rather than standing up a
-    redundant neighbor; the cluster still opens a new head for any remaining slot.
-    Within each group the PoPs nearest the cluster as a whole (least total distance
-    to its members) win. A distant PoP (Boise, ~243 mi from the nearest Utah member)
-    is never built as the cluster's head; that cluster's second home comes from reuse.
-    """
-    locality = min(cluster_diameter(members), radius)
-    reuse: list[tuple[float, str]] = []
-    build: list[tuple[float, str]] = []
-    for pop in feasible_pops:
-        if min(haversine_miles(member, pop) for member in members) <= locality:
-            total = sum(haversine_miles(member, pop) for member in members)
-            (reuse if pop.id in selected else build).append((total, pop.id))
-    reuse.sort()
-    build.sort()
-    return [aggregation_id for _total, aggregation_id in (reuse + build)[:count]]
-
-def complete_homes(
-    access: Vertex,
-    selected: set[str],
-    feasible_ids: set[str],
-    pop_by_id: dict[str, Vertex],
-    count: int = 2,
-) -> list[str]:
-    """Fill an access vertex out toward ``count`` homes, preferring reuse over a build.
-
-    Existing facilities (cluster heads already placed, forced bases) are reused
-    first; a new aggregation is opened only when fewer than ``count`` existing
-    facilities are reachable -- the last resort for a lone vertex or a synthetic
-    graph with no clusters. With ``count`` or more feasible aggregations available
-    this always reaches ``count``; it can return fewer only when the graph cannot
-    offer that many.
-    """
-    homes: list[str] = []
-    for source in (selected, feasible_ids):
-        for _distance, facility in sorted(
-            (haversine_miles(access, pop_by_id[facility]), facility)
-            for facility in source
-            if facility not in homes
-        ):
-            if len(homes) >= count:
-                break
-            homes.append(facility)
-    return homes
 
 def finalize_design(
-    core_ids: tuple[str, ...],
+    backbone_ids: tuple[str, ...],
     draft: _DesignDraft,
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> Design:
-    """Compute edge sets, mileage estimate, and score for a design draft.
-
-    ``physical_edges`` carries the base graph plus the fiber of every seated
-    co-located twin, so a dual-roled core's aggregation path resolves its mileage.
-    """
+    """Compute edge sets, mileage estimate, and score for a design draft."""
     physical_edge_keys: set[tuple[str, str]] = set()
     for path_use in draft.path_uses:
         physical_edge_keys.update(path_edge_keys(path_use.path))
@@ -321,12 +85,9 @@ def finalize_design(
     )
     score = access_miles + physical_miles
     carrier_on_paths = {vertex_id for use in draft.path_uses for vertex_id in use.path}
-    transit_ids = tuple(
-        sorted(carrier_on_paths - set(core_ids) - draft.selected_aggregation_ids)
-    )
+    transit_ids = tuple(sorted(carrier_on_paths - set(backbone_ids)))
     return Design(
-        core_ids=core_ids,
-        aggregation_ids=tuple(sorted(draft.selected_aggregation_ids)),
+        backbone_ids=backbone_ids,
         transit_ids=transit_ids,
         access_edges=draft.access_edges,
         physical_edge_keys=physical_edge_keys,
@@ -334,261 +95,202 @@ def finalize_design(
         metrics=DesignMetrics(score, access_miles, physical_miles),
     )
 
-def _is_realized_twin(vertex_id: str) -> bool:
-    """A synthetic aggregation twin (co-location, installation, or off-net seat)."""
-    return vertex_id.startswith((AGGR_TWIN_PREFIX, ON_NET_ID_PREFIX, OFF_NET_ID_PREFIX))
 
-
-def effective_forced_aggregations(plan: _SearchPlan, core_ids: tuple[str, ...]) -> set[str]:
-    """The aggregations every design must seat: the operator's pins.
-
-    A plain PoP the search also cores is seated as its co-located ``AGGR`` twin
-    (dual-role CORE+AGGR) instead of collapsing onto the core. A pin that is not
-    cored, is core-ineligible (no twin offered), or is itself a realized synthetic
-    twin (already the AGGR node -- never re-twinned) keeps its plain id.
-    """
-    core_set = set(core_ids)
-    twins = plan.aggregations.twin_to_core
-    seated: set[str] = set()
-    for fid in plan.aggregations.operator_forced:
-        twin = twin_vertex_id(fid)
-        if fid in core_set and twin in twins and not _is_realized_twin(fid):
-            seated.add(twin)
-        else:
-            seated.add(fid)
-    return seated
-
-
-def forced_aggregations_can_home(
-    core_ids: tuple[str, ...],
-    inputs: DesignInputs,
-    plan: _SearchPlan,
-    known_feasible: set[str] | None = None,
+def backbone_has_mesh_peers(
+    backbone_ids: tuple[str, ...],
+    all_distances: dict[str, dict[str, float]],
+    mesh_degree: int,
 ) -> bool:
-    """True if every forced aggregation can home to the required number of cores.
+    """True if every backbone node can reach enough peers to wire its mesh links."""
+    target = min(mesh_degree, len(backbone_ids) - 1)
+    return all(
+        sum(
+            1
+            for right in backbone_ids
+            if right != left and math.isfinite(all_distances[left].get(right, math.inf))
+        )
+        >= target
+        for left in backbone_ids
+    )
 
-    Each pin is checked in its seated form (a cored pin as its co-located twin), and
-    :func:`feasible_aggregation_ids` already vets both plain aggregations and twins --
-    so a cored pin is vetted through its twin, never a bare-id path to itself.
+
+def demand_homes(
+    demand_id: str,
+    backbone_ids: tuple[str, ...],
+    homes: int,
+    inputs: DesignInputs,
+    cache: dict[tuple[str, tuple[str, ...], int], bool],
+) -> bool:
+    """True if the demand vertex reaches ``homes`` distinct backbone nodes disjointly.
+
+    A single vertex-disjoint max-flow over the whole backbone set finds up to
+    ``homes`` paths to distinct backbone nodes, so this answers feasibility for any
+    homing degree. Memoized per (demand vertex, backbone set, degree).
     """
-    feasible = feasible_aggregation_ids(core_ids, inputs, plan, known_feasible)
-    return effective_forced_aggregations(plan, core_ids) <= feasible
+    key = (demand_id, backbone_ids, homes)
+    cached = cache.get(key)
+    if cached is None:
+        _cost, paths = vertex_disjoint_paths_to_cores(
+            inputs.adjacency, demand_id, backbone_ids, homes
+        )
+        cached = len(paths) >= homes
+        cache[key] = cached
+    return cached
 
-def prune_unused_aggregations(
-    selected: set[str], access_edges: list[AccessEdge], pinned: frozenset[str]
-) -> set[str]:
-    """Drop seated aggregations no access vertex homes to, keeping operator pins.
 
-    A population anchor (a state's metro slot) can be seated where demand never
-    reaches -- e.g. a second-metro city that outranks a smaller metro on paper while
-    every access node clusters near the smaller one -- leaving an aggregation that
-    aggregates nothing. Such facilities are dropped so the tier stays demand-driven.
-    Operator-forced pins are intentional regardless of demand and are always kept.
-    """
-    homed = {edge.target for edge in access_edges}
-    return {
-        aggregation_id
-        for aggregation_id in selected
-        if aggregation_id in homed or aggregation_id in pinned
-    }
+def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
+    """Id of the Carrier PoP nearest to an access site."""
+    return min(carrier_pops, key=lambda pop: haversine_miles(access, pop)).id
 
 
 def assign_access(
-    core_ids: tuple[str, ...],
+    backbone_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
-    known_feasible: set[str] | None = None,
-) -> tuple[list[AccessEdge], set[str]] | None:
-    """Home every access vertex by clustering: cluster heads first, then reuse.
+) -> list[AccessEdge] | None:
+    """Home every demand vertex to its nearest backbone nodes in a single pass.
 
-    Aggregations are placed as the heads of dense access-vertex clusters (up to
-    ``plan.tuning.access_aggregation_links`` distinct local PoPs each). Every vertex then
-    homes to that many facilities, completing any gap (a cluster with too few local
-    heads, or a sparse lone vertex) by reusing an existing facility rather than
-    building a redundant one. A facility the operator forced an access vertex onto is
-    seeded up front so clusters reuse it instead of standing up a neighbor beside it.
-    Returns the access edges and selected aggregation ids, or None if some vertex
-    cannot reach the configured number of facilities.
+    Each demand vertex (a unified tenant site or provider region) homes to its
+    ``plan.tuning.access_backbone_links`` nearest selected backbone nodes, ranked by
+    great-circle distance, with any operator-forced access-backbone link leading its
+    homes regardless of distance. The same code path serves tenant and provider demand --
+    they differ only by source kind at output time. Returns the access edges, or None
+    if some vertex cannot reach the configured number of backbone nodes.
     """
-    links = plan.tuning.access_aggregation_links
-    feasible_ids = feasible_aggregation_ids(core_ids, inputs, plan, known_feasible)
-    if len(feasible_ids) < links:
+    links = plan.tuning.access_backbone_links
+    backbone_set = set(backbone_ids)
+    if len(backbone_set) < links:
         return None
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
-    pop_by_id.update(plan.aggregations.twin_vertices)
-    access_by_id = {access.id: access for access in inputs.access_vertices}
-    selected: set[str] = set(effective_forced_aggregations(plan, core_ids))
-    # Seed the targets of operator-forced access links so cluster heads and later
-    # homes reuse a pinned facility rather than building a redundant neighbor
-    # beside it (and so homing no longer depends on the order vertices are seen).
-    # Restricted to feasible aggregations: a target that cannot dual-home to this
-    # core set is still pinned onto its own node by apply_forced_access_homes, but
-    # must not pull other vertices onto an aggregation that cannot route.
-    selected |= {agg for _access, agg in plan.forced_links.access} & feasible_ids
-    homes: dict[str, list[str]] = {}
-
-    # Pass 1: stand up each cluster's local aggregation heads. This places the
-    # facilities only -- where to build -- and never pins a member to them.
-    # Homing is left to pass 2 so a peripheral member of a sprawling cluster
-    # homes to whichever selected facility is actually nearest, not to a distant
-    # common head chosen for the cluster as a whole.
-    feasible_pops = [pop_by_id[aggregation_id] for aggregation_id in feasible_ids]
-    for members in plan.cluster_plan.clusters:
-        selected.update(
-            cluster_local_heads(
-                [access_by_id[member] for member in members],
-                feasible_pops, selected, links, plan.cluster_plan.radius,
-            )
-        )
-
-    # Pass 2: home every vertex to its nearest ``links`` facilities, reusing the
-    # placed heads before opening any new build. An operator-forced access link pins
-    # one of that vertex's homes regardless of distance.
+    access_edges: list[AccessEdge] = []
     for access in inputs.access_vertices:
-        completed = complete_homes(access, selected, feasible_ids, pop_by_id, links)
-        completed = apply_forced_access_homes(access, completed, plan.forced_links, pop_by_id)
-        homes[access.id] = completed
-        selected.update(completed)
-
-    access_edges = [
-        AccessEdge(
-            access_id, aggregation_id,
-            haversine_miles(access_by_id[access_id], pop_by_id[aggregation_id]),
+        completed = [
+            backbone_id
+            for _distance, backbone_id in sorted(
+                (haversine_miles(access, pop_by_id[backbone_id]), backbone_id)
+                for backbone_id in backbone_set
+            )
+        ][:links]
+        completed = apply_forced_access_homes(
+            access, completed, plan.forced_links, pop_by_id, links
         )
-        for access_id, aggregations in homes.items()
-        for aggregation_id in aggregations
-    ]
-    selected = prune_unused_aggregations(
-        selected, access_edges, frozenset(effective_forced_aggregations(plan, core_ids))
-    )
-    return access_edges, selected
+        if len(completed) < links:
+            return None
+        access_edges.extend(
+            AccessEdge(
+                access.id, backbone_id,
+                haversine_miles(access, pop_by_id[backbone_id]),
+            )
+            for backbone_id in completed
+        )
+    return access_edges
 
-def evaluate_cores(
-    core_ids: tuple[str, ...],
+
+def demand_can_home(
+    backbone_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
-    feasible_floor: set[str] | None = None,
-) -> tuple[list[AccessEdge], set[str]] | None:
-    """Score a core set's feasibility and access homing without routing paths.
+) -> bool:
+    """True if every demand vertex reaches the required backbone nodes disjointly.
 
-    Returns None when a core cannot reach enough peers to wire its backbone links, a
-    forced aggregation cannot home to the required cores, or some access vertex cannot
-    reach its facilities. Routed paths are deferred to the winning set, since they do
-    not affect the strength ranking. ``feasible_floor`` is forwarded to the feasibility
-    pass so a superset evaluation skips re-proving a subset's feasible aggregations.
+    Vertex-disjoint redundancy is what the validation later enforces, so a backbone
+    set is only feasible when every demand vertex can reach
+    ``plan.tuning.access_backbone_links`` distinct backbone nodes over disjoint paths.
     """
-    if not cores_have_backbone_peers(
-        core_ids, inputs.all_distances, plan.tuning.core_links_per_core
+    homes = plan.tuning.access_backbone_links
+    return all(
+        demand_homes(access.id, backbone_ids, homes, inputs, plan.feasibility_cache)
+        for access in inputs.access_vertices
+    )
+
+
+def evaluate_backbone(
+    backbone_ids: tuple[str, ...],
+    inputs: DesignInputs,
+    plan: _SearchPlan,
+) -> list[AccessEdge] | None:
+    """Score a backbone set's feasibility and demand homing without routing paths.
+
+    Returns None when a node cannot reach enough peers to wire its mesh links or some
+    demand vertex cannot reach its backbone nodes. Routed paths are deferred to the
+    winning set, since they do not affect the strength ranking.
+    """
+    if not backbone_has_mesh_peers(
+        backbone_ids, inputs.all_distances, plan.tuning.backbone_mesh_degree
     ):
         return None
-    if not forced_aggregations_can_home(core_ids, inputs, plan, feasible_floor):
+    if not demand_can_home(backbone_ids, inputs, plan):
         return None
-    return assign_access(core_ids, inputs, plan, feasible_floor)
+    return assign_access(backbone_ids, inputs, plan)
 
-def physical_edges_with_twins(
-    selected: set[str],
-    inputs: DesignInputs,
-    plan: _SearchPlan,
-) -> dict[tuple[str, str], PhysicalEdge]:
-    """The base physical edges plus the fiber of every selected co-located twin."""
-    edges = dict(inputs.physical_edges)
-    for aggregation_id in selected:
-        core_id = plan.aggregations.twin_to_core.get(aggregation_id)
-        if core_id is not None:
-            edges.update(colocation_edges(core_id, aggregation_id, inputs.physical_edges))
-    return edges
-
-def twin_routing_adjacency(
-    aggregation_id: str,
-    inputs: DesignInputs,
-    plan: _SearchPlan,
-) -> dict[str, list[tuple[str, float]]]:
-    """Adjacency to route one aggregation: the base graph, plus its own twin fiber.
-
-    A real aggregation routes over the base graph unchanged. A co-located twin gets
-    only *its own* cross-connect and duplicated handoffs added, so it reaches its core
-    and a remote core without another core's twin fiber leaking into the path.
-    """
-    core_id = plan.aggregations.twin_to_core.get(aggregation_id)
-    if core_id is None:
-        return inputs.adjacency
-    twin_edges = colocation_edges(core_id, aggregation_id, inputs.physical_edges)
-    return build_adjacency({**inputs.physical_edges, **twin_edges})
 
 def routed_path_uses(
-    core_ids: tuple[str, ...],
+    backbone_ids: tuple[str, ...],
     inputs: DesignInputs,
-    selected: set[str],
     plan: _SearchPlan,
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> list[PathUse]:
-    """Reconstruct the core-mesh and aggregation-to-core paths for a design."""
-    core_set = set(core_ids)
+    """Reconstruct the backbone-mesh paths for a design."""
+    backbone_set = set(backbone_ids)
     constraints = BackboneConstraints(
-        removed_core_pairs(core_set, plan.forced_links),
-        links_per_core=plan.tuning.core_links_per_core,
+        removed_backbone_pairs(backbone_set, plan.forced_links),
+        mesh_degree=plan.tuning.backbone_mesh_degree,
     )
-    path_uses = core_mesh_paths(
-        core_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
+    return backbone_mesh_paths(
+        backbone_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
     )
-    homes = plan.tuning.aggregation_homing_degree
-    for aggregation_id in sorted(selected):
-        adjacency = twin_routing_adjacency(aggregation_id, inputs, plan)
-        homing = AggregationHoming(
-            homes, forced_cores_for_aggregation(aggregation_id, core_set, plan.forced_links)
-        )
-        _cost, uses = aggregation_core_paths(
-            aggregation_id, core_ids, adjacency, physical_edges, homing
-        )
-        path_uses.extend(uses)
-    return path_uses
 
-def build_design_for_cores(
-    core_ids: tuple[str, ...],
+
+def build_design_for_backbone(
+    backbone_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
 ) -> Design | None:
-    """Assemble a full three-tier design for one fixed set of core PoPs.
+    """Assemble a full two-tier design for one fixed set of backbone PoPs.
 
-    Returns None if a core cannot reach enough peers to wire its backbone links, a
-    forced aggregation cannot dual-home to them, or some access vertex cannot reach
-    two facilities.
+    Returns None if a node cannot reach enough peers to wire its mesh links or some
+    demand vertex cannot reach its backbone nodes.
     """
-    evaluation = evaluate_cores(core_ids, inputs, plan)
-    if evaluation is None:
+    access_edges = evaluate_backbone(backbone_ids, inputs, plan)
+    if access_edges is None:
         return None
-    access_edges, selected = evaluation
-    physical_edges = physical_edges_with_twins(selected, inputs, plan)
-    path_uses = routed_path_uses(core_ids, inputs, selected, plan, physical_edges)
-    draft = _DesignDraft(access_edges, selected, path_uses)
-    return finalize_design(core_ids, draft, physical_edges)
+    path_uses = routed_path_uses(backbone_ids, inputs, plan, inputs.physical_edges)
+    draft = _DesignDraft(access_edges, path_uses)
+    return finalize_design(backbone_ids, draft, inputs.physical_edges)
 
-def compute_eligible_ids(
+
+def compute_eligible_backbone_ids(
     carrier_pops: list[Vertex],
     adjacency: dict[str, list[tuple[str, float]]],
+    datacenter_cities: frozenset[tuple[str, str]],
 ) -> set[str]:
-    """Carrier PoPs that may serve as core or aggregation vertices.
+    """Carrier PoPs that may serve as backbone nodes.
 
     A PoP needs at least two physical links to ever route redundantly, so degree-one
-    PoPs (spurs) are excluded. Transit-only ROADM PoPs are eligible like any other
-    point -- the design may pick anything, so role no longer gates eligibility.
+    PoPs (spurs) are excluded. It must also sit at a data-center city -- a colocation
+    provider operates a cage there -- because the backbone is built from carrier PoPs
+    that can be lit at a provider facility; a PoP off every data-center city is never
+    eligible, no matter how strong.
     """
     return {
         pop.id
         for pop in carrier_pops
         if len(adjacency.get(pop.id, [])) >= 2
+        and (pop.info.municipality, pop.info.state) in datacenter_cities
     }
+
 
 def all_pairs_shortest(
     carrier_pops: list[Vertex],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, str]]]:
-    """Run Dijkstra from every Carrier PoP for reuse across core sets."""
+    """Run Dijkstra from every Carrier PoP for reuse across backbone sets."""
     all_distances: dict[str, dict[str, float]] = {}
     all_predecessors: dict[str, dict[str, str]] = {}
     for pop in carrier_pops:
         all_distances[pop.id], all_predecessors[pop.id] = dijkstra(adjacency, pop.id)
     return all_distances, all_predecessors
+
 
 def validate_pop_graph(
     carrier_pops: list[Vertex],
@@ -605,221 +307,190 @@ def validate_pop_graph(
         names = ", ".join(vertex.name for vertex in carrier_pops if vertex.id in missing_pops)
         raise ValueError(f"Carrier PoPs missing from physical edge graph: {names}")
 
-def with_colocation_twins(
-    aggregations: _AggregationPlan,
-    core_candidates: list[str],
-    pop_by_id: dict[str, Vertex],
-    adjacency: dict[str, list[tuple[str, float]]],
-    aggregation_eligible_ids: set[str],
-) -> _AggregationPlan:
-    """Offer each core candidate a co-located twin the search may seat as an aggregation.
 
-    Skips any core whose twin already exists -- an operator co-location or a forced
-    installation already stands up and pins that twin -- so it is never double-built,
-    and any core barred from the aggregation tier (absent from
-    ``aggregation_eligible_ids``), so a prohibited PoP is never dual-roled.
-    """
-    twin_to_core: dict[str, str] = {}
-    reach_avoiding: dict[str, set[str]] = {}
-    twin_vertices: dict[str, Vertex] = {}
-    for core_id in core_candidates:
-        twin_id = twin_vertex_id(core_id)
-        if twin_id in pop_by_id or core_id not in aggregation_eligible_ids:
-            continue
-        twin_to_core[twin_id] = core_id
-        reach_avoiding[core_id] = cores_reachable_avoiding(core_id, adjacency)
-        twin_vertices[twin_id] = colocated_twin(pop_by_id[core_id])
-    return replace(
-        aggregations,
-        twin_to_core=twin_to_core,
-        reach_avoiding=reach_avoiding,
-        twin_vertices=twin_vertices,
-    )
+def backbone_set_strength(backbone_ids: tuple[str, ...], plan: _SearchPlan) -> float:
+    """Total strength of a backbone set: the primary objective the search maximizes."""
+    return sum(plan.strength_by_id[backbone_id] for backbone_id in backbone_ids)
 
 
-def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
-    """Id of the Carrier PoP nearest to an access site."""
-    return min(carrier_pops, key=lambda pop: haversine_miles(access, pop)).id
+def free_backbone_candidates(plan: _SearchPlan) -> list[str]:
+    """Backbone candidates the search may choose freely, excluding required nodes."""
+    return [
+        pop_id for pop_id in plan.backbone_candidates if pop_id not in plan.required_backbone
+    ]
 
-def core_set_strength(core_ids: tuple[str, ...], plan: _SearchPlan) -> float:
-    """Total strength of a core set: the primary objective the search maximizes."""
-    return sum(plan.strength_by_id[core_id] for core_id in core_ids)
 
-def free_core_candidates(plan: _SearchPlan) -> list[str]:
-    """Core candidates the search may choose freely, excluding required cores."""
-    return [pop_id for pop_id in plan.core_candidates if pop_id not in plan.required_cores]
-
-def core_combination_count(plan: _SearchPlan, size: int) -> int:
-    """How many core sets of ``size`` exist once required cores are fixed in."""
-    required = len(plan.required_cores)
+def backbone_combination_count(plan: _SearchPlan, size: int) -> int:
+    """How many backbone sets of ``size`` exist once required nodes are fixed in."""
+    required = len(plan.required_backbone)
     if required > size:
         return 0
-    return math.comb(len(free_core_candidates(plan)), size - required)
+    return math.comb(len(free_backbone_candidates(plan)), size - required)
 
-def core_combinations(plan: _SearchPlan, size: int) -> list[tuple[str, ...]]:
-    """Every ``size``-core set, with the required cores fixed into each one."""
-    required = tuple(sorted(plan.required_cores))
+
+def backbone_combinations(plan: _SearchPlan, size: int) -> list[tuple[str, ...]]:
+    """Every ``size``-node set, with the required backbone nodes fixed into each one."""
+    required = tuple(sorted(plan.required_backbone))
     if len(required) > size:
         return []
-    free = free_core_candidates(plan)
+    free = free_backbone_candidates(plan)
     return [
         required + extra
         for extra in itertools.combinations(free, size - len(required))
     ]
+
 
 def best_design_at_size(
     inputs: DesignInputs,
     plan: _SearchPlan,
     size: int,
 ) -> Design | None:
-    """Strongest feasible design using exactly ``size`` cores, or None.
+    """Strongest feasible design using exactly ``size`` backbone nodes, or None.
 
-    Any operator-forced cores are fixed into every candidate set; the rest are
-    chosen by strength (the spec forbids mileage as a design cost),
-    with total last-mile only breaking ties among equally strong sets. Core sets
-    are tried strongest-first and scored cheaply (feasibility plus access homing,
-    no routed paths). Because strength is non-increasing down that order, the
-    moment a feasible set is in hand the search stops as soon as a candidate is
-    strictly weaker. Routed paths are reconstructed only for the winning set.
+    Any operator-forced backbone nodes are fixed into every candidate set; the rest
+    are chosen by strength (the spec forbids mileage as a design cost), with total
+    last-mile only breaking ties among equally strong sets. Backbone sets are tried
+    strongest-first and scored cheaply (feasibility plus demand homing, no routed
+    paths). Because strength is non-increasing down that order, the moment a feasible
+    set is in hand the search stops as soon as a candidate is strictly weaker. Routed
+    paths are reconstructed only for the winning set.
     """
     combos = sorted(
-        core_combinations(plan, size),
-        key=lambda combo: -core_set_strength(combo, plan),
+        backbone_combinations(plan, size),
+        key=lambda combo: -backbone_set_strength(combo, plan),
     )
-    logger.info("Evaluating %d core sets of size %d, strongest first", len(combos), size)
-    best_core_set: tuple[str, ...] | None = None
+    logger.info("Evaluating %d backbone sets of size %d, strongest first", len(combos), size)
+    best_set: tuple[str, ...] | None = None
     best_key: tuple[float, float] | None = None
     best_strength = -math.inf
-    for index, core_set in enumerate(combos, start=1):
+    for index, backbone_set in enumerate(combos, start=1):
         if index % _SEARCH_LOG_INTERVAL == 0:
-            logger.info("  scanned %d/%d core sets", index, len(combos))
-        strength = core_set_strength(core_set, plan)
+            logger.info("  scanned %d/%d backbone sets", index, len(combos))
+        strength = backbone_set_strength(backbone_set, plan)
         if strength < best_strength:
-            logger.info("  strongest feasible cores locked at set %d/%d", index, len(combos))
+            logger.info("  strongest feasible backbone locked at set %d/%d", index, len(combos))
             break
-        evaluation = evaluate_cores(core_set, inputs, plan)
-        if evaluation is None:
+        access_edges = evaluate_backbone(backbone_set, inputs, plan)
+        if access_edges is None:
             continue
-        access_miles = sum(edge.distance_miles for edge in evaluation[0])
+        access_miles = sum(edge.distance_miles for edge in access_edges)
         key = (-strength, round(access_miles, 6))
         if best_key is None or key < best_key:
-            best_core_set, best_key, best_strength = core_set, key, strength
+            best_set, best_key, best_strength = backbone_set, key, strength
             logger.info(
                 "  set %d/%d: new best strength %.3f, last-mile %.0f mi",
                 index, len(combos), strength, access_miles,
             )
-    if best_core_set is None:
+    if best_set is None:
         return None
-    return build_design_for_cores(best_core_set, inputs, plan)
+    return build_design_for_backbone(best_set, inputs, plan)
+
 
 def total_memory_bytes() -> int:
     """Physical RAM installed on this machine, in bytes (portable across OSes)."""
     return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
 
+
 def enumeration_limit(memory_bytes: int, params: DesignParams) -> int:
-    """How many core sets fit in the share of RAM the enumeration may use."""
+    """How many backbone sets fit in the share of RAM the enumeration may use."""
     budget = params.tuning.enum_budget
     return int(memory_bytes * budget.memory_fraction / budget.set_peak_bytes)
 
-COVERAGE_EPSILON_MILES = 1.0  # a new core must cut total aggregation haul by at least this
+
+COVERAGE_EPSILON_MILES = 1.0  # a new backbone node must cut total demand haul by this
 
 
-def aggregation_haul_miles(
-    core_ids: tuple[str, ...],
-    aggregation_ids: tuple[str, ...] | set[str],
+def demand_haul_miles(
+    backbone_ids: tuple[str, ...],
+    access_vertices: list[Vertex],
     pop_by_id: dict[str, Vertex],
 ) -> tuple[float, float]:
-    """The worst and total straight-line miles from aggregations to their nearest core.
+    """The worst and total straight-line miles from demand to its nearest backbone node.
 
-    The coverage signal the search drives down by adding cores: ``worst`` is the
-    long-haul an operator sees on the map; ``total`` lets one added core show progress
-    even while another still-distant aggregation dominates the worst.
+    The coverage signal the search drives down by adding backbone nodes: ``worst`` is
+    the long-haul an operator sees on the map; ``total`` lets one added node show
+    progress even while another still-distant demand vertex dominates the worst.
     """
-    cores = [pop_by_id[core_id] for core_id in core_ids]
+    nodes = [pop_by_id[backbone_id] for backbone_id in backbone_ids]
     distances = [
-        min(haversine_miles(pop_by_id[aggregation_id], core) for core in cores)
-        for aggregation_id in aggregation_ids
+        min(haversine_miles(access, node) for node in nodes)
+        for access in access_vertices
     ]
     return max(distances, default=0.0), sum(distances)
 
 
 def coverage_candidate_totals(
-    core_ids: tuple[str, ...],
+    backbone_ids: tuple[str, ...],
     free: list[str],
     inputs: DesignInputs,
     plan: _SearchPlan,
     pop_by_id: dict[str, Vertex],
 ) -> list[tuple[float, str]]:
-    """Each free candidate's total aggregation-to-core haul once it joins the cores.
+    """Each free candidate's total demand-to-backbone haul once it joins the backbone.
 
     Infeasible additions (a candidate whose promotion strands demand) are dropped, so
     every returned pair is a buildable grown set ranked by how short it leaves the haul.
     """
-    # Every candidate set is a superset of the current cores, so aggregations already
-    # feasible for the current set stay feasible -- compute that floor once and let each
-    # candidate skip re-proving them (the bulk of the per-candidate max-flow cost).
-    floor = feasible_aggregation_ids(core_ids, inputs, plan)
     totals: list[tuple[float, str]] = []
     for candidate_id in free:
-        candidate_cores = tuple(sorted((*core_ids, candidate_id)))
-        evaluation = evaluate_cores(candidate_cores, inputs, plan, floor)
-        if evaluation is None:
+        candidate_set = tuple(sorted((*backbone_ids, candidate_id)))
+        if evaluate_backbone(candidate_set, inputs, plan) is None:
             continue
-        _worst, total = aggregation_haul_miles(candidate_cores, evaluation[1], pop_by_id)
+        _worst, total = demand_haul_miles(candidate_set, inputs.access_vertices, pop_by_id)
         totals.append((total, candidate_id))
     return totals
 
 
-def grow_cores_for_coverage(
+def grow_backbone_for_coverage(
     base: Design,
     inputs: DesignInputs,
     plan: _SearchPlan,
     params: DesignParams,
     pop_by_id: dict[str, Vertex],
 ) -> Design:
-    """Add cores beyond the strength-chosen base until demand is close enough.
+    """Add backbone nodes beyond the strength-chosen base until demand is close enough.
 
-    While some aggregation is farther than ``core_coverage_target_miles`` from every
-    core, add the one remaining candidate that most reduces the total aggregation-to-core
-    haul, rebuilding the design around it. Extra cores are thus coverage-driven: strength
-    still chooses the base tier, and the operator's coverage target is a constraint on
-    how far the tier may leave demand, not a mileage cost minimized over candidate
-    sets. Growth stops once every aggregation is within target, the tier reaches
-    ``max_core_count``, no remaining candidate brings demand meaningfully closer, or
-    the candidates are exhausted.
+    While some demand vertex is farther than ``backbone_coverage_target_miles`` from
+    every selected backbone node, add the one remaining candidate that most reduces the
+    total demand-to-backbone haul, rebuilding the design around it. Extra nodes are thus
+    coverage-driven: strength still chooses the base backbone, and the operator's
+    coverage target is a constraint on how far the backbone may leave demand, not a
+    mileage cost minimized over candidate sets. Growth stops once every demand vertex is
+    within target, the backbone reaches ``max_backbone_count``, no remaining candidate
+    brings demand meaningfully closer, or the candidates are exhausted.
     """
-    target_miles = params.tuning.core_coverage_target_miles
-    core_ids = base.core_ids
+    target_miles = params.tuning.backbone_coverage_target_miles
+    backbone_ids = base.backbone_ids
     design = base
-    free = [pop_id for pop_id in plan.core_candidates if pop_id not in core_ids]
+    free = [pop_id for pop_id in plan.backbone_candidates if pop_id not in backbone_ids]
     logger.info(
-        "Growing cores for coverage: %d candidates, %.0f mi target", len(free), target_miles
+        "Growing backbone for coverage: %d candidates, %.0f mi target", len(free), target_miles
     )
     while free:
-        if params.max_core_count is not None and len(core_ids) >= params.max_core_count:
-            logger.info("Coverage growth stopped at the %d-core cap", len(core_ids))
+        if params.max_backbone_count is not None and len(backbone_ids) >= params.max_backbone_count:
+            logger.info("Coverage growth stopped at the %d-node cap", len(backbone_ids))
             break
-        worst, total = aggregation_haul_miles(core_ids, design.aggregation_ids, pop_by_id)
+        worst, total = demand_haul_miles(backbone_ids, inputs.access_vertices, pop_by_id)
         if worst <= target_miles:
-            logger.info("Coverage met at %d cores (worst haul %.0f mi)", len(core_ids), worst)
+            logger.info("Coverage met at %d nodes (worst haul %.0f mi)", len(backbone_ids), worst)
             break
         logger.info(
-            "Coverage round at %d cores: worst haul %.0f mi > %.0f target; scoring %d candidates",
-            len(core_ids), worst, target_miles, len(free),
+            "Coverage round at %d nodes: worst haul %.0f mi > %.0f target; scoring %d candidates",
+            len(backbone_ids), worst, target_miles, len(free),
         )
-        candidates = coverage_candidate_totals(core_ids, free, inputs, plan, pop_by_id)
+        candidates = coverage_candidate_totals(backbone_ids, free, inputs, plan, pop_by_id)
         improving = [pair for pair in candidates if pair[0] < total - COVERAGE_EPSILON_MILES]
         if not improving:
-            logger.info("No candidate improves coverage; holding at %d cores", len(core_ids))
+            logger.info("No candidate improves coverage; holding at %d nodes", len(backbone_ids))
             break
         best_id = min(improving)[1]
-        core_ids = tuple(sorted((*core_ids, best_id)))
-        grown = build_design_for_cores(core_ids, inputs, plan)
-        # The winning candidate already passed evaluate_cores above, so its design builds.
+        backbone_ids = tuple(sorted((*backbone_ids, best_id)))
+        grown = build_design_for_backbone(backbone_ids, inputs, plan)
+        # The winning candidate already passed evaluate_backbone above, so its design builds.
         assert grown is not None
         design = grown
         free.remove(best_id)
-        logger.info("Added core %s for coverage; now %d cores", best_id, len(core_ids))
+        logger.info("Added node %s for coverage; now %d nodes", best_id, len(backbone_ids))
     return design
 
 
@@ -828,56 +499,57 @@ def search_best_design(
     params: DesignParams,
     plan: _SearchPlan,
 ) -> Design:
-    """Build the strongest feasible design, then grow cores until demand is close.
+    """Build the strongest feasible design, then grow the backbone until demand is close.
 
-    The core count is a floor, not an exact target. The search first finds the
-    strongest feasible set at ``min_core_count`` (total last-mile only breaking ties),
-    growing the tier one PoP at a time only if no feasible design exists at a size. It
-    then adds cores past that floor while some aggregation is farther than
-    ``core_coverage_target_miles`` from every core, each added core being the candidate
-    that most shortens the aggregation-to-core haul -- so extra cores appear only where
-    they bring demand closer. Enumerating each size must fit the share of RAM the search
-    may use, or the design is refused rather than risk exhausting memory.
+    The backbone count is a floor, not an exact target. The search first finds the
+    strongest feasible set at ``min_backbone_count`` (total last-mile only breaking
+    ties), growing the backbone one PoP at a time only if no feasible design exists at a
+    size. It then adds nodes past that floor while some demand vertex is farther than
+    ``backbone_coverage_target_miles`` from every selected node, each added node being
+    the candidate that most shortens the demand-to-backbone haul -- so extra nodes appear
+    only where they bring demand closer. Enumerating each size must fit the share of RAM
+    the search may use, or the design is refused rather than risk exhausting memory.
     """
     limit = enumeration_limit(total_memory_bytes(), params)
     base: Design | None = None
-    max_size = len(plan.core_candidates)
-    if params.max_core_count is not None:
-        max_size = min(max_size, params.max_core_count)
-    for size in range(params.min_core_count, max_size + 1):
-        sets = core_combination_count(plan, size)
+    max_size = len(plan.backbone_candidates)
+    if params.max_backbone_count is not None:
+        max_size = min(max_size, params.max_backbone_count)
+    for size in range(params.min_backbone_count, max_size + 1):
+        sets = backbone_combination_count(plan, size)
         if sets > limit:
             raise ValueError(
-                f"Enumerating {sets} core sets of size {size} "
+                f"Enumerating {sets} backbone sets of size {size} "
                 f"exceeds the RAM budget of {limit}"
             )
         if sets == 0:
             continue
         logger.info(
-            "Synthesizing %d access sites; %d cores, %d required; %d core sets (limit %d)",
-            len(inputs.access_vertices), size, len(plan.required_cores), sets, limit,
+            "Synthesizing %d demand vertices; %d backbone, %d required; %d sets (limit %d)",
+            len(inputs.access_vertices), size, len(plan.required_backbone), sets, limit,
         )
         base = best_design_at_size(inputs, plan, size)
         if base is not None:
-            logger.info("Feasible at %d cores; growing for coverage", len(base.core_ids))
+            logger.info("Feasible at %d nodes; growing for coverage", len(base.backbone_ids))
             break
     if base is None:
-        raise ValueError(f"No feasible design with at least {params.min_core_count} cores")
+        raise ValueError(f"No feasible design with at least {params.min_backbone_count} backbone nodes")
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
-    pop_by_id.update(plan.aggregations.twin_vertices)
-    design = grow_cores_for_coverage(base, inputs, plan, params, pop_by_id)
-    logger.info("Selected a %d-core design", len(design.core_ids))
+    design = grow_backbone_for_coverage(base, inputs, plan, params, pop_by_id)
+    logger.info("Selected a %d-node backbone design", len(design.backbone_ids))
     return design
+
 
 @dataclass(frozen=True)
 class _GraphContext:
-    """Vertex partition and precomputed shortest-path context shared across cores."""
+    """Vertex partition and precomputed shortest-path context shared across backbone sets."""
 
     carrier_pops: list[Vertex]
     all_access: list[Vertex]
     adjacency: dict[str, list[tuple[str, float]]]
     all_distances: dict[str, dict[str, float]]
     all_predecessors: dict[str, dict[str, str]]
+
 
 def graph_context(
     vertices: list[Vertex],
@@ -891,99 +563,84 @@ def graph_context(
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
     return _GraphContext(carrier_pops, all_access, adjacency, all_distances, all_predecessors)
 
+
 def build_search_plan(
     inputs: DesignInputs,
     eligible_ids: set[str],
-    aggregations: _AggregationPlan,
     overrides: RoleOverrides,
     params: DesignParams,
 ) -> _SearchPlan:
-    """Compute vertex strengths, access-vertex clusters, and core candidates.
+    """Compute vertex strengths and backbone candidates.
 
-    Required cores are the operator-forced cores. Every eligible PoP is a core
-    candidate, ranked nationally by strength -- including operator-pinned aggregations
-    and their synthetic twins, so a forced aggregation (an installation, an off-net
-    seat, any pin) may also win a core slot and a single site may serve as both.
-    The operator's resolved forced-connection links ride along for the routing stage.
+    Required backbone nodes are the operator-forced backbone nodes. Every eligible PoP
+    is a backbone candidate, ranked nationally by strength. The operator's resolved
+    forced-connection links ride along for the routing stage.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
     strength_by_id = {
-        pop_id: core_strength(pop_id, inputs, pop_by_id, max_degree, params.tuning.compass_octants)
+        pop_id: backbone_strength(
+            pop_id, inputs, pop_by_id, max_degree, params.tuning.compass_octants
+        )
         for pop_id in eligible_ids
     }
-    clusters, _sparse, cluster_radius = cluster_access_vertices(
-        inputs.access_vertices,
-        params.tuning.cluster.min_points,
-        params.tuning.cluster.radius_miles[0],
-        params.tuning.cluster.radius_miles[1],
-        params.tuning.cluster.k,
-    )
-    core_candidates = sorted(
+    backbone_candidates = sorted(
         eligible_ids,
         key=lambda pop_id: (-strength_by_id[pop_id], pop_id),
     )
     forced_links = replace(
         overrides.forced_links,
-        required_cores=frozenset(overrides.forced_core_ids & eligible_ids),
+        required_backbone=frozenset(overrides.forced_backbone_ids & eligible_ids),
     )
     return _SearchPlan(
-        core_candidates,
-        with_colocation_twins(
-            aggregations, core_candidates, pop_by_id, inputs.adjacency,
-            inputs.eligible_aggregation_ids,
-        ),
+        backbone_candidates,
         strength_by_id,
-        cluster_plan=ClusterPlan(clusters, cluster_radius),
         tuning=params.tuning,
         forced_links=forced_links,
     )
 
-def synthesize_three_tier_design(
+
+def synthesize_two_tier_design(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
     overrides: RoleOverrides | None = None,
 ) -> Design:
-    """Synthesize a three-tier WAN over the Carrier graph for the given parameters.
+    """Synthesize a two-tier WAN over the Carrier graph for the given parameters.
 
-    ``overrides`` carries operator role pins already resolved to vertex ids (with any
-    co-located PoP split in ``vertices``/``physical_edges``); pass ``None`` for an
-    unpinned design.
+    ``overrides`` carries operator role pins already resolved to vertex ids; pass
+    ``None`` for an unpinned design.
     """
     overrides = overrides if overrides is not None else RoleOverrides()
-    if params.min_core_count < 2:
-        raise ValueError("min_core_count (the minimum number of cores) must be at least 2")
-    if params.max_core_count is not None and params.max_core_count < params.min_core_count:
-        raise ValueError("max_core_count must be at least min_core_count")
+    if params.min_backbone_count < 2:
+        raise ValueError("min_backbone_count (the minimum number of backbone nodes) must be at least 2")
+    if params.max_backbone_count is not None and params.max_backbone_count < params.min_backbone_count:
+        raise ValueError("max_backbone_count must be at least min_backbone_count")
     if (
-        params.max_core_count is not None
-        and len(overrides.forced_core_ids) > params.max_core_count
+        params.max_backbone_count is not None
+        and len(overrides.forced_backbone_ids) > params.max_backbone_count
     ):
-        raise ValueError("more cores are forced than max_core_count allows")
+        raise ValueError("more backbone nodes are forced than max_backbone_count allows")
 
     context = graph_context(vertices, physical_edges)
-    operator_forced = overrides.forced_aggregation_ids
-    aggregations = _AggregationPlan(operator_forced)
-    eligible_ids = compute_eligible_ids(context.carrier_pops, context.adjacency)
-    eligible_ids = eligible_ids | operator_forced | overrides.forced_core_ids
-    # The two tier bars are independent: a prohibited-core PoP can still be an
-    # aggregation, and a prohibited-aggregation PoP can still be a core. Each tier
-    # draws from the shared pool minus its own bar (no free aggregation and no
-    # co-located twin for a prohibited aggregation; see ``build_search_plan``).
-    core_eligible_ids = eligible_ids - overrides.prohibited_core_ids
-    if len(core_eligible_ids) < max(2, params.min_core_count):
-        raise ValueError("Not enough eligible Carrier core PoPs")
-    eligible_aggregation_ids = eligible_ids - overrides.prohibited_aggregation_ids
+    eligible_ids = compute_eligible_backbone_ids(
+        context.carrier_pops, context.adjacency, params.datacenter_cities
+    )
+    eligible_ids = eligible_ids | overrides.forced_backbone_ids
+    backbone_eligible_ids = eligible_ids - overrides.prohibited_backbone_ids
+    if len(backbone_eligible_ids) < max(2, params.min_backbone_count):
+        raise ValueError(
+            "Not enough eligible Carrier backbone PoPs (degree >= 2 at a data-center city)"
+        )
 
     inputs = DesignInputs(
         access_vertices=context.all_access,
         carrier_pops=context.carrier_pops,
         physical_edges=physical_edges,
-        eligible_aggregation_ids=eligible_aggregation_ids,
+        eligible_backbone_ids=backbone_eligible_ids,
         adjacency=context.adjacency,
         all_distances=context.all_distances,
         all_predecessors=context.all_predecessors,
     )
-    plan = build_search_plan(inputs, core_eligible_ids, aggregations, overrides, params)
+    plan = build_search_plan(inputs, backbone_eligible_ids, overrides, params)
     return search_best_design(inputs, params, plan)

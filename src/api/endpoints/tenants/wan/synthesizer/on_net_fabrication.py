@@ -2,18 +2,19 @@
 
 A location carries no fiber of its own in our data, so unaided it can only be demand.
 But we only hold *public* carrier data; real fiber exists everywhere. So when the
-operator forces a location to serve as an aggregation point, we honour it by
+operator forces a location to serve as a backbone node, we honour it by
 fabricating the node our data is missing: a co-located carrier-PoP *twin* at the
 location's coordinates, spliced on-net with synthetic local fiber to the nearest
 carrier PoPs (see :mod:`synthesizer.local_fiber`). The twin's name matches the
 location, so the operator's force-pin resolves onto it; it then flows through the
-unchanged dual-homing machinery while the original location stays an access/demand
+unchanged backbone machinery while the original location stays an access/demand
 vertex homing to its own twin plus its neighbours.
 
-A force always wins: the twin is wired to its nearest carrier PoPs *regardless of
-distance* (no radius cap), so a forced location is never silently dropped to
-demand-only for want of nearby public fiber. Co-located forced sites (e.g. Hill AFB
-and Ogden ALC sharing one location) collapse to a single twin.
+A force always wins -- but only at a data-center city: the twin is wired to its
+nearest carrier PoPs *regardless of distance* (no radius cap), yet a forced location
+whose city is not a data-center city is rejected, because the backbone gate is
+absolute. Co-located forced sites (e.g. Hill AFB and Ogden ALC sharing one location)
+collapse to a single twin.
 """
 
 from __future__ import annotations
@@ -38,12 +39,12 @@ ON_NET_EDGE_NOTE = "synthetic on-net fabrication backbone link"
 
 @dataclass(frozen=True)
 class FabricatedOnNetNodes:
-    """Forced locations fabricated into the graph as on-net aggregation nodes.
+    """Forced locations fabricated into the graph as on-net backbone nodes.
 
     ``vertices`` and ``physical_edges`` are the graph augmented with one co-located
     twin PoP per fabricated location and its synthetic backbone links; ``on_net_ids``
-    are those twins' ids. Each twin is seated as a forced aggregation via the
-    operator's force-pin, and may also win a core slot.
+    are those twins' ids. Each twin is seated as a forced backbone node via the
+    operator's force-pin.
     """
 
     vertices: list[Vertex]
@@ -59,16 +60,20 @@ def _coord_key(vertex: Vertex) -> tuple[float, float]:
 def fabricate_missing_on_net_nodes(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-    forced_aggregation_names: frozenset[str] = frozenset(),
+    forced_backbone_names: frozenset[str] = frozenset(),
+    datacenter_cities: frozenset[tuple[str, str]] = frozenset(),
 ) -> FabricatedOnNetNodes:
     """Fabricate an on-net twin for every operator-forced non-carrier location.
 
-    A location the operator named in ``forced_aggregation_names`` is fabricated on-net
-    by the force pin alone, since any place can become a hub. Carrier PoPs named here
-    are already on-net and need no twin. Forced locations are taken in a stable id
-    order; co-located sites yield a single twin. The twin always wires to its nearest
-    carrier PoPs regardless of distance, so a forced location is dropped only in the
-    degenerate case of fewer than :data:`LOCAL_FIBER_MIN_LINKS` carrier PoPs at all.
+    A location the operator named in ``forced_backbone_names`` is fabricated on-net by
+    the force pin alone, since any data-center place can become a hub. Carrier PoPs
+    named here are already on-net and need no twin. A forced location whose city is not
+    in ``datacenter_cities`` raises ``ValueError`` -- the backbone gate is absolute, so
+    a force cannot stand up a hub off a data-center city. Forced locations are taken in
+    a stable id order; co-located sites yield a single twin. The twin always wires to
+    its nearest carrier PoPs regardless of distance, so a forced location is dropped
+    only in the degenerate case of fewer than :data:`LOCAL_FIBER_MIN_LINKS` carrier
+    PoPs at all.
     """
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     used_ids = {vertex.id for vertex in vertices}
@@ -79,10 +84,14 @@ def fabricate_missing_on_net_nodes(
     for location in sorted(
         (
             vertex for vertex in vertices
-            if not is_carrier_pop(vertex) and vertex.name in forced_aggregation_names
+            if not is_carrier_pop(vertex) and vertex.name in forced_backbone_names
         ),
         key=lambda vertex: vertex.id,
     ):
+        if (location.info.municipality, location.info.state) not in datacenter_cities:
+            raise ValueError(
+                f"forced backbone location is not at a data-center city: {location.name}"
+            )
         coord_key = _coord_key(location)
         if coord_key in seen_coords:
             continue

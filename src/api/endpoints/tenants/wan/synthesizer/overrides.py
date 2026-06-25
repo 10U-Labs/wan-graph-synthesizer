@@ -1,12 +1,11 @@
-"""Resolve operator role pins and population anchors into search role overrides.
+"""Resolve operator role pins into search role overrides.
 
 The synthesizer's search consumes a :class:`~synthesizer.model.RoleOverrides`
-describing which PoPs are forced cores, which aggregations must be seated, which
-are excluded, and how the core and aggregation tiers are restricted. This module
-builds that object from two independent sources -- the operator's force-pins
-(resolved by name) and the realized population anchors -- and stands up the
-co-located ``AGGR`` twin for any operator PoP pinned as both a core and an
-aggregation. It runs before the search and never calls back into it.
+describing which PoPs are forced backbone nodes, which are barred from the
+backbone, and how the operator's forced edges resolve to ids. This module builds
+that object from the operator's force-pins (resolved by name), gated by the set of
+data-center cities a colocation provider operates in. It runs before the search
+and never calls back into it.
 """
 
 from __future__ import annotations
@@ -15,7 +14,6 @@ from collections.abc import Set as AbstractSet
 
 from synthesizer.input_graph import PhysicalEdge, Vertex, edge_key
 from synthesizer.model import (
-    Design,
     DesignParams,
     ForcedConnection,
     ForcedLinks,
@@ -44,269 +42,152 @@ def resolve_pinned_ids(
     return resolved
 
 def reject_override_conflicts(
-    forced_core: set[str],
-    forced_aggregation: set[str],
-    prohibited_core: AbstractSet[str] = frozenset(),
-    prohibited_aggregation: AbstractSet[str] = frozenset(),
+    forced_backbone: set[str],
+    prohibited_backbone: AbstractSet[str] = frozenset(),
 ) -> None:
-    """Reject contradictory tier pins.
+    """Reject contradictory backbone pins.
 
-    A PoP cannot be both forced onto and prohibited from the same tier. The two tier
-    bars are independent, so forcing a PoP as a core while prohibiting it from the
-    aggregation tier (or vice versa) is allowed.
+    A PoP cannot be both forced onto and prohibited from the backbone tier.
     """
-    core_clash = forced_core & prohibited_core
-    if core_clash:
+    clash = forced_backbone & prohibited_backbone
+    if clash:
         raise ValueError(
-            "PoPs cannot be both forced onto and prohibited from the core tier: "
-            f"{sorted(core_clash)}"
-        )
-    aggregation_clash = forced_aggregation & prohibited_aggregation
-    if aggregation_clash:
-        raise ValueError(
-            "PoPs cannot be both forced onto and prohibited from the aggregation tier: "
-            f"{sorted(aggregation_clash)}"
+            "PoPs cannot be both forced onto and prohibited from the backbone tier: "
+            f"{sorted(clash)}"
         )
 
-AGGR_TWIN_PREFIX = "aggr_"
 
+def _reject_non_datacenter_pins(
+    forced_backbone: set[str],
+    carrier_pops: list[Vertex],
+    datacenter_cities: frozenset[tuple[str, str]],
+) -> None:
+    """Raise for any forced backbone pin whose city is not a data-center city.
 
-def twin_vertex_id(core_id: str) -> str:
-    """The id of the co-located ``AGGR`` twin that shares a core's facility."""
-    return f"{AGGR_TWIN_PREFIX}{core_id}"
-
-def colocated_twin(core: Vertex) -> Vertex:
-    """Build the co-located ``AGGR`` vertex that shares a core's coordinates."""
-    return Vertex(
-        id=twin_vertex_id(core.id),
-        name=f"AGGR {core.name}",
-        kind=core.kind,
-        coords=core.coords,
-        info=core.info,
-        shown_in_map=core.shown_in_map,
-    )
-
-def colocation_edges(
-    core_id: str, twin_id: str, physical_edges: dict[tuple[str, str], PhysicalEdge]
-) -> dict[tuple[str, str], PhysicalEdge]:
-    """Edges standing up a co-located ``AGGR`` stack beside its core.
-
-    A zero-mile in-facility cross-connect joins the two distinct hardware stacks,
-    and every one of the core's fiber handoffs is duplicated onto the aggregation
-    so it reaches a remote core without traversing its own co-located core.
+    The data-center gate is absolute: a carrier PoP may serve as a backbone node only
+    where a colocation provider has a cage, and an operator force does not lift the
+    constraint. A forced pin at a non-data-center city is rejected by name.
     """
-    facility = edge_key(core_id, twin_id)
-    new_edges: dict[tuple[str, str], PhysicalEdge] = {
-        facility: PhysicalEdge(
-            source=facility[0], target=facility[1], distance_miles=0.0,
-            note="in-facility core/aggregation cross-connect",
-        )
-    }
-    for (left, right), edge in physical_edges.items():
-        neighbor = right if left == core_id else left if right == core_id else None
-        if neighbor is None:
-            continue
-        handoff = edge_key(twin_id, neighbor)
-        new_edges[handoff] = PhysicalEdge(
-            source=handoff[0], target=handoff[1], distance_miles=edge.distance_miles,
-            source_page=edge.source_page, note="co-located aggregation fiber handoff",
-        )
-    return new_edges
+    pop_by_id = {pop.id: pop for pop in carrier_pops}
+    for backbone_id in sorted(forced_backbone):
+        pop = pop_by_id[backbone_id]
+        if (pop.info.municipality, pop.info.state) not in datacenter_cities:
+            raise ValueError(
+                f"forced backbone PoP is not at a data-center city: {pop.name}"
+            )
 
-def split_colocated(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-    colocated_ids: set[str],
-) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], dict[str, str]]:
-    """Split each co-located PoP into its core vertex and a co-located ``AGGR`` twin."""
-    vertex_by_id = {vertex.id: vertex for vertex in vertices}
-    augmented_vertices = list(vertices)
-    augmented_edges = dict(physical_edges)
-    twin_by_core: dict[str, str] = {}
-    for core_id in sorted(colocated_ids):
-        twin = colocated_twin(vertex_by_id[core_id])
-        twin_by_core[core_id] = twin.id
-        augmented_vertices.append(twin)
-        augmented_edges.update(colocation_edges(core_id, twin.id, physical_edges))
-    return augmented_vertices, augmented_edges, twin_by_core
 
 def _resolve_operator_pins(
     vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
-) -> tuple[
-    list[Vertex], dict[tuple[str, str], PhysicalEdge], set[str], set[str], set[str], set[str]
-]:
-    """Resolve operator pins and split any operator co-location.
+) -> tuple[set[str], set[str]]:
+    """Resolve operator backbone pins, gated by the data-center cities.
 
-    Returns the (possibly augmented) graph plus the forced-core, operator-forced
-    aggregation, prohibited-core, and prohibited-aggregation id sets. A PoP pinned as both
-    a core and an aggregation is split into a ``CORE`` vertex and a ``AGGR`` twin, and it
-    is the twin's id that lands in the operator-forced aggregations. Prohibited PoPs
-    resolve to plain carrier-PoP ids (never co-located).
+    Returns the forced-backbone and prohibited-backbone id sets. A forced pin at a
+    city no colocation provider serves is rejected -- the data-center gate applies to
+    operator forces too.
     """
-    name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
-    forced_core = resolve_pinned_ids(params.forced_core_names, name_to_id, "forced_cores")
-    forced_aggregation = resolve_pinned_ids(
-        params.forced_aggregation_names, name_to_id, "forced_aggregations"
+    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
+    name_to_id = pop_id_by_name(carrier_pops)
+    forced_backbone = resolve_pinned_ids(
+        params.forced_backbone_names, name_to_id, "forced_backbone"
     )
-    prohibited_core = resolve_pinned_ids(
-        params.exclusions.prohibited_core_names, name_to_id, "prohibited_cores"
+    prohibited_backbone = resolve_pinned_ids(
+        params.exclusions.prohibited_backbone_names, name_to_id, "prohibited_backbone"
     )
-    prohibited_aggregation = resolve_pinned_ids(
-        params.exclusions.prohibited_aggregation_names, name_to_id, "prohibited_aggregations"
-    )
-    reject_override_conflicts(
-        forced_core, forced_aggregation, prohibited_core, prohibited_aggregation
-    )
-    colocated = forced_core & forced_aggregation
-    vertices, physical_edges, twin_by_core = split_colocated(vertices, physical_edges, colocated)
-    operator_forced = (forced_aggregation - colocated) | set(twin_by_core.values())
-    return (
-        vertices, physical_edges, forced_core, operator_forced,
-        prohibited_core, prohibited_aggregation,
-    )
+    reject_override_conflicts(forced_backbone, prohibited_backbone)
+    _reject_non_datacenter_pins(forced_backbone, carrier_pops, params.datacenter_cities)
+    return forced_backbone, prohibited_backbone
 
 
-def materialize_selected_colocation_twins(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-    design: Design,
-) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
-    """Stand up the co-located ``AGGR`` twin for every core the search dual-roled.
-
-    The synthesizer may seat a core's twin as an aggregation without an operator pin;
-    that twin's id rides in ``design.aggregation_ids`` but its vertex and fiber are
-    not yet in the graph. Materialize each such twin -- skipping any already present
-    (an operator co-location or a ``fac_`` installation twin) -- so validation, the
-    physical-resilience augmenter, and the payload all see a real aggregation vertex
-    with the cross-connect and duplicated handoffs that back its redundancy.
-    """
-    existing = {vertex.id for vertex in vertices}
-    vertex_by_id = {vertex.id: vertex for vertex in vertices}
-    augmented_vertices = list(vertices)
-    augmented_edges = dict(physical_edges)
-    aggregation_ids = set(design.aggregation_ids)
-    for core_id in design.core_ids:
-        twin_id = twin_vertex_id(core_id)
-        if twin_id in aggregation_ids and twin_id not in existing:
-            augmented_vertices.append(colocated_twin(vertex_by_id[core_id]))
-            augmented_edges.update(colocation_edges(core_id, twin_id, physical_edges))
-            existing.add(twin_id)
-    return augmented_vertices, augmented_edges
-
-
-def _forced_core_endpoint(
-    name: str, name_to_id: dict[str, str], forced_core: set[str]
+def _forced_backbone_endpoint(
+    name: str, name_to_id: dict[str, str], forced_backbone: set[str]
 ) -> str:
-    """Resolve a forced-connection core endpoint, requiring it be a forced core."""
+    """Resolve a forced-connection backbone endpoint, requiring it be a forced node."""
     if name not in name_to_id:
-        raise ValueError(f"forced-connection core not found in the Carrier graph: {name}")
-    core_id = name_to_id[name]
-    if core_id not in forced_core:
-        raise ValueError(f"forced-connection endpoint must be a forced core: {name}")
-    return core_id
+        raise ValueError(f"forced-connection backbone not found in the Carrier graph: {name}")
+    backbone_id = name_to_id[name]
+    if backbone_id not in forced_backbone:
+        raise ValueError(f"forced-connection endpoint must be a forced backbone node: {name}")
+    return backbone_id
 
 
-def _forced_aggregation_endpoint(
-    name: str, name_to_id: dict[str, str], forced_core: set[str], operator_forced: set[str]
-) -> str:
-    """Resolve a forced-connection aggregation endpoint to its seated vertex id.
-
-    A co-located PoP (a forced core also forced as an aggregation) is seated as its
-    ``AGGR`` twin, so resolve to that twin id; the endpoint must be a forced
-    aggregation either way.
-    """
-    if name not in name_to_id:
-        raise ValueError(f"forced-connection aggregation not found in the Carrier graph: {name}")
-    carrier_id = name_to_id[name]
-    seated = twin_vertex_id(carrier_id) if carrier_id in forced_core else carrier_id
-    if seated not in operator_forced:
-        raise ValueError(f"forced-connection endpoint must be a forced aggregation: {name}")
-    return seated
-
-
-def _core_core_pair(
-    connection: ForcedConnection, name_to_id: dict[str, str], forced_core: set[str]
+def _backbone_backbone_pair(
+    connection: ForcedConnection, name_to_id: dict[str, str], forced_backbone: set[str]
 ) -> tuple[str, str]:
-    """Resolve a core-core connection's two endpoints to a forced-core edge key."""
-    left = _forced_core_endpoint(connection.source, name_to_id, forced_core)
-    right = _forced_core_endpoint(connection.target, name_to_id, forced_core)
+    """Resolve a backbone-backbone connection's endpoints to a forced-backbone edge key."""
+    left = _forced_backbone_endpoint(connection.source, name_to_id, forced_backbone)
+    right = _forced_backbone_endpoint(connection.target, name_to_id, forced_backbone)
     return edge_key(left, right)
 
 
-def _excluded_core_endpoint(name: str, name_to_id: dict[str, str]) -> str:
-    """Resolve an excluded core-core endpoint, requiring only a carrier PoP."""
+def _excluded_backbone_endpoint(name: str, name_to_id: dict[str, str]) -> str:
+    """Resolve an excluded backbone-backbone endpoint, requiring only a carrier PoP."""
     if name not in name_to_id:
-        raise ValueError(f"excluded-connection core not found in the Carrier graph: {name}")
+        raise ValueError(f"excluded-connection backbone not found in the Carrier graph: {name}")
     return name_to_id[name]
 
 
-def _removed_core_pair(
+def _removed_backbone_pair(
     connection: ForcedConnection, name_to_id: dict[str, str]
 ) -> tuple[str, str]:
-    """Resolve an excluded core-core connection's two endpoints to an edge key."""
-    left = _excluded_core_endpoint(connection.source, name_to_id)
-    right = _excluded_core_endpoint(connection.target, name_to_id)
+    """Resolve an excluded backbone-backbone connection's endpoints to an edge key."""
+    left = _excluded_backbone_endpoint(connection.source, name_to_id)
+    right = _excluded_backbone_endpoint(connection.target, name_to_id)
     return edge_key(left, right)
 
 
-def _removed_core_links(
+def _removed_backbone_links(
     connections: tuple[ForcedConnection, ...],
     name_to_id: dict[str, str],
 ) -> frozenset[tuple[str, str]]:
-    """Resolve operator-pruned core-core pairs to edge keys.
+    """Resolve operator-pruned backbone-backbone pairs to edge keys.
 
     Each endpoint need only be a carrier PoP (an unknown name raises a ``ValueError``);
-    the pair is pruned only when the synthesizer seats both as cores, otherwise it is a
-    no-op. Pinning the endpoints as forced cores is not required.
+    the pair is pruned only when the synthesizer seats both as backbone nodes, otherwise
+    it is a no-op. Pinning the endpoints as forced backbone nodes is not required.
     """
-    return frozenset(_removed_core_pair(connection, name_to_id) for connection in connections)
+    return frozenset(
+        _removed_backbone_pair(connection, name_to_id) for connection in connections
+    )
 
 
 def resolve_forced_links(
     connections: tuple[ForcedConnection, ...],
     vertices: list[Vertex],
-    forced_core: set[str],
-    operator_forced: set[str],
+    forced_backbone: set[str],
     excluded_connections: tuple[ForcedConnection, ...] = (),
 ) -> ForcedLinks:
     """Resolve operator forced/pruned connections to id-typed link sets, validating tiers.
 
-    Returns a :class:`ForcedLinks` of the core-core, aggregation-core, and
-    access-aggregation links, plus the ``removed_core`` pairs the operator pruned
-    from the core backbone. Each forced endpoint must already be seated in the tier its
-    edge type requires, or a ``ValueError`` names the offending connection; a pruned
-    ``removed_core`` endpoint need only be a carrier PoP.
+    Returns a :class:`ForcedLinks` of the backbone-backbone and access-backbone links,
+    plus the ``removed_backbone`` pairs the operator pruned from the mesh. Each forced
+    endpoint must already be seated in the tier its edge type requires, or a
+    ``ValueError`` names the offending connection; a pruned ``removed_backbone``
+    endpoint need only be a carrier PoP.
     """
     name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
     access_name_to_id = {
         vertex.name: vertex.id for vertex in vertices if not is_carrier_pop(vertex)
     }
-    core_links: set[tuple[str, str]] = set()
-    aggregation_links: set[tuple[str, str]] = set()
+    backbone_links: set[tuple[str, str]] = set()
     access_links: set[tuple[str, str]] = set()
     for connection in connections:
-        if connection.edge_type == "core-core":
-            core_links.add(_core_core_pair(connection, name_to_id, forced_core))
-        elif connection.edge_type == "aggregation-core":
-            agg = _forced_aggregation_endpoint(
-                connection.source, name_to_id, forced_core, operator_forced
+        if connection.edge_type == "backbone-backbone":
+            backbone_links.add(
+                _backbone_backbone_pair(connection, name_to_id, forced_backbone)
             )
-            core = _forced_core_endpoint(connection.target, name_to_id, forced_core)
-            aggregation_links.add((agg, core))
-        else:  # access-aggregation
+        else:  # access-backbone
             if connection.source not in access_name_to_id:
                 raise ValueError(f"forced-connection access node not found: {connection.source}")
-            agg = _forced_aggregation_endpoint(
-                connection.target, name_to_id, forced_core, operator_forced
+            backbone = _forced_backbone_endpoint(
+                connection.target, name_to_id, forced_backbone
             )
-            access_links.add((access_name_to_id[connection.source], agg))
+            access_links.add((access_name_to_id[connection.source], backbone))
     return ForcedLinks(
-        core=frozenset(core_links),
-        aggregation=frozenset(aggregation_links),
+        backbone=frozenset(backbone_links),
         access=frozenset(access_links),
-        removed_core=_removed_core_links(excluded_connections, name_to_id),
+        removed_backbone=_removed_backbone_links(excluded_connections, name_to_id),
     )
 
 
@@ -319,27 +200,21 @@ def apply_role_overrides(
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
     """Resolve operator pins into the search's role overrides.
 
-    Operator forced cores stay required and an operator co-location is split into a
-    ``CORE``/``AGGR`` pair. A forced installation has already been realized as a
-    co-located carrier twin, so its force-pin resolves onto that twin here and lands
-    in the forced aggregations like any other operator pin. ``forced_connections``
-    are resolved to id-typed link sets against the seated tiers, and
-    ``excluded_connections`` to the core-core pairs pruned from the core backbone.
-    ``params.exclusions.prohibited_core_names`` / ``prohibited_aggregation_names`` are barred
-    from the core / aggregation tier and land in ``RoleOverrides.prohibited_core_ids`` /
-    ``prohibited_aggregation_ids`` (the two bars are independent).
+    Operator forced backbone nodes stay required; ``forced_connections`` are resolved
+    to id-typed link sets against the seated backbone, and ``excluded_connections`` to
+    the backbone-backbone pairs pruned from the mesh.
+    ``params.exclusions.prohibited_backbone_names`` are barred from the backbone tier
+    and land in ``RoleOverrides.prohibited_backbone_ids``. Forced backbone pins are
+    gated by ``params.datacenter_cities``: a pin at a city no colocation provider
+    serves is rejected. The graph is returned unchanged (operator pins resolve to
+    existing carrier-PoP ids; demand attachment is the caller's earlier stage).
     """
-    (
-        vertices, physical_edges, forced_core, operator_forced,
-        prohibited_core, prohibited_aggregation,
-    ) = _resolve_operator_pins(vertices, physical_edges, params)
+    forced_backbone, prohibited_backbone = _resolve_operator_pins(vertices, params)
     overrides = RoleOverrides(
-        forced_core_ids=frozenset(forced_core),
-        forced_aggregation_ids=frozenset(operator_forced),
-        prohibited_core_ids=frozenset(prohibited_core),
-        prohibited_aggregation_ids=frozenset(prohibited_aggregation),
+        forced_backbone_ids=frozenset(forced_backbone),
+        prohibited_backbone_ids=frozenset(prohibited_backbone),
         forced_links=resolve_forced_links(
-            forced_connections, vertices, forced_core, operator_forced, excluded_connections
+            forced_connections, vertices, forced_backbone, excluded_connections
         ),
     )
     return vertices, physical_edges, overrides

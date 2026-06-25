@@ -1,7 +1,7 @@
 """Score a carrier PoP's strength: link reach, compass spread, and straightness.
 
-Cores are chosen for strength rather than mileage (the source mapbook has no
-distances), so this scoring is the search's primary objective. It is isolated
+Backbone nodes are chosen for strength rather than mileage (the source mapbook has
+no distances), so this scoring is the search's primary objective. It is isolated
 here because it depends only on the precomputed graph context, not on the search
 machinery that consumes it.
 """
@@ -56,7 +56,7 @@ def vertex_straightness(
             ratios.append(straight / routed)
     return sum(ratios) / len(ratios) if ratios else 0.0
 
-def core_strength(
+def backbone_strength(
     pop_id: str,
     inputs: DesignInputs,
     pop_by_id: dict[str, Vertex],
