@@ -1,8 +1,8 @@
 """Unit tests for the design validation checks.
 
-The two requirements under test: every demand vertex must reach the configured number
-of distinct backbone nodes over vertex-disjoint paths, and every backbone node must
-wire to its configured number of nearest backbone nodes on the mesh.
+The two requirements under test: every demand vertex must home to the configured number
+of distinct backbone nodes, and every backbone node must wire to its configured number
+of nearest backbone nodes on the mesh.
 """
 
 from __future__ import annotations

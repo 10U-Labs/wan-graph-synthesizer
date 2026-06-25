@@ -29,7 +29,6 @@ from synthesizer.synthesize import (
     coverage_candidate_totals,
     compute_eligible_backbone_ids,
     demand_haul_miles,
-    demand_homes,
     enumeration_limit,
     nearest_pop_id,
     search_best_design,
@@ -260,24 +259,8 @@ def test_backbone_has_mesh_peers_false_when_nodes_disconnected() -> None:
     assert not backbone_has_mesh_peers(("a", "c"), distances, 3)
 
 
-def test_demand_homes_memoizes_feasibility() -> None:
-    """demand_homes records its computed feasibility in the cache."""
-    edges = physical({("g", "c1"): 1.0, ("g", "c2"): 1.0, ("c1", "c2"): 1.0})
-    inputs = _inputs_from_edges(["g", "c1", "c2"], edges, {"g", "c1", "c2"})
-    cache: dict[tuple[str, tuple[str, ...], int], bool] = {}
-    demand_homes("g", ("c1", "c2"), 2, inputs, cache)
-    assert cache[("g", ("c1", "c2"), 2)] is True
-
-
-def test_demand_homes_at_degree_one_needs_only_one_node() -> None:
-    """At homing degree 1 one reachable backbone node homes, even through a bottleneck (X)."""
-    edges = physical({("g", "X"): 1.0, ("X", "c1"): 1.0, ("X", "c2"): 1.0})
-    inputs = _inputs_from_edges(["g", "X", "c1", "c2"], edges, {"g"})
-    assert demand_homes("g", ("c1", "c2"), 1, inputs, {}) is True
-
-
-# A demand site "s" wired into the physical graph via disjoint edges to c1 and c2, so
-# it homes to both over vertex-disjoint paths; c1 and c2 mesh directly.
+# A demand site "s" near two backbone PoPs c1 and c2 (which mesh directly). A home is
+# the logical demand-to-backbone link, so "s" homes to its two nearest backbone nodes.
 DUAL_EDGES = physical(
     {("c1", "c2"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0}
 )
@@ -336,14 +319,13 @@ def test_assign_access_leads_with_a_forced_home() -> None:
 
 
 def test_build_design_returns_none_without_homing() -> None:
-    """build_design_for_backbone returns None when demand cannot home to two nodes.
+    """build_design_for_backbone returns None when the backbone is too small to home.
 
-    The demand vertex ``s`` reaches the backbone only through the single transit PoP
-    ``g1``, so no two vertex-disjoint paths to two backbone nodes exist.
+    With a single backbone node and a homing degree of two, no demand vertex can reach
+    two distinct backbone nodes, so the design is infeasible.
     """
-    edges = physical({("c1", "g1"): 1.0, ("c2", "g1"): 1.0, ("c1", "c2"): 1.0, ("s", "g1"): 1.0})
-    inputs = _inputs_from_edges(["c1", "c2", "g1"], edges, {"c1", "c2"}, [access("s")])
-    assert build_design_for_backbone(("c1", "c2"), inputs, _plan([])) is None
+    inputs = _dual_inputs()
+    assert build_design_for_backbone(("c1",), inputs, _plan([], access_backbone_links=2)) is None
 
 
 def test_build_design_returns_none_when_nodes_are_not_meshed() -> None:
@@ -370,7 +352,7 @@ MESH_EDGES = physical(
     {
         ("a", "b"): 1.0, ("a", "c"): 1.0, ("a", "d"): 1.0,
         ("b", "c"): 1.0, ("b", "d"): 1.0, ("c", "d"): 1.0,
-        # The demand wires to every PoP, so any pair can home it over disjoint paths.
+        # The demand sits near every PoP, so any pair are its two nearest homes.
         ("s", "a"): 1.0, ("s", "b"): 1.0, ("s", "c"): 1.0, ("s", "d"): 1.0,
     }
 )
@@ -405,11 +387,11 @@ def test_best_design_at_size_selects_strongest_then_least_last_mile(
 def test_best_design_at_size_returns_none_when_nothing_feasible() -> None:
     """With no feasible backbone set at a size, the search returns None for that size.
 
-    The demand vertex ``s`` can reach the backbone only through the lone transit PoP
-    ``g1``, so it never homes redundantly and no backbone set is feasible.
+    The two candidate backbone PoPs sit in separate components, so neither can reach the
+    other to wire its mesh links and no backbone set of that size is feasible.
     """
-    edges = physical({("c1", "g1"): 1.0, ("c2", "g1"): 1.0, ("c1", "c2"): 1.0, ("s", "g1"): 1.0})
-    inputs = _inputs_from_edges(["c1", "c2", "g1"], edges, {"c1", "c2"}, [access("s")])
+    edges = physical({("c1", "x"): 1.0, ("c2", "y"): 1.0})
+    inputs = _inputs_from_edges(["c1", "c2", "x", "y"], edges, {"c1", "c2"}, [access("s")])
     assert best_design_at_size(inputs, _plan(["c1", "c2"]), 2) is None
 
 

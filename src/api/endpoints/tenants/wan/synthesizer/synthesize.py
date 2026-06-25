@@ -16,7 +16,9 @@ operates a cage there). The operator's forced backbone pins are gated the same w
 (in ``synthesizer.overrides``).
 
 Every demand vertex (a unified tenant site or provider region) homes to its
-``access_backbone_links`` nearest selected backbone nodes over vertex-disjoint paths.
+``access_backbone_links`` nearest selected backbone nodes. There is no last-mile fiber
+data, so a home is the logical link from a demand vertex to a backbone node, not a
+routed path -- the only requirement is that enough backbone nodes exist to home to.
 On top of the algorithm, the operator may pin roles by PoP name (``RoleOverrides``,
 resolved by ``apply_role_overrides``): force a PoP onto the backbone, or exclude it
 from it.
@@ -48,7 +50,6 @@ from synthesizer.forced import (
 from synthesizer.graphs import (
     build_adjacency,
     dijkstra,
-    vertex_disjoint_paths_to_cores,
     path_edge_keys,
 )
 from synthesizer.backbone import BackboneConstraints, backbone_mesh_paths
@@ -114,30 +115,6 @@ def backbone_has_mesh_peers(
     )
 
 
-def demand_homes(
-    demand_id: str,
-    backbone_ids: tuple[str, ...],
-    homes: int,
-    inputs: DesignInputs,
-    cache: dict[tuple[str, tuple[str, ...], int], bool],
-) -> bool:
-    """True if the demand vertex reaches ``homes`` distinct backbone nodes disjointly.
-
-    A single vertex-disjoint max-flow over the whole backbone set finds up to
-    ``homes`` paths to distinct backbone nodes, so this answers feasibility for any
-    homing degree. Memoized per (demand vertex, backbone set, degree).
-    """
-    key = (demand_id, backbone_ids, homes)
-    cached = cache.get(key)
-    if cached is None:
-        _cost, paths = vertex_disjoint_paths_to_cores(
-            inputs.adjacency, demand_id, backbone_ids, homes
-        )
-        cached = len(paths) >= homes
-        cache[key] = cached
-    return cached
-
-
 def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
     return min(carrier_pops, key=lambda pop: haversine_miles(access, pop)).id
@@ -185,24 +162,6 @@ def assign_access(
     return access_edges
 
 
-def demand_can_home(
-    backbone_ids: tuple[str, ...],
-    inputs: DesignInputs,
-    plan: _SearchPlan,
-) -> bool:
-    """True if every demand vertex reaches the required backbone nodes disjointly.
-
-    Vertex-disjoint redundancy is what the validation later enforces, so a backbone
-    set is only feasible when every demand vertex can reach
-    ``plan.tuning.access_backbone_links`` distinct backbone nodes over disjoint paths.
-    """
-    homes = plan.tuning.access_backbone_links
-    return all(
-        demand_homes(access.id, backbone_ids, homes, inputs, plan.feasibility_cache)
-        for access in inputs.access_vertices
-    )
-
-
 def evaluate_backbone(
     backbone_ids: tuple[str, ...],
     inputs: DesignInputs,
@@ -210,15 +169,15 @@ def evaluate_backbone(
 ) -> list[AccessEdge] | None:
     """Score a backbone set's feasibility and demand homing without routing paths.
 
-    Returns None when a node cannot reach enough peers to wire its mesh links or some
-    demand vertex cannot reach its backbone nodes. Routed paths are deferred to the
-    winning set, since they do not affect the strength ranking.
+    Returns None when a backbone node cannot reach enough peers to wire its mesh links,
+    or the backbone is smaller than the configured number of homes per demand vertex
+    (so ``assign_access`` cannot give each demand vertex that many distinct backbone
+    nodes). Routed paths are deferred to the winning set, since they do not affect the
+    strength ranking.
     """
     if not backbone_has_mesh_peers(
         backbone_ids, inputs.all_distances, plan.tuning.backbone_mesh_degree
     ):
-        return None
-    if not demand_can_home(backbone_ids, inputs, plan):
         return None
     return assign_access(backbone_ids, inputs, plan)
 
@@ -247,8 +206,8 @@ def build_design_for_backbone(
 ) -> Design | None:
     """Assemble a full two-tier design for one fixed set of backbone PoPs.
 
-    Returns None if a node cannot reach enough peers to wire its mesh links or some
-    demand vertex cannot reach its backbone nodes.
+    Returns None if a backbone node cannot reach enough peers to wire its mesh links, or
+    the backbone is too small to give each demand vertex its configured number of homes.
     """
     access_edges = evaluate_backbone(backbone_ids, inputs, plan)
     if access_edges is None:
