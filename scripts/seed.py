@@ -74,7 +74,7 @@ def _send(api: str, path: str, method: str, body: bytes) -> None:
         headers={"Content-Type": "application/json"},
     )
     with urllib.request.urlopen(request, timeout=60) as response:
-        print(f"  {method} /{path} -> {response.status}")
+        print(f"  {method} /{path} -> {response.status}", flush=True)
 
 
 def _put(api: str, path: str, body: Any) -> None:
@@ -103,7 +103,7 @@ def push_carriers(api: str) -> None:
         cid = _slug(carrier)
         vertices = _rows(DATA / "vertices" / "carriers" / f"{carrier}.csv")
         edges = _rows(DATA / "edges" / f"{carrier}.csv")
-        print(f"carrier {cid}: {len(vertices)} points, {len(edges)} connections")
+        print(f"carrier {cid}: {len(vertices)} points, {len(edges)} connections", flush=True)
         _put(api, f"carriers/{cid}/vertices", vertices)
         _put(api, f"carriers/{cid}/edges", edges)
 
@@ -115,7 +115,7 @@ def push_csps(api: str) -> None:
         if not files:
             continue
         regions = [row for path in files for row in _rows(path)]
-        print(f"csp {provider}: {len(regions)} regions")
+        print(f"csp {provider}: {len(regions)} regions", flush=True)
         _put(api, f"csps/{provider}/vertices", regions)
 
 
@@ -129,7 +129,7 @@ def push_data_centers(api: str) -> None:
     for provider in _data_center_providers():
         pid = _slug(provider)
         facilities = _rows(DATA / "vertices" / "data-centers" / f"{provider}.csv")
-        print(f"data-center {pid}: {len(facilities)} facilities")
+        print(f"data-center {pid}: {len(facilities)} facilities", flush=True)
         _put(api, f"data-centers/{pid}/vertices", facilities)
 
 
@@ -148,7 +148,7 @@ def push_tenants(api: str) -> list[str]:
         off_net_path = inputs.get("off_net")
         off_net = _rows(REPO_ROOT / off_net_path) if off_net_path else []
         print(f"tenant {tid}: {len(locations)} sites, {len(regions)} regions, "
-              f"{len(off_net)} off-net")
+              f"{len(off_net)} off-net", flush=True)
         _put(api, f"tenants/{tid}/locations", locations)
         _put(api, f"tenants/{tid}/csp-regions", regions)
         _put(api, f"tenants/{tid}/off-net", off_net)
@@ -171,20 +171,20 @@ def push_tenants(api: str) -> list[str]:
 
 def build_substrate(api: str) -> None:
     """Rebuild the shared carrier substrate from the pushed carriers."""
-    print("merge: rebuilding substrate")
+    print("merge: rebuilding substrate", flush=True)
     _post(api, "carriers/merge")
 
 
 def build_data_centers(api: str) -> None:
     """Rebuild the data-center union from the pushed providers."""
-    print("data-centers merge: rebuilding union")
+    print("data-centers merge: rebuilding union", flush=True)
     _post(api, "data-centers/merge")
 
 
 def build_tenants(api: str, tenants: list[str]) -> None:
     """Trigger one WAN build per tenant (the only build trigger)."""
     for tid in tenants:
-        print(f"tenant {tid}: building WAN")
+        print(f"tenant {tid}: building WAN", flush=True)
         _post(api, f"tenants/{tid}/wan")
 
 
