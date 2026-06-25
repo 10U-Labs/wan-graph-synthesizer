@@ -1,8 +1,8 @@
-"""Unit tests for vertex-disjoint aggregation-to-core routing.
+"""Unit tests for vertex-disjoint demand-to-backbone routing.
 
-These tests pin down the core resilience fix: an aggregation must reach two
-distinct core vertices over two vertex-disjoint paths, otherwise a single vertex or
-link failure severs it from the core tier.
+These tests pin down the resilience requirement: a demand vertex must reach two
+distinct backbone vertices over two vertex-disjoint paths, otherwise a single vertex or
+link failure severs it from the backbone.
 """
 
 from __future__ import annotations

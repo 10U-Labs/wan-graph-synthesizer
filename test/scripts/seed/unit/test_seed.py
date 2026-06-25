@@ -30,9 +30,8 @@ from seed import (
 
 _TENANT_YML = """\
 access_homing_degree: 1
-aggregation_homing_degree: 1
-core_mesh_degree: 2
-core_node_count:
+backbone_mesh_degree: 2
+backbone_node_count:
   max: 3
   min: 3
 inputs:
