@@ -3,10 +3,40 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-tenants-wan-post-${{ github.ref }}
 jobs:
+  build-and-publication:
+    if: github.ref == 'refs/heads/main'
+    name: build-and-publication
+    needs: pre-deployment-integration-tests
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region us-east-2 \
+            | docker login --username AWS --password-stdin \
+              781581267945.dkr.ecr.us-east-2.amazonaws.com
+      - name: Build and push the synthesizer image (arm64/Graviton)
+        run: |
+          REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-synthesizer
+          docker buildx build --platform linux/arm64 \
+            -f src/api/endpoints/tenants/wan/Dockerfile \
+            -t "$REPO:latest" --push .
   post-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
     name: post-deployment-integration-tests
-    needs: reconciliation
+    needs: build-and-publication
     permissions:
       contents: read
       id-token: write
@@ -41,36 +71,6 @@ jobs:
           python3 -m pytest
           test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration/
           --verbose --pythonwarnings=error
-  reconciliation:
-    if: github.ref == 'refs/heads/main'
-    name: reconciliation
-    needs: pre-deployment-integration-tests
-    permissions:
-      contents: read
-      id-token: write
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: us-east-2
-          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Log in to Amazon ECR
-        run: |
-          aws ecr get-login-password --region us-east-2 \
-            | docker login --username AWS --password-stdin \
-              781581267945.dkr.ecr.us-east-2.amazonaws.com
-      - name: Build and push the synthesizer image (arm64/Graviton)
-        run: |
-          REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-synthesizer
-          docker buildx build --platform linux/arm64 \
-            -f src/api/endpoints/tenants/wan/Dockerfile \
-            -t "$REPO:latest" --push .
   static-analysis:
     name: static-analysis
     runs-on: ubuntu-24.04
