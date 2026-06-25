@@ -25,10 +25,12 @@ output "github_repo_full" {
 output "lambda_handler_names" {
   description = "Deterministic Lambda function names, one per REST resource."
   value = {
-    carriers  = "wan-graph-synthesizer-carriers"
-    csps      = "wan-graph-synthesizer-csps"
-    tenants = "wan-graph-synthesizer-tenants"
-    merge     = "wan-graph-synthesizer-merge"
-    wan       = "wan-graph-synthesizer-wan"
+    carriers          = "wan-graph-synthesizer-carriers"
+    csps              = "wan-graph-synthesizer-csps"
+    datacenters       = "wan-graph-synthesizer-data-centers"
+    datacenters_merge = "wan-graph-synthesizer-data-centers-merge"
+    tenants           = "wan-graph-synthesizer-tenants"
+    merge             = "wan-graph-synthesizer-merge"
+    wan               = "wan-graph-synthesizer-wan"
   }
 }

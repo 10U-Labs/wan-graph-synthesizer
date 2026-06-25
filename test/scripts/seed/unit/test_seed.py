@@ -11,17 +11,20 @@ import seed
 from test_http_doubles import CallRecorder, UrlopenRecorder
 from seed import (
     _carrier_names,
+    _data_center_providers,
     _degree_doc,
     _mapping_rows,
     _post,
     _put,
     _rows,
     _slug,
+    build_data_centers,
     build_substrate,
     build_tenants,
     main,
     push_carriers,
     push_csps,
+    push_data_centers,
     push_tenants,
 )
 
@@ -62,6 +65,13 @@ def _one_csp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(seed, "DATA", tmp_path)
     _write_csv(
         tmp_path / "vertices" / "csps" / "aws" / "east.csv", "city,state", "Reston,VA")
+
+
+def _one_data_center(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Lay down one colocation provider's facilities under a temp DATA dir."""
+    monkeypatch.setattr(seed, "DATA", tmp_path)
+    _write_csv(
+        tmp_path / "vertices" / "data-centers" / "vision_net.csv", "city,state", "Helena,MT")
 
 
 def _one_tenant(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
@@ -266,6 +276,24 @@ def test_push_csps_skips_providers_without_files(
     assert "csps/azure/vertices" not in put_recorder.nth(1)
 
 
+def test_data_center_providers_returns_sorted_stems(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_data_center_providers returns the CSV stems under data-centers, sorted."""
+    monkeypatch.setattr(seed, "DATA", tmp_path)
+    _write_csv(tmp_path / "vertices" / "data-centers" / "lunavi.csv", "city,state", "X,Y")
+    _write_csv(tmp_path / "vertices" / "data-centers" / "equinix.csv", "city,state", "X,Y")
+    assert _data_center_providers() == ["equinix", "lunavi"]
+
+
+def test_push_data_centers_puts_the_slugged_vertices_path(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_data_centers PUTs a provider's facilities under its slugged id."""
+    _one_data_center(tmp_path, monkeypatch)
+    push_data_centers("http://api")
+    assert "data-centers/vision-net/vertices" in put_recorder.nth(1)
+
+
 def test_push_tenants_puts_the_label_resource(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
@@ -319,6 +347,12 @@ def test_build_substrate_posts_the_merge(post_recorder: CallRecorder) -> None:
     assert post_recorder.calls == [("http://api", "carriers/merge")]
 
 
+def test_build_data_centers_posts_the_merge(post_recorder: CallRecorder) -> None:
+    """build_data_centers POSTs the data-centers merge."""
+    build_data_centers("http://api")
+    assert post_recorder.calls == [("http://api", "data-centers/merge")]
+
+
 def test_build_tenants_posts_a_wan_build_for_each(post_recorder: CallRecorder) -> None:
     """build_tenants POSTs a WAN build for every tenant id."""
     build_tenants("http://api", ["f-35", "joint"])
@@ -344,6 +378,10 @@ def _run_main(
     monkeypatch.setattr(seed, "push_carriers", lambda api: calls.append(("carriers", api)))
     monkeypatch.setattr(seed, "build_substrate", lambda api: calls.append(("merge", api)))
     monkeypatch.setattr(seed, "push_csps", lambda api: calls.append(("csps", api)))
+    monkeypatch.setattr(
+        seed, "push_data_centers", lambda api: calls.append(("data-centers", api)))
+    monkeypatch.setattr(
+        seed, "build_data_centers", lambda api: calls.append(("dc-merge", api)))
     monkeypatch.setattr(seed, "push_tenants", _push_tenants)
     monkeypatch.setattr(
         seed, "build_tenants", lambda api, _tenants: calls.append(("build", api)))
@@ -363,6 +401,6 @@ def test_main_uses_the_cli_argument_when_given(monkeypatch: pytest.MonkeyPatch) 
 
 def test_main_seeds_inputs_then_triggers_builds_in_order(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """main pushes carriers, rebuilds the substrate, pushes CSPs and tenants, then builds."""
+    """main seeds carriers, substrate, CSPs, data-centers (+union), tenants, then builds."""
     assert [name for name, _ in _run_main(monkeypatch, ["seed"])] == [
-        "carriers", "merge", "csps", "tenants", "build"]
+        "carriers", "merge", "csps", "data-centers", "dc-merge", "tenants", "build"]

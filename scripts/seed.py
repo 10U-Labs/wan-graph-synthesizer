@@ -119,6 +119,20 @@ def push_csps(api: str) -> None:
         _put(api, f"csps/{provider}/vertices", regions)
 
 
+def _data_center_providers() -> list[str]:
+    """The colocation providers: every facilities file under data-centers/."""
+    return sorted(p.stem for p in (DATA / "vertices" / "data-centers").glob("*.csv"))
+
+
+def push_data_centers(api: str) -> None:
+    """Push each colocation provider's facilities as simple geographic rows."""
+    for provider in _data_center_providers():
+        pid = _slug(provider)
+        facilities = _rows(DATA / "vertices" / "data-centers" / f"{provider}.csv")
+        print(f"data-center {pid}: {len(facilities)} facilities")
+        _put(api, f"data-centers/{pid}/vertices", facilities)
+
+
 def push_tenants(api: str) -> list[str]:
     """Push each tenant's inputs and return the tenant ids (for the build step)."""
     tenant_ids: list[str] = []
@@ -165,6 +179,12 @@ def build_substrate(api: str) -> None:
     _post(api, "carriers/merge")
 
 
+def build_data_centers(api: str) -> None:
+    """Rebuild the data-center union from the pushed providers."""
+    print("data-centers merge: rebuilding union")
+    _post(api, "data-centers/merge")
+
+
 def build_tenants(api: str, tenants: list[str]) -> None:
     """Trigger one WAN build per tenant (the only build trigger)."""
     for tid in tenants:
@@ -178,6 +198,8 @@ def main() -> None:
     push_carriers(api)
     build_substrate(api)
     push_csps(api)
+    push_data_centers(api)
+    build_data_centers(api)
     tenants = push_tenants(api)
     build_tenants(api, tenants)
 
