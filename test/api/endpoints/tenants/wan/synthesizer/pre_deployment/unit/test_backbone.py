@@ -11,7 +11,7 @@ from synthesizer.backbone import (
     select_backbone_mesh_pairs,
 )
 from synthesizer.synthesize import all_pairs_shortest
-from synthesizer.graphs import build_adjacency
+from synthesizer.graphs import build_adjacency, connected_components, is_two_edge_connected
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
@@ -130,6 +130,57 @@ def test_backbone_wires_what_it_can_when_a_node_is_unreachable() -> None:
     distances = _symmetric_distances({("c1", "c2"): 1.0})
     distances["c3"] = {"c3": 0.0}
     assert select_backbone_mesh_pairs(("c1", "c2", "c3"), distances) == [edge_key("c1", "c2")]
+
+
+# Two tight triangles -- {a1,a2,a3} and {b1,b2,b3} -- joined only by long but finite
+# cross links. A nearest-neighbour mesh of degree two keeps every node wired inside its
+# own triangle, so without a connectivity step the two clusters never link.
+_TWO_CLUSTER_DISTANCES = _symmetric_distances({
+    ("a1", "a2"): 1.0, ("a1", "a3"): 2.0, ("a2", "a3"): 3.0,
+    ("b1", "b2"): 1.0, ("b1", "b3"): 2.0, ("b2", "b3"): 3.0,
+    ("a1", "b1"): 100.0, ("a1", "b2"): 101.0, ("a1", "b3"): 102.0,
+    ("a2", "b1"): 103.0, ("a2", "b2"): 104.0, ("a2", "b3"): 105.0,
+    ("a3", "b1"): 106.0, ("a3", "b2"): 107.0, ("a3", "b3"): 108.0,
+})
+_TWO_CLUSTER_NODES = ("a1", "a2", "a3", "b1", "b2", "b3")
+
+
+def _two_cluster_mesh(
+    removed: frozenset[tuple[str, str]] = frozenset(),
+) -> list[tuple[str, str]]:
+    """The two-cluster backbone wired at mesh degree two."""
+    return select_backbone_mesh_pairs(
+        _TWO_CLUSTER_NODES, _TWO_CLUSTER_DISTANCES, removed, mesh_degree=2
+    )
+
+
+def test_two_clusters_are_joined_into_one_component() -> None:
+    """Two nearest-neighbour clusters are stitched into a single connected mesh."""
+    pairs = _two_cluster_mesh()
+    assert len(connected_components(set(_TWO_CLUSTER_NODES), set(pairs))) == 1
+
+
+def test_two_clusters_are_joined_redundantly() -> None:
+    """The stitched backbone survives the loss of any single link (2-edge-connected)."""
+    pairs = _two_cluster_mesh()
+    assert is_two_edge_connected(set(_TWO_CLUSTER_NODES), set(pairs))
+
+
+def test_the_cluster_join_uses_the_shortest_cross_link() -> None:
+    """The clusters are stitched starting from the shortest cross pair, a1-b1."""
+    assert edge_key("a1", "b1") in _two_cluster_mesh()
+
+
+def test_the_cluster_join_skips_a_removed_cross_pair() -> None:
+    """A pruned cross pair is never used to stitch the clusters."""
+    removed = frozenset({edge_key("a1", "b1")})
+    assert edge_key("a1", "b1") not in _two_cluster_mesh(removed)
+
+
+def test_the_cluster_join_falls_back_to_the_next_shortest_cross_pair() -> None:
+    """With the shortest cross pair pruned, the next shortest stitches the clusters."""
+    removed = frozenset({edge_key("a1", "b1")})
+    assert edge_key("a1", "b2") in _two_cluster_mesh(removed)
 
 
 _UNIT_MESH_EDGES = physical({
