@@ -1,4 +1,4 @@
-"""Unit tests for loading the YAML configuration."""
+"""Unit tests for resolving the WAN designer configuration."""
 
 from __future__ import annotations
 
@@ -11,12 +11,11 @@ from synthesizer.config import AppConfig, app_config_from_parts, config_from_dat
 from synthesizer.model import ForcedConnection
 
 
-# The three redundancy degrees are required (no default); inject them so each test
-# can focus on the field under test without restating them.
+# The two redundancy degrees are required (no default); inject them so each test can
+# focus on the field under test without restating them.
 _REQUIRED_DEGREES = {
-    "core_links_per_core": 3,
-    "aggregation_homing_degree": 2,
-    "access_aggregation_links": 2,
+    "backbone_mesh_degree": 3,
+    "access_backbone_links": 2,
 }
 
 
@@ -32,19 +31,19 @@ def default_config() -> AppConfig:
     return _config({})
 
 
-def test_default_min_core_count() -> None:
-    """The default config supplies the built-in minimum core count."""
-    assert default_config().params.min_core_count == 3
+def test_default_min_backbone_count() -> None:
+    """The default config supplies the built-in minimum backbone count."""
+    assert default_config().params.min_backbone_count == 3
 
 
-def test_default_has_no_forced_cores() -> None:
-    """The default config pins no cores."""
-    assert len(default_config().params.forced_core_names) == 0
+def test_default_has_no_forced_backbone() -> None:
+    """The default config pins no backbone nodes."""
+    assert len(default_config().params.forced_backbone_names) == 0
 
 
-def test_default_max_core_count_is_none() -> None:
-    """The default config leaves the core tier uncapped."""
-    assert default_config().params.max_core_count is None
+def test_default_max_backbone_count_is_none() -> None:
+    """The default config leaves the backbone uncapped."""
+    assert default_config().params.max_backbone_count is None
 
 
 def test_default_vertex_files() -> None:
@@ -81,45 +80,45 @@ def test_reads_label() -> None:
     assert _config({"label": "Joint"}).label == "Joint"
 
 
-def test_reads_min_core_count() -> None:
-    """A min_core_count value is read from the design section."""
-    assert _config({"design": {"min_core_count": 5}}).params.min_core_count == 5
+def test_reads_min_backbone_count() -> None:
+    """A min_backbone_count value is read from the design section."""
+    assert _config({"design": {"min_backbone_count": 5}}).params.min_backbone_count == 5
 
 
-def test_reads_max_core_count() -> None:
-    """A max_core_count value is read from the design section."""
-    assert _config({"design": {"max_core_count": 7}}).params.max_core_count == 7
+def test_reads_max_backbone_count() -> None:
+    """A max_backbone_count value is read from the design section."""
+    assert _config({"design": {"max_backbone_count": 7}}).params.max_backbone_count == 7
 
 
-def test_default_access_aggregation_links() -> None:
-    """The default config homes each access vertex to two aggregations."""
-    assert default_config().params.tuning.access_aggregation_links == 2
+def test_default_access_backbone_links() -> None:
+    """The default config homes each demand vertex to two backbone nodes."""
+    assert default_config().params.tuning.access_backbone_links == 2
 
 
-def test_reads_access_aggregation_links() -> None:
-    """An access_aggregation_links value is read from the tuning section."""
+def test_reads_access_backbone_links() -> None:
+    """An access_backbone_links value is read from the tuning section."""
     assert _config(
-        {"tuning": {"access_aggregation_links": 3}}
-    ).params.tuning.access_aggregation_links == 3
+        {"tuning": {"access_backbone_links": 3}}
+    ).params.tuning.access_backbone_links == 3
 
 
-def test_default_core_links_per_core_is_three() -> None:
-    """The default config wires each core to three other cores on the backbone."""
-    assert default_config().params.tuning.core_links_per_core == 3
+def test_default_backbone_mesh_degree_is_three() -> None:
+    """The default config wires each backbone node to three others on the mesh."""
+    assert default_config().params.tuning.backbone_mesh_degree == 3
 
 
-def test_reads_core_links_per_core() -> None:
-    """A core_links_per_core value is read into the tuning."""
+def test_reads_backbone_mesh_degree() -> None:
+    """A backbone_mesh_degree value is read into the tuning."""
     assert _config(
-        {"tuning": {"core_links_per_core": 4}}
-    ).params.tuning.core_links_per_core == 4
+        {"tuning": {"backbone_mesh_degree": 4}}
+    ).params.tuning.backbone_mesh_degree == 4
 
 
-def test_reads_forced_cores() -> None:
-    """A forced_cores list is read into the design params."""
-    assert _config({"design": {"forced_cores": ["Atlanta, GA"]}}).params.forced_core_names == (
-        "Atlanta, GA",
-    )
+def test_reads_forced_backbone() -> None:
+    """A forced_backbone list is read into the design params."""
+    assert _config(
+        {"design": {"forced_backbone": ["Atlanta, GA"]}}
+    ).params.forced_backbone_names == ("Atlanta, GA",)
 
 
 def test_default_has_no_forced_connections() -> None:
@@ -129,9 +128,9 @@ def test_default_has_no_forced_connections() -> None:
 
 def test_reads_forced_connections() -> None:
     """A forced_connections list is parsed into ForcedConnection entries."""
-    connection = {"source": "Dallas, TX", "target": "Denver, CO", "type": "core-core"}
+    connection = {"source": "Dallas, TX", "target": "Denver, CO", "type": "backbone-backbone"}
     assert _config({"design": {"forced_connections": [connection]}}).forced_connections == (
-        ForcedConnection("core-core", "Dallas, TX", "Denver, CO"),
+        ForcedConnection("backbone-backbone", "Dallas, TX", "Denver, CO"),
     )
 
 
@@ -147,8 +146,8 @@ def test_forced_connection_must_be_a_mapping() -> None:
         _config({"design": {"forced_connections": ["Dallas, TX"]}})
 
 
-def test_forced_connection_requires_all_keys() -> None:
-    """A forced_connections entry missing a key is rejected."""
+def test_forced_connection_requires_a_type() -> None:
+    """A forced_connections entry missing its required type is rejected."""
     with pytest.raises(ValueError):
         _config({"design": {"forced_connections": [{"source": "A", "target": "B"}]}})
 
@@ -160,73 +159,69 @@ def test_forced_connection_rejects_unknown_type() -> None:
 
 
 def test_default_has_no_excluded_connections() -> None:
-    """The default config prunes no core-core mesh links."""
+    """The default config prunes no backbone-backbone mesh links."""
     assert len(default_config().excluded_connections) == 0
 
 
 def test_reads_excluded_connections() -> None:
-    """An excluded_connections entry defaults to a pruned core-core pair."""
+    """An excluded_connections entry defaults to a pruned backbone-backbone pair."""
     design = {"excluded_connections": [{"source": "Seattle, WA", "target": "Boise, ID"}]}
     assert _config({"design": design}).excluded_connections == (
-        ForcedConnection("core-core", "Seattle, WA", "Boise, ID"),
+        ForcedConnection("backbone-backbone", "Seattle, WA", "Boise, ID"),
     )
 
 
-def test_excluded_connection_rejects_a_non_core_core_type() -> None:
-    """An excluded_connections entry of a non-core-core type is rejected."""
-    bad = {"source": "A", "target": "B", "type": "aggregation-core"}
+def test_excluded_connection_rejects_a_non_backbone_type() -> None:
+    """An excluded_connections entry of a non-backbone-backbone type is rejected."""
+    bad = {"source": "A", "target": "B", "type": "access-backbone"}
     with pytest.raises(ValueError):
         _config({"design": {"excluded_connections": [bad]}})
 
 
-def test_default_has_no_prohibited_aggregations() -> None:
-    """The default config bars no PoP from the aggregation tier."""
-    assert len(default_config().params.exclusions.prohibited_aggregation_names) == 0
+def test_default_has_no_prohibited_backbone() -> None:
+    """The default config bars no PoP from the backbone."""
+    assert len(default_config().params.exclusions.prohibited_backbone_names) == 0
 
 
-def test_reads_prohibited_aggregations() -> None:
-    """A prohibited_aggregations list is read into the design params."""
-    design = {"prohibited_aggregations": ["Denver, CO", "Boise, ID"]}
-    assert _config({"design": design}).params.exclusions.prohibited_aggregation_names == (
+def test_reads_prohibited_backbone() -> None:
+    """A prohibited_backbone list is read into the design params."""
+    design = {"prohibited_backbone": ["Denver, CO", "Boise, ID"]}
+    assert _config({"design": design}).params.exclusions.prohibited_backbone_names == (
         "Denver, CO",
         "Boise, ID",
     )
 
 
-def test_prohibited_aggregations_must_be_a_list_of_strings() -> None:
-    """A prohibited_aggregations value that is not a list of strings is rejected."""
+def test_prohibited_backbone_must_be_a_list_of_strings() -> None:
+    """A prohibited_backbone value that is not a list of strings is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"prohibited_aggregations": "Denver, CO"}})
+        _config({"design": {"prohibited_backbone": "Denver, CO"}})
 
 
-def test_default_has_no_prohibited_cores() -> None:
-    """The default config bars no PoP from the core tier."""
-    assert len(default_config().params.exclusions.prohibited_core_names) == 0
+def test_reads_tuning_compass_octants() -> None:
+    """A tuning compass_octants value is read into the design params."""
+    assert _config({"tuning": {"compass_octants": 6}}).params.tuning.compass_octants == 6
 
 
-def test_reads_prohibited_cores() -> None:
-    """A prohibited_cores list is read into the design params."""
-    design = {"prohibited_cores": ["Denver, CO", "Boise, ID"]}
-    assert _config({"design": design}).params.exclusions.prohibited_core_names == (
-        "Denver, CO",
-        "Boise, ID",
-    )
+def test_reads_tuning_coverage_target() -> None:
+    """A tuning backbone_coverage_target_miles value is read into the design params."""
+    assert _config(
+        {"tuning": {"backbone_coverage_target_miles": 250.0}}
+    ).params.tuning.backbone_coverage_target_miles == 250.0
 
 
-def test_prohibited_cores_must_be_a_list_of_strings() -> None:
-    """A prohibited_cores value that is not a list of strings is rejected."""
-    with pytest.raises(ValueError):
-        _config({"design": {"prohibited_cores": "Denver, CO"}})
+def test_reads_tuning_enum_memory_fraction() -> None:
+    """A tuning enum_memory_fraction value is read into the enumeration budget."""
+    assert _config(
+        {"tuning": {"enum_memory_fraction": 0.3}}
+    ).params.tuning.enum_budget.memory_fraction == 0.3
 
 
-def test_reads_tuning_min_points() -> None:
-    """A tuning cluster_min_points value is read into the design params."""
-    assert _config({"tuning": {"cluster_min_points": 4}}).params.tuning.cluster.min_points == 4
-
-
-def test_reads_tuning_cluster_k() -> None:
-    """A tuning cluster_k value is read into the design params."""
-    assert _config({"tuning": {"cluster_k": 3}}).params.tuning.cluster.k == 3
+def test_reads_tuning_backbone_set_peak_bytes() -> None:
+    """A tuning backbone_set_peak_bytes value is read into the enumeration budget."""
+    assert _config(
+        {"tuning": {"backbone_set_peak_bytes": 200}}
+    ).params.tuning.enum_budget.set_peak_bytes == 200
 
 
 def test_reads_vertices_mapping() -> None:
@@ -247,6 +242,13 @@ def test_reads_vertices_list_of_paths() -> None:
     )
 
 
+def test_reads_carrier_edges_path() -> None:
+    """An inputs.carrier_edges value is read into the design paths."""
+    assert _config(
+        {"inputs": {"carrier_edges": "fiber.csv"}}
+    ).paths.edge_path == Path("fiber.csv")
+
+
 def test_rejects_non_string_path_in_list() -> None:
     """A vertices list containing a non-string path is rejected."""
     with pytest.raises(ValueError):
@@ -259,31 +261,32 @@ def test_rejects_non_mapping_vertices() -> None:
         _config({"inputs": {"vertices": "single.csv"}})
 
 
+def test_rejects_non_list_regional_edges() -> None:
+    """A non-list regional_edges value is rejected."""
+    with pytest.raises(ValueError):
+        _config({"inputs": {"regional_edges": "single.csv"}})
+
+
 def test_missing_required_degree_is_rejected() -> None:
     """A config whose tuning omits a required redundancy degree is rejected."""
     with pytest.raises(ValueError):
-        config_from_data({"tuning": {"core_links_per_core": 3, "access_aggregation_links": 2}})
+        config_from_data({"tuning": {"backbone_mesh_degree": 3}})
 
 
 def test_non_integer_degree_is_rejected() -> None:
     """A required degree that is not an integer is rejected."""
     with pytest.raises(ValueError):
         config_from_data(
-            {
-                "tuning": {
-                    "core_links_per_core": "three",
-                    "aggregation_homing_degree": 2,
-                    "access_aggregation_links": 2,
-                }
-            }
+            {"tuning": {"backbone_mesh_degree": "three", "access_backbone_links": 2}}
         )
 
 
-def test_reads_aggregation_homing_degree() -> None:
-    """An aggregation_homing_degree value is read into the tuning."""
-    assert _config(
-        {"tuning": {"aggregation_homing_degree": 1}}
-    ).params.tuning.aggregation_homing_degree == 1
+def test_boolean_degree_is_rejected() -> None:
+    """A required degree given as a bool (an int subclass) is rejected."""
+    with pytest.raises(ValueError):
+        config_from_data(
+            {"tuning": {"backbone_mesh_degree": True, "access_backbone_links": 2}}
+        )
 
 
 def test_section_must_be_a_mapping() -> None:
@@ -292,25 +295,22 @@ def test_section_must_be_a_mapping() -> None:
         _config({"design": "not a mapping"})
 
 
-def test_forced_cores_must_be_a_list() -> None:
-    """A non-list forced_cores value is rejected."""
+def test_forced_backbone_must_be_a_list() -> None:
+    """A non-list forced_backbone value is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"forced_cores": "Atlanta, GA"}})
+        _config({"design": {"forced_backbone": "Atlanta, GA"}})
 
 
 def _parts(**overrides: Any) -> dict[str, Any]:
     """A full set of per-resource tenant documents for the assembler."""
     parts: dict[str, Any] = {
-        "forced-core-nodes": [],
-        "forced-aggregation-points": [],
+        "forced-backbone-nodes": [],
         "forced-connections": [],
-        "prohibited-core-nodes": [],
-        "prohibited-aggregation-points": [],
+        "prohibited-backbone-nodes": [],
         "prohibited-connections": [],
-        "core-node-count": {"min": 3, "max": 5},
-        "core-mesh-degree": {"degree": 3},
-        "aggregation-homing-degree": {"degree": 2},
-        "access-homing-degree": {"degree": 1},
+        "backbone-node-count": {"min": 3, "max": 5},
+        "backbone-mesh-degree": {"degree": 3},
+        "access-homing-degree": {"degree": 2},
         "knobs": {"compass_octants": 8},
         "label": {"label": "Joint"},
     }
@@ -318,14 +318,10 @@ def _parts(**overrides: Any) -> dict[str, Any]:
     return parts
 
 
-def test_app_config_from_parts_assembles_the_three_degrees() -> None:
-    """The assembler reads all three redundancy degrees from their documents."""
+def test_app_config_from_parts_assembles_the_two_degrees() -> None:
+    """The assembler reads both redundancy degrees from their documents."""
     tuning = app_config_from_parts(_parts()).params.tuning
-    assert (
-        tuning.core_links_per_core,
-        tuning.aggregation_homing_degree,
-        tuning.access_aggregation_links,
-    ) == (3, 2, 1)
+    assert (tuning.backbone_mesh_degree, tuning.access_backbone_links) == (3, 2)
 
 
 def test_app_config_from_parts_reads_the_label() -> None:
@@ -333,16 +329,27 @@ def test_app_config_from_parts_reads_the_label() -> None:
     assert app_config_from_parts(_parts()).label == "Joint"
 
 
-def test_app_config_from_parts_reads_core_node_count() -> None:
-    """The assembler reads min and max core count from the core-node-count document."""
+def test_app_config_from_parts_reads_a_plain_label() -> None:
+    """A label document that is a bare string (not a mapping) is read as the label."""
+    assert app_config_from_parts(_parts(label="Bare")).label == "Bare"
+
+
+def test_app_config_from_parts_reads_backbone_node_count() -> None:
+    """The assembler reads min and max from the backbone-node-count document."""
     params = app_config_from_parts(_parts()).params
-    assert (params.min_core_count, params.max_core_count) == (3, 5)
+    assert (params.min_backbone_count, params.max_backbone_count) == (3, 5)
+
+
+def test_app_config_from_parts_reads_forced_backbone() -> None:
+    """The assembler reads the forced-backbone-nodes document into the params."""
+    parts = _parts(**{"forced-backbone-nodes": ["Denver, CO"]})
+    assert app_config_from_parts(parts).params.forced_backbone_names == ("Denver, CO",)
 
 
 def test_app_config_from_parts_requires_each_degree() -> None:
     """A missing degree document is rejected by the assembler."""
     parts = _parts()
-    del parts["aggregation-homing-degree"]
+    del parts["access-homing-degree"]
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 
@@ -350,7 +357,7 @@ def test_app_config_from_parts_requires_each_degree() -> None:
 def test_app_config_from_parts_rejects_a_malformed_degree_document() -> None:
     """A degree document that is not a ``{"degree": int}`` object is rejected."""
     parts = _parts()
-    parts["core-mesh-degree"] = 3
+    parts["backbone-mesh-degree"] = 3
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 
@@ -358,29 +365,37 @@ def test_app_config_from_parts_rejects_a_malformed_degree_document() -> None:
 def test_app_config_from_parts_rejects_a_non_integer_degree() -> None:
     """A degree document whose value is not an integer is rejected."""
     parts = _parts()
-    parts["core-mesh-degree"] = {"degree": "three"}
+    parts["backbone-mesh-degree"] = {"degree": "three"}
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 
 
-def test_app_config_from_parts_defaults_core_count_when_absent() -> None:
-    """An empty core-node-count document leaves min/max at their built-in defaults."""
+def test_app_config_from_parts_defaults_count_when_absent() -> None:
+    """An empty backbone-node-count document leaves min/max at their built-in defaults."""
     parts = _parts()
-    parts["core-node-count"] = {}
+    parts["backbone-node-count"] = {}
     params = app_config_from_parts(parts).params
-    assert (params.min_core_count, params.max_core_count) == (3, None)
+    assert (params.min_backbone_count, params.max_backbone_count) == (3, None)
+
+
+def test_app_config_from_parts_reads_only_min_when_max_absent() -> None:
+    """A backbone-node-count with only ``min`` sets the floor and leaves max uncapped."""
+    parts = _parts()
+    parts["backbone-node-count"] = {"min": 4}
+    params = app_config_from_parts(parts).params
+    assert (params.min_backbone_count, params.max_backbone_count) == (4, None)
 
 
 def test_app_config_from_parts_parses_connections() -> None:
     """Forced and prohibited connection documents are parsed into the config."""
     parts = _parts(
         **{
-            "forced-connections": [{"source": "A", "target": "B", "type": "core-core"}],
+            "forced-connections": [{"source": "A", "target": "B", "type": "backbone-backbone"}],
             "prohibited-connections": [{"source": "C", "target": "D"}],
         }
     )
     config = app_config_from_parts(parts)
     assert (config.forced_connections, config.excluded_connections) == (
-        (ForcedConnection("core-core", "A", "B"),),
-        (ForcedConnection("core-core", "C", "D"),),
+        (ForcedConnection("backbone-backbone", "A", "B"),),
+        (ForcedConnection("backbone-backbone", "C", "D"),),
     )

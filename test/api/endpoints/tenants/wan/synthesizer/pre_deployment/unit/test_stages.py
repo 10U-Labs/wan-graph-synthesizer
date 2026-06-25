@@ -17,12 +17,33 @@ def test_dual_home_returns_a_graph_without_off_net() -> None:
 
 def test_dual_home_realizes_a_forced_off_net_site() -> None:
     """dual_home synthesizes a local-fiber twin for a forced off-net seat."""
-    params = DesignParams(min_core_count=2, forced_core_names=("Dulles Hub",))
-    sites = [fixtures.off_net_site("Dulles Hub", 40.5, -100.0)]
+    site = fixtures.off_net_site("Dulles Hub", 40.5, -100.0)
+    params = DesignParams(
+        min_backbone_count=2,
+        forced_backbone_names=("Dulles Hub",),
+        datacenter_cities=fixtures.ring_datacenter_cities()
+        | {(site.info.municipality, site.info.state)},
+    )
     homed_vertices, _edges = dual_home(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), params, sites
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), params, [site]
     )
     assert any(vertex.id.startswith("offnet_") for vertex in homed_vertices)
+
+
+def test_dual_home_fabricates_a_forced_on_net_location() -> None:
+    """dual_home fabricates an on-net twin for a forced demand location in our data."""
+    # "Luke" is a demand vertex in the input; forcing it fabricates its on-net twin.
+    luke = fixtures.access_vertex("Luke", 40.5, -100.0)
+    params = DesignParams(
+        min_backbone_count=2,
+        forced_backbone_names=("Luke",),
+        datacenter_cities=fixtures.ring_datacenter_cities()
+        | {(luke.info.municipality, luke.info.state)},
+    )
+    homed_vertices, _edges = dual_home(
+        [*fixtures.ring_vertices(), luke], fixtures.ring_physical_edges(), params, []
+    )
+    assert any(vertex.id.startswith("fac_") for vertex in homed_vertices)
 
 
 def test_finalize_validates_a_design() -> None:
@@ -32,3 +53,12 @@ def test_finalize_validates_a_design() -> None:
         art.vertices, art.physical_edges, art.design, fixtures.ring_params()
     )
     assert validation["connected"] is True
+
+
+def test_finalize_returns_the_design_unchanged() -> None:
+    """finalize passes the design through untouched alongside its validation report."""
+    art = fixtures.ring_artifacts()
+    _vertices, _edges, design, _validation = finalize(
+        art.vertices, art.physical_edges, art.design, fixtures.ring_params()
+    )
+    assert design is art.design

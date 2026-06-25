@@ -18,6 +18,7 @@ from repo_utils import REPO_ROOT
 from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
 from synthesizer.input_graph import Vertex
+from synthesizer.model import DesignParams
 
 _PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/entrypoint.py"
 
@@ -33,17 +34,15 @@ def entrypoint_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
 def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace the heavy design pipeline with light canned stand-ins."""
     pop = Vertex(id="P", name="P", kind="PoP", coords=(0.0, 0.0))
-    site = Vertex(
-        id="S", name="S", kind="Military installation", coords=(1.0, 1.0)
-    )
+    site = Vertex(id="S", name="S", kind="Tenant site", coords=(1.0, 1.0))
     graph = [pop, site]
     config = SimpleNamespace(
-        params=None,
+        params=DesignParams(),
         forced_connections=(),
         excluded_connections=(),
     )
     payload = {
-        "vertices": [{"id": "P", "tier_role": "core"}],
+        "vertices": [{"id": "P", "tier_role": "backbone"}],
         "access_edges": [],
         "physical_edges": [],
     }
@@ -54,7 +53,7 @@ def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(module, "app_config_from_parts", lambda _p: config)
     monkeypatch.setattr(module, "dual_home", lambda *_a: (graph, {}))
     monkeypatch.setattr(module, "apply_role_overrides", lambda *_a: (graph, {}, object()))
-    monkeypatch.setattr(module, "synthesize_three_tier_design", lambda *_a: object())
+    monkeypatch.setattr(module, "synthesize_two_tier_design", lambda *_a: object())
     monkeypatch.setattr(module, "finalize", lambda *_a: (graph, {}, object(), {}))
     monkeypatch.setattr(module, "design_payload", lambda *_a: payload)
 
@@ -64,12 +63,13 @@ def _inputs(module: Any) -> dict[str, bytes]:
     keys = [
         "carriers/merge/vertices.json",
         "carriers/merge/edges.json",
+        "data-centers/merge/vertices.json",
         "tenants/f-35/locations.json",
         "tenants/f-35/provider-regions.json",
         "tenants/f-35/off-net.json",
     ]
     keys += [f"tenants/f-35/{resource}.json" for resource in module.CONFIG_RESOURCES]
-    return {key: b"{}" for key in keys}
+    return {key: b"[]" for key in keys}
 
 
 def _run_main(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) -> dict[str, bytes]:
@@ -80,7 +80,7 @@ def _run_main(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) 
         def _raise(*_args: Any) -> Any:
             raise ValueError("No feasible design")
 
-        monkeypatch.setattr(module, "synthesize_three_tier_design", _raise)
+        monkeypatch.setattr(module, "synthesize_two_tier_design", _raise)
     objects = _inputs(module)
     with patch("boto3.client", return_value=fake_s3(objects)):
         module.main()

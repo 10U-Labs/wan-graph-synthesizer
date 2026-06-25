@@ -1,4 +1,4 @@
-"""Unit tests for the three-tier design pipeline runner."""
+"""Unit tests for the two-tier design pipeline runner."""
 
 from __future__ import annotations
 
@@ -15,22 +15,32 @@ def test_run_design_is_connected() -> None:
     assert artifacts.validation["connected"] is True
 
 
-def test_run_design_seats_a_forced_location_as_aggregation() -> None:
-    """A forced location's fabricated on-net twin is seated on the aggregation tier."""
+def test_run_design_honors_a_forced_backbone_pop() -> None:
+    """A forced carrier PoP is seated on the backbone the pipeline produces."""
     design = run_design(
         fixtures.ring_vertices(),
         fixtures.ring_physical_edges(),
-        DesignParams(min_core_count=2, forced_aggregation_names=("A1",)),
+        DesignParams(
+            min_backbone_count=2,
+            forced_backbone_names=("P3",),
+            datacenter_cities=fixtures.ring_datacenter_cities(),
+        ),
     ).design
-    assert any(agg.startswith("fac_") for agg in design.aggregation_ids)
+    assert "P3" in design.backbone_ids
 
 
-def test_run_design_seats_a_forced_off_net_site_as_core() -> None:
-    """A forced off-net site is seated as a core via its synthesized local-fiber twin."""
+def test_run_design_seats_a_forced_off_net_site_as_backbone() -> None:
+    """A forced off-net site is seated as a backbone node via its local-fiber twin."""
+    site = fixtures.off_net_site("Dulles Hub", 40.5, -100.0)
     design = run_design(
         fixtures.ring_vertices(),
         fixtures.ring_physical_edges(),
-        DesignParams(min_core_count=2, forced_core_names=("Dulles Hub",)),
-        off_net_sites=[fixtures.off_net_site("Dulles Hub", 40.5, -100.0)],
+        DesignParams(
+            min_backbone_count=2,
+            forced_backbone_names=("Dulles Hub",),
+            datacenter_cities=fixtures.ring_datacenter_cities()
+            | {(site.info.municipality, site.info.state)},
+        ),
+        off_net_sites=[site],
     ).design
-    assert any(core.startswith("offnet_") for core in design.core_ids)
+    assert any(node.startswith("offnet_") for node in design.backbone_ids)

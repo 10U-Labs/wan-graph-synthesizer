@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import fixtures
 from synthesizer.on_net_fabrication import (
     FabricatedOnNetNodes,
@@ -9,6 +11,9 @@ from synthesizer.on_net_fabrication import (
 )
 from synthesizer.model import is_carrier_pop
 from synthesizer.input_graph import Vertex
+
+# The demand fixtures carry an empty ``(municipality, state)``; this gate admits them.
+_CITIES = frozenset({("", "")})
 
 
 def _pops() -> list[Vertex]:
@@ -20,9 +25,13 @@ def _pops() -> list[Vertex]:
     ]
 
 
-def _fabricate(*extra: Vertex, forced: frozenset[str] = frozenset()) -> FabricatedOnNetNodes:
+def _fabricate(
+    *extra: Vertex,
+    forced: frozenset[str] = frozenset(),
+    cities: frozenset[tuple[str, str]] = _CITIES,
+) -> FabricatedOnNetNodes:
     """Fabricate on-net nodes over the three PoPs plus the given extra vertices."""
-    return fabricate_missing_on_net_nodes([*_pops(), *extra], {}, forced)
+    return fabricate_missing_on_net_nodes([*_pops(), *extra], {}, forced, cities)
 
 
 def test_fabricates_a_forced_twin() -> None:
@@ -55,6 +64,16 @@ def test_ignores_unforced_locations() -> None:
     assert result.on_net_ids == frozenset()
 
 
+def test_forced_location_off_a_data_center_city_is_rejected() -> None:
+    """A forced location whose city no provider serves is rejected -- the gate is absolute."""
+    with pytest.raises(ValueError):
+        _fabricate(
+            fixtures.access_vertex("luke", 0.0, 0.5),
+            forced=frozenset({"luke"}),
+            cities=frozenset(),
+        )
+
+
 def test_fabricates_a_forced_remote_location_regardless_of_distance() -> None:
     """A forced location with no nearby public fiber is still fabricated (no radius cap)."""
     result = _fabricate(
@@ -79,6 +98,7 @@ def test_demand_only_when_too_few_carrier_pops() -> None:
         [fixtures.carrier_pop("P0", 0.0, 0.0), fixtures.access_vertex("luke", 0.0, 0.5)],
         {},
         frozenset({"luke"}),
+        _CITIES,
     )
     assert result.on_net_ids == frozenset()
 

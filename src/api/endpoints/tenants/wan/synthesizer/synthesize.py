@@ -155,7 +155,8 @@ def assign_access(
     great-circle distance, with any operator-forced access-backbone link leading its
     homes regardless of distance. The same code path serves tenant and provider demand --
     they differ only by source kind at output time. Returns the access edges, or None
-    if some vertex cannot reach the configured number of backbone nodes.
+    when the backbone is smaller than the configured number of homes (no vertex could
+    reach that many distinct nodes).
     """
     links = plan.tuning.access_backbone_links
     backbone_set = set(backbone_ids)
@@ -174,8 +175,6 @@ def assign_access(
         completed = apply_forced_access_homes(
             access, completed, plan.forced_links, pop_by_id, links
         )
-        if len(completed) < links:
-            return None
         access_edges.extend(
             AccessEdge(
                 access.id, backbone_id,

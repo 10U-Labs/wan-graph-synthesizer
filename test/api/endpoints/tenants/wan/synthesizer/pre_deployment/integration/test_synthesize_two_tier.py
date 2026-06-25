@@ -1,7 +1,9 @@
 """Integration test: the synthesizer over the synthetic ring graph.
 
-A six-PoP ring is 2-connected, so every aggregation reaches two cores over
-vertex-disjoint paths; a degree-one spur confirms such PoPs are never aggregations.
+A six-PoP ring is 2-connected, so it meshes into a resilient backbone; a degree-one
+spur confirms such PoPs are never backbone nodes. The ring carries carrier PoPs only --
+in the two-tier model demand homes to the backbone over the physical graph, so demand
+homing is exercised at the unit level (see ``test_synthesize.py``).
 """
 
 from __future__ import annotations
@@ -10,172 +12,90 @@ import fixtures
 from fixtures import run_design
 from synthesizer.input_graph import edge_key
 from synthesizer.model import DesignArtifacts, DesignParams, ForcedConnection
-from synthesizer.validation import core_backbone_pairs
+from synthesizer.validation import backbone_mesh_pairs
 
 ARTIFACTS = fixtures.ring_artifacts()
-FORCED = fixtures.forced_aggregation_artifacts("P3")
-FORCED_ROADM = fixtures.forced_roadm_aggregation_artifacts("P3")
-FORCED_CORE = fixtures.forced_core_artifacts("P4")
-PROHIBITED = fixtures.prohibited_aggregation_artifacts("P4")
+FORCED = fixtures.forced_backbone_artifacts("P3")
+FORCED_ROADM = fixtures.forced_roadm_backbone_artifacts("P3")
+PROHIBITED = fixtures.prohibited_backbone_artifacts("P4")
 
-# Three forced-connection designs over the ring, each resolved through the
-# operator-pin path so the asserted edges reflect genuinely honored requests.
-FORCED_CORE_LINK = fixtures.forced_connection_artifacts(
-    DesignParams(min_core_count=2, forced_core_names=("P0", "P3")),
-    (ForcedConnection("core-core", "P0", "P3"),),
-)
-FORCED_AGG_LINK = fixtures.forced_connection_artifacts(
-    DesignParams(min_core_count=2, forced_core_names=("P0",), forced_aggregation_names=("P3",)),
-    (ForcedConnection("aggregation-core", "P3", "P0"),),
-)
-FORCED_ACCESS_LINK = fixtures.forced_connection_artifacts(
-    DesignParams(min_core_count=2, forced_aggregation_names=("P3",)),
-    (ForcedConnection("access-aggregation", "A1", "P3"),),
+# A forced backbone-backbone link over the ring, resolved through the operator-pin path
+# so the asserted edge reflects a genuinely honored request.
+FORCED_BACKBONE_LINK = fixtures.forced_connection_artifacts(
+    DesignParams(
+        min_backbone_count=2,
+        forced_backbone_names=("P0", "P3"),
+        datacenter_cities=fixtures.ring_datacenter_cities(),
+    ),
+    (ForcedConnection("backbone-backbone", "P0", "P3"),),
 )
 
 
-def test_forced_core_connection_appears_in_the_backbone() -> None:
-    """A forced core-core connection is present in the routed core backbone."""
-    assert edge_key("P0", "P3") in core_backbone_pairs(FORCED_CORE_LINK.design)
+def test_forced_backbone_connection_appears_in_the_mesh() -> None:
+    """A forced backbone-backbone connection is present in the routed backbone mesh."""
+    assert edge_key("P0", "P3") in backbone_mesh_pairs(FORCED_BACKBONE_LINK.design)
 
 
-def test_forced_aggregation_connection_routes_to_the_named_core() -> None:
-    """A forced aggregation-core connection routes the aggregation to that core."""
-    assert any(
-        use.purpose == "aggregation_to_core" and use.source == "P3" and use.target == "P0"
-        for use in FORCED_AGG_LINK.design.path_uses
-    )
+def test_forced_pop_is_placed_in_the_backbone() -> None:
+    """A PoP named on the force-backbone list is honored as a backbone node."""
+    assert "P3" in FORCED.design.backbone_ids
 
 
-def test_forced_access_connection_homes_the_access_node_to_the_named_aggregation() -> None:
-    """A forced access-aggregation connection homes the access node to that aggregation."""
-    assert any(
-        edge.source == "A1" and edge.target == "P3"
-        for edge in FORCED_ACCESS_LINK.design.access_edges
-    )
+def test_forced_roadm_is_seated_in_the_backbone() -> None:
+    """A pinned ROADM is honored as a backbone node.
 
-
-def test_forced_connection_designs_stay_valid() -> None:
-    """Forcing connections does not break the aggregation dual-homing invariant."""
-    assert FORCED_AGG_LINK.validation["aggregations_dual_homed_to_cores"] is True
-
-
-def test_forced_pop_is_placed_in_the_aggregation_tier() -> None:
-    """A PoP named on the force-aggregation list is honored as an aggregation."""
-    assert "P3" in FORCED.design.aggregation_ids
-
-
-def test_forced_roadm_is_seated_as_an_aggregation() -> None:
-    """A pinned ROADM is honored as an aggregation.
-
-    ROADMs are eligible like any other point now, and a force always wins regardless;
-    this is the mechanism the Joint Great Falls and Minot ROADM pins rely on.
+    ROADMs are eligible like any other point, and a force always wins regardless; this
+    is the mechanism the Joint Great Falls and Minot ROADM pins rely on.
     """
-    assert "P3" in FORCED_ROADM.design.aggregation_ids
+    assert "P3" in FORCED_ROADM.design.backbone_ids
 
 
-def test_forced_pop_is_placed_in_the_core_tier() -> None:
-    """A PoP named on the force-core list is honored as a core."""
-    assert "P4" in FORCED_CORE.design.core_ids
+def test_prohibited_pop_is_kept_off_the_backbone() -> None:
+    """A prohibited PoP never reaches the backbone."""
+    assert "P4" not in PROHIBITED.design.backbone_ids
 
 
-def test_prohibited_pop_is_kept_off_the_aggregation_tier() -> None:
-    """A prohibited PoP -- and its co-located twin -- never reach the aggregation tier."""
-    assert not ({"P4", "aggr_P4"} & set(PROHIBITED.design.aggregation_ids))
+def test_honors_the_backbone_count_minimum() -> None:
+    """The design has at least the minimum number of backbone nodes."""
+    assert len(ARTIFACTS.design.backbone_ids) >= 2
 
 
-def test_prohibited_pop_may_still_serve_as_a_core() -> None:
-    """Barring a PoP from the aggregation tier does not bar it from the core tier."""
-    assert "P4" in PROHIBITED.design.core_ids
+def test_degree_one_spur_is_not_a_backbone_node() -> None:
+    """A degree-one spur is never selected as a backbone node."""
+    assert "P6" not in ARTIFACTS.design.backbone_ids
 
 
-def test_prohibited_design_stays_valid() -> None:
-    """Prohibiting an aggregation does not break the dual-homing invariant."""
-    assert PROHIBITED.validation["aggregations_dual_homed_to_cores"] is True
+def test_backbone_meets_the_mesh_link_target() -> None:
+    """Every backbone node wires to its configured number of nearest peers on the mesh."""
+    assert ARTIFACTS.validation["backbone_meets_mesh_link_target"] is True
 
 
-def test_honors_the_core_count_minimum() -> None:
-    """The design has at least the minimum number of cores."""
-    assert len(ARTIFACTS.design.core_ids) >= 2
-
-
-def test_a_core_may_also_serve_as_an_aggregation() -> None:
-    """The search may seat a core's co-located twin so the core also aggregates."""
-    twinned = {
-        agg[len("aggr_"):]
-        for agg in ARTIFACTS.design.aggregation_ids
-        if agg.startswith("aggr_")
-    }
-    assert twinned & set(ARTIFACTS.design.core_ids)
-
-
-def test_degree_one_spur_is_not_an_aggregation() -> None:
-    """Degree one spur is not an aggregation."""
-    assert "P6" not in ARTIFACTS.design.aggregation_ids
-
-
-def test_degree_one_spur_is_not_a_core() -> None:
-    """Degree one spur is not a core."""
-    assert "P6" not in ARTIFACTS.design.core_ids
-
-
-def test_every_aggregation_dual_homed_to_cores() -> None:
-    """Every aggregation dual homed to cores."""
-    assert ARTIFACTS.validation["aggregations_dual_homed_to_cores"] is True
-
-
-def test_cores_meet_the_backbone_link_target() -> None:
-    """Every core wires to its configured number of nearest cores on the backbone."""
-    assert ARTIFACTS.validation["cores_meet_backbone_link_target"] is True
-
-
-def test_access_vertices_dual_homed() -> None:
-    """Access vertices dual homed."""
-    assert ARTIFACTS.validation["access_vertices_with_required_aggregation_links"] is True
-
-
-def _forced_installation_artifacts() -> DesignArtifacts:
-    """Synthesize over the ring of installations with A1 forced as an aggregation."""
-    params = DesignParams(min_core_count=2, forced_aggregation_names=("A1",))
-    return run_design(fixtures.ring_vertices(), fixtures.ring_physical_edges(), params)
-
-
-def test_forced_installation_is_seated_as_an_aggregation() -> None:
-    """A forced installation's facility twin lands on the aggregation tier."""
-    design = _forced_installation_artifacts().design
-    assert any(aggregation.startswith("fac_") for aggregation in design.aggregation_ids)
-
-
-def test_forced_design_dual_homes_every_aggregation() -> None:
-    """Every aggregation -- installation facilities included -- dual-homes to two cores."""
-    artifacts = _forced_installation_artifacts()
-    assert artifacts.validation["aggregations_dual_homed_to_cores"] is True
-
-
-def test_forced_design_dual_homes_every_access_vertex() -> None:
-    """Every access vertex still reaches two aggregation facilities."""
-    artifacts = _forced_installation_artifacts()
-    assert artifacts.validation["access_vertices_with_required_aggregation_links"] is True
+def test_design_is_connected() -> None:
+    """The whole ring design validates as a single connected component."""
+    assert ARTIFACTS.validation["connected"] is True
 
 
 def _forced_off_net_artifacts() -> DesignArtifacts:
-    """Synthesize over the ring with an off-net site forced as an aggregation."""
-    params = DesignParams(min_core_count=2, forced_aggregation_names=("Dulles Hub",))
+    """Synthesize over the ring with an off-net site forced as a backbone node."""
+    site = fixtures.off_net_site("Dulles Hub", 40.5, -100.0)
+    params = DesignParams(
+        min_backbone_count=2,
+        forced_backbone_names=("Dulles Hub",),
+        datacenter_cities=fixtures.ring_datacenter_cities()
+        | {(site.info.municipality, site.info.state)},
+    )
     return run_design(
-        fixtures.ring_vertices(),
-        fixtures.ring_physical_edges(),
-        params,
-        off_net_sites=[fixtures.off_net_site("Dulles Hub", 40.5, -100.0)],
+        fixtures.ring_vertices(), fixtures.ring_physical_edges(), params, off_net_sites=[site]
     )
 
 
-def test_forced_off_net_site_is_seated_as_an_aggregation() -> None:
-    """A forced off-net site's local-fiber twin lands on the aggregation tier."""
+def test_forced_off_net_site_is_seated_in_the_backbone() -> None:
+    """A forced off-net site's local-fiber twin lands in the backbone."""
     design = _forced_off_net_artifacts().design
-    assert any(aggregation.startswith("offnet_") for aggregation in design.aggregation_ids)
+    assert any(node.startswith("offnet_") for node in design.backbone_ids)
 
 
-def test_off_net_design_dual_homes_every_aggregation() -> None:
-    """An off-net aggregation twin dual-homes to two cores like any other aggregation."""
+def test_off_net_design_validates_connected() -> None:
+    """A design with an off-net backbone twin validates as a connected whole."""
     artifacts = _forced_off_net_artifacts()
-    assert artifacts.validation["aggregations_dual_homed_to_cores"] is True
+    assert artifacts.validation["connected"] is True

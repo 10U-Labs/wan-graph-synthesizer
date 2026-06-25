@@ -9,6 +9,10 @@ from synthesizer.offnet import RealizedOffNet, realize_off_net_sites
 from synthesizer.model import is_carrier_pop
 from synthesizer.input_graph import Vertex
 
+# Every off-net fixture site is named for its own id and placed in the fixture state,
+# so this gate admits all the sites the tests seat.
+_CITIES = frozenset({(name, "XX") for name in ("dulles", "remote", "P0")})
+
 
 def _pops() -> list[Vertex]:
     """Three closely spaced carrier PoPs an off-net twin can home to."""
@@ -19,9 +23,13 @@ def _pops() -> list[Vertex]:
     ]
 
 
-def _realize(*sites: Vertex, forced: frozenset[str] = frozenset()) -> RealizedOffNet:
+def _realize(
+    *sites: Vertex,
+    forced: frozenset[str] = frozenset(),
+    cities: frozenset[tuple[str, str]] = _CITIES,
+) -> RealizedOffNet:
     """Realize the given off-net sites against the three carrier PoPs."""
-    return realize_off_net_sites(_pops(), {}, list(sites), forced)
+    return realize_off_net_sites(_pops(), {}, list(sites), forced, cities)
 
 
 def test_realize_seats_a_forced_site() -> None:
@@ -59,6 +67,16 @@ def test_isolated_forced_site_raises() -> None:
     """A forced site with too few carrier PoPs in range fails loudly."""
     with pytest.raises(ValueError):
         _realize(fixtures.off_net_site("remote", 0.0, 10.0), forced=frozenset({"remote"}))
+
+
+def test_forced_site_off_a_data_center_city_is_rejected() -> None:
+    """A forced off-net site whose city no provider serves is rejected -- the gate is absolute."""
+    with pytest.raises(ValueError):
+        _realize(
+            fixtures.off_net_site("dulles", 0.0, 0.5),
+            forced=frozenset({"dulles"}),
+            cities=frozenset(),
+        )
 
 
 def test_a_forced_site_already_on_net_seats_without_a_twin() -> None:
