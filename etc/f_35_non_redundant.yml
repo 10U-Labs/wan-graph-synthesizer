@@ -8,6 +8,7 @@ backbone_node_count:
   max: 3
   min: 3
 forced_backbone_nodes:
+  - Ashburn, VA
   - Jacksonville, FL
   - Las Vegas, NV
 forced_connections: []
