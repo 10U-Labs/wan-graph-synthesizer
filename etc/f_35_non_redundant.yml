@@ -9,12 +9,10 @@ core_node_count:
   max: 3
   min: 3
 forced_aggregation_points:
-  - Dulles, VA
   - Jacksonville, FL
   - Las Vegas, NV
 forced_connections: []
 forced_core_nodes:
-  - Dulles, VA
   - Jacksonville, FL
   - Las Vegas, NV
 inputs:

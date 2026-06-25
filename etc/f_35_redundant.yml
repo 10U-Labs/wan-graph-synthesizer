@@ -9,15 +9,11 @@ core_node_count:
   min: 3
 forced_aggregation_points:
   - Atlanta, GA
-  - Dulles, VA
   - Las Vegas, NV
   - Los Angeles, CA
-  - Manassas, VA
-  - Tallahassee, FL
 forced_connections: []
 forced_core_nodes:
   - Atlanta, GA
-  - Dulles, VA
   - Los Angeles, CA
 inputs:
   csps:
