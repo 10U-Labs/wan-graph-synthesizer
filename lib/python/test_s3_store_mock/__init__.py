@@ -53,17 +53,25 @@ def fake_s3(objects: dict[str, bytes], keys: list[str] | None = None) -> Any:
 
 
 def fake_ecs(
-    started: list[dict[str, Any]], task_tags: dict[str, str] | None = None
+    started: list[dict[str, Any]],
+    task_tags: dict[str, str] | None = None,
+    placement_failures: int = 0,
 ) -> Any:
     """Build a stand-in ECS client recording run_task calls and serving task tags.
 
     ``task_tags`` is the tag map ``describe_tasks`` reports for the (stopped) task;
-    ``None`` simulates a task that no longer exists (no task returned).
+    ``None`` simulates a task that no longer exists (no task returned). The first
+    ``placement_failures`` ``run_task`` calls return a Spot capacity ``failures`` list and
+    no task (every call is still recorded in ``started``), modelling a Spot shortfall.
     """
+    calls = {"n": 0}
 
     def run_task(**kwargs: Any) -> dict[str, Any]:
-        """Record the run_task request and return a canned task arn."""
+        """Record the run_task request; return a failure or a canned task arn."""
         started.append(kwargs)
+        calls["n"] += 1
+        if calls["n"] <= placement_failures:
+            return {"tasks": [], "failures": [{"reason": "Capacity is unavailable at this time."}]}
         return {"tasks": [{"taskArn": "arn:aws:ecs:task/fake"}]}
 
     def describe_tasks(**_kwargs: Any) -> dict[str, Any]:
@@ -73,6 +81,17 @@ def fake_ecs(
         return {"tasks": [{"tags": [{"key": k, "value": v} for k, v in task_tags.items()]}]}
 
     return SimpleNamespace(run_task=run_task, describe_tasks=describe_tasks)
+
+
+def fake_scheduler(schedules: list[dict[str, Any]]) -> Any:
+    """Build a stand-in EventBridge Scheduler client recording create_schedule calls."""
+
+    def create_schedule(**kwargs: Any) -> dict[str, Any]:
+        """Record the create_schedule request and return a canned arn."""
+        schedules.append(kwargs)
+        return {"ScheduleArn": "arn:aws:scheduler:schedule/fake"}
+
+    return SimpleNamespace(create_schedule=create_schedule)
 
 
 def fake_lambda(invocations: list[dict[str, Any]]) -> Any:

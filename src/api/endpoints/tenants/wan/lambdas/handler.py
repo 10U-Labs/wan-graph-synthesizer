@@ -8,15 +8,19 @@ container) and returns immediately; the task writes the finished WAN and a statu
 to S3. A GET reads that marker -- 422 when no valid WAN was possible, 404 before the
 first create.
 
-The task runs on Fargate Spot for cost. A Spot reclaim kills it mid-build, so the same
-Lambda also receives ECS "task stopped" events from EventBridge: on a Spot interruption
-it relaunches the build for that tenant (tracked by an Attempt tag) up to a cap, then
-records a failed status. Self-contained (stdlib + boto3); single-file Lambda.
+The task runs on Fargate Spot for cost -- always Spot, never on-demand. Spot fails two
+ways, each retried on Spot up to the same cap (tracked by an Attempt tag), then recorded
+failed. (1) A reclaim kills a running task mid-build: the same Lambda receives ECS "task
+stopped" events from EventBridge and relaunches. (2) A capacity shortfall means run_task
+places nothing (no task, so no stopped event): the Lambda reads run_task's failures and
+schedules a one-shot EventBridge Scheduler retry that re-invokes it with a "wan.retry"
+event. Self-contained (stdlib + boto3); single-file Lambda.
 """
 
 import json
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import boto3
@@ -26,9 +30,13 @@ logger.setLevel(logging.INFO)
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-# How many times a Spot-interrupted build is relaunched before giving up. The build is
-# deterministic and self-contained, so a fresh attempt simply restarts it.
+# How many times a Spot build is relaunched before giving up -- shared by both Spot
+# failure modes (an interruption of a running task, and a placement shortfall that never
+# starts one). The build is deterministic and self-contained, so a fresh attempt simply
+# restarts it.
 MAX_ATTEMPTS = 5
+# How long to wait before retrying a Spot placement shortfall, giving capacity time to free.
+RETRY_DELAY_MINUTES = 2
 
 
 def _s3() -> Any:
@@ -43,6 +51,13 @@ def _ecs() -> Any:
     if "ecs" not in _CLIENTS:
         _CLIENTS["ecs"] = boto3.client("ecs", region_name="us-east-2")
     return _CLIENTS["ecs"]
+
+
+def _scheduler() -> Any:
+    """Return the cached EventBridge Scheduler client, creating it on first use."""
+    if "scheduler" not in _CLIENTS:
+        _CLIENTS["scheduler"] = boto3.client("scheduler", region_name="us-east-2")
+    return _CLIENTS["scheduler"]
 
 
 def clear_clients() -> None:
@@ -60,13 +75,15 @@ def _status_key(tenant: str) -> str:
     return f"tenants/{tenant}/wan-status.json"
 
 
-def _run_synthesizer_task(tenant: str, attempt: int) -> None:
-    """Launch the Fargate Spot synthesizer for a tenant, tagged for retry.
+def _run_synthesizer_task(tenant: str, attempt: int) -> list[dict[str, Any]]:
+    """Launch the Fargate Spot synthesizer for a tenant; return its placement failures.
 
-    The Tenant and Attempt tags let the task-stopped handler relaunch this exact
-    build (and count attempts) when Spot reclaims the task mid-run.
+    The Tenant and Attempt tags let the task-stopped handler relaunch this exact build (and
+    count attempts) when Spot reclaims the task mid-run. ``run_task`` reports a Spot capacity
+    shortfall in its ``failures`` list rather than raising, so this returns it (empty on
+    success) for the caller to act on instead of letting the build hang at ``creating``.
     """
-    _ecs().run_task(
+    response = _ecs().run_task(
         cluster=os.environ["CLUSTER_ARN"],
         taskDefinition=os.environ["TASK_DEFINITION_ARN"],
         capacityProviderStrategy=[{"capacityProvider": "FARGATE_SPOT", "weight": 1}],
@@ -88,15 +105,65 @@ def _run_synthesizer_task(tenant: str, attempt: int) -> None:
             {"key": "Attempt", "value": str(attempt)},
         ],
     )
+    failures: list[dict[str, Any]] = response.get("failures", [])
+    return failures
 
 
-def _start_create(tenant: str) -> None:
-    """Mark the WAN as creating and launch the first synthesizer attempt."""
-    marker = json.dumps({"status": "creating", "tenant": tenant}).encode()
+def _write_status(tenant: str, payload: dict[str, Any]) -> None:
+    """Write a tenant's WAN status marker to the store."""
     _s3().put_object(
-        Bucket=os.environ["STORE_BUCKET"], Key=_status_key(tenant), Body=marker
+        Bucket=os.environ["STORE_BUCKET"],
+        Key=_status_key(tenant),
+        Body=json.dumps(payload).encode(),
     )
-    _run_synthesizer_task(tenant, 1)
+
+
+def _schedule_retry(tenant: str, attempt: int, context: Any) -> None:
+    """Schedule a one-shot Spot relaunch ``RETRY_DELAY_MINUTES`` from now.
+
+    A placement shortfall never starts a task, so the task-stopped retry can't see it.
+    Instead a one-time EventBridge Scheduler schedule re-invokes this Lambda with a
+    ``wan.retry`` event to try Spot again (never on-demand), and deletes itself after firing.
+    """
+    when = datetime.now(timezone.utc) + timedelta(minutes=RETRY_DELAY_MINUTES)
+    _scheduler().create_schedule(
+        Name=f"wan-retry-{tenant}-{attempt}",
+        ScheduleExpression=f"at({when.strftime('%Y-%m-%dT%H:%M:%S')})",
+        FlexibleTimeWindow={"Mode": "OFF"},
+        ActionAfterCompletion="DELETE",
+        Target={
+            "Arn": context.invoked_function_arn,
+            "RoleArn": os.environ["SCHEDULER_ROLE_ARN"],
+            "Input": json.dumps(
+                {"source": "wan.retry", "tenant": tenant, "attempt": attempt}
+            ),
+        },
+    )
+
+
+def _launch_or_fail(tenant: str, attempt: int, context: Any) -> None:
+    """Launch the Spot build; retry on Spot if it can't place, or fail past the cap.
+
+    Spot is the only capacity provider (never on-demand): a capacity shortfall is retried on
+    Spot via a delayed schedule until ``MAX_ATTEMPTS``, then recorded ``failed`` so the tenant
+    reaches a terminal answer instead of an endless ``creating``.
+    """
+    failures = _run_synthesizer_task(tenant, attempt)
+    if not failures:
+        return
+    if attempt < MAX_ATTEMPTS:
+        _schedule_retry(tenant, attempt + 1, context)
+        return
+    reason = "; ".join(failure.get("reason", "unknown") for failure in failures)
+    _write_status(
+        tenant, {"status": "failed", "reason": f"could not place synthesizer on Spot: {reason}"}
+    )
+
+
+def _start_create(tenant: str, context: Any) -> None:
+    """Mark the WAN as creating and launch the first synthesizer attempt."""
+    _write_status(tenant, {"status": "creating", "tenant": tenant})
+    _launch_or_fail(tenant, 1, context)
 
 
 def _read_status(tenant: str) -> dict[str, Any]:
@@ -130,7 +197,7 @@ def _task_tags(task_arn: str, cluster_arn: str) -> dict[str, str]:
     return {tag["key"]: tag["value"] for tag in tasks[0].get("tags", [])}
 
 
-def _handle_task_stopped(event: dict[str, Any]) -> dict[str, Any]:
+def _handle_task_stopped(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Relaunch a Spot-interrupted synthesizer build, or fail it past the cap."""
     detail = event.get("detail", {})
     if detail.get("lastStatus") != "STOPPED":
@@ -144,26 +211,26 @@ def _handle_task_stopped(event: dict[str, Any]) -> dict[str, Any]:
     attempt = int(tags.get("Attempt", "1"))
     if attempt >= MAX_ATTEMPTS:
         logger.warning("Giving up on %s after %d Spot interruptions", tenant, attempt)
-        marker = json.dumps(
-            {"status": "failed", "reason": f"interrupted {attempt} times by Spot reclaims"}
-        ).encode()
-        _s3().put_object(
-            Bucket=os.environ["STORE_BUCKET"], Key=_status_key(tenant), Body=marker
+        _write_status(
+            tenant, {"status": "failed", "reason": f"interrupted {attempt} times by Spot reclaims"}
         )
         return {"handled": True, "retried": False, "tenant": tenant}
     logger.info("Relaunching %s after Spot interruption (attempt %d)", tenant, attempt + 1)
-    _run_synthesizer_task(tenant, attempt + 1)
+    _launch_or_fail(tenant, attempt + 1, context)
     return {"handled": True, "retried": True, "tenant": tenant}
 
 
-def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    """Dispatch: EventBridge task-stopped events, or API Gateway create/status calls."""
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Dispatch: task-stopped events, delayed Spot retries, or API Gateway create/status."""
     if event.get("source") == "aws.ecs":
-        return _handle_task_stopped(event)
+        return _handle_task_stopped(event, context)
+    if event.get("source") == "wan.retry":
+        _launch_or_fail(event["tenant"], int(event["attempt"]), context)
+        return {"retried": True, "tenant": event["tenant"]}
     tenant = (event.get("pathParameters") or {}).get("tenant")
     if not tenant:
         return _response(404, {"error": "tenant required"})
     if event.get("httpMethod") == "POST":
-        _start_create(tenant)
+        _start_create(tenant, context)
         return _response(202, {"status": "creating", "tenant": tenant})
     return _read_status(tenant)

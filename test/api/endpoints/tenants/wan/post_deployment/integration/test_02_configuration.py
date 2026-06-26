@@ -46,13 +46,13 @@ def test_task_definition_is_fargate(task_definition: dict[str, Any]) -> None:
 
 
 def test_task_definition_cpu(task_definition: dict[str, Any]) -> None:
-    """The live task definition reserves 8192 CPU units."""
-    assert task_definition["cpu"] == "8192"
+    """The live task definition reserves 2 vCPU (2048 units)."""
+    assert task_definition["cpu"] == "2048"
 
 
 def test_task_definition_memory(task_definition: dict[str, Any]) -> None:
-    """The live task definition reserves 32768 MB of memory."""
-    assert task_definition["memory"] == "32768"
+    """The live task definition reserves 8192 MB of memory."""
+    assert task_definition["memory"] == "8192"
 
 
 def test_task_stopped_rule_is_enabled(events_client: Any) -> None:

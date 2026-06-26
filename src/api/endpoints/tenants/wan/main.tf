@@ -127,10 +127,13 @@ resource "aws_ecs_task_definition" "synthesizer" {
   family                   = "wan-graph-synthesizer"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "8192"
-  memory                   = "32768"
-  execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn            = aws_iam_role.task.arn
+  # The synthesize is single-threaded and finishes in seconds with a few-GB working set, so
+  # 2 vCPU / 8 GB is ample -- and a small Fargate shape places far more reliably on Spot than
+  # the largest one. (2 vCPU permits 4-16 GB; the prior 32 GB forced 8 vCPU for no benefit.)
+  cpu                = "2048"
+  memory             = "8192"
+  execution_role_arn = aws_iam_role.execution.arn
+  task_role_arn      = aws_iam_role.task.arn
 
   # ARM64 Graviton: ~20% cheaper than x86 and typically better Fargate Spot
   # availability. The image is built for linux/arm64 by build_image.yml.

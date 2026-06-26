@@ -55,7 +55,10 @@ def test_lambda_entrypoint(wan_lambda: dict[str, object]) -> None:
 
 @pytest.mark.parametrize(
     "variable",
-    ["STORE_BUCKET", "CLUSTER_ARN", "TASK_DEFINITION_ARN", "SUBNET_ID", "SECURITY_GROUP_ID"],
+    [
+        "STORE_BUCKET", "CLUSTER_ARN", "TASK_DEFINITION_ARN", "SUBNET_ID",
+        "SECURITY_GROUP_ID", "SCHEDULER_ROLE_ARN",
+    ],
 )
 def test_lambda_environment_declares_variable(
         wan_lambda: dict[str, object], variable: str) -> None:
@@ -85,6 +88,17 @@ def test_dispatch_policy_grants_run_task(wan_iam: dict[str, object]) -> None:
     """The dispatch policy grants ``ecs:RunTask`` to launch the create."""
     dispatch = _resource(wan_iam, "aws_iam_role_policy", "dispatch")
     assert "ecs:RunTask" in str(dispatch["policy"])
+
+
+def test_dispatch_policy_grants_create_schedule(wan_iam: dict[str, object]) -> None:
+    """The dispatch policy grants ``scheduler:CreateSchedule`` for delayed Spot retries."""
+    dispatch = _resource(wan_iam, "aws_iam_role_policy", "dispatch")
+    assert "scheduler:CreateSchedule" in str(dispatch["policy"])
+
+
+def test_scheduler_role_is_declared(wan_iam: dict[str, object]) -> None:
+    """The role EventBridge Scheduler assumes to re-invoke the Lambda is declared."""
+    assert find_resource(wan_iam, "aws_iam_role", "scheduler") is not None
 
 
 def test_api_gateway_invoke_permission_is_declared(wan_lambda: dict[str, object]) -> None:
@@ -123,15 +137,15 @@ def test_task_definition_requires_fargate(wan_main: dict[str, object]) -> None:
 
 
 def test_task_definition_cpu(wan_main: dict[str, object]) -> None:
-    """The task definition reserves 8192 CPU units."""
+    """The task definition reserves 2 vCPU (2048 units) -- the build is single-threaded."""
     task = _resource(wan_main, "aws_ecs_task_definition", "synthesizer")
-    assert task["cpu"] == "8192"
+    assert task["cpu"] == "2048"
 
 
 def test_task_definition_memory(wan_main: dict[str, object]) -> None:
-    """The task definition reserves 32768 MB of memory."""
+    """The task definition reserves 8192 MB -- a small shape places more reliably on Spot."""
     task = _resource(wan_main, "aws_ecs_task_definition", "synthesizer")
-    assert task["memory"] == "32768"
+    assert task["memory"] == "8192"
 
 
 def test_synthesizer_log_group_name(wan_main: dict[str, object]) -> None:

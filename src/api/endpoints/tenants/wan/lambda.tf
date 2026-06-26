@@ -37,6 +37,7 @@ resource "aws_lambda_function" "handler" {
       TASK_DEFINITION_ARN = aws_ecs_task_definition.synthesizer.arn
       SUBNET_ID           = aws_subnet.public.id
       SECURITY_GROUP_ID   = aws_security_group.task.id
+      SCHEDULER_ROLE_ARN  = aws_iam_role.scheduler.arn
     }
   }
 

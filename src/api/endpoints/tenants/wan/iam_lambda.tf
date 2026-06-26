@@ -51,7 +51,51 @@ resource "aws_iam_role_policy" "dispatch" {
         Effect   = "Allow"
         Action   = ["ecs:DescribeTasks"]
         Resource = ["*"]
+      },
+      {
+        # Schedule a delayed Spot relaunch when run_task can't place a task (no stopped
+        # event fires for a placement shortfall). The schedule deletes itself after firing.
+        Effect   = "Allow"
+        Action   = ["scheduler:CreateSchedule"]
+        Resource = ["arn:aws:scheduler:${module.common.aws_region}:${module.common.aws_account_id}:schedule/default/wan-retry-*"]
+      },
+      {
+        # Hand the retry schedule the role it assumes to re-invoke this Lambda.
+        Effect    = "Allow"
+        Action    = ["iam:PassRole"]
+        Resource  = [aws_iam_role.scheduler.arn]
+        Condition = { StringEquals = { "iam:PassedToService" = "scheduler.amazonaws.com" } }
       }
     ]
+  })
+}
+
+# The role EventBridge Scheduler assumes to re-invoke the wan Lambda for a delayed Spot
+# retry. Its Lambda ARN is built from the known name (not the resource) to avoid a cycle:
+# the Lambda's environment already references this role's ARN.
+resource "aws_iam_role" "scheduler" {
+  name = "wan-graph-synthesizer-wan-retry-scheduler"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "scheduler.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "scheduler_invoke" {
+  name = "InvokeWanHandler"
+  role = aws_iam_role.scheduler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["lambda:InvokeFunction"]
+      Resource = ["arn:aws:lambda:${module.common.aws_region}:${module.common.aws_account_id}:function:${module.common.lambda_handler_names.wan}"]
+    }]
   })
 }

@@ -7,13 +7,14 @@ interruptions by relaunching at the next attempt. All of this is endpoint-specif
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 
 from test_handler_contracts import load_handler
-from test_s3_store_mock import fake_ecs, fake_s3
+from test_s3_store_mock import fake_ecs, fake_s3, fake_scheduler
 
 
 def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
@@ -25,6 +26,14 @@ def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
         TASK_DEFINITION_ARN="arn:task",
         SUBNET_ID="subnet-1",
         SECURITY_GROUP_ID="sg-1",
+        SCHEDULER_ROLE_ARN="arn:scheduler-role",
+    )
+
+
+def _context() -> Any:
+    """A stand-in Lambda context exposing the function ARN used as the retry target."""
+    return SimpleNamespace(
+        invoked_function_arn="arn:aws:lambda:us-east-2:1:function:wan-graph-synthesizer-wan"
     )
 
 
@@ -32,9 +41,15 @@ def _wan_clients(
     objects: dict[str, bytes],
     started: list[dict[str, Any]],
     task_tags: dict[str, str] | None = None,
+    schedules: list[dict[str, Any]] | None = None,
+    placement_failures: int = 0,
 ) -> Any:
-    """A boto3.client side effect handing back the S3 and ECS fakes by service."""
-    fakes = {"s3": fake_s3(objects), "ecs": fake_ecs(started, task_tags)}
+    """A boto3.client side effect handing back the S3, ECS, and Scheduler fakes by service."""
+    fakes = {
+        "s3": fake_s3(objects),
+        "ecs": fake_ecs(started, task_tags, placement_failures),
+        "scheduler": fake_scheduler(schedules if schedules is not None else []),
+    }
     return lambda service, **_kwargs: fakes[service]
 
 
@@ -212,3 +227,91 @@ def test_wan_caches_clients(monkeypatch: pytest.MonkeyPatch) -> None:
         module.lambda_handler(post, None)
         module.lambda_handler(post, None)
     assert mock_client.call_count == 2
+
+
+def test_spot_placement_failure_schedules_a_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When Spot can't place the task, a delayed Spot retry is scheduled at the next attempt."""
+    module = _wan(monkeypatch)
+    schedules: list[dict[str, Any]] = []
+    event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
+    with patch(
+        "boto3.client",
+        side_effect=_wan_clients({}, [], schedules=schedules, placement_failures=1),
+    ):
+        module.lambda_handler(event, _context())
+    assert schedules[0]["Name"] == "wan-retry-f-35-2"
+
+
+def test_spot_placement_failure_keeps_status_creating(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A scheduled retry leaves the status at 'creating', not 'failed'."""
+    module = _wan(monkeypatch)
+    objects: dict[str, bytes] = {}
+    event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
+    with patch("boto3.client", side_effect=_wan_clients(objects, [], placement_failures=1)):
+        module.lambda_handler(event, _context())
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "creating"
+
+
+def test_spot_placement_failure_past_cap_marks_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A placement failure at the attempt cap is recorded failed instead of retried."""
+    module = _wan(monkeypatch)
+    objects: dict[str, bytes] = {}
+    event = {"source": "wan.retry", "tenant": "f-35", "attempt": module.MAX_ATTEMPTS}
+    with patch("boto3.client", side_effect=_wan_clients(objects, [], placement_failures=1)):
+        module.lambda_handler(event, _context())
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
+
+
+def test_spot_placement_failure_past_cap_schedules_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """At the cap no further retry is scheduled."""
+    module = _wan(monkeypatch)
+    schedules: list[dict[str, Any]] = []
+    event = {"source": "wan.retry", "tenant": "f-35", "attempt": module.MAX_ATTEMPTS}
+    with patch(
+        "boto3.client",
+        side_effect=_wan_clients({}, [], schedules=schedules, placement_failures=1),
+    ):
+        module.lambda_handler(event, _context())
+    assert not schedules
+
+
+def test_wan_retry_event_launches_the_build(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A wan.retry event relaunches the synthesizer on Spot at its carried attempt."""
+    module = _wan(monkeypatch)
+    started: list[dict[str, Any]] = []
+    event = {"source": "wan.retry", "tenant": "f-35", "attempt": 2}
+    with patch("boto3.client", side_effect=_wan_clients({}, started)):
+        module.lambda_handler(event, _context())
+    assert started[0]["tags"] == [
+        {"key": "Tenant", "value": "f-35"},
+        {"key": "Attempt", "value": "2"},
+    ]
+
+
+def test_interruption_relaunch_that_cannot_place_schedules_a_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A Spot-interruption relaunch that itself can't place falls back to a delayed retry."""
+    module = _wan(monkeypatch)
+    schedules: list[dict[str, Any]] = []
+    tags = {"Tenant": "f-35", "Attempt": "1"}
+    with patch(
+        "boto3.client",
+        side_effect=_wan_clients({}, [], task_tags=tags, schedules=schedules, placement_failures=1),
+    ):
+        module.lambda_handler(_stopped_event(), _context())
+    assert schedules[0]["Name"] == "wan-retry-f-35-3"
+
+
+def test_repeated_placement_failures_reuse_the_scheduler_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two scheduled retries build the S3, ECS, and Scheduler clients once each, then reuse them."""
+    module = _wan(monkeypatch)
+    event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
+    with patch(
+        "boto3.client", side_effect=_wan_clients({}, [], placement_failures=2)
+    ) as mock_client:
+        module.lambda_handler(event, _context())
+        module.lambda_handler(event, _context())
+    assert mock_client.call_count == 3
