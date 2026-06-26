@@ -22,7 +22,6 @@ from synthesizer.synthesize import (
     assign_access,
     backbone_combination_count,
     backbone_combinations,
-    backbone_has_mesh_peers,
     backbone_physically_two_edge_connectable,
     best_design_at_size,
     build_design_for_backbone,
@@ -250,16 +249,6 @@ def test_nearest_pop_id_picks_the_closest() -> None:
     """Nearest pop id picks the closest."""
     pops = [pop("far", 0.0, 50.0), pop("near", 0.0, 1.0)]
     assert nearest_pop_id(access("s", 0.0, 0.0), pops) == "near"
-
-
-def test_backbone_has_mesh_peers_false_when_nodes_disconnected() -> None:
-    """A node with no reachable peer cannot meet its mesh-link target."""
-    edges = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
-    adjacency = build_adjacency(edges)
-    distances, _predecessors = all_pairs_shortest(
-        [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
-    )
-    assert not backbone_has_mesh_peers(("a", "c"), distances, 3)
 
 
 # A demand site "s" near two backbone PoPs c1 and c2 (which mesh directly). A home is

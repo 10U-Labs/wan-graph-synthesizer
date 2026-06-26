@@ -98,24 +98,6 @@ def finalize_design(
     )
 
 
-def backbone_has_mesh_peers(
-    backbone_ids: tuple[str, ...],
-    all_distances: dict[str, dict[str, float]],
-    mesh_degree: int,
-) -> bool:
-    """True if every backbone node can reach enough peers to wire its mesh links."""
-    target = min(mesh_degree, len(backbone_ids) - 1)
-    return all(
-        sum(
-            1
-            for right in backbone_ids
-            if right != left and math.isfinite(all_distances[left].get(right, math.inf))
-        )
-        >= target
-        for left in backbone_ids
-    )
-
-
 def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
     return min(carrier_pops, key=lambda pop: haversine_miles(access, pop)).id
@@ -214,17 +196,13 @@ def evaluate_backbone(
     """Score a backbone set's feasibility and demand homing without routing paths.
 
     Returns None when the backbone nodes cannot be wired into a bridgeless physical-fiber
-    mesh (a single span would strand one), a backbone node cannot reach enough peers to
-    wire its mesh links, or the backbone is smaller than the configured number of homes
-    per demand vertex (so ``assign_access`` cannot give each demand vertex that many
-    distinct backbone nodes). Routed paths are deferred to the winning set, since they do
-    not affect the strength ranking.
+    mesh (a single span would strand one -- which also rules out a node that cannot reach
+    its peers, since 2-edge-connectivity implies they are all mutually reachable), or the
+    backbone is smaller than the configured number of homes per demand vertex (so
+    ``assign_access`` cannot give each demand vertex that many distinct backbone nodes).
+    Routed paths are deferred to the winning set, since they do not affect the ranking.
     """
     if not backbone_physically_two_edge_connectable(backbone_ids, inputs):
-        return None
-    if not backbone_has_mesh_peers(
-        backbone_ids, inputs.all_distances, plan.tuning.backbone_mesh_degree
-    ):
         return None
     return assign_access(backbone_ids, inputs, plan)
 
