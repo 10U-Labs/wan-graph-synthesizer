@@ -5,14 +5,21 @@ from __future__ import annotations
 import heapq
 import math
 from collections import deque
+from collections.abc import Iterator
 
 from synthesizer.input_graph import PhysicalEdge, edge_key
 
 
 def dijkstra(
-    adjacency: dict[str, list[tuple[str, float]]], source: str
+    adjacency: dict[str, list[tuple[str, float]]],
+    source: str,
+    blocked: frozenset[tuple[str, str]] = frozenset(),
 ) -> tuple[dict[str, float], dict[str, str]]:
-    """Shortest-path distances and predecessors from a single source."""
+    """Shortest-path distances and predecessors from a single source.
+
+    ``blocked`` is a set of ``edge_key`` spans the search may not traverse -- used to
+    route a detour around a span already carrying backbone traffic.
+    """
     distances = {source: 0.0}
     predecessors: dict[str, str] = {}
     queue = [(0.0, source)]
@@ -22,6 +29,8 @@ def dijkstra(
         if distance > distances[vertex_id] + 1e-9:
             continue
         for neighbor, weight in adjacency.get(vertex_id, []):
+            if blocked and edge_key(vertex_id, neighbor) in blocked:
+                continue
             new_distance = distance + weight
             if new_distance + 1e-9 < distances.get(neighbor, math.inf):
                 distances[neighbor] = new_distance
@@ -92,6 +101,74 @@ def bridges(vertex_ids: set[str], edges: set[tuple[str, str]]) -> set[tuple[str,
         edge
         for edge in edges
         if len(connected_components(vertex_ids, edges - {edge})) > base
+    }
+
+def bridge_edges(adjacency: dict[str, list[tuple[str, float]]]) -> set[tuple[str, str]]:
+    """Every bridge span of a weighted graph, found in one linear DFS.
+
+    A Tarjan low-link sweep, run iteratively so a long carrier graph cannot blow the
+    recursion limit. An edge ``(u, v)`` is a bridge when the subtree rooted at ``v``
+    has no back edge reaching ``u`` or above (``low[v] > disc[u]``). Suited to the full
+    carrier graph, where the edge-probing :func:`bridges` would be far too slow.
+    """
+    disc: dict[str, int] = {}
+    low: dict[str, int] = {}
+    parent: dict[str, str | None] = {}
+    found: set[tuple[str, str]] = set()
+    counter = 0
+    for root in adjacency:
+        if root in disc:
+            continue
+        disc[root] = low[root] = counter
+        parent[root] = None
+        counter += 1
+        stack: list[tuple[str, Iterator[tuple[str, float]]]] = [(root, iter(adjacency[root]))]
+        while stack:
+            node, neighbors = stack[-1]
+            descended = False
+            for neighbor, _weight in neighbors:
+                if neighbor == parent[node]:
+                    continue
+                if neighbor in disc:
+                    low[node] = min(low[node], disc[neighbor])
+                    continue
+                disc[neighbor] = low[neighbor] = counter
+                parent[neighbor] = node
+                counter += 1
+                stack.append((neighbor, iter(adjacency[neighbor])))
+                descended = True
+                break
+            if descended:
+                continue
+            stack.pop()
+            up = parent[node]
+            if up is not None:
+                low[up] = min(low[up], low[node])
+                if low[node] > disc[up]:
+                    found.add(edge_key(up, node))
+    return found
+
+def two_edge_components(adjacency: dict[str, list[tuple[str, float]]]) -> dict[str, int]:
+    """Label each vertex with its 2-edge-connected component id.
+
+    Two vertices share a component exactly when no single span separates them -- so a
+    set of backbone nodes can be wired into a fiber-resilient (bridgeless) mesh iff they
+    all carry the same label. Computed once over the carrier graph and reused as the
+    search's cheap feasibility oracle. Deleting the bridges leaves the components as the
+    connected pieces; a vertex whose every span is a bridge is its own singleton.
+    """
+    cut = bridge_edges(adjacency)
+    surviving = {
+        edge_key(node, neighbor)
+        for node, neighbors in adjacency.items()
+        for neighbor, _weight in neighbors
+        if edge_key(node, neighbor) not in cut
+    }
+    components = connected_components(set(adjacency), surviving)
+    return {
+        vertex_id: index
+        for index, component in enumerate(components)
+        for vertex_id in component
     }
 
 def is_two_edge_connected(vertex_ids: set[str], edges: set[tuple[str, str]]) -> bool:

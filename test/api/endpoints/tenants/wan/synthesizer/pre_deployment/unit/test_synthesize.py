@@ -23,6 +23,7 @@ from synthesizer.synthesize import (
     backbone_combination_count,
     backbone_combinations,
     backbone_has_mesh_peers,
+    backbone_physically_two_edge_connectable,
     best_design_at_size,
     build_design_for_backbone,
     build_search_plan,
@@ -30,12 +31,13 @@ from synthesizer.synthesize import (
     compute_eligible_backbone_ids,
     demand_haul_miles,
     enumeration_limit,
+    forced_backbone_resilience_error,
     nearest_pop_id,
     search_best_design,
     synthesize_two_tier_design,
 )
 from synthesizer.search_plan import _SearchPlan
-from synthesizer.graphs import build_adjacency
+from synthesizer.graphs import build_adjacency, two_edge_components
 from synthesizer.overrides import apply_role_overrides
 from synthesizer.strength import vertex_straightness
 
@@ -75,6 +77,7 @@ def _inputs_from_edges(
         adjacency=adjacency,
         all_distances=distances,
         all_predecessors=predecessors,
+        carrier_two_edge_components=two_edge_components(adjacency),
     )
 
 
@@ -492,9 +495,13 @@ def _far_demand_inputs_plan() -> tuple[DesignInputs, _SearchPlan]:
     into the graph through the central pair (cc1/cc2), so it always homes; the geography
     is what drives -- or holds -- the coverage growth.
     """
+    # cw and ce each wire to both central nodes, so every backbone candidate sits in one
+    # 2-edge-connected component and the coverage growth (driven by geography, not edges)
+    # is what the tests below probe.
     edges = physical(
         {
-            ("cc1", "cw"): 1.0, ("ce", "cc2"): 1.0, ("cc2", "cc1"): 1.0,
+            ("cc1", "cw"): 1.0, ("cc2", "cw"): 1.0, ("ce", "cc2"): 1.0, ("ce", "cc1"): 1.0,
+            ("cc2", "cc1"): 1.0,
             ("aw1", "cc1"): 1.0, ("aw1", "cc2"): 1.0, ("aw2", "cc1"): 1.0, ("aw2", "cc2"): 1.0,
             ("ae1", "cc1"): 1.0, ("ae1", "cc2"): 1.0, ("ae2", "cc1"): 1.0, ("ae2", "cc2"): 1.0,
         }
@@ -588,6 +595,74 @@ def test_search_holds_at_the_floor_when_the_only_candidate_is_infeasible() -> No
         tuning=Tuning(backbone_coverage_target_miles=300.0),
     )
     assert search_best_design(inputs, params, plan).backbone_ids == ("c1", "c2")
+
+
+# --- physical 2-edge-connectivity: the search-time fiber-resilience gate ----------------
+
+# Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single span c-d, so the two
+# pockets are separate 2-edge-connected components: no backbone may straddle them.
+_TWO_POCKET_EDGES = physical(
+    {
+        ("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0, ("c", "d"): 1.0,
+        ("d", "e"): 1.0, ("e", "f"): 1.0, ("d", "f"): 1.0,
+    }
+)
+_TWO_POCKET_IDS = ["a", "b", "c", "d", "e", "f"]
+
+
+def _two_pocket_inputs() -> DesignInputs:
+    """Inputs over two fiber pockets joined by a single bridge span."""
+    return _inputs_from_edges(_TWO_POCKET_IDS, _TWO_POCKET_EDGES, set(_TWO_POCKET_IDS))
+
+
+def test_physically_two_edge_connectable_within_one_pocket() -> None:
+    """Two nodes in one bridgeless pocket can be wired into a resilient mesh."""
+    assert backbone_physically_two_edge_connectable(("a", "b"), _two_pocket_inputs()) is True
+
+
+def test_not_physically_two_edge_connectable_across_a_bridge() -> None:
+    """Two nodes split by a single span can never survive its cut, so they are rejected."""
+    assert backbone_physically_two_edge_connectable(("a", "d"), _two_pocket_inputs()) is False
+
+
+def test_forced_resilience_error_for_forced_nodes_split_across_pockets() -> None:
+    """Forced nodes in different pockets can never form a resilient design."""
+    assert forced_backbone_resilience_error(
+        frozenset({"a", "d"}), _two_pocket_inputs(), 2
+    ) is not None
+
+
+def _triangle_inputs() -> DesignInputs:
+    """Inputs over a single 2-edge-connected triangle pocket of three eligible PoPs."""
+    return _inputs_from_edges(["a", "b", "c"], TRIANGLE, {"a", "b", "c"})
+
+
+def test_forced_resilience_error_for_a_pocket_too_small_for_the_floor() -> None:
+    """A forced node whose pocket cannot seat the minimum backbone count is rejected."""
+    assert forced_backbone_resilience_error(frozenset({"a"}), _triangle_inputs(), 5) is not None
+
+
+def test_forced_resilience_error_none_for_a_healthy_forced_node() -> None:
+    """A forced node in a pocket large enough for the floor raises nothing."""
+    assert forced_backbone_resilience_error(frozenset({"a"}), _triangle_inputs(), 2) is None
+
+
+def test_forced_resilience_error_none_without_forced_nodes() -> None:
+    """With no forced nodes there is nothing to check, so no error."""
+    assert forced_backbone_resilience_error(frozenset(), _triangle_inputs(), 2) is None
+
+
+def test_synthesize_rejects_forced_nodes_split_across_pockets() -> None:
+    """Synthesis fails loudly when forced nodes straddle a single-fiber cut."""
+    vertices = [pop(name) for name in _TWO_POCKET_IDS]
+    params = DesignParams(
+        min_backbone_count=2,
+        forced_backbone_names=("a", "d"),
+        datacenter_cities=_cities(*_TWO_POCKET_IDS),
+    )
+    pinned, edges, overrides = apply_role_overrides(vertices, _TWO_POCKET_EDGES, params)
+    with pytest.raises(ValueError):
+        synthesize_two_tier_design(pinned, edges, params, overrides)
 
 
 # --- overrides: data-center gate on forced pins ----------------------------------------

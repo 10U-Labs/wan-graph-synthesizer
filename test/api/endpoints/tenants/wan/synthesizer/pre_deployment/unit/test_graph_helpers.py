@@ -8,11 +8,13 @@ import pytest
 
 from synthesizer.graphs import (
     articulation_points,
+    bridge_edges,
     bridges,
     connected_components,
     dijkstra,
     path_edge_keys,
     reconstruct_path,
+    two_edge_components,
 )
 from synthesizer.input_graph import Vertex, edge_key, haversine_miles
 
@@ -20,6 +22,22 @@ from synthesizer.input_graph import Vertex, edge_key, haversine_miles
 def make_vertex(vertex_id: str, lat: float, lon: float) -> Vertex:
     """Test helper: build make vertex."""
     return Vertex(id=vertex_id, name=vertex_id, kind="PoP", coords=(lat, lon))
+
+
+def _adjacency(pairs: list[tuple[str, str]]) -> dict[str, list[tuple[str, float]]]:
+    """Test helper: a unit-weight undirected adjacency map from vertex pairs."""
+    adjacency: dict[str, list[tuple[str, float]]] = {}
+    for left, right in pairs:
+        adjacency.setdefault(left, []).append((right, 1.0))
+        adjacency.setdefault(right, []).append((left, 1.0))
+    return adjacency
+
+
+# Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single span c-d, the lone
+# bridge between two otherwise 2-edge-connected pockets.
+_TWO_POCKETS = _adjacency(
+    [("a", "b"), ("b", "c"), ("a", "c"), ("c", "d"), ("d", "e"), ("e", "f"), ("d", "f")]
+)
 
 
 def test_edge_key_orders_pair() -> None:
@@ -142,3 +160,38 @@ def test_bridges_names_every_cut_edge_in_a_chain() -> None:
 def test_cycle_has_no_bridges() -> None:
     """A cycle has no bridges: every edge lies on a cycle, so none is a cut edge."""
     assert bridges({"a", "b", "c"}, {("a", "b"), ("b", "c"), ("a", "c")}) == set()
+
+
+def test_bridge_edges_finds_the_lone_cut_between_two_pockets() -> None:
+    """The single span joining two 2-edge-connected pockets is the only bridge."""
+    assert bridge_edges(_TWO_POCKETS) == {edge_key("c", "d")}
+
+
+def test_bridge_edges_empty_for_a_cycle() -> None:
+    """A cycle has no bridge spans; the linear sweep agrees with the probing search."""
+    assert bridge_edges(_adjacency([("a", "b"), ("b", "c"), ("a", "c")])) == set()
+
+
+def test_two_edge_components_labels_a_cycle_as_one() -> None:
+    """Every vertex of a bridgeless cycle shares one 2-edge-connected component."""
+    labels = two_edge_components(_adjacency([("a", "b"), ("b", "c"), ("a", "c")]))
+    assert len(set(labels.values())) == 1
+
+
+def test_two_edge_components_splits_two_pockets_at_the_bridge() -> None:
+    """Two pockets joined by a single span fall into two components."""
+    labels = two_edge_components(_TWO_POCKETS)
+    assert labels["a"] != labels["d"]
+
+
+def test_two_edge_components_labels_a_chain_as_singletons() -> None:
+    """Every span of a chain is a bridge, so each vertex is its own component."""
+    labels = two_edge_components(_adjacency([("a", "b"), ("b", "c")]))
+    assert len(set(labels.values())) == 3
+
+
+def test_dijkstra_routes_around_a_blocked_span() -> None:
+    """Blocking the direct span forces the detour, lengthening the shortest path."""
+    adjacency = _adjacency([("a", "b"), ("b", "c"), ("a", "c")])
+    distances, _predecessors = dijkstra(adjacency, "a", frozenset({edge_key("a", "c")}))
+    assert distances["c"] == 2.0

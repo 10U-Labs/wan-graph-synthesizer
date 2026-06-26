@@ -14,7 +14,14 @@ import math
 from dataclasses import dataclass
 
 from synthesizer.input_graph import PhysicalEdge, edge_key
-from synthesizer.graphs import bridges, connected_components, reconstruct_path
+from synthesizer.graphs import (
+    bridges,
+    build_adjacency,
+    connected_components,
+    dijkstra,
+    path_edge_keys,
+    reconstruct_path,
+)
 from synthesizer.model import PathUse
 
 
@@ -130,6 +137,79 @@ def select_backbone_mesh_pairs(
     return sorted(augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs))
 
 
+def _separated_backbone_pair(
+    bridge: tuple[str, str],
+    vertices: set[str],
+    spans: set[tuple[str, str]],
+    backbone_set: set[str],
+    removed_pairs: frozenset[tuple[str, str]],
+) -> tuple[str, str] | None:
+    """A backbone node on each side of a bridge span, as a non-pruned edge key.
+
+    Deleting the bridge splits its component in two; the two backbone nodes that the
+    bridge sits between (the endpoints of the path it carries) land on opposite sides.
+    Returns the cheapest-labelled such pair whose logical link the operator has not
+    pruned, or None when every cross pair is pruned.
+    """
+    left_id, right_id = bridge
+    sides = connected_components(vertices, spans - {bridge})
+    left_side = next(set(side) for side in sides if left_id in side)
+    right_side = next(set(side) for side in sides if right_id in side)
+    for near in sorted(left_side & backbone_set):
+        for far in sorted(right_side & backbone_set):
+            pair = edge_key(near, far)
+            if pair not in removed_pairs:
+                return pair
+    return None
+
+
+def augment_physical_resilience(
+    base_uses: list[PathUse],
+    backbone_ids: tuple[str, ...],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    removed_pairs: frozenset[tuple[str, str]],
+) -> list[PathUse]:
+    """Add detour routes until the backbone's physical spans survive any single cut.
+
+    The base mesh routes every logical link as an independent shortest path, so a node's
+    links share their cheapest egress corridor and one fiber cut can sever several. This
+    pass takes the union of physical spans the backbone rides and, while any span is a
+    bridge, routes the cheapest alternate between two backbone nodes the bridge separates
+    that avoids that span -- putting the span on a cycle. Bridges fall monotonically, so
+    it terminates. It stops early if a bridge has no usable detour (a genuine carrier cut
+    or a fully pruned join); the search gate keeps such sets from winning, and validation
+    reports the truth either way.
+    """
+    adjacency = build_adjacency(physical_edges)
+    backbone_set = set(backbone_ids)
+    uses = list(base_uses)
+    spans: set[tuple[str, str]] = set()
+    for use in uses:
+        spans |= path_edge_keys(use.path)
+    while True:
+        vertices = {vertex for span in spans for vertex in span} | backbone_set
+        cut = bridges(vertices, spans)
+        if not cut:
+            break
+        bridge = min(cut)
+        pair = _separated_backbone_pair(bridge, vertices, spans, backbone_set, removed_pairs)
+        if pair is None:
+            break
+        near, far = pair
+        _distances, predecessors = dijkstra(adjacency, near, frozenset({bridge}))
+        detour = reconstruct_path(near, far, predecessors)
+        if not detour:
+            break
+        uses.append(
+            PathUse(
+                "backbone_mesh", near, far, detour,
+                path_geometry_miles(detour, physical_edges),
+            )
+        )
+        spans |= path_edge_keys(detour)
+    return uses
+
+
 @dataclass(frozen=True)
 class BackboneConstraints:
     """The backbone-mesh selection knobs: pruned backbone pairs and the link count."""
@@ -159,4 +239,6 @@ def backbone_mesh_paths(
         uses.append(
             PathUse("backbone_mesh", left, right, path, path_geometry_miles(path, physical_edges))
         )
-    return uses
+    return augment_physical_resilience(
+        uses, backbone_ids, physical_edges, constraints.removed_pairs
+    )

@@ -51,6 +51,7 @@ from synthesizer.graphs import (
     build_adjacency,
     dijkstra,
     path_edge_keys,
+    two_edge_components,
 )
 from synthesizer.backbone import BackboneConstraints, backbone_mesh_paths
 from synthesizer.search_plan import _SearchPlan
@@ -162,6 +163,49 @@ def assign_access(
     return access_edges
 
 
+def backbone_physically_two_edge_connectable(
+    backbone_ids: tuple[str, ...], inputs: DesignInputs
+) -> bool:
+    """True if the backbone nodes can be wired into a bridgeless physical-fiber mesh.
+
+    They can iff they all sit in one 2-edge-connected component of the carrier graph --
+    otherwise some single span separates two of them and no routing survives its cut.
+    """
+    labels = {inputs.carrier_two_edge_components.get(node) for node in backbone_ids}
+    return len(labels) == 1 and None not in labels
+
+
+def forced_backbone_resilience_error(
+    required: frozenset[str], inputs: DesignInputs, min_count: int
+) -> str | None:
+    """Why the operator's forced backbone nodes can never form a resilient design, or None.
+
+    A forced node behind a single carrier span (alone in its 2-edge-connected component,
+    or split from the other forced nodes) makes every candidate set fail the physical
+    gate, so the search would end with an opaque "no feasible design". Caught up front,
+    this names the offending nodes so the operator can fix ``etc/*.yml`` -- the reject
+    rule wins over the force.
+    """
+    if not required:
+        return None
+    components = inputs.carrier_two_edge_components
+    pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
+    names = ", ".join(sorted(pop_by_id[node].name for node in required))
+    if len({components.get(node) for node in required}) > 1:
+        return (
+            "Forced backbone nodes span more than one 2-edge-connected component of the "
+            f"carrier fiber graph, so no design can survive a single fiber cut: {names}"
+        )
+    component = components[next(iter(required))]
+    peers = sum(1 for node in inputs.eligible_backbone_ids if components.get(node) == component)
+    if peers < min_count:
+        return (
+            "A forced backbone node sits in a carrier fiber pocket too small for a "
+            f"{min_count}-node 2-edge-connected backbone: {names}"
+        )
+    return None
+
+
 def evaluate_backbone(
     backbone_ids: tuple[str, ...],
     inputs: DesignInputs,
@@ -169,12 +213,15 @@ def evaluate_backbone(
 ) -> list[AccessEdge] | None:
     """Score a backbone set's feasibility and demand homing without routing paths.
 
-    Returns None when a backbone node cannot reach enough peers to wire its mesh links,
-    or the backbone is smaller than the configured number of homes per demand vertex
-    (so ``assign_access`` cannot give each demand vertex that many distinct backbone
-    nodes). Routed paths are deferred to the winning set, since they do not affect the
-    strength ranking.
+    Returns None when the backbone nodes cannot be wired into a bridgeless physical-fiber
+    mesh (a single span would strand one), a backbone node cannot reach enough peers to
+    wire its mesh links, or the backbone is smaller than the configured number of homes
+    per demand vertex (so ``assign_access`` cannot give each demand vertex that many
+    distinct backbone nodes). Routed paths are deferred to the winning set, since they do
+    not affect the strength ranking.
     """
+    if not backbone_physically_two_edge_connectable(backbone_ids, inputs):
+        return None
     if not backbone_has_mesh_peers(
         backbone_ids, inputs.all_distances, plan.tuning.backbone_mesh_degree
     ):
@@ -509,6 +556,7 @@ class _GraphContext:
     adjacency: dict[str, list[tuple[str, float]]]
     all_distances: dict[str, dict[str, float]]
     all_predecessors: dict[str, dict[str, str]]
+    carrier_two_edge_components: dict[str, int]
 
 
 def graph_context(
@@ -521,7 +569,10 @@ def graph_context(
     adjacency = build_adjacency(physical_edges)
     validate_pop_graph(carrier_pops, physical_edges, adjacency)
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
-    return _GraphContext(carrier_pops, all_access, adjacency, all_distances, all_predecessors)
+    return _GraphContext(
+        carrier_pops, all_access, adjacency, all_distances, all_predecessors,
+        two_edge_components(adjacency),
+    )
 
 
 def build_search_plan(
@@ -606,6 +657,12 @@ def synthesize_two_tier_design(
         adjacency=context.adjacency,
         all_distances=context.all_distances,
         all_predecessors=context.all_predecessors,
+        carrier_two_edge_components=context.carrier_two_edge_components,
     )
     plan = build_search_plan(inputs, backbone_eligible_ids, overrides, params)
+    forced_error = forced_backbone_resilience_error(
+        plan.required_backbone, inputs, max(2, params.min_backbone_count)
+    )
+    if forced_error is not None:
+        raise ValueError(forced_error)
     return search_best_design(inputs, params, plan)

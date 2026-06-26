@@ -8,6 +8,7 @@ from synthesizer.graphs import (
     articulation_points,
     connected_components,
     is_two_edge_connected,
+    path_edge_keys,
 )
 
 
@@ -77,12 +78,31 @@ def backbone_mesh_pairs(design: Design) -> set[tuple[str, str]]:
         if use.purpose == "backbone_mesh"
     }
 
+def backbone_mesh_physical_spans(design: Design) -> set[tuple[str, str]]:
+    """The physical fiber spans the backbone mesh actually routes over.
+
+    The union of every ``backbone_mesh`` path's spans -- the real cables, not the logical
+    city-pairs, so two links sharing a corridor count that corridor once.
+    """
+    spans: set[tuple[str, str]] = set()
+    for use in design.path_uses:
+        if use.purpose == "backbone_mesh":
+            spans |= path_edge_keys(use.path)
+    return spans
+
 def backbone_mesh_two_edge_connected(design: Design) -> bool:
-    """True if the mesh connects every backbone node and survives any single link loss."""
+    """True if the backbone's physical fiber survives the loss of any single span.
+
+    Tested over the spans the mesh routes over, not the logical pairs: two logical links
+    that ride one corridor offer no real redundancy, so the check must see the cables. A
+    backbone node with no routed span reads as disconnected.
+    """
     ids = set(design.backbone_ids)
     if len(ids) < 2:
         return True
-    return is_two_edge_connected(ids, backbone_mesh_pairs(design))
+    spans = backbone_mesh_physical_spans(design)
+    vertices = ids | {vertex for span in spans for vertex in span}
+    return is_two_edge_connected(vertices, spans)
 
 def neighbor_degrees(
     ids: set[str], edges: set[tuple[str, str]]

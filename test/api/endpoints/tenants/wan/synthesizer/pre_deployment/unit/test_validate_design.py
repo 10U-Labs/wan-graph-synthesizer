@@ -187,6 +187,49 @@ def test_bridged_backbone_is_not_two_edge_connected() -> None:
     assert report["backbone_mesh_two_edge_connected"] is False
 
 
+# Logical links A-B and A-C both route over the shared first hop A-X, so the city-pair
+# mesh (A-B, A-C, B-C) is a triangle -- logically 2-edge-connected -- while the physical
+# fiber hangs A off the lone span A-X. A non-mesh path use rides along, ignored.
+_SHARED_CORRIDOR = Design(
+    backbone_ids=("A", "B", "C"),
+    transit_ids=(),
+    access_edges=[],
+    physical_edge_keys=set(),
+    path_uses=[
+        PathUse("backbone_mesh", "A", "B", ("A", "X", "B"), 2.0),
+        PathUse("backbone_mesh", "A", "C", ("A", "X", "C"), 2.0),
+        PathUse("backbone_mesh", "B", "C", ("B", "C"), 1.0),
+        PathUse("access", "B", "C", ("B", "C"), 1.0),
+    ],
+    metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+)
+# Backbone A-B carried over two span-disjoint corridors -- the direct A-B and the detour
+# A-Y-B -- so the physical fiber survives the loss of either.
+_DISJOINT_PATHS = Design(
+    backbone_ids=("A", "B"),
+    transit_ids=(),
+    access_edges=[],
+    physical_edge_keys=set(),
+    path_uses=[
+        PathUse("backbone_mesh", "A", "B", ("A", "B"), 1.0),
+        PathUse("backbone_mesh", "A", "B", ("A", "Y", "B"), 2.0),
+    ],
+    metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+)
+
+
+def test_shared_physical_corridor_is_not_two_edge_connected() -> None:
+    """Logical links sharing one fiber span offer no real redundancy, so the check fails."""
+    report = validate_design([make_pop(n) for n in ("A", "X", "B", "C")], _SHARED_CORRIDOR)
+    assert report["backbone_mesh_two_edge_connected"] is False
+
+
+def test_span_disjoint_paths_are_two_edge_connected() -> None:
+    """Two span-disjoint corridors between the backbone nodes survive any single cut."""
+    report = validate_design([make_pop(n) for n in ("A", "B", "Y")], _DISJOINT_PATHS)
+    assert report["backbone_mesh_two_edge_connected"] is True
+
+
 # Two disjoint physical edges leave the design graph in two components.
 _DISCONNECTED = build_design(
     backbone_ids=("B1", "B2", "B3", "B4"),

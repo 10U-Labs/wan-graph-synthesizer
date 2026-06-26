@@ -168,6 +168,9 @@ class DesignInputs:
     adjacency: dict[str, list[tuple[str, float]]]
     all_distances: dict[str, dict[str, float]]
     all_predecessors: dict[str, dict[str, str]]
+    # Each carrier PoP's 2-edge-connected component id: backbone nodes can be wired
+    # into a fiber-resilient mesh only when they all share one component.
+    carrier_two_edge_components: dict[str, int]
 
 class ValidationReport(TypedDict):
     """Structured results of validating a design against the hard requirements."""

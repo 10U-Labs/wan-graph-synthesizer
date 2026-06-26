@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 import fixtures
-from synthesizer.input_graph import edge_key
+from synthesizer.input_graph import PhysicalEdge, edge_key
 from synthesizer.model import PathUse
 from synthesizer.backbone import (
     BackboneConstraints,
+    augment_physical_resilience,
     backbone_mesh_paths,
     select_backbone_mesh_pairs,
 )
 from synthesizer.synthesize import all_pairs_shortest
-from synthesizer.graphs import build_adjacency, connected_components, is_two_edge_connected
+from synthesizer.graphs import (
+    build_adjacency,
+    connected_components,
+    is_two_edge_connected,
+    path_edge_keys,
+)
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
@@ -213,3 +219,44 @@ def test_backbone_mesh_paths_omit_a_removed_pair() -> None:
     """An operator-pruned pair gets no routed backbone-mesh path."""
     routed = _five_node_mesh_paths(frozenset({edge_key("c1", "c2")}))
     assert edge_key("c1", "c2") not in {edge_key(use.source, use.target) for use in routed}
+
+
+# A two-node backbone whose only link is the direct span a-b, with a-c-b as an
+# alternate corridor: the base mesh rides a-b, leaving a-b a single point of failure.
+_CORRIDOR_EDGES = physical({("a", "b"): 1.0, ("a", "c"): 1.0, ("c", "b"): 1.0})
+_BASE_DIRECT = [PathUse("backbone_mesh", "a", "b", ("a", "b"), 1.0)]
+
+
+def _augmented_spans(
+    base: list[PathUse],
+    backbone_ids: tuple[str, ...],
+    edges: dict[tuple[str, str], PhysicalEdge],
+    removed: frozenset[tuple[str, str]] = frozenset(),
+) -> set[tuple[str, str]]:
+    """The physical spans the augmented backbone rides over."""
+    spans: set[tuple[str, str]] = set()
+    for use in augment_physical_resilience(base, backbone_ids, edges, removed):
+        spans |= path_edge_keys(use.path)
+    return spans
+
+
+def test_augment_physical_resilience_makes_a_shared_corridor_survive_a_cut() -> None:
+    """A detour is added around the single egress span until the fiber is bridgeless."""
+    spans = _augmented_spans(_BASE_DIRECT, ("a", "b"), _CORRIDOR_EDGES)
+    assert is_two_edge_connected({vertex for span in spans for vertex in span}, spans)
+
+
+def test_augment_physical_resilience_stops_when_no_detour_exists() -> None:
+    """A single-span carrier graph offers no alternate, so the base mesh is left as is."""
+    only_span = physical({("a", "b"): 1.0})
+    assert augment_physical_resilience(_BASE_DIRECT, ("a", "b"), only_span, frozenset()) == (
+        _BASE_DIRECT
+    )
+
+
+def test_augment_physical_resilience_skips_a_pruned_detour_pair() -> None:
+    """When the only cross pair is operator-pruned, no detour is added."""
+    pruned = frozenset({edge_key("a", "b")})
+    assert augment_physical_resilience(_BASE_DIRECT, ("a", "b"), _CORRIDOR_EDGES, pruned) == (
+        _BASE_DIRECT
+    )
