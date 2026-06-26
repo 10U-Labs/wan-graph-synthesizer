@@ -187,34 +187,38 @@ def test_bridged_backbone_is_not_two_edge_connected() -> None:
     assert report["backbone_mesh_two_edge_connected"] is False
 
 
+def _routed_design(backbone_ids: tuple[str, ...], path_uses: list[PathUse]) -> Design:
+    """A backbone-only design defined directly by its routed physical paths."""
+    return Design(
+        backbone_ids=backbone_ids,
+        transit_ids=(),
+        access_edges=[],
+        physical_edge_keys=set(),
+        path_uses=path_uses,
+        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+    )
+
+
 # Logical links A-B and A-C both route over the shared first hop A-X, so the city-pair
 # mesh (A-B, A-C, B-C) is a triangle -- logically 2-edge-connected -- while the physical
 # fiber hangs A off the lone span A-X. A non-mesh path use rides along, ignored.
-_SHARED_CORRIDOR = Design(
-    backbone_ids=("A", "B", "C"),
-    transit_ids=(),
-    access_edges=[],
-    physical_edge_keys=set(),
-    path_uses=[
+_SHARED_CORRIDOR = _routed_design(
+    ("A", "B", "C"),
+    [
         PathUse("backbone_mesh", "A", "B", ("A", "X", "B"), 2.0),
         PathUse("backbone_mesh", "A", "C", ("A", "X", "C"), 2.0),
         PathUse("backbone_mesh", "B", "C", ("B", "C"), 1.0),
         PathUse("access", "B", "C", ("B", "C"), 1.0),
     ],
-    metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
 )
 # Backbone A-B carried over two span-disjoint corridors -- the direct A-B and the detour
 # A-Y-B -- so the physical fiber survives the loss of either.
-_DISJOINT_PATHS = Design(
-    backbone_ids=("A", "B"),
-    transit_ids=(),
-    access_edges=[],
-    physical_edge_keys=set(),
-    path_uses=[
+_DISJOINT_PATHS = _routed_design(
+    ("A", "B"),
+    [
         PathUse("backbone_mesh", "A", "B", ("A", "B"), 1.0),
         PathUse("backbone_mesh", "A", "B", ("A", "Y", "B"), 2.0),
     ],
-    metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
 )
 
 

@@ -163,6 +163,38 @@ def _separated_backbone_pair(
     return None
 
 
+def _resilience_detour(
+    spans: set[tuple[str, str]],
+    backbone_set: set[str],
+    removed_pairs: frozenset[tuple[str, str]],
+    adjacency: dict[str, list[tuple[str, float]]],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+) -> PathUse | None:
+    """One detour route relieving a bridge in the span union, or None when none remains.
+
+    Picks a bridge span, finds two backbone nodes it separates, and routes the cheapest
+    alternate between them that avoids the span -- putting the span on a cycle. Returns
+    None when the spans are already bridgeless, or no usable (non-pruned, reachable)
+    alternate exists for the chosen bridge.
+    """
+    vertices = {vertex for span in spans for vertex in span} | backbone_set
+    cut = bridges(vertices, spans)
+    if not cut:
+        return None
+    bridge = min(cut)
+    pair = _separated_backbone_pair(bridge, vertices, spans, backbone_set, removed_pairs)
+    if pair is None:
+        return None
+    near, far = pair
+    _distances, predecessors = dijkstra(adjacency, near, frozenset({bridge}))
+    detour = reconstruct_path(near, far, predecessors)
+    if not detour:
+        return None
+    return PathUse(
+        "backbone_mesh", near, far, detour, path_geometry_miles(detour, physical_edges)
+    )
+
+
 def augment_physical_resilience(
     base_uses: list[PathUse],
     backbone_ids: tuple[str, ...],
@@ -174,11 +206,10 @@ def augment_physical_resilience(
     The base mesh routes every logical link as an independent shortest path, so a node's
     links share their cheapest egress corridor and one fiber cut can sever several. This
     pass takes the union of physical spans the backbone rides and, while any span is a
-    bridge, routes the cheapest alternate between two backbone nodes the bridge separates
-    that avoids that span -- putting the span on a cycle. Bridges fall monotonically, so
-    it terminates. It stops early if a bridge has no usable detour (a genuine carrier cut
-    or a fully pruned join); the search gate keeps such sets from winning, and validation
-    reports the truth either way.
+    bridge, routes an alternate around it (see :func:`_resilience_detour`). Bridges fall
+    monotonically, so it terminates. It stops early when a bridge has no usable detour (a
+    genuine carrier cut or a fully pruned join); the search gate keeps such sets from
+    winning, and validation reports the truth either way.
     """
     adjacency = build_adjacency(physical_edges)
     backbone_set = set(backbone_ids)
@@ -187,26 +218,11 @@ def augment_physical_resilience(
     for use in uses:
         spans |= path_edge_keys(use.path)
     while True:
-        vertices = {vertex for span in spans for vertex in span} | backbone_set
-        cut = bridges(vertices, spans)
-        if not cut:
+        detour = _resilience_detour(spans, backbone_set, removed_pairs, adjacency, physical_edges)
+        if detour is None:
             break
-        bridge = min(cut)
-        pair = _separated_backbone_pair(bridge, vertices, spans, backbone_set, removed_pairs)
-        if pair is None:
-            break
-        near, far = pair
-        _distances, predecessors = dijkstra(adjacency, near, frozenset({bridge}))
-        detour = reconstruct_path(near, far, predecessors)
-        if not detour:
-            break
-        uses.append(
-            PathUse(
-                "backbone_mesh", near, far, detour,
-                path_geometry_miles(detour, physical_edges),
-            )
-        )
-        spans |= path_edge_keys(detour)
+        uses.append(detour)
+        spans |= path_edge_keys(detour.path)
     return uses
 
 
