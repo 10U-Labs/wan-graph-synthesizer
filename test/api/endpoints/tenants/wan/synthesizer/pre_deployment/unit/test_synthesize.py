@@ -22,7 +22,7 @@ from synthesizer.synthesize import (
     assign_access,
     backbone_combination_count,
     backbone_combinations,
-    backbone_physically_two_edge_connectable,
+    backbone_physically_biconnectable,
     best_design_at_size,
     build_design_for_backbone,
     build_search_plan,
@@ -36,7 +36,7 @@ from synthesizer.synthesize import (
     synthesize_two_tier_design,
 )
 from synthesizer.search_plan import _SearchPlan
-from synthesizer.graphs import build_adjacency, two_edge_components
+from synthesizer.graphs import biconnected_block_membership, build_adjacency
 from synthesizer.overrides import apply_role_overrides
 from synthesizer.strength import vertex_straightness
 
@@ -76,7 +76,7 @@ def _inputs_from_edges(
         adjacency=adjacency,
         all_distances=distances,
         all_predecessors=predecessors,
-        carrier_two_edge_components=two_edge_components(adjacency),
+        carrier_blocks=biconnected_block_membership(adjacency),
     )
 
 
@@ -485,8 +485,8 @@ def _far_demand_inputs_plan() -> tuple[DesignInputs, _SearchPlan]:
     is what drives -- or holds -- the coverage growth.
     """
     # cw and ce each wire to both central nodes, so every backbone candidate sits in one
-    # 2-edge-connected component and the coverage growth (driven by geography, not edges)
-    # is what the tests below probe.
+    # biconnected block and the coverage growth (driven by geography, not edges) is what
+    # the tests below probe.
     edges = physical(
         {
             ("cc1", "cw"): 1.0, ("cc2", "cw"): 1.0, ("ce", "cc2"): 1.0, ("ce", "cc1"): 1.0,
@@ -586,10 +586,10 @@ def test_search_holds_at_the_floor_when_the_only_candidate_is_infeasible() -> No
     assert search_best_design(inputs, params, plan).backbone_ids == ("c1", "c2")
 
 
-# --- physical 2-edge-connectivity: the search-time fiber-resilience gate ----------------
+# --- physical biconnectivity: the search-time city-survivability gate --------------------
 
 # Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single span c-d, so the two
-# pockets are separate 2-edge-connected components: no backbone may straddle them.
+# pockets share no biconnected block: no backbone may straddle them.
 _TWO_POCKET_EDGES = physical(
     {
         ("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0, ("c", "d"): 1.0,
@@ -598,20 +598,51 @@ _TWO_POCKET_EDGES = physical(
 )
 _TWO_POCKET_IDS = ["a", "b", "c", "d", "e", "f"]
 
+# A bowtie -- triangles {a,b,x} and {x,d,e} sharing the cut city x. It is bridgeless (so
+# 2-edge-connectable across the lobes) yet x is an articulation point: {a,d} cannot be
+# made city-survivable. The case the cable gate passed but the city gate must reject.
+_BOWTIE_EDGES = physical(
+    {
+        ("a", "b"): 1.0, ("b", "x"): 1.0, ("a", "x"): 1.0,
+        ("x", "d"): 1.0, ("d", "e"): 1.0, ("x", "e"): 1.0,
+    }
+)
+_BOWTIE_IDS = ["a", "b", "x", "d", "e"]
+
 
 def _two_pocket_inputs() -> DesignInputs:
     """Inputs over two fiber pockets joined by a single bridge span."""
     return _inputs_from_edges(_TWO_POCKET_IDS, _TWO_POCKET_EDGES, set(_TWO_POCKET_IDS))
 
 
-def test_physically_two_edge_connectable_within_one_pocket() -> None:
-    """Two nodes in one bridgeless pocket can be wired into a resilient mesh."""
-    assert backbone_physically_two_edge_connectable(("a", "b"), _two_pocket_inputs()) is True
+def _bowtie_inputs() -> DesignInputs:
+    """Inputs over a bowtie: two triangles sharing one cut city."""
+    return _inputs_from_edges(_BOWTIE_IDS, _BOWTIE_EDGES, set(_BOWTIE_IDS))
 
 
-def test_not_physically_two_edge_connectable_across_a_bridge() -> None:
-    """Two nodes split by a single span can never survive its cut, so they are rejected."""
-    assert backbone_physically_two_edge_connectable(("a", "d"), _two_pocket_inputs()) is False
+def test_physically_biconnectable_within_one_block() -> None:
+    """Two nodes sharing one biconnected block can be wired into a city-survivable mesh."""
+    assert backbone_physically_biconnectable(("a", "b"), _two_pocket_inputs()) is True
+
+
+def test_not_physically_biconnectable_across_a_bridge() -> None:
+    """Two nodes split by a single span share no block, so they are rejected."""
+    assert backbone_physically_biconnectable(("a", "d"), _two_pocket_inputs()) is False
+
+
+def test_not_physically_biconnectable_across_a_cut_city() -> None:
+    """Two nodes either side of a cut city are rejected though no single cable splits them."""
+    assert backbone_physically_biconnectable(("a", "d"), _bowtie_inputs()) is False
+
+
+def test_physically_biconnectable_within_one_bowtie_lobe() -> None:
+    """Two nodes in the same bowtie lobe share that lobe's block, so they pass."""
+    assert backbone_physically_biconnectable(("a", "b"), _bowtie_inputs()) is True
+
+
+def test_not_biconnectable_with_no_backbone_nodes() -> None:
+    """An empty backbone shares no block, so the gate rejects it."""
+    assert backbone_physically_biconnectable((), _bowtie_inputs()) is False
 
 
 def test_forced_resilience_error_for_forced_nodes_split_across_pockets() -> None:
@@ -627,8 +658,12 @@ def _triangle_inputs() -> DesignInputs:
 
 
 def test_forced_resilience_error_for_a_pocket_too_small_for_the_floor() -> None:
-    """A forced node whose pocket cannot seat the minimum backbone count is rejected."""
-    assert forced_backbone_resilience_error(frozenset({"a"}), _triangle_inputs(), 5) is not None
+    """A forced node whose block cannot seat the minimum backbone count is rejected.
+
+    The forced node's pocket holds only its three triangle peers, fewer than the floor of
+    five, even though other eligible nodes sit in the graph's other pocket.
+    """
+    assert forced_backbone_resilience_error(frozenset({"a"}), _two_pocket_inputs(), 5) is not None
 
 
 def test_forced_resilience_error_none_for_a_healthy_forced_node() -> None:

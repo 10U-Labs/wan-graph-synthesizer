@@ -5,7 +5,7 @@ from __future__ import annotations
 import heapq
 import math
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from synthesizer.input_graph import PhysicalEdge, edge_key
 
@@ -103,18 +103,22 @@ def bridges(vertex_ids: set[str], edges: set[tuple[str, str]]) -> set[tuple[str,
         if len(connected_components(vertex_ids, edges - {edge})) > base
     }
 
-def bridge_edges(adjacency: dict[str, list[tuple[str, float]]]) -> set[tuple[str, str]]:
-    """Every bridge span of a weighted graph, found in one linear DFS.
+def _lowlink_dfs(
+    adjacency: dict[str, list[tuple[str, float]]],
+    on_edge: Callable[[str, str], None],
+    on_finish: Callable[[str, str, int, int], None],
+) -> None:
+    """Iterative Tarjan low-link sweep, the shared skeleton of the connectivity passes.
 
-    A Tarjan low-link sweep, run iteratively so a long carrier graph cannot blow the
-    recursion limit. An edge ``(u, v)`` is a bridge when the subtree rooted at ``v``
-    has no back edge reaching ``u`` or above (``low[v] > disc[u]``). Suited to the full
-    carrier graph, where the edge-probing :func:`bridges` would be far too slow.
+    Calls ``on_edge(u, v)`` for every tree edge and every back edge (to an ancestor), in
+    DFS order, and ``on_finish(node, parent, low_node, disc_parent)`` when a node's subtree
+    is done -- enough for both the bridge and the biconnected-block sweeps to do their own
+    bookkeeping without restating the traversal. Run iteratively (an explicit stack) so a
+    long carrier graph cannot blow the recursion limit.
     """
     disc: dict[str, int] = {}
     low: dict[str, int] = {}
     parent: dict[str, str | None] = {}
-    found: set[tuple[str, str]] = set()
     counter = 0
     for root in adjacency:
         if root in disc:
@@ -130,11 +134,14 @@ def bridge_edges(adjacency: dict[str, list[tuple[str, float]]]) -> set[tuple[str
                 if neighbor == parent[node]:
                     continue
                 if neighbor in disc:
-                    low[node] = min(low[node], disc[neighbor])
+                    if disc[neighbor] < disc[node]:
+                        low[node] = min(low[node], disc[neighbor])
+                        on_edge(node, neighbor)
                     continue
                 disc[neighbor] = low[neighbor] = counter
                 parent[neighbor] = node
                 counter += 1
+                on_edge(node, neighbor)
                 stack.append((neighbor, iter(adjacency[neighbor])))
                 descended = True
                 break
@@ -144,8 +151,22 @@ def bridge_edges(adjacency: dict[str, list[tuple[str, float]]]) -> set[tuple[str
             up = parent[node]
             if up is not None:
                 low[up] = min(low[up], low[node])
-                if low[node] > disc[up]:
-                    found.add(edge_key(up, node))
+                on_finish(node, up, low[node], disc[up])
+
+def bridge_edges(adjacency: dict[str, list[tuple[str, float]]]) -> set[tuple[str, str]]:
+    """Every bridge span of a weighted graph, found in one linear DFS.
+
+    An edge ``(u, v)`` is a bridge when the subtree rooted at ``v`` has no back edge
+    reaching ``u`` or above (``low[v] > disc[u]``). Suited to the full carrier graph, where
+    the edge-probing :func:`bridges` would be far too slow.
+    """
+    found: set[tuple[str, str]] = set()
+
+    def record(node: str, up: str, low_node: int, disc_up: int) -> None:
+        if low_node > disc_up:
+            found.add(edge_key(up, node))
+
+    _lowlink_dfs(adjacency, lambda _u, _v: None, record)
     return found
 
 def two_edge_components(adjacency: dict[str, list[tuple[str, float]]]) -> dict[str, int]:
@@ -171,6 +192,57 @@ def two_edge_components(adjacency: dict[str, list[tuple[str, float]]]) -> dict[s
         for vertex_id in component
     }
 
+def _record_block(
+    edge_stack: list[tuple[str, str]],
+    marker: tuple[str, str],
+    blocks: list[set[str]],
+) -> None:
+    """Pop one biconnected component off the edge stack down to ``marker``.
+
+    Records the popped vertices as a new block only when it is non-trivial (more than one
+    span); a single-span pop is a bridge and earns no block.
+    """
+    block = [edge_stack.pop()]
+    while block[-1] != marker:
+        block.append(edge_stack.pop())
+    if len(block) >= 2:
+        blocks.append({vertex for span in block for vertex in span})
+
+def biconnected_block_membership(
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> dict[str, frozenset[int]]:
+    """Label each vertex with the non-trivial biconnected blocks it belongs to.
+
+    A block is a maximal 2-vertex-connected piece -- a set of vertices on a common cycle.
+    Blocks overlap: a cut vertex belongs to several, so each vertex carries a *set* of
+    block ids (unlike :func:`two_edge_components`, whose 2-edge-connected components form a
+    clean partition). A set of backbone nodes can be wired into a city-survivable
+    (no single-vertex cut) physical mesh iff they all share one common block, so the gate
+    is a non-empty intersection of their block sets.
+
+    Bridge spans are conventionally their own block, but two cities joined only by a bridge
+    are not on a common cycle and are not even cable-survivable; such trivial (single-edge)
+    blocks get **no id**, so a city all of whose spans are bridges maps to the empty set and
+    fails the gate. A Hopcroft--Tarjan pass over an explicit edge stack, driven by the shared
+    iterative low-link DFS (:func:`_lowlink_dfs`): each span is pushed as it is walked, and a
+    finished node whose subtree cannot climb above its parent closes off one block.
+    """
+    edge_stack: list[tuple[str, str]] = []
+    blocks: list[set[str]] = []
+
+    def push(node: str, neighbor: str) -> None:
+        edge_stack.append(edge_key(node, neighbor))
+
+    def close(node: str, up: str, low_node: int, disc_up: int) -> None:
+        if low_node >= disc_up:
+            _record_block(edge_stack, edge_key(up, node), blocks)
+
+    _lowlink_dfs(adjacency, push, close)
+    return {
+        node: frozenset(index for index, block in enumerate(blocks) if node in block)
+        for node in adjacency
+    }
+
 def is_two_edge_connected(vertex_ids: set[str], edges: set[tuple[str, str]]) -> bool:
     """True if the graph is connected and survives the loss of any single edge.
 
@@ -179,6 +251,16 @@ def is_two_edge_connected(vertex_ids: set[str], edges: set[tuple[str, str]]) -> 
     if len(connected_components(vertex_ids, edges)) != 1:
         return False
     return not bridges(vertex_ids, edges)
+
+def is_two_vertex_connected(vertex_ids: set[str], edges: set[tuple[str, str]]) -> bool:
+    """True if the graph is connected and survives the loss of any single vertex.
+
+    A graph is 2-vertex-connected (biconnected) when it is connected and has no
+    articulation point -- the city-loss analogue of :func:`is_two_edge_connected`.
+    """
+    if len(connected_components(vertex_ids, edges)) != 1:
+        return False
+    return not articulation_points(vertex_ids, edges)
 
 def articulation_points(vertex_ids: set[str], edges: set[tuple[str, str]]) -> set[str]:
     """Return cut vertices whose removal would disconnect the design graph."""

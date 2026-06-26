@@ -75,6 +75,11 @@ def test_design_is_connected() -> None:
     assert ARTIFACTS.validation["connected"] is True
 
 
+def test_backbone_survives_any_single_city() -> None:
+    """The ring backbone's physical fiber has no single-city chokepoint (biconnected)."""
+    assert ARTIFACTS.validation["backbone_mesh_two_vertex_connected"] is True
+
+
 def _forced_off_net_artifacts() -> DesignArtifacts:
     """Synthesize over the ring with an off-net site forced as a backbone node."""
     site, params = fixtures.forced_off_net_case()

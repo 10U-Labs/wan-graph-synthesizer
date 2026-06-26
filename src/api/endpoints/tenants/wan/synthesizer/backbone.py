@@ -3,9 +3,10 @@
 Every backbone node links to its ``mesh_degree`` nearest reachable backbone nodes,
 minus any backbone-backbone pairs the operator pruned in ``etc/*.yml``. The mesh is
 then augmented so the backbone is a single connected network and, wherever the carrier
-graph allows, 2-edge-connected -- it survives the loss of any single link. These
-helpers are split from the synthesizer so the backbone concern stays cohesive and
-the synthesizer module stays bounded.
+graph allows, 2-vertex-connected -- the physical fiber survives the loss of any single
+city, which also implies it survives any single cable cut. These helpers are split from
+the synthesizer so the backbone concern stays cohesive and the synthesizer module stays
+bounded.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from dataclasses import dataclass
 
 from synthesizer.input_graph import PhysicalEdge, edge_key
 from synthesizer.graphs import (
+    articulation_points,
     bridges,
     build_adjacency,
     connected_components,
@@ -137,28 +139,36 @@ def select_backbone_mesh_pairs(
     return sorted(augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs))
 
 
+def _component_index(vertices: set[str], spans: set[tuple[str, str]]) -> dict[str, int]:
+    """Map each vertex to the id of the connected piece it lands in."""
+    index_of: dict[str, int] = {}
+    for index, side in enumerate(connected_components(vertices, spans)):
+        for node in side:
+            index_of[node] = index
+    return index_of
+
+
 def _separated_backbone_pair(
-    bridge: tuple[str, str],
+    cut: str,
     vertices: set[str],
     spans: set[tuple[str, str]],
     backbone_set: set[str],
     removed_pairs: frozenset[tuple[str, str]],
 ) -> tuple[str, str] | None:
-    """A backbone node on each side of a bridge span, as a non-pruned edge key.
+    """A backbone node on each side of a cut city, as a non-pruned edge key.
 
-    Deleting the bridge splits its component in two; the two backbone nodes that the
-    bridge sits between (the endpoints of the path it carries) land on opposite sides.
-    Returns the cheapest-labelled such pair whose logical link the operator has not
-    pruned, or None when every cross pair is pruned.
+    Removing the cut city (and every span touching it) splits its component into pieces;
+    the backbone nodes the city separates land in different pieces. Returns the cheapest-
+    labelled backbone pair sitting in two different pieces whose logical link the operator
+    has not pruned, or None when no such pair exists (only transit is separated, or every
+    cross pair is pruned). The cut city itself is never an endpoint.
     """
-    left_id, right_id = bridge
-    sides = connected_components(vertices, spans - {bridge})
-    left_side = next(set(side) for side in sides if left_id in side)
-    right_side = next(set(side) for side in sides if right_id in side)
-    for near in sorted(left_side & backbone_set):
-        for far in sorted(right_side & backbone_set):
+    side_of = _component_index(vertices - {cut}, {span for span in spans if cut not in span})
+    backbone_nodes = sorted(node for node in backbone_set if node != cut)
+    for offset, near in enumerate(backbone_nodes):
+        for far in backbone_nodes[offset + 1:]:
             pair = edge_key(near, far)
-            if pair not in removed_pairs:
+            if side_of[near] != side_of[far] and pair not in removed_pairs:
                 return pair
     return None
 
@@ -170,29 +180,33 @@ def _resilience_detour(
     adjacency: dict[str, list[tuple[str, float]]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> PathUse | None:
-    """One detour route relieving a bridge in the span union, or None when none remains.
+    """One detour route relieving a cut city in the span union, or None when none remains.
 
-    Picks a bridge span, finds two backbone nodes it separates, and routes the cheapest
-    alternate between them that avoids the span -- putting the span on a cycle. Returns
-    None when the spans are already bridgeless, or no usable (non-pruned, reachable)
-    alternate exists for the chosen bridge.
+    Scans the articulation cities; for the first that separates two backbone nodes, routes
+    the cheapest alternate between them that avoids that city -- all of its spans blocked --
+    so the city no longer sits on the only path. Returns None when the spans already survive
+    any single city loss, or no usable (non-pruned, reachable) alternate exists. Skipping a
+    cut that separates only transit is safe: once every backbone-separating cut is relieved,
+    the union is biconnected, since each transit city stays joined to a backbone node it
+    routes between after any single removal.
     """
     vertices = {vertex for span in spans for vertex in span} | backbone_set
-    cut = bridges(vertices, spans)
-    if not cut:
-        return None
-    bridge = min(cut)
-    pair = _separated_backbone_pair(bridge, vertices, spans, backbone_set, removed_pairs)
-    if pair is None:
-        return None
-    near, far = pair
-    _distances, predecessors = dijkstra(adjacency, near, frozenset({bridge}))
-    detour = reconstruct_path(near, far, predecessors)
-    if not detour:
-        return None
-    return PathUse(
-        "backbone_mesh", near, far, detour, path_geometry_miles(detour, physical_edges)
-    )
+    for cut in sorted(articulation_points(vertices, spans)):
+        pair = _separated_backbone_pair(cut, vertices, spans, backbone_set, removed_pairs)
+        if pair is None:
+            continue
+        near, far = pair
+        blocked = frozenset(
+            edge_key(cut, neighbor) for neighbor, _weight in adjacency.get(cut, [])
+        )
+        _distances, predecessors = dijkstra(adjacency, near, blocked)
+        detour = reconstruct_path(near, far, predecessors)
+        if detour:
+            return PathUse(
+                "backbone_mesh", near, far, detour,
+                path_geometry_miles(detour, physical_edges),
+            )
+    return None
 
 
 def augment_physical_resilience(
@@ -201,15 +215,18 @@ def augment_physical_resilience(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     removed_pairs: frozenset[tuple[str, str]],
 ) -> list[PathUse]:
-    """Add detour routes until the backbone's physical spans survive any single cut.
+    """Add detour routes until the backbone's physical spans survive any single city loss.
 
     The base mesh routes every logical link as an independent shortest path, so a node's
-    links share their cheapest egress corridor and one fiber cut can sever several. This
-    pass takes the union of physical spans the backbone rides and, while any span is a
-    bridge, routes an alternate around it (see :func:`_resilience_detour`). Bridges fall
-    monotonically, so it terminates. It stops early when a bridge has no usable detour (a
-    genuine carrier cut or a fully pruned join); the search gate keeps such sets from
-    winning, and validation reports the truth either way.
+    links share their cheapest egress corridor and one city's loss can sever several. This
+    pass takes the union of physical spans the backbone rides and, while any city is a cut
+    (an articulation point), routes an alternate around it (see :func:`_resilience_detour`),
+    putting that city off the only path. The count of cut cities falls monotonically -- a
+    detour merges the two pieces the city separated and adds no new cut, since every city on
+    the detour sits on the new cycle -- so it terminates at a biconnected union. It stops
+    early when a cut has no usable detour (a genuine carrier chokepoint or a fully pruned
+    join); the search gate keeps such sets from winning, and validation reports the truth
+    either way.
     """
     adjacency = build_adjacency(physical_edges)
     backbone_set = set(backbone_ids)

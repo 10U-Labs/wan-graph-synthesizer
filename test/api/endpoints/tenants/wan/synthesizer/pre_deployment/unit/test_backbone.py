@@ -16,6 +16,7 @@ from synthesizer.graphs import (
     build_adjacency,
     connected_components,
     is_two_edge_connected,
+    is_two_vertex_connected,
     path_edge_keys,
 )
 
@@ -221,10 +222,18 @@ def test_backbone_mesh_paths_omit_a_removed_pair() -> None:
     assert edge_key("c1", "c2") not in {edge_key(use.source, use.target) for use in routed}
 
 
-# A two-node backbone whose only link is the direct span a-b, with a-c-b as an
-# alternate corridor: the base mesh rides a-b, leaving a-b a single point of failure.
-_CORRIDOR_EDGES = physical({("a", "b"): 1.0, ("a", "c"): 1.0, ("c", "b"): 1.0})
-_BASE_DIRECT = [PathUse("backbone_mesh", "a", "b", ("a", "b"), 1.0)]
+# A three-node backbone (a, b, c) whose base mesh routes a-b and b-c both through the
+# transit hub h, so h is a single city whose loss strands a node. The carrier graph also
+# offers direct a-b, a-c, b-c spans, the alternates a detour can use to route around h.
+_HUB_EDGES = physical({
+    ("a", "h"): 1.0, ("b", "h"): 1.0, ("c", "h"): 1.0,
+    ("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0,
+})
+_HUB_ONLY = physical({("a", "h"): 1.0, ("b", "h"): 1.0, ("c", "h"): 1.0})
+_BASE_HUB = [
+    PathUse("backbone_mesh", "a", "b", ("a", "h", "b"), 2.0),
+    PathUse("backbone_mesh", "b", "c", ("b", "h", "c"), 2.0),
+]
 
 
 def _augmented_spans(
@@ -240,23 +249,22 @@ def _augmented_spans(
     return spans
 
 
-def test_augment_physical_resilience_makes_a_shared_corridor_survive_a_cut() -> None:
-    """A detour is added around the single egress span until the fiber is bridgeless."""
-    spans = _augmented_spans(_BASE_DIRECT, ("a", "b"), _CORRIDOR_EDGES)
-    assert is_two_edge_connected({vertex for span in spans for vertex in span}, spans)
+def test_augment_physical_resilience_makes_a_cut_city_survivable() -> None:
+    """Detours are added around the shared hub until the fiber survives any city loss."""
+    spans = _augmented_spans(_BASE_HUB, ("a", "b", "c"), _HUB_EDGES)
+    assert is_two_vertex_connected({vertex for span in spans for vertex in span}, spans)
 
 
 def test_augment_physical_resilience_stops_when_no_detour_exists() -> None:
-    """A single-span carrier graph offers no alternate, so the base mesh is left as is."""
-    only_span = physical({("a", "b"): 1.0})
-    assert augment_physical_resilience(_BASE_DIRECT, ("a", "b"), only_span, frozenset()) == (
-        _BASE_DIRECT
+    """A hub-only carrier graph offers no city-avoiding alternate, so the base is left as is."""
+    assert augment_physical_resilience(_BASE_HUB, ("a", "b", "c"), _HUB_ONLY, frozenset()) == (
+        _BASE_HUB
     )
 
 
-def test_augment_physical_resilience_skips_a_pruned_detour_pair() -> None:
-    """When the only cross pair is operator-pruned, no detour is added."""
-    pruned = frozenset({edge_key("a", "b")})
-    assert augment_physical_resilience(_BASE_DIRECT, ("a", "b"), _CORRIDOR_EDGES, pruned) == (
-        _BASE_DIRECT
+def test_augment_physical_resilience_skips_pruned_detour_pairs() -> None:
+    """When every backbone cross pair is operator-pruned, no detour is added."""
+    pruned = frozenset({edge_key("a", "b"), edge_key("a", "c"), edge_key("b", "c")})
+    assert augment_physical_resilience(_BASE_HUB, ("a", "b", "c"), _HUB_EDGES, pruned) == (
+        _BASE_HUB
     )

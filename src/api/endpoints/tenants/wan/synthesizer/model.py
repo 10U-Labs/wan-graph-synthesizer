@@ -168,9 +168,10 @@ class DesignInputs:
     adjacency: dict[str, list[tuple[str, float]]]
     all_distances: dict[str, dict[str, float]]
     all_predecessors: dict[str, dict[str, str]]
-    # Each carrier PoP's 2-edge-connected component id: backbone nodes can be wired
-    # into a fiber-resilient mesh only when they all share one component.
-    carrier_two_edge_components: dict[str, int]
+    # Each carrier PoP's non-trivial biconnected blocks (a city may sit in several):
+    # backbone nodes can be wired into a city-survivable mesh only when they all share
+    # one common block. Subsumes the older 2-edge-component oracle (biconnected ⟹ bridgeless).
+    carrier_blocks: dict[str, frozenset[int]]
 
 class ValidationReport(TypedDict):
     """Structured results of validating a design against the hard requirements."""
@@ -186,6 +187,7 @@ class ValidationReport(TypedDict):
     backbone_meets_mesh_link_target: bool
     backbone_mesh_degree_deficient: list[dict[str, object]]
     backbone_mesh_two_edge_connected: bool
+    backbone_mesh_two_vertex_connected: bool
 
 @dataclass(frozen=True)
 class DesignPaths:

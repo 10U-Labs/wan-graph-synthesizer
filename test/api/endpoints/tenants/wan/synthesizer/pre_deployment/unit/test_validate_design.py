@@ -234,6 +234,61 @@ def test_span_disjoint_paths_are_two_edge_connected() -> None:
     assert report["backbone_mesh_two_edge_connected"] is True
 
 
+def test_backbone_mesh_two_vertex_connected_with_fewer_than_two_nodes() -> None:
+    """A backbone with fewer than two nodes is trivially two-vertex-connected."""
+    design = build_design(("B1",), (), [], [])
+    report = validate_design([make_pop("B1")], design)
+    assert report["backbone_mesh_two_vertex_connected"] is True
+
+
+def test_healthy_backbone_is_two_vertex_connected() -> None:
+    """A backbone that survives any single city loss is reported city-survivable."""
+    assert _mesh_report(*_HEALTHY)["backbone_mesh_two_vertex_connected"] is True
+
+
+def test_chain_backbone_is_not_two_vertex_connected() -> None:
+    """A backbone with a cut city (a chain's middle) is flagged as not city-survivable."""
+    chain = _mesh_design(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
+    report = validate_design([make_pop(n) for n in ("C1", "C2", "C3")], chain)
+    assert report["backbone_mesh_two_vertex_connected"] is False
+
+
+def test_unrouted_backbone_node_is_not_two_vertex_connected() -> None:
+    """A backbone node carried by no routed span reads as disconnected, so the check fails."""
+    design = _mesh_design(("C1", "C2", "C3"), [("C1", "C2")])
+    report = validate_design([make_pop(n) for n in ("C1", "C2", "C3")], design)
+    assert report["backbone_mesh_two_vertex_connected"] is False
+
+
+# A bowtie: two backbone triangles {B1,B2,H} and {H,B3,B4} sharing the transit city H. No
+# span is a bridge, so the fiber survives any single cable cut; but H is a cut city whose
+# loss splits the backbone -- where cable- and city-survivability diverge.
+_BOWTIE_DESIGN = _routed_design(
+    ("B1", "B2", "B3", "B4"),
+    [
+        PathUse("backbone_mesh", "B1", "B2", ("B1", "B2"), 1.0),
+        PathUse("backbone_mesh", "B2", "H", ("B2", "H"), 1.0),
+        PathUse("backbone_mesh", "B1", "H", ("B1", "H"), 1.0),
+        PathUse("backbone_mesh", "H", "B3", ("H", "B3"), 1.0),
+        PathUse("backbone_mesh", "B3", "B4", ("B3", "B4"), 1.0),
+        PathUse("backbone_mesh", "H", "B4", ("H", "B4"), 1.0),
+    ],
+)
+_BOWTIE_VERTICES = [make_pop(name) for name in ("B1", "B2", "B3", "B4", "H")]
+
+
+def test_bowtie_backbone_is_two_edge_connected() -> None:
+    """A bowtie has no bridge, so the fiber survives any single cable cut."""
+    report = validate_design(_BOWTIE_VERTICES, _BOWTIE_DESIGN)
+    assert report["backbone_mesh_two_edge_connected"] is True
+
+
+def test_bowtie_backbone_is_not_two_vertex_connected() -> None:
+    """The bowtie's shared city is a cut, so the fiber does not survive that city's loss."""
+    report = validate_design(_BOWTIE_VERTICES, _BOWTIE_DESIGN)
+    assert report["backbone_mesh_two_vertex_connected"] is False
+
+
 # Two disjoint physical edges leave the design graph in two components.
 _DISCONNECTED = build_design(
     backbone_ids=("B1", "B2", "B3", "B4"),

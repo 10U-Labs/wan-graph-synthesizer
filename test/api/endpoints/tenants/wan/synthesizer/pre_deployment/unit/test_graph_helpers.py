@@ -8,10 +8,12 @@ import pytest
 
 from synthesizer.graphs import (
     articulation_points,
+    biconnected_block_membership,
     bridge_edges,
     bridges,
     connected_components,
     dijkstra,
+    is_two_vertex_connected,
     path_edge_keys,
     reconstruct_path,
     two_edge_components,
@@ -37,6 +39,14 @@ def _adjacency(pairs: list[tuple[str, str]]) -> dict[str, list[tuple[str, float]
 # bridge between two otherwise 2-edge-connected pockets.
 _TWO_POCKETS = _adjacency(
     [("a", "b"), ("b", "c"), ("a", "c"), ("c", "d"), ("d", "e"), ("e", "f"), ("d", "f")]
+)
+
+# A bowtie: two triangles -- {a,b,c} and {c,d,e} -- sharing the single cut city c. It has
+# no bridge (every span lies on a triangle), yet c is an articulation point: the lobes
+# fall apart when it is removed. The case where 2-edge-connected and 2-vertex-connected
+# diverge.
+_BOWTIE = _adjacency(
+    [("a", "b"), ("b", "c"), ("a", "c"), ("c", "d"), ("d", "e"), ("c", "e")]
 )
 
 
@@ -195,3 +205,53 @@ def test_dijkstra_routes_around_a_blocked_span() -> None:
     adjacency = _adjacency([("a", "b"), ("b", "c"), ("a", "c")])
     distances, _predecessors = dijkstra(adjacency, "a", frozenset({edge_key("a", "c")}))
     assert distances["c"] == 2.0
+
+
+def test_block_membership_labels_a_cycle_as_one_shared_block() -> None:
+    """Every vertex of a cycle lies on one common biconnected block."""
+    blocks = biconnected_block_membership(_adjacency([("a", "b"), ("b", "c"), ("a", "c")]))
+    assert blocks["a"] == blocks["b"] == blocks["c"] != frozenset()
+
+
+def test_block_membership_splits_two_pockets() -> None:
+    """Vertices in different pockets share no biconnected block."""
+    blocks = biconnected_block_membership(_TWO_POCKETS)
+    assert not blocks["a"] & blocks["d"]
+
+
+def test_block_membership_gives_a_bridge_no_block() -> None:
+    """A bridge is no cyclic block, so its two endpoints share none."""
+    blocks = biconnected_block_membership(_TWO_POCKETS)
+    assert not blocks["c"] & blocks["d"]
+
+
+def test_block_membership_labels_a_chain_as_blockless() -> None:
+    """Every span of a chain is a bridge, so no vertex sits in any block."""
+    blocks = biconnected_block_membership(_adjacency([("a", "b"), ("b", "c")]))
+    assert blocks == {"a": frozenset(), "b": frozenset(), "c": frozenset()}
+
+
+def test_block_membership_puts_a_cut_city_in_two_blocks() -> None:
+    """The shared city of a bowtie belongs to both lobes' blocks."""
+    assert len(biconnected_block_membership(_BOWTIE)["c"]) == 2
+
+
+def test_block_membership_keeps_bowtie_lobes_in_separate_blocks() -> None:
+    """The outer cities of a bowtie's two lobes share no block."""
+    blocks = biconnected_block_membership(_BOWTIE)
+    assert not blocks["a"] & blocks["d"]
+
+
+def test_is_two_vertex_connected_true_for_a_cycle() -> None:
+    """A cycle has no articulation point, so it survives any single vertex loss."""
+    assert is_two_vertex_connected({"a", "b", "c"}, {("a", "b"), ("b", "c"), ("a", "c")}) is True
+
+
+def test_is_two_vertex_connected_false_for_a_chain() -> None:
+    """A chain's middle vertex is a cut, so it is not 2-vertex-connected."""
+    assert is_two_vertex_connected({"a", "b", "c"}, {("a", "b"), ("b", "c")}) is False
+
+
+def test_is_two_vertex_connected_false_when_disconnected() -> None:
+    """A graph in two pieces is not 2-vertex-connected."""
+    assert is_two_vertex_connected({"a", "b", "c", "d"}, {("a", "b"), ("c", "d")}) is False

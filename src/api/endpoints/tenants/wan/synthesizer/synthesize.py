@@ -48,10 +48,10 @@ from synthesizer.forced import (
     removed_backbone_pairs,
 )
 from synthesizer.graphs import (
+    biconnected_block_membership,
     build_adjacency,
     dijkstra,
     path_edge_keys,
-    two_edge_components,
 )
 from synthesizer.backbone import BackboneConstraints, backbone_mesh_paths
 from synthesizer.search_plan import _SearchPlan
@@ -145,16 +145,20 @@ def assign_access(
     return access_edges
 
 
-def backbone_physically_two_edge_connectable(
+def backbone_physically_biconnectable(
     backbone_ids: tuple[str, ...], inputs: DesignInputs
 ) -> bool:
-    """True if the backbone nodes can be wired into a bridgeless physical-fiber mesh.
+    """True if the backbone nodes can be wired into a city-survivable physical-fiber mesh.
 
-    They can iff they all sit in one 2-edge-connected component of the carrier graph --
-    otherwise some single span separates two of them and no routing survives its cut.
+    They can iff they all share one common biconnected block of the carrier graph --
+    otherwise some single city separates two of them and no routing survives its loss.
+    Being city-survivable implies cable-survivable, so this subsumes the old 2-edge gate.
     """
-    labels = {inputs.carrier_two_edge_components.get(node) for node in backbone_ids}
-    return len(labels) == 1 and None not in labels
+    common: frozenset[int] | None = None
+    for node in backbone_ids:
+        blocks = inputs.carrier_blocks.get(node, frozenset())
+        common = blocks if common is None else common & blocks
+    return common is not None and bool(common)
 
 
 def forced_backbone_resilience_error(
@@ -162,28 +166,37 @@ def forced_backbone_resilience_error(
 ) -> str | None:
     """Why the operator's forced backbone nodes can never form a resilient design, or None.
 
-    A forced node behind a single carrier span (alone in its 2-edge-connected component,
-    or split from the other forced nodes) makes every candidate set fail the physical
-    gate, so the search would end with an opaque "no feasible design". Caught up front,
-    this names the offending nodes so the operator can fix ``etc/*.yml`` -- the reject
-    rule wins over the force.
+    A forced node behind a single carrier city (sharing no block with the other forced
+    nodes, or sitting in no cyclic block at all) makes every candidate set fail the
+    physical gate, so the search would end with an opaque "no feasible design". Caught up
+    front, this names the offending nodes so the operator can fix ``etc/*.yml`` -- the
+    reject rule wins over the force.
     """
     if not required:
         return None
-    components = inputs.carrier_two_edge_components
+    blocks_by_id = inputs.carrier_blocks
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     names = ", ".join(sorted(pop_by_id[node].name for node in required))
-    if len({components.get(node) for node in required}) > 1:
+    common = blocks_by_id.get(next(iter(required)), frozenset())
+    for node in required:
+        common &= blocks_by_id.get(node, frozenset())
+    if not common:
         return (
-            "Forced backbone nodes span more than one 2-edge-connected component of the "
-            f"carrier fiber graph, so no design can survive a single fiber cut: {names}"
+            "Forced backbone nodes share no common biconnected block of the carrier fiber "
+            f"graph, so no design can survive a single city loss: {names}"
         )
-    component = components[next(iter(required))]
-    peers = sum(1 for node in inputs.eligible_backbone_ids if components.get(node) == component)
-    if peers < min_count:
+    best = max(
+        sum(
+            1
+            for node in inputs.eligible_backbone_ids
+            if block in blocks_by_id.get(node, frozenset())
+        )
+        for block in common
+    )
+    if best < min_count:
         return (
             "A forced backbone node sits in a carrier fiber pocket too small for a "
-            f"{min_count}-node 2-edge-connected backbone: {names}"
+            f"{min_count}-node biconnected backbone: {names}"
         )
     return None
 
@@ -195,14 +208,14 @@ def evaluate_backbone(
 ) -> list[AccessEdge] | None:
     """Score a backbone set's feasibility and demand homing without routing paths.
 
-    Returns None when the backbone nodes cannot be wired into a bridgeless physical-fiber
-    mesh (a single span would strand one -- which also rules out a node that cannot reach
-    its peers, since 2-edge-connectivity implies they are all mutually reachable), or the
-    backbone is smaller than the configured number of homes per demand vertex (so
+    Returns None when the backbone nodes cannot be wired into a city-survivable physical-
+    fiber mesh (a single city loss would strand one -- which also rules out a node that
+    cannot reach its peers, since biconnectivity implies they are all mutually reachable),
+    or the backbone is smaller than the configured number of homes per demand vertex (so
     ``assign_access`` cannot give each demand vertex that many distinct backbone nodes).
     Routed paths are deferred to the winning set, since they do not affect the ranking.
     """
-    if not backbone_physically_two_edge_connectable(backbone_ids, inputs):
+    if not backbone_physically_biconnectable(backbone_ids, inputs):
         return None
     return assign_access(backbone_ids, inputs, plan)
 
@@ -534,7 +547,7 @@ class _GraphContext:
     adjacency: dict[str, list[tuple[str, float]]]
     all_distances: dict[str, dict[str, float]]
     all_predecessors: dict[str, dict[str, str]]
-    carrier_two_edge_components: dict[str, int]
+    carrier_blocks: dict[str, frozenset[int]]
 
 
 def graph_context(
@@ -549,7 +562,7 @@ def graph_context(
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
     return _GraphContext(
         carrier_pops, all_access, adjacency, all_distances, all_predecessors,
-        two_edge_components(adjacency),
+        biconnected_block_membership(adjacency),
     )
 
 
@@ -635,7 +648,7 @@ def synthesize_two_tier_design(
         adjacency=context.adjacency,
         all_distances=context.all_distances,
         all_predecessors=context.all_predecessors,
-        carrier_two_edge_components=context.carrier_two_edge_components,
+        carrier_blocks=context.carrier_blocks,
     )
     plan = build_search_plan(inputs, backbone_eligible_ids, overrides, params)
     forced_error = forced_backbone_resilience_error(

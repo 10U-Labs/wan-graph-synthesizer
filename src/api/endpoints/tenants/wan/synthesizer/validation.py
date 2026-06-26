@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from synthesizer.input_graph import Vertex, edge_key
 from synthesizer.model import Design, ValidationReport
 from synthesizer.graphs import (
     articulation_points,
     connected_components,
     is_two_edge_connected,
+    is_two_vertex_connected,
     path_edge_keys,
 )
 
@@ -90,19 +93,35 @@ def backbone_mesh_physical_spans(design: Design) -> set[tuple[str, str]]:
             spans |= path_edge_keys(use.path)
     return spans
 
-def backbone_mesh_two_edge_connected(design: Design) -> bool:
-    """True if the backbone's physical fiber survives the loss of any single span.
+def _backbone_mesh_survives(
+    design: Design, is_resilient: Callable[[set[str], set[tuple[str, str]]], bool]
+) -> bool:
+    """Whether the backbone's routed physical spans pass ``is_resilient``.
 
-    Tested over the spans the mesh routes over, not the logical pairs: two logical links
-    that ride one corridor offer no real redundancy, so the check must see the cables. A
-    backbone node with no routed span reads as disconnected.
+    Shared by the cable- and city-loss metrics: both judge the same span union (the real
+    cables the mesh rides, not the logical pairs), differing only in the resilience test.
+    A backbone of fewer than two nodes is trivially resilient; a backbone node with no
+    routed span reads as disconnected.
     """
     ids = set(design.backbone_ids)
     if len(ids) < 2:
         return True
     spans = backbone_mesh_physical_spans(design)
     vertices = ids | {vertex for span in spans for vertex in span}
-    return is_two_edge_connected(vertices, spans)
+    return is_resilient(vertices, spans)
+
+def backbone_mesh_two_edge_connected(design: Design) -> bool:
+    """True if the backbone's physical fiber survives the loss of any single cable span."""
+    return _backbone_mesh_survives(design, is_two_edge_connected)
+
+def backbone_mesh_two_vertex_connected(design: Design) -> bool:
+    """True if the backbone's physical fiber survives the loss of any single city.
+
+    The city-loss analogue: the routed span union must have no articulation point, so no
+    single city -- a backbone city or a transit city the routes pass through -- can split
+    the backbone.
+    """
+    return _backbone_mesh_survives(design, is_two_vertex_connected)
 
 def neighbor_degrees(
     ids: set[str], edges: set[tuple[str, str]]
@@ -162,4 +181,5 @@ def validate_design(
         "backbone_meets_mesh_link_target": not mesh_deficient,
         "backbone_mesh_degree_deficient": mesh_deficient,
         "backbone_mesh_two_edge_connected": backbone_mesh_two_edge_connected(design),
+        "backbone_mesh_two_vertex_connected": backbone_mesh_two_vertex_connected(design),
     }
