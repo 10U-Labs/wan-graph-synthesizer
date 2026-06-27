@@ -7,19 +7,11 @@ backbone_node_count:
   max: 99
   min: 3
 forced_backbone_nodes:
-  - Albany, NY
   - Cheyenne, WY
-  - Colorado Springs, CO
-  - El Paso, TX
   - Great Falls, MT
-  - Kansas City, MO
   - Los Angeles, CA
-  - Manassas, VA
-  - Minot, ND
   - New York, NY
   - Salt Lake City, UT
-  - San Diego, CA
-  - Tucson, AZ
 forced_connections: []
 inputs:
   providers:
