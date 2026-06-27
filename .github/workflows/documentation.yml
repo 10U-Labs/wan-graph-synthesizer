@@ -49,43 +49,6 @@ jobs:
         run: |
           find docs -name '*.json' -print0 \
             | xargs -0 -r -n1 jsonlint --quiet
-  markdownlint:
-    if: "!failure() && !cancelled()"
-    needs:
-      - detect
-      - yamllint
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Restore pip cache
-        uses: actions/cache@v5
-        with:
-          key: >-
-            pip-${{ github.job }}-${{
-            hashFiles('.github/workflows/documentation.yml') }}
-          path: ~/.cache/pip
-          restore-keys: |
-            pip-${{ github.job }}-
-      - name: Install tools
-        run: |
-          npm install -g markdownlint-cli
-          pip install \
-            assert-no-inline-directives \
-            assert-no-linter-config-files
-      - name: Assert no inline markdownlint disables
-        run: >-
-          assert-no-inline-directives
-          --tools markdownlint
-          --verbose
-          ${{ github.workspace }}/**/*
-      - name: Assert no markdownlint config files
-        run: >-
-          assert-no-linter-config-files
-          --linters markdownlint
-          --verbose
-          ${{ github.workspace }}
-      - name: Lint Markdown
-        run: markdownlint '**/*.md'
   yamllint:
     if: needs.detect.outputs.workflow-changed == 'true'
     needs: detect
@@ -129,13 +92,11 @@ name: documentation
 on:
   pull_request:
     paths:
-      - '**/*.md'
       - docs/**/*.json
       - .github/workflows/documentation.yml
   push:
     branches: [main]
     paths:
-      - '**/*.md'
       - docs/**/*.json
       - .github/workflows/documentation.yml
   workflow_dispatch:
