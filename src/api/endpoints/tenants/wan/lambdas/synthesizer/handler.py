@@ -1,11 +1,11 @@
-"""Fargate synthesizer entrypoint: build a tenant's WAN from the stored inputs.
+"""Synthesizer worker Lambda: build a tenant's WAN from the stored inputs.
 
-A one-shot container task (TENANT + STORE_BUCKET in the environment): read the
-substrate and the tenant's inputs from S3, run the whole design pipeline
-(dual-home -> overrides -> synthesize -> finalize), and publish the WAN -- or record
-a ``failed`` status when no valid WAN exists (``synthesize_two_tier_design`` raises
-``ValueError``). ``main`` is invoked by the container command; there is no
-compute-on-demand path.
+Async-invoked by the dispatching Lambda with ``{"tenant": ...}`` (STORE_BUCKET in
+the environment): read the substrate and the tenant's inputs from S3, run the whole
+design pipeline (dual-home -> overrides -> synthesize -> finalize), and publish the
+WAN -- or record a ``failed`` status when no valid WAN exists
+(``synthesize_two_tier_design`` raises ``ValueError``). A build is single-threaded
+and finishes in seconds, well inside Lambda's 15-minute / 10 GB envelope.
 """
 
 from __future__ import annotations
@@ -125,31 +125,31 @@ def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
     }
 
 
-def main() -> None:
-    """Build the tenant's WAN and publish it, or record why it failed."""
-    # Emit INFO progress to stdout so a long build is observable in CloudWatch
-    # (the default root level is WARNING, which would drop every progress line).
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
+    """Build the tenant's WAN and publish it, or record why it failed.
+
+    The dispatcher async-invokes this with ``{"tenant": ...}``. The status is moved to
+    ``building`` first -- the in-progress marker the GET reads -- then ``ready`` once the
+    WAN is published, or ``failed`` if the build raises.
+    """
+    # Surface INFO progress in CloudWatch (the Lambda runtime defaults the root logger
+    # to WARNING, which would drop every progress line).
+    logging.getLogger().setLevel(logging.INFO)
     client = boto3.client("s3", region_name="us-east-2")
-    tenant = os.environ["TENANT"]
+    tenant = event["tenant"]
     status_key = f"tenants/{tenant}/wan-status.json"
-    # A Spot reclaim kills this task without warning; leave the status at "building"
-    # so the ecs-task-stopped handler can relaunch it. Only an in-process failure
-    # (below) records "failed".
     _write_json(client, status_key, {"status": "building", "tenant": tenant})
     logger.info("Build started for %s", tenant)
     # Any failure (an infeasible design raises ValueError, but an S3 read error or
     # an unforeseen bug can raise anything) must be recorded as the WAN's status
-    # rather than crash the task and leave the tenant stuck "building" forever.
+    # rather than crash the invocation and leave the tenant stuck "building" forever.
     try:
         wan = _build_wan(client, tenant)
     except Exception as exc:
         logger.warning("Build failed for %s: %s", tenant, exc)
         _write_json(client, status_key, {"status": "failed", "reason": str(exc)})
-        return
+        return {"status": "failed", "tenant": tenant}
     _write_json(client, f"tenants/{tenant}/wan.json", wan)
     _write_json(client, status_key, {"status": "ready"})
     logger.info("Build ready for %s", tenant)
+    return {"status": "ready", "tenant": tenant}

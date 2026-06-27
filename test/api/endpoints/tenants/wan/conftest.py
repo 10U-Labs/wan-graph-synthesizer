@@ -2,8 +2,7 @@
 
 These parse the stack's declared OpenTofu config (no AWS, no apply) and expose
 the deterministic Lambda and IAM role names every tier needs. The synthesizer
-runtime infra (ECR, ECS cluster, Fargate task, EventBridge recovery) is declared
-in the same stack and parsed here too.
+worker Lambda is declared in the same stack (``main.tf``) and parsed here too.
 """
 from __future__ import annotations
 
@@ -39,12 +38,6 @@ def wan_lambda_fixture() -> dict[str, object]:
 def wan_iam_fixture() -> dict[str, object]:
     """Return the parsed ``iam_lambda.tf`` for the wan stack."""
     return load_tf(WAN_DIR / "iam_lambda.tf")
-
-
-@pytest.fixture(name="wan_eventbridge")
-def wan_eventbridge_fixture() -> dict[str, object]:
-    """Return the parsed ``eventbridge.tf`` for the wan stack."""
-    return load_tf(WAN_DIR / "eventbridge.tf")
 
 
 @pytest.fixture(name="function_name")

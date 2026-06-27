@@ -1,6 +1,6 @@
 """The WAN design pipeline as composable steps.
 
-The synthesizer entrypoint composes these over the JSON-loaded graph:
+The synthesizer worker composes these over the JSON-loaded graph:
 ``dual_home`` -> ``apply_role_overrides`` -> ``synthesize_two_tier_design`` ->
 ``finalize``.
 """

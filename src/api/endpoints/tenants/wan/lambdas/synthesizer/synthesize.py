@@ -383,7 +383,16 @@ def best_design_at_size(
 
 
 def total_memory_bytes() -> int:
-    """Physical RAM installed on this machine, in bytes (portable across OSes)."""
+    """The memory available to this process, in bytes.
+
+    On Lambda, honor ``AWS_LAMBDA_FUNCTION_MEMORY_SIZE`` (the function's configured limit,
+    in MB) -- ``sysconf`` would report the host's RAM, far more than the function actually
+    has, and oversize the backbone enumeration into an OOM kill. Off Lambda (local, tests),
+    fall back to the installed physical RAM.
+    """
+    configured_mb = os.environ.get("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
+    if configured_mb:
+        return int(configured_mb) * 1024 * 1024
     return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
 
 

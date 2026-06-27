@@ -1,115 +1,45 @@
-# The WAN-create worker: a Fargate Spot task that runs the whole pipeline
-# (home -> constrain -> synthesize -> validate) in one process and writes the
-# tenant's WAN JSON to the S3 store, or records a 422 reason. The dispatching
-# Lambda starts this task (ecs:RunTask) on a WAN create (POST /tenants/{t}/wan),
-# the only build trigger. Async + Spot because a create can exceed API Gateway's
-# ~29s cap and is fully retryable.
+# The WAN-create worker: a zip-packaged Lambda that runs the whole pipeline
+# (dual-home -> overrides -> synthesize -> finalize) in one invocation and writes the
+# tenant's WAN JSON to the S3 store, or records a failed reason. The dispatching Lambda
+# async-invokes it on a WAN create (POST /tenants/{t}/wan), the only build trigger.
+# A build is single-threaded, finishes in seconds with a few-GB working set, and needs
+# nothing beyond stdlib + boto3, so it fits Lambda's 15-minute / 10 GB envelope.
 
 locals {
   store_bucket = data.terraform_remote_state.storage.outputs.bucket_name
 }
 
-resource "aws_ecr_repository" "synthesizer" {
-  name                 = "wan-graph-synthesizer"
-  image_tag_mutability = "MUTABLE"
-  image_scanning_configuration {
-    scan_on_push = true
-  }
+# Package the synthesizer package (lambdas/synthesizer/, handler + engine) into a zip,
+# preserving the synthesizer/ prefix so its `from synthesizer.X import ...` resolve. The
+# dispatcher (lambdas/endpoint/handler.py) is excluded; it ships in its own zip.
+data "archive_file" "worker" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambdas"
+  excludes    = ["endpoint/handler.py"]
+  output_path = "${path.module}/.terraform/lambda_packages/worker.zip"
 }
 
-# Minimal VPC: one public subnet with egress, just for the create task.
-resource "aws_vpc" "this" {
-  cidr_block           = "10.80.0.0/16"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-  tags                 = { Name = "wan-graph-synthesizer" }
-}
-
-resource "aws_internet_gateway" "this" {
-  vpc_id = aws_vpc.this.id
-}
-
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = "10.80.1.0/24"
-  map_public_ip_on_launch = true
-  availability_zone       = "us-east-2a"
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.this.id
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.this.id
-  }
-}
-
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_security_group" "task" {
-  name   = "wan-graph-synthesizer-task"
-  vpc_id = aws_vpc.this.id
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_ecs_cluster" "this" {
-  name = "wan-graph-synthesizer"
-}
-
-# Associate Fargate Spot (and on-demand) so run_task's FARGATE_SPOT capacity
-# provider strategy is valid; without this, run_task fails and a WAN create hangs.
-resource "aws_ecs_cluster_capacity_providers" "this" {
-  cluster_name       = aws_ecs_cluster.this.name
-  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
-}
-
-resource "aws_cloudwatch_log_group" "synthesizer" {
-  name              = "/ecs/wan-graph-synthesizer"
-  retention_in_days = 14
-}
-
-# Pull-image + logs role for the Fargate agent.
-resource "aws_iam_role" "execution" {
-  name = "wan-graph-synthesizer-task-execution"
+resource "aws_iam_role" "worker" {
+  name = "wan-graph-synthesizer-worker"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
-      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Principal = { Service = "lambda.amazonaws.com" }
       Action    = "sts:AssumeRole"
     }]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "execution" {
-  role       = aws_iam_role.execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+resource "aws_iam_role_policy_attachment" "worker_basic" {
+  role       = aws_iam_role.worker.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# The synthesizer's own role: read inputs + write published/working graph JSON.
-resource "aws_iam_role" "task" {
-  name = "wan-graph-synthesizer-task"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "ecs-tasks.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "task_s3" {
+# The worker's own role: read inputs + write published/working graph JSON.
+resource "aws_iam_role_policy" "worker_s3" {
   name = "store-access"
-  role = aws_iam_role.task.id
+  role = aws_iam_role.worker.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -123,39 +53,38 @@ resource "aws_iam_role_policy" "task_s3" {
   })
 }
 
-resource "aws_ecs_task_definition" "synthesizer" {
-  family                   = "wan-graph-synthesizer"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  # The synthesize is single-threaded and finishes in seconds with a few-GB working set, so
-  # 2 vCPU / 8 GB is ample -- and a small Fargate shape places far more reliably on Spot than
-  # the largest one. (2 vCPU permits 4-16 GB; the prior 32 GB forced 8 vCPU for no benefit.)
-  cpu                = "2048"
-  memory             = "8192"
-  execution_role_arn = aws_iam_role.execution.arn
-  task_role_arn      = aws_iam_role.task.arn
+resource "aws_cloudwatch_log_group" "worker" {
+  name              = "/aws/lambda/${module.common.lambda_handler_names.wan}-worker"
+  retention_in_days = 14
+}
 
-  # ARM64 Graviton: ~20% cheaper than x86 and typically better Fargate Spot
-  # availability. The image is built for linux/arm64 by build_image.yml.
-  runtime_platform {
-    operating_system_family = "LINUX"
-    cpu_architecture        = "ARM64"
+resource "aws_lambda_function" "worker" {
+  filename         = data.archive_file.worker.output_path
+  function_name    = "${module.common.lambda_handler_names.wan}-worker"
+  role             = aws_iam_role.worker.arn
+  handler          = "synthesizer.handler.lambda_handler"
+  source_code_hash = data.archive_file.worker.output_base64sha256
+  runtime          = "python3.13"
+  architectures    = ["arm64"]
+  # The build is single-threaded and finishes in seconds with a few-GB working set;
+  # 8192 MB matches the prior 8 GB Fargate task so enumeration_limit is unchanged, and
+  # 900s (the Lambda max) is ample headroom over a ~5s build.
+  timeout     = 900
+  memory_size = 8192
+  description = "WAN synthesize worker: build the tenant's WAN and write it to the store."
+
+  environment {
+    variables = {
+      STORE_BUCKET = local.store_bucket
+    }
   }
 
-  container_definitions = jsonencode([{
-    name      = "synthesizer"
-    image     = "${aws_ecr_repository.synthesizer.repository_url}:latest"
-    essential = true
-    environment = [
-      { name = "STORE_BUCKET", value = local.store_bucket },
-    ]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.synthesizer.name
-        "awslogs-region"        = "us-east-2"
-        "awslogs-stream-prefix" = "synthesizer"
-      }
-    }
-  }])
+  logging_config {
+    log_format = "Text"
+    log_group  = aws_cloudwatch_log_group.worker.name
+  }
+
+  lifecycle {
+    replace_triggered_by = [aws_iam_role.worker.id]
+  }
 }

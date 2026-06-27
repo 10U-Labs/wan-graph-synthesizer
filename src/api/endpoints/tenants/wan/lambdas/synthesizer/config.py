@@ -204,7 +204,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
 
     Any key the mapping omits falls back to the matching built-in default, so a
     partial (even empty) mapping still yields a valid configuration. ``datacenter_cities``
-    is threaded by the entrypoint, not parsed from these documents.
+    is threaded by the worker handler, not parsed from these documents.
     """
     design = _mapping(data, "design")
     return AppConfig(
