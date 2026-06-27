@@ -1,7 +1,8 @@
-"""Unit tests for the Fargate synthesizer entrypoint.
+"""Unit tests for the synthesizer worker Lambda.
 
 The heavy design pipeline is stubbed (it is exercised by the synthesizer tests);
-these tests cover the entrypoint's own orchestration and S3 I/O.
+these tests cover the worker's own orchestration and S3 I/O: it reads the tenant from
+the invoke event, moves the status to ``building``, and publishes ``ready``/``failed``.
 """
 
 from __future__ import annotations
@@ -20,15 +21,14 @@ from test_s3_store_mock import fake_s3
 from synthesizer.input_graph import Vertex
 from synthesizer.model import DesignParams
 
-_PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/entrypoint.py"
+_PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/lambdas/synthesizer/handler.py"
 
 
-@pytest.fixture(name="entrypoint")
-def entrypoint_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
-    """Load the synthesizer entrypoint with the task environment configured."""
+@pytest.fixture(name="worker")
+def worker_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
+    """Load the synthesizer worker with the store bucket configured."""
     monkeypatch.setenv("STORE_BUCKET", "test-bucket")
-    monkeypatch.setenv("TENANT", "f-35")
-    return load_module_from_path("synthesizer_entrypoint", _PATH)
+    return load_module_from_path("synthesizer_worker", _PATH)
 
 
 def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -59,7 +59,7 @@ def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _inputs(module: Any) -> dict[str, bytes]:
-    """Every object the entrypoint reads (content unused; pipeline stubbed)."""
+    """Every object the worker reads (content unused; pipeline stubbed)."""
     keys = [
         "carriers/merge/vertices.json",
         "carriers/merge/edges.json",
@@ -72,8 +72,8 @@ def _inputs(module: Any) -> dict[str, bytes]:
     return {key: b"[]" for key in keys}
 
 
-def _run_main(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) -> dict[str, bytes]:
-    """Stub the pipeline (optionally failing the synthesize), run main, return the store."""
+def _run(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) -> dict[str, bytes]:
+    """Stub the pipeline (optionally failing the synthesize), run the worker, return the store."""
     _stub_pipeline(module, monkeypatch)
     if fail:
 
@@ -83,33 +83,42 @@ def _run_main(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) 
         monkeypatch.setattr(module, "synthesize_two_tier_design", _raise)
     objects = _inputs(module)
     with patch("boto3.client", return_value=fake_s3(objects)):
-        module.main()
+        module.lambda_handler({"tenant": "f-35"}, None)
     return objects
 
 
-def test_publishes_the_wan_on_success(entrypoint: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_publishes_the_wan_on_success(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """A successful build writes the tenant's WAN JSON to the store."""
-    objects = _run_main(entrypoint, monkeypatch)
+    objects = _run(worker, monkeypatch)
     assert "tenants/f-35/wan.json" in objects
 
 
-def test_marks_status_ready_on_success(entrypoint: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_marks_status_ready_on_success(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """A successful build records a 'ready' status."""
-    objects = _run_main(entrypoint, monkeypatch)
+    objects = _run(worker, monkeypatch)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "ready"
 
 
-def test_records_failed_when_no_valid_wan(entrypoint: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_records_failed_when_no_valid_wan(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """When the synthesizer reports infeasibility, the status is recorded as failed."""
-    objects = _run_main(entrypoint, monkeypatch, fail=True)
+    objects = _run(worker, monkeypatch, fail=True)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
 
 
-def test_main_logs_progress_at_info(
-    entrypoint: Any, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+def test_reads_the_tenant_from_the_event(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The worker builds the tenant named in the invoke event."""
+    _stub_pipeline(worker, monkeypatch)
+    objects = _inputs(worker)
+    with patch("boto3.client", return_value=fake_s3(objects)):
+        worker.lambda_handler({"tenant": "f-35"}, None)
+    assert "tenants/f-35/wan.json" in objects
+
+
+def test_logs_progress_at_info(
+    worker: Any, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     """A run emits INFO progress so a long build is observable, not silent."""
     with caplog.at_level(logging.INFO):
-        _run_main(entrypoint, monkeypatch)
+        _run(worker, monkeypatch)
     messages = " ".join(record.getMessage() for record in caplog.records)
     assert "f-35" in messages and "Publishing" in messages

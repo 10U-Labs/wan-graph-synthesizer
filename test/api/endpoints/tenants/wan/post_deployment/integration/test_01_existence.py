@@ -23,30 +23,12 @@ def test_lambda_log_group_exists(logs_client: Any, function_name: str) -> None:
     assert info["exists"]
 
 
-def test_ecr_repository_exists(ecr_client: Any) -> None:
-    """The synthesizer ECR repository exists."""
-    response = ecr_client.describe_repositories(repositoryNames=["wan-graph-synthesizer"])
-    assert response["repositories"][0]["repositoryName"] == "wan-graph-synthesizer"
+def test_worker_function_exists(worker_config: dict[str, Any], worker_function_name: str) -> None:
+    """The synthesizer worker Lambda exists under its deterministic name."""
+    assert worker_config["FunctionName"] == worker_function_name
 
 
-def test_ecs_cluster_is_active(ecs_client: Any) -> None:
-    """The synthesizer ECS cluster exists and is ACTIVE."""
-    response = ecs_client.describe_clusters(clusters=["wan-graph-synthesizer"])
-    assert response["clusters"][0]["status"] == "ACTIVE"
-
-
-def test_task_definition_exists(task_definition: dict[str, Any]) -> None:
-    """The synthesizer Fargate task definition exists."""
-    assert task_definition["family"] == "wan-graph-synthesizer"
-
-
-def test_task_stopped_rule_exists(events_client: Any) -> None:
-    """The Spot-recovery EventBridge rule exists."""
-    rule = events_client.describe_rule(Name="wan-graph-synthesizer-task-stopped")
-    assert rule["Name"] == "wan-graph-synthesizer-task-stopped"
-
-
-def test_synthesizer_log_group_exists(logs_client: Any) -> None:
-    """The synthesizer's CloudWatch log group exists."""
-    info = get_log_group_info(logs_client, "/ecs/wan-graph-synthesizer")
+def test_worker_log_group_exists(logs_client: Any, worker_function_name: str) -> None:
+    """The worker's CloudWatch log group exists."""
+    info = get_log_group_info(logs_client, f"/aws/lambda/{worker_function_name}")
     assert info["exists"]

@@ -3,60 +3,6 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-tenants-wan-post-${{ github.ref }}
 jobs:
-  build-and-publication:
-    if: github.ref == 'refs/heads/main'
-    name: build-and-publication
-    needs: pre-deployment-integration-tests
-    permissions:
-      contents: read
-      id-token: write
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          aws-region: us-east-2
-          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Log in to Amazon ECR
-        run: |
-          aws ecr get-login-password --region us-east-2 \
-            | docker login --username AWS --password-stdin \
-              781581267945.dkr.ecr.us-east-2.amazonaws.com
-      - name: Build and push the synthesizer image (arm64/Graviton)
-        run: |
-          REPO=781581267945.dkr.ecr.us-east-2.amazonaws.com/wan-graph-synthesizer
-          docker buildx build --platform linux/arm64 \
-            -f src/api/endpoints/tenants/wan/Dockerfile \
-            -t "$REPO:latest" --push .
-  post-deployment-integration-tests:
-    if: github.ref == 'refs/heads/main'
-    name: post-deployment-integration-tests
-    needs: build-and-publication
-    permissions:
-      contents: read
-      id-token: write
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          aws-region: us-east-2
-          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      - name: Install tools
-        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8'
-      - name: Run post-deployment integration tests against live AWS
-        run: >-
-          PYTHONPATH=.:lib/python
-          python3 -m pytest
-          test/api/endpoints/tenants/wan/synthesizer/post_deployment/integration/
-          --import-mode=importlib --confcutdir=test
-          --verbose
   pre-deployment-integration-tests:
     name: pre-deployment-integration-tests
     needs: unit-tests
@@ -67,7 +13,7 @@ jobs:
         run: pip install boto3 boto3-stubs pytest 'python-hcl2<8' pyyaml
       - name: Run pre-deployment integration tests
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/lambdas
           python3 -m pytest
           test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration/
           --verbose --pythonwarnings=error
@@ -103,8 +49,7 @@ jobs:
           --tools pylint,mypy,yamllint
           --verbose
           ${{ github.workspace }}/lib/python
-          ${{ github.workspace }}/src/api/endpoints/tenants/wan/synthesizer
-          ${{ github.workspace }}/src/api/endpoints/tenants/wan/entrypoint.py
+          ${{ github.workspace }}/src/api/endpoints/tenants/wan/lambdas/synthesizer
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/synthesizer
       - name: Assert no linter config files
         run: >-
@@ -118,18 +63,17 @@ jobs:
           --verbose
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/synthesizer
       # This source lint disables pylint's broad-exception-caught (W0718) check.
-      # entrypoint.py is the one-shot Fargate task that builds a tenant's WAN, and
-      # it deliberately wraps the whole build in a catch-all `except Exception`.
-      # The task's contract is to record the tenant's status in S3 -- "building"
-      # when it starts, "ready" on success, and "failed" on ANY failure -- so that
-      # a customer polling for their WAN always reaches a terminal answer. The
-      # expected failure (an infeasible design) is a ValueError, but it is not the
-      # only thing that can go wrong: reading the substrate and tenant inputs from
-      # S3 can raise a boto error, and an unforeseen bug can raise anything at all.
-      # If such an error were allowed to escape, the container would crash with the
-      # status still on "building", and the customer would wait forever for a result
-      # that never resolves (the ecs-task-stopped handler only reacts to Spot
-      # reclaims, not to ordinary crashes). The catch-all is what guarantees every
+      # lambdas/synthesizer/handler.py is the worker Lambda that builds a tenant's
+      # WAN, and it deliberately wraps the whole build in a catch-all
+      # `except Exception`. The worker's contract is to record the tenant's status
+      # in S3 -- "building" when it starts, "ready" on success, and "failed" on ANY
+      # failure -- so that a customer polling for their WAN always reaches a terminal
+      # answer. The expected failure (an infeasible design) is a ValueError, but it
+      # is not the only thing that can go wrong: reading the substrate and tenant
+      # inputs from S3 can raise a boto error, and an unforeseen bug can raise
+      # anything at all. If such an error were allowed to escape, the worker would
+      # exit with the status still on "building", and the customer would wait forever
+      # for a result that never resolves. The catch-all is what guarantees every
       # run ends by writing a terminal status. pylint flags catch-all handlers
       # because they usually hide bugs, which is a sound default, but here turning
       # any failure into a recorded "failed" status is precisely the job of this
@@ -146,31 +90,31 @@ jobs:
       # nudged by one rather than the data artificially partitioned.
       - name: Run pylint on source
         run: >-
-          PYTHONPATH=lib/python:src:src/api/endpoints/tenants/wan
+          PYTHONPATH=lib/python:src:src/api/endpoints/tenants/wan/lambdas
           python3 -m pylint
-          src/api/endpoints/tenants/wan/synthesizer/ src/api/endpoints/tenants/wan/entrypoint.py
+          src/api/endpoints/tenants/wan/lambdas/synthesizer/
           --disable=broad-exception-caught
           --max-attributes=8
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on source
         run: >-
-          MYPYPATH=lib/python:src:src/api/endpoints/tenants/wan
+          MYPYPATH=lib/python:src:src/api/endpoints/tenants/wan/lambdas
           python3 -m mypy --strict --ignore-missing-imports
-          --explicit-package-bases src/api/endpoints/tenants/wan/synthesizer/ src/api/endpoints/tenants/wan/entrypoint.py
+          --explicit-package-bases src/api/endpoints/tenants/wan/lambdas/synthesizer/
       - name: Detect copy-paste in source
         run: >-
           jscpd --pattern "**/*.py" --threshold 0 --reporters console
           --ignore "**/test_handler_contracts/**,**/test_s3_store_mock/**"
-          lib/python/ src/api/endpoints/tenants/wan/synthesizer/
+          lib/python/ src/api/endpoints/tenants/wan/lambdas/synthesizer/
       - name: Run pylint on tests
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/lambdas
           python3 -m pylint --recursive=y
           test/api/endpoints/tenants/wan/synthesizer
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on tests
         run: >-
-          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan
+          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/lambdas
           python3 -m mypy --strict --ignore-missing-imports
           --explicit-package-bases test/api/endpoints/tenants/wan/synthesizer
       - name: Detect copy-paste in tests
@@ -189,16 +133,12 @@ jobs:
         run: pip install boto3 boto3-stubs pytest pytest-cov 'python-hcl2<8' pyyaml
       - name: Run unit tests with a 100% coverage gate
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/lambdas
           python3 -m pytest
-          test/api/endpoints/tenants/wan/
-          --ignore=test/api/endpoints/tenants/wan/pre_deployment/integration
-          --ignore=test/api/endpoints/tenants/wan/post_deployment
-          --ignore=test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration
-          --ignore=test/api/endpoints/tenants/wan/synthesizer/post_deployment/integration
+          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
-          --cov=src/api/endpoints/tenants/wan
+          --cov=src/api/endpoints/tenants/wan/lambdas/synthesizer
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
@@ -207,9 +147,7 @@ on:
   push:
     branches: [main]
     paths:
-      - src/api/endpoints/tenants/wan/Dockerfile
-      - src/api/endpoints/tenants/wan/entrypoint.py
-      - src/api/endpoints/tenants/wan/synthesizer/**
+      - src/api/endpoints/tenants/wan/lambdas/synthesizer/**
       - test/api/endpoints/tenants/wan/**
       - lib/python/**
       - .github/workflows/api_endpoint_tenants_wan_post.yml

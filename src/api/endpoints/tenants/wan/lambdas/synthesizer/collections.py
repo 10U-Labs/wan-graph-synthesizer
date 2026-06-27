@@ -1,7 +1,7 @@
 """Per-collection JSON views of a computed tenant WAN, plus demand-role labelling.
 
 The synthesizer's ``design_payload`` (output.py) is one coherent computation; the
-entrypoint slices it into the atomic collections the REST API serves (vertices,
+worker slices it into the atomic collections the REST API serves (vertices,
 edges, and the tier views) and stores each separately. The slice helpers are
 read-only views over that already-serialized payload, so they take and return plain
 dicts. :func:`vertex_role` is the authoritative tier-role labeller -- it lives here

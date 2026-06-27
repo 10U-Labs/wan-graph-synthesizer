@@ -1,6 +1,6 @@
-# The dispatching Lambda: POST starts a Fargate create (ecs:RunTask), GET reports
-# the tenant's WAN status from the store. It lives in the wan stack so it can
-# reference the cluster, task definition, subnet, and security group directly.
+# The dispatching Lambda: POST async-invokes the synthesizer worker Lambda, GET reports
+# the tenant's WAN status from the store. It lives in the wan stack so it can reference
+# the worker function directly.
 
 data "terraform_remote_state" "routing" {
   backend = "s3"
@@ -14,7 +14,7 @@ data "terraform_remote_state" "routing" {
 
 data "archive_file" "handler" {
   type        = "zip"
-  source_file = "${path.module}/lambdas/handler.py"
+  source_file = "${path.module}/lambdas/endpoint/handler.py"
   output_path = "${path.module}/.terraform/lambda_packages/handler.zip"
 }
 
@@ -28,16 +28,12 @@ resource "aws_lambda_function" "handler" {
   architectures    = ["arm64"]
   timeout          = 10
   memory_size      = 128
-  description      = "WAN create endpoint: start the Fargate synthesize, report status."
+  description      = "WAN create endpoint: async-invoke the synthesize worker, report status."
 
   environment {
     variables = {
-      STORE_BUCKET        = local.store_bucket
-      CLUSTER_ARN         = aws_ecs_cluster.this.arn
-      TASK_DEFINITION_ARN = aws_ecs_task_definition.synthesizer.arn
-      SUBNET_ID           = aws_subnet.public.id
-      SECURITY_GROUP_ID   = aws_security_group.task.id
-      SCHEDULER_ROLE_ARN  = aws_iam_role.scheduler.arn
+      STORE_BUCKET         = local.store_bucket
+      WORKER_FUNCTION_NAME = aws_lambda_function.worker.function_name
     }
   }
 

@@ -2,8 +2,8 @@
 
 The wan stack couples to the shared common module (whose locals reference its
 outputs) and to the storage stack's remote state (where it reads the store
-bucket). Its outputs are wired to the synthesizer infra it declares. These assert
-those couplings hold. No AWS calls.
+bucket). Its outputs are wired to the dispatcher and synthesizer worker Lambdas it
+declares. These assert those couplings hold. No AWS calls.
 """
 from __future__ import annotations
 
@@ -40,19 +40,12 @@ def test_lambda_arn_output_references_the_declared_handler() -> None:
     assert "aws_lambda_function.handler" in str(outputs["lambda_function_arn"])
 
 
-def test_ecr_repository_url_output_references_the_repository() -> None:
-    """The ``ecr_repository_url`` output is wired to the declared ECR repo."""
+def test_worker_function_arn_output_references_the_worker() -> None:
+    """The ``worker_function_arn`` output is wired to the declared worker Lambda."""
     outputs = output_values(WAN_DIR / "outputs.tf")
-    assert "aws_ecr_repository.synthesizer" in str(outputs["ecr_repository_url"])
+    assert "aws_lambda_function.worker" in str(outputs["worker_function_arn"])
 
 
-def test_cluster_arn_output_references_the_cluster() -> None:
-    """The ``cluster_arn`` output is wired to the declared ECS cluster."""
-    outputs = output_values(WAN_DIR / "outputs.tf")
-    assert "aws_ecs_cluster.this" in str(outputs["cluster_arn"])
-
-
-def test_task_definition_arn_output_references_the_task_definition() -> None:
-    """The ``task_definition_arn`` output is wired to the declared task def."""
-    outputs = output_values(WAN_DIR / "outputs.tf")
-    assert "aws_ecs_task_definition.synthesizer" in str(outputs["task_definition_arn"])
+def test_dispatcher_invokes_the_worker_function_name() -> None:
+    """The dispatcher's WORKER_FUNCTION_NAME points at the declared worker Lambda."""
+    assert "aws_lambda_function.worker.function_name" in _stack_text()

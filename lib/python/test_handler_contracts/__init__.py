@@ -22,12 +22,21 @@ from test_module_utils import create_lambda_loader
 from test_s3_store_mock import fake_lambda, fake_s3
 
 
-def load_handler(endpoint: str, monkeypatch: pytest.MonkeyPatch, **env: str) -> Any:
-    """Load an endpoint's handler module with the store bucket (+ extra env) set."""
+def load_handler(
+    endpoint: str, monkeypatch: pytest.MonkeyPatch, subdir: str = "", **env: str
+) -> Any:
+    """Load an endpoint's handler module with the store bucket (+ extra env) set.
+
+    ``subdir`` names a folder under ``lambdas/`` when an endpoint groups its handler by
+    role (the wan endpoint's dispatcher lives at ``lambdas/endpoint/handler.py``); it
+    defaults to the flat ``lambdas/handler.py`` the other endpoints use.
+    """
     monkeypatch.setenv("STORE_BUCKET", "test-bucket")
     for key, value in env.items():
         monkeypatch.setenv(key, value)
     lambdas = REPO_ROOT / "src" / "api" / "endpoints" / endpoint / "lambdas"
+    if subdir:
+        lambdas = lambdas / subdir
     name = endpoint.replace("/", "_")
     module: Any = create_lambda_loader(lambdas)("handler.py", f"{name}_handler")
     module.clear_clients()

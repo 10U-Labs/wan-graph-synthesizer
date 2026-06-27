@@ -34,6 +34,7 @@ from synthesizer.synthesize import (
     nearest_pop_id,
     search_best_design,
     synthesize_two_tier_design,
+    total_memory_bytes,
 )
 from synthesizer.search_plan import _SearchPlan
 from synthesizer.graphs import biconnected_block_membership, build_adjacency
@@ -409,6 +410,18 @@ def test_enumeration_limit_grows_with_available_memory() -> None:
     """The backbone sets the search may enumerate scale with the machine's free RAM."""
     params = DesignParams()
     assert enumeration_limit(32 * 10**9, params) > enumeration_limit(16 * 10**9, params)
+
+
+def test_total_memory_honors_the_lambda_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """On Lambda the configured function size (MB) bounds memory, not the host's RAM."""
+    monkeypatch.setenv("AWS_LAMBDA_FUNCTION_MEMORY_SIZE", "8192")
+    assert total_memory_bytes() == 8192 * 1024 * 1024
+
+
+def test_total_memory_falls_back_to_physical_ram(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Off Lambda (no configured size) the installed physical RAM is used."""
+    monkeypatch.delenv("AWS_LAMBDA_FUNCTION_MEMORY_SIZE", raising=False)
+    assert total_memory_bytes() > 0
 
 
 def test_search_refuses_a_space_too_large_for_memory() -> None:

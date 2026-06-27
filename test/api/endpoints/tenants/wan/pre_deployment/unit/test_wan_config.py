@@ -1,10 +1,9 @@
 """Unit tests for the tenants/wan endpoint stack's declared infrastructure.
 
-Parse the stack's ``.tf`` with hcl2 and assert the dispatching Lambda, its log
-group and role, and the synthesizer runtime infra (ECR repo, ECS cluster,
-Fargate task definition, EventBridge recovery rule, synthesizer log group) are
-declared as intended. No AWS calls, no apply. (The handler's runtime behaviour is
-covered by ``test_handler.py`` alongside this file.)
+Parse the stack's ``.tf`` with hcl2 and assert the dispatching Lambda, its log group
+and role, and the synthesizer worker Lambda (its runtime, size, handler, role and S3
+access) are declared as intended. No AWS calls, no apply. (The handlers' runtime
+behaviour is covered by ``test_handler.py`` and the worker's unit tests.)
 """
 from __future__ import annotations
 
@@ -53,13 +52,7 @@ def test_lambda_entrypoint(wan_lambda: dict[str, object]) -> None:
     assert handler["handler"] == "handler.lambda_handler"
 
 
-@pytest.mark.parametrize(
-    "variable",
-    [
-        "STORE_BUCKET", "CLUSTER_ARN", "TASK_DEFINITION_ARN", "SUBNET_ID",
-        "SECURITY_GROUP_ID", "SCHEDULER_ROLE_ARN",
-    ],
-)
+@pytest.mark.parametrize("variable", ["STORE_BUCKET", "WORKER_FUNCTION_NAME"])
 def test_lambda_environment_declares_variable(
         wan_lambda: dict[str, object], variable: str) -> None:
     """The dispatching Lambda is given each environment variable it reads."""
@@ -84,21 +77,10 @@ def test_dispatch_policy_is_named(wan_iam: dict[str, object]) -> None:
     assert dispatch["name"] == "Dispatch"
 
 
-def test_dispatch_policy_grants_run_task(wan_iam: dict[str, object]) -> None:
-    """The dispatch policy grants ``ecs:RunTask`` to launch the create."""
+def test_dispatch_policy_grants_invoke(wan_iam: dict[str, object]) -> None:
+    """The dispatch policy grants ``lambda:InvokeFunction`` to start the worker."""
     dispatch = _resource(wan_iam, "aws_iam_role_policy", "dispatch")
-    assert "ecs:RunTask" in str(dispatch["policy"])
-
-
-def test_dispatch_policy_grants_create_schedule(wan_iam: dict[str, object]) -> None:
-    """The dispatch policy grants ``scheduler:CreateSchedule`` for delayed Spot retries."""
-    dispatch = _resource(wan_iam, "aws_iam_role_policy", "dispatch")
-    assert "scheduler:CreateSchedule" in str(dispatch["policy"])
-
-
-def test_scheduler_role_is_declared(wan_iam: dict[str, object]) -> None:
-    """The role EventBridge Scheduler assumes to re-invoke the Lambda is declared."""
-    assert find_resource(wan_iam, "aws_iam_role", "scheduler") is not None
+    assert "lambda:InvokeFunction" in str(dispatch["policy"])
 
 
 def test_api_gateway_invoke_permission_is_declared(wan_lambda: dict[str, object]) -> None:
@@ -106,61 +88,54 @@ def test_api_gateway_invoke_permission_is_declared(wan_lambda: dict[str, object]
     assert find_resource(wan_lambda, "aws_lambda_permission", "api_gateway") is not None
 
 
-def test_eventbridge_invoke_permission_is_declared(
-        wan_eventbridge: dict[str, object]) -> None:
-    """EventBridge is granted permission to invoke the dispatcher."""
-    assert find_resource(wan_eventbridge, "aws_lambda_permission", "eventbridge") is not None
+def test_worker_runtime_is_python313(wan_main: dict[str, object]) -> None:
+    """The synthesizer worker Lambda runs on Python 3.13."""
+    worker = _resource(wan_main, "aws_lambda_function", "worker")
+    assert worker["runtime"] == "python3.13"
 
 
-def test_ecr_repository_name(wan_main: dict[str, object]) -> None:
-    """The synthesizer ECR repository is named ``wan-graph-synthesizer``."""
-    repo = _resource(wan_main, "aws_ecr_repository", "synthesizer")
-    assert repo["name"] == "wan-graph-synthesizer"
+def test_worker_is_arm64(wan_main: dict[str, object]) -> None:
+    """The synthesizer worker Lambda runs on ARM64 (Graviton)."""
+    worker = _resource(wan_main, "aws_lambda_function", "worker")
+    assert worker["architectures"] == ["arm64"]
 
 
-def test_ecs_cluster_name(wan_main: dict[str, object]) -> None:
-    """The synthesizer ECS cluster is named ``wan-graph-synthesizer``."""
-    cluster = _resource(wan_main, "aws_ecs_cluster", "this")
-    assert cluster["name"] == "wan-graph-synthesizer"
+def test_worker_handler(wan_main: dict[str, object]) -> None:
+    """The worker invokes ``synthesizer.handler.lambda_handler``."""
+    worker = _resource(wan_main, "aws_lambda_function", "worker")
+    assert worker["handler"] == "synthesizer.handler.lambda_handler"
 
 
-def test_task_definition_family(wan_main: dict[str, object]) -> None:
-    """The Fargate task definition family is ``wan-graph-synthesizer``."""
-    task = _resource(wan_main, "aws_ecs_task_definition", "synthesizer")
-    assert task["family"] == "wan-graph-synthesizer"
+def test_worker_memory_matches_the_old_fargate_size(wan_main: dict[str, object]) -> None:
+    """The worker reserves 8192 MB so ``enumeration_limit`` matches the prior 8 GB task."""
+    worker = _resource(wan_main, "aws_lambda_function", "worker")
+    assert worker["memory_size"] == 8192
 
 
-def test_task_definition_requires_fargate(wan_main: dict[str, object]) -> None:
-    """The task definition requires the FARGATE launch type."""
-    task = _resource(wan_main, "aws_ecs_task_definition", "synthesizer")
-    assert task["requires_compatibilities"] == ["FARGATE"]
+def test_worker_timeout_is_the_lambda_maximum(wan_main: dict[str, object]) -> None:
+    """The worker's timeout is 900s (the Lambda maximum) -- ample over a ~5s build."""
+    worker = _resource(wan_main, "aws_lambda_function", "worker")
+    assert worker["timeout"] == 900
 
 
-def test_task_definition_cpu(wan_main: dict[str, object]) -> None:
-    """The task definition reserves 2 vCPU (2048 units) -- the build is single-threaded."""
-    task = _resource(wan_main, "aws_ecs_task_definition", "synthesizer")
-    assert task["cpu"] == "2048"
+def test_worker_carries_the_store_bucket(wan_main: dict[str, object]) -> None:
+    """The worker is given the STORE_BUCKET it reads inputs from and writes the WAN to."""
+    worker = _resource(wan_main, "aws_lambda_function", "worker")
+    assert "STORE_BUCKET" in worker["environment"][0]["variables"]
 
 
-def test_task_definition_memory(wan_main: dict[str, object]) -> None:
-    """The task definition reserves 8192 MB -- a small shape places more reliably on Spot."""
-    task = _resource(wan_main, "aws_ecs_task_definition", "synthesizer")
-    assert task["memory"] == "8192"
+def test_worker_role_is_declared(wan_main: dict[str, object]) -> None:
+    """The worker's own execution role is declared."""
+    assert find_resource(wan_main, "aws_iam_role", "worker") is not None
 
 
-def test_synthesizer_log_group_name(wan_main: dict[str, object]) -> None:
-    """The synthesizer's CloudWatch log group is ``/ecs/wan-graph-synthesizer``."""
-    log_group = _resource(wan_main, "aws_cloudwatch_log_group", "synthesizer")
-    assert log_group["name"] == "/ecs/wan-graph-synthesizer"
+def test_worker_role_grants_store_access(wan_main: dict[str, object]) -> None:
+    """The worker role can read inputs and write the WAN to the store."""
+    policy = _resource(wan_main, "aws_iam_role_policy", "worker_s3")
+    assert "s3:PutObject" in str(policy["policy"])
 
 
-def test_task_stopped_rule_name(wan_eventbridge: dict[str, object]) -> None:
-    """The Spot-recovery rule is named ``wan-graph-synthesizer-task-stopped``."""
-    rule = _resource(wan_eventbridge, "aws_cloudwatch_event_rule", "task_stopped")
-    assert rule["name"] == "wan-graph-synthesizer-task-stopped"
-
-
-def test_task_stopped_target_is_the_handler(wan_eventbridge: dict[str, object]) -> None:
-    """The recovery rule's target is the dispatching Lambda."""
-    target = _resource(wan_eventbridge, "aws_cloudwatch_event_target", "task_stopped_lambda")
-    assert "aws_lambda_function.handler.arn" in str(target["arn"])
+def test_worker_log_group_retention(wan_main: dict[str, object]) -> None:
+    """The worker's log group retains events for fourteen days."""
+    log_group = _resource(wan_main, "aws_cloudwatch_log_group", "worker")
+    assert log_group["retention_in_days"] == 14
