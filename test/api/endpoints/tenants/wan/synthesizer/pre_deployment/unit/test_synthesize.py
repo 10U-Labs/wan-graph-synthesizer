@@ -217,11 +217,17 @@ def test_synthesize_promotes_a_data_center_convergence_hub() -> None:
     assert "hub_dc" in design.backbone_ids
 
 
-def test_synthesize_stops_convergence_promotion_at_the_backbone_cap() -> None:
+_CAPPED_CONVERGENCE = fixtures.convergence_hub_artifacts(max_backbone_count=4).design
+
+
+def test_backbone_cap_blocks_a_convergence_promotion() -> None:
     """A backbone cap with no spare slot blocks the promotion -- the centre stays transit."""
-    design = fixtures.convergence_hub_artifacts(max_backbone_count=4).design
-    assert "hub_dc" not in design.backbone_ids
-    assert len(design.backbone_ids) == 4
+    assert "hub_dc" not in _CAPPED_CONVERGENCE.backbone_ids
+
+
+def test_capped_convergence_design_fills_its_backbone_budget() -> None:
+    """The capped design still seats exactly its backbone-count budget."""
+    assert len(_CAPPED_CONVERGENCE.backbone_ids) == 4
 
 
 # --- compute_eligible_backbone_ids: the data-center gate -------------------------------

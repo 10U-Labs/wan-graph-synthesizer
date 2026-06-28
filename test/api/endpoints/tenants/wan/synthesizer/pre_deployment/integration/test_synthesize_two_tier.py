@@ -105,9 +105,13 @@ CONVERGENCE_HUB = fixtures.convergence_hub_artifacts()
 NON_DATACENTER_HUB = fixtures.convergence_hub_artifacts(promote_hub=False)
 
 
+def test_promoted_convergence_hub_is_seated_in_the_backbone() -> None:
+    """The data-center transit hub carrying >= 3 lines is promoted into the backbone."""
+    assert "hub_dc" in CONVERGENCE_HUB.design.backbone_ids
+
+
 def test_promoted_convergence_design_validates_connected() -> None:
     """The design with the promoted hub still validates end-to-end as connected."""
-    assert "hub_dc" in CONVERGENCE_HUB.design.backbone_ids
     assert CONVERGENCE_HUB.validation["connected"] is True
 
 
@@ -120,8 +124,11 @@ def test_convergence_promotion_reaches_a_fixpoint() -> None:
     assert convergence_promotion_ids(CONVERGENCE_HUB.design, carrier_pops, cities) == set()
 
 
+def test_non_data_center_convergence_hub_is_not_promoted() -> None:
+    """The same >= 3-line crossing with no data center is never promoted to backbone."""
+    assert "hub_dc" not in NON_DATACENTER_HUB.design.backbone_ids
+
+
 def test_non_data_center_convergence_hub_stays_transit() -> None:
-    """The same >= 3-line crossing with no data center is never promoted."""
-    design = NON_DATACENTER_HUB.design
-    assert "hub_dc" not in design.backbone_ids
-    assert "hub_dc" in design.transit_ids
+    """The unpromoted >= 3-line crossing remains a transit node in the design."""
+    assert "hub_dc" in NON_DATACENTER_HUB.design.transit_ids
