@@ -1,12 +1,12 @@
-Name,Municipality,State,Latitude,Longitude
-Cannon AFB,Clovis,NM,34.3828,-103.3222
-Corpus Christi Army Depot,Corpus Christi,TX,27.6936,-97.2911
-Hurlburt Field,Mary Esther,FL,30.4279,-86.6889
-Joint Base Andrews,Camp Springs,MD,38.8108,-76.867
-Joint Base San Antonio,San Antonio,TX,29.4595,-98.436
-Maxwell AFB,Montgomery,AL,32.379,-86.366
-"Norfolk, VA",Norfolk,VA,36.8508,-76.2859
-Redstone Arsenal,Huntsville,AL,34.6856,-86.6486
-Robins AFB,Warner Robins,GA,32.64,-83.5919
-Tinker AFB,Midwest City,OK,35.4147,-97.3866
-Wright-Patterson AFB,Dayton,OH,39.8261,-84.0488
+Name,Municipality,State,Country,Latitude,Longitude
+Cannon AFB,Clovis,NM,United States,34.3828,-103.3222
+Corpus Christi Army Depot,Corpus Christi,TX,United States,27.6936,-97.2911
+Hurlburt Field,Mary Esther,FL,United States,30.4279,-86.6889
+Joint Base Andrews,Camp Springs,MD,United States,38.8108,-76.867
+Joint Base San Antonio,San Antonio,TX,United States,29.4595,-98.436
+Maxwell AFB,Montgomery,AL,United States,32.379,-86.366
+"Norfolk, VA",Norfolk,VA,United States,36.8508,-76.2859
+Redstone Arsenal,Huntsville,AL,United States,34.6856,-86.6486
+Robins AFB,Warner Robins,GA,United States,32.64,-83.5919
+Tinker AFB,Midwest City,OK,United States,35.4147,-97.3866
+Wright-Patterson AFB,Dayton,OH,United States,39.8261,-84.0488

@@ -1,20 +1,23 @@
-Name,Municipality,State,Latitude,Longitude
-Burlington ANGB,South Burlington,VT,44.4719,-73.1533
-"Crystal City, VA",Arlington,VA,38.8564,-77.0502
-Dannelly Field,Montgomery,AL,32.3006,-86.3939
-Ebbing ANGB,Fort Smith,AR,35.3366,-94.3674
-Edwards AFB,Edwards,CA,34.9054,-117.8837
-Eglin AFB,Valparaiso,FL,30.4832,-86.5254
-Eielson AFB,Fairbanks,AK,64.6657,-147.1015
-Hill AFB,Layton,UT,41.124,-111.9731
-Jacksonville ANGB,Jacksonville,FL,30.4941,-81.6879
-Luke AFB,Glendale,AZ,33.535,-112.383
-MCAS Beaufort,Beaufort,SC,32.4774,-80.7232
-MCAS Cherry Point,Havelock,NC,34.9009,-76.8807
-MCAS Miramar,San Diego,CA,32.8671,-117.1418
-MCAS Yuma,Yuma,AZ,32.6566,-114.606
-NAS Fallon,Fallon,NV,39.4166,-118.7003
-NAS Lemoore,Lemoore,CA,36.333,-119.952
-Nellis AFB,Las Vegas,NV,36.2362,-115.0343
-Truax Field,Madison,WI,43.1399,-89.3375
-Tyndall AFB,Panama City,FL,30.0696,-85.5754
+Name,Municipality,State,Country,Latitude,Longitude
+Arlington,Arlington,VA,United States,38.8816,-77.0910
+Cheongju,Cheongju,,Republic of Korea,36.6424,127.4890
+Edwards AFB,Edwards,CA,United States,34.9054,-117.8837
+Eglin AFB,Valparaiso,FL,United States,30.4832,-86.5254
+Fort Worth,Fort Worth,TX,United States,32.7555,-97.3308
+Hill AFB,Layton,UT,United States,41.1240,-111.9731
+Langley AFB,Hampton,VA,United States,37.0829,-76.3603
+Luke AFB,Glendale,AZ,United States,33.5350,-112.3830
+MCAS Beaufort,Beaufort,SC,United States,32.4774,-80.7232
+MCAS Cherry Point,Havelock,NC,United States,34.9009,-76.8807
+MCAS Yuma,Yuma,AZ,United States,32.6566,-114.6060
+Manassas,Manassas,VA,United States,38.7509,-77.4753
+NAS Jacksonville,Jacksonville,FL,United States,30.2358,-81.6806
+NAS Patuxent River,Patuxent River,MD,United States,38.2860,-76.4119
+NAS Point Mugu,Point Mugu,CA,United States,34.1207,-119.1209
+NAWCTSD Orlando,Orlando,FL,United States,28.5882,-81.1995
+NAWS China Lake,Ridgecrest,CA,United States,35.6855,-117.6920
+NSA Lakehurst,Lakehurst,NJ,United States,40.0333,-74.3535
+Norfolk,Norfolk,VA,United States,36.8508,-76.2859
+Springfield,Springfield,VA,United States,38.7893,-77.1872
+Tokyo,Tokyo,,Japan,35.6764,139.6500
+Wright-Patterson AFB,Dayton,OH,United States,39.8137,-84.0492

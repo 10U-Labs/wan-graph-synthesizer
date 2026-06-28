@@ -107,6 +107,7 @@ def test_tenant_accepts_a_well_formed_vertex_input(monkeypatch: pytest.MonkeyPat
         "name": "Site",
         "municipality": "Denver",
         "state": "CO",
+        "country": "United States",
         "latitude": 1.0,
         "longitude": 2.0,
     }

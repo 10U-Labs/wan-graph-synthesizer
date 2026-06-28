@@ -22,7 +22,7 @@ import boto3
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 # A provider's facilities are bare geographic rows (no name); reject anything else.
-_VERTEX_FIELDS = {"municipality", "state", "latitude", "longitude"}
+_VERTEX_FIELDS = {"municipality", "state", "country", "latitude", "longitude"}
 
 
 def _validate_rows(body: Any, required: set[str]) -> str | None:

@@ -21,14 +21,16 @@ EARTH_RADIUS_MILES = 3958.7613
 class VertexInfo:
     """Descriptive, non-structural attributes of a vertex.
 
-    ``description`` is free-text source provenance; ``municipality`` and ``state``
-    are the serving city and 2-letter U.S. state shown in the map tooltip (carrier
-    PoPs derive these from their ``City, ST`` name).
+    ``description`` is free-text source provenance; ``municipality`` is the serving
+    city, ``state`` its region/province (a 2-letter code for US and Canadian places,
+    blank elsewhere), and ``country`` the nation. The map tooltip shows ``City, State``
+    for US places and ``City, Country`` for everywhere else.
     """
 
     description: str = ""
     municipality: str = ""
     state: str = ""
+    country: str = ""
 
 @dataclass(frozen=True)
 class Vertex:
@@ -47,7 +49,7 @@ class Vertex:
     kind: str
     coords: tuple[float, float]  # (latitude, longitude)
     # Descriptive (non-structural) attributes: source notes plus the serving
-    # municipality and 2-letter state shown in the map tooltip.
+    # municipality, region/state and country shown in the map tooltip.
     info: VertexInfo = field(default_factory=VertexInfo)
     # Whether the vertex appears on the source mapbook layer (carrier PoPs are
     # backbone infrastructure and are not shown; installations and regions are).

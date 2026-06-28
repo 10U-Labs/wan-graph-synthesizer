@@ -1,15 +1,15 @@
-Name,Municipality,State,Latitude,Longitude
-Barksdale AFB,Bossier City,LA,32.5018,-93.6627
-Camp Guernsey,Guernsey,WY,42.269,-104.745
-Camp Navajo,Bellemont,AZ,35.222,-111.842
-Cape Canaveral SFS,Cape Canaveral,FL,28.4889,-80.5772
-F.E. Warren AFB,Cheyenne,WY,41.151,-104.861
-Hanscom AFB,Bedford,MA,42.4699,-71.289
-Hill AFB,Layton,UT,41.124,-111.9731
-JHU APL,Laurel,MD,39.1684,-76.8991
-Malmstrom AFB,Great Falls,MT,47.5053,-111.183
-Minot AFB,Minot,ND,48.4156,-101.3577
-Reagan Test Site,Kwajalein,MH,8.72,167.731
-Utah Test and Training Range (UTTR),Tooele,UT,41.0,-113.0
-Vandenberg SFB,Lompoc,CA,34.742,-120.5724
-"Washington, DC",Washington,DC,38.9072,-77.0369
+Name,Municipality,State,Country,Latitude,Longitude
+Barksdale AFB,Bossier City,LA,United States,32.5018,-93.6627
+Camp Guernsey,Guernsey,WY,United States,42.269,-104.745
+Camp Navajo,Bellemont,AZ,United States,35.222,-111.842
+Cape Canaveral SFS,Cape Canaveral,FL,United States,28.4889,-80.5772
+F.E. Warren AFB,Cheyenne,WY,United States,41.151,-104.861
+Hanscom AFB,Bedford,MA,United States,42.4699,-71.289
+Hill AFB,Layton,UT,United States,41.124,-111.9731
+JHU APL,Laurel,MD,United States,39.1684,-76.8991
+Malmstrom AFB,Great Falls,MT,United States,47.5053,-111.183
+Minot AFB,Minot,ND,United States,48.4156,-101.3577
+Reagan Test Site,Kwajalein,MH,United States,8.72,167.731
+Utah Test and Training Range (UTTR),Tooele,UT,United States,41.0,-113.0
+Vandenberg SFB,Lompoc,CA,United States,34.742,-120.5724
+"Washington, DC",Washington,DC,United States,38.9072,-77.0369
