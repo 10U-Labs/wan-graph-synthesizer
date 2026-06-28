@@ -7,10 +7,12 @@ from dataclasses import replace
 import pytest
 
 import fixtures
-from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
+from synthesizer.input_graph import PhysicalEdge, Vertex, edge_key, haversine_miles
 from synthesizer.model import (
     AccessEdge,
+    Design,
     DesignInputs,
+    DesignMetrics,
     DesignParams,
     ForcedLinks,
     RoleExclusions,
@@ -26,6 +28,7 @@ from synthesizer.synthesize import (
     best_design_at_size,
     build_design_for_backbone,
     build_search_plan,
+    convergence_promotion_ids,
     coverage_candidate_totals,
     compute_eligible_backbone_ids,
     demand_haul_miles,
@@ -204,6 +207,23 @@ def test_honors_a_forced_backbone_override() -> None:
     assert "P3" in design.backbone_ids
 
 
+def test_synthesize_promotes_a_data_center_convergence_hub() -> None:
+    """A transit PoP carrying >= 3 of the design's lines at a data-center city is seated.
+
+    Drives the full promote-then-redraw loop: the first design leaves the centre as a
+    transit node, the convergence pass forces it in, and the redraw seats it.
+    """
+    design = fixtures.convergence_hub_artifacts().design
+    assert "hub_dc" in design.backbone_ids
+
+
+def test_synthesize_stops_convergence_promotion_at_the_backbone_cap() -> None:
+    """A backbone cap with no spare slot blocks the promotion -- the centre stays transit."""
+    design = fixtures.convergence_hub_artifacts(max_backbone_count=4).design
+    assert "hub_dc" not in design.backbone_ids
+    assert len(design.backbone_ids) == 4
+
+
 # --- compute_eligible_backbone_ids: the data-center gate -------------------------------
 
 def test_eligible_excludes_a_degree_one_spur() -> None:
@@ -231,6 +251,58 @@ def test_eligible_excludes_a_pop_off_every_data_center_city() -> None:
     # Only a and b sit at a data-center city; c is barred despite degree two.
     eligible = compute_eligible_backbone_ids(pops, build_adjacency(edges), _cities("a", "b"))
     assert "c" not in eligible
+
+
+# --- convergence_promotion_ids: per-design data-center hub promotion -------------------
+
+def _design(
+    backbone_ids: tuple[str, ...],
+    physical_edge_keys: set[tuple[str, str]],
+) -> Design:
+    """A Design carrying only the fields the convergence pass reads."""
+    return Design(
+        backbone_ids=backbone_ids,
+        transit_ids=(),
+        access_edges=[],
+        physical_edge_keys=physical_edge_keys,
+        path_uses=[],
+        metrics=DesignMetrics(0.0, 0.0, 0.0),
+    )
+
+
+def test_convergence_promotes_a_data_center_transit_hub() -> None:
+    """A non-backbone data-center PoP carrying >= 3 of the design's lines is promoted."""
+    # hub carries four of the design's routed edges; b1/b2 are the seated backbone.
+    keys = {edge_key("hub", n) for n in ("b1", "b2", "x", "y")}
+    design = _design(("b1", "b2"), keys)
+    pops = [pop(name) for name in ("hub", "b1", "b2", "x", "y")]
+    promoted = convergence_promotion_ids(design, pops, _cities("hub", "x", "y"))
+    assert promoted == {"hub"}
+
+
+def test_convergence_skips_a_two_line_crossing() -> None:
+    """A PoP where only two of the design's lines meet is below the threshold."""
+    keys = {edge_key("mid", "b1"), edge_key("mid", "b2")}
+    design = _design(("b1", "b2"), keys)
+    pops = [pop(name) for name in ("mid", "b1", "b2")]
+    assert convergence_promotion_ids(design, pops, _cities("mid")) == set()
+
+
+def test_convergence_excludes_a_seated_backbone_node() -> None:
+    """A node already in the backbone is never re-promoted, however many lines it carries."""
+    keys = {edge_key("b1", n) for n in ("b2", "x", "y")}
+    design = _design(("b1", "b2"), keys)
+    pops = [pop(name) for name in ("b1", "b2", "x", "y")]
+    assert convergence_promotion_ids(design, pops, _cities("b1", "b2", "x", "y")) == set()
+
+
+def test_convergence_excludes_a_non_data_center_crossing() -> None:
+    """A >= 3-line crossing with no data center stays transit -- the gate is absolute."""
+    keys = {edge_key("hub", n) for n in ("b1", "b2", "x")}
+    design = _design(("b1", "b2"), keys)
+    pops = [pop(name) for name in ("hub", "b1", "b2", "x")]
+    # hub is not in the data-center set, so it is not eligible for promotion.
+    assert convergence_promotion_ids(design, pops, _cities("b1", "b2", "x")) == set()
 
 
 # --- direct helper coverage ------------------------------------------------------------
@@ -451,6 +523,17 @@ def test_build_search_plan_ranks_candidates_by_strength() -> None:
     inputs = _inputs_from_edges(["a", "b", "c"], edges, {"a", "b", "c"})
     plan = build_search_plan(inputs, {"a", "b", "c"}, RoleOverrides(), DesignParams())
     assert set(plan.backbone_candidates) == {"a", "b", "c"}
+
+
+def test_build_search_plan_fixes_promoted_nodes_into_required() -> None:
+    """Convergence-promoted nodes join the operator-forced nodes in the required set."""
+    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
+    inputs = _inputs_from_edges(["a", "b", "c"], edges, {"a", "b", "c"})
+    overrides = RoleOverrides(forced_backbone_ids=frozenset({"a"}))
+    plan = build_search_plan(
+        inputs, {"a", "b", "c"}, overrides, DesignParams(), frozenset({"b"})
+    )
+    assert plan.required_backbone == frozenset({"a", "b"})
 
 
 def test_demand_haul_miles_reports_worst_and_total_to_nearest_node() -> None:

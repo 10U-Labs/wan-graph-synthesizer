@@ -10,6 +10,12 @@ being the one that most shortens the demand-to-backbone haul -- so extra backbon
 nodes appear only where they bring demand closer, never as a mileage cost minimized
 over candidate sets.
 
+A final convergence pass then promotes natural hubs: any data-center city where at least
+``CONVERGENCE_BACKBONE_DEGREE`` of the design's own routed fiber lines meet is forced
+into the backbone and the design is recomputed, repeating until a redraw finds no new
+hub. The count is per-design (this design's used physical edges), not the shared carrier
+substrate's degree, so a city that hubs one tenant need not hub another.
+
 Eligibility is gated twice: a carrier PoP may serve as a backbone node only if it has
 at least two physical links AND sits at a data-center city (a colocation provider
 operates a cage there). The operator's forced backbone pins are gated the same way
@@ -63,6 +69,12 @@ logger = logging.getLogger(__name__)
 # enumerate millions of sets; without this the scan goes silent between "new best"
 # lines.
 _SEARCH_LOG_INTERVAL = 50_000
+
+# A carrier PoP where at least this many of the design's own routed fiber lines converge
+# is a natural hub; if it also sits at a data-center city it is promoted into the backbone
+# and the design is recomputed (GitHub issue #4). The count is per-design (the design's
+# used physical edges), never the shared carrier substrate's degree.
+CONVERGENCE_BACKBONE_DEGREE = 3
 
 
 @dataclass
@@ -273,6 +285,38 @@ def compute_eligible_backbone_ids(
         for pop in carrier_pops
         if len(adjacency.get(pop.id, [])) >= 2
         and (pop.info.municipality, pop.info.state) in datacenter_cities
+    }
+
+
+def convergence_promotion_ids(
+    design: Design,
+    carrier_pops: list[Vertex],
+    datacenter_cities: frozenset[tuple[str, str]],
+    min_degree: int = CONVERGENCE_BACKBONE_DEGREE,
+) -> set[str]:
+    """Non-backbone carrier PoPs at a data-center city where this design's fiber converges.
+
+    A PoP qualifies when at least ``min_degree`` of *this design's* routed physical edges
+    meet at it. The count comes from ``design.physical_edge_keys`` -- the fiber actually
+    drawn for this design -- so the measure is per-design, never the shared substrate's
+    degree. A non-backbone carrier PoP only ever carries those edges as a transit node
+    (demand homes to backbone nodes, never to transit), so its incident count is exactly
+    the number of the design's lines meeting there. PoPs already seated in the backbone
+    are excluded; the caller forces the rest in and redraws.
+    """
+    counts: dict[str, int] = {}
+    for left, right in design.physical_edge_keys:
+        counts[left] = counts.get(left, 0) + 1
+        counts[right] = counts.get(right, 0) + 1
+    backbone = set(design.backbone_ids)
+    pop_by_id = {pop.id: pop for pop in carrier_pops}
+    return {
+        pop_id
+        for pop_id, degree in counts.items()
+        if degree >= min_degree
+        and pop_id not in backbone
+        and (pop_by_id[pop_id].info.municipality, pop_by_id[pop_id].info.state)
+        in datacenter_cities
     }
 
 
@@ -580,12 +624,15 @@ def build_search_plan(
     eligible_ids: set[str],
     overrides: RoleOverrides,
     params: DesignParams,
+    promoted_backbone_ids: frozenset[str] = frozenset(),
 ) -> _SearchPlan:
     """Compute vertex strengths and backbone candidates.
 
-    Required backbone nodes are the operator-forced backbone nodes. Every eligible PoP
-    is a backbone candidate, ranked nationally by strength. The operator's resolved
-    forced-connection links ride along for the routing stage.
+    Required backbone nodes are the operator-forced backbone nodes plus any
+    ``promoted_backbone_ids`` the convergence pass has fixed in (already eligible by
+    construction). Every eligible PoP is a backbone candidate, ranked nationally by
+    strength. The operator's resolved forced-connection links ride along for the
+    routing stage.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
@@ -599,9 +646,10 @@ def build_search_plan(
         eligible_ids,
         key=lambda pop_id: (-strength_by_id[pop_id], pop_id),
     )
+    required = (overrides.forced_backbone_ids & eligible_ids) | promoted_backbone_ids
     forced_links = replace(
         overrides.forced_links,
-        required_backbone=frozenset(overrides.forced_backbone_ids & eligible_ids),
+        required_backbone=frozenset(required),
     )
     return _SearchPlan(
         backbone_candidates,
@@ -659,10 +707,34 @@ def synthesize_two_tier_design(
         all_predecessors=context.all_predecessors,
         carrier_blocks=context.carrier_blocks,
     )
-    plan = build_search_plan(inputs, backbone_eligible_ids, overrides, params)
-    forced_error = forced_backbone_resilience_error(
-        plan.required_backbone, inputs, max(2, params.min_backbone_count)
-    )
-    if forced_error is not None:
-        raise ValueError(forced_error)
-    return search_best_design(inputs, params, plan)
+    forced_base = overrides.forced_backbone_ids & backbone_eligible_ids
+    promoted: frozenset[str] = frozenset()
+    while True:
+        plan = build_search_plan(
+            inputs, backbone_eligible_ids, overrides, params, promoted
+        )
+        forced_error = forced_backbone_resilience_error(
+            plan.required_backbone, inputs, max(2, params.min_backbone_count)
+        )
+        if forced_error is not None:
+            raise ValueError(forced_error)
+        design = search_best_design(inputs, params, plan)
+
+        new = convergence_promotion_ids(
+            design, inputs.carrier_pops, params.datacenter_cities
+        ) - promoted
+        if not new:
+            return design
+        grown = promoted | new
+        if (
+            params.max_backbone_count is not None
+            and len(forced_base | grown) > params.max_backbone_count
+        ):
+            logger.info(
+                "Convergence promotion stopped at the %d-node cap; %d data-center "
+                "crossing(s) left as transit",
+                params.max_backbone_count, len(new),
+            )
+            return design
+        logger.info("Promoting %d data-center convergence hub(s); redrawing", len(new))
+        promoted = grown
