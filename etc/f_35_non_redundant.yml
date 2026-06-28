@@ -15,8 +15,13 @@ forced_connections: []
 inputs:
   providers:
     AWS:
+      - data/vertices/providers/providers.csv
+      - data/vertices/providers region.csv
+      - data/vertices/providers region.csv
+      - data/vertices/providers region.csv
       - data/vertices/providers region.csv
     provider:
+      - data/vertices/providers region.csv
       - data/vertices/providers region.csv
   locations:
     F-35: data/vertices/tenants/f_35.csv
