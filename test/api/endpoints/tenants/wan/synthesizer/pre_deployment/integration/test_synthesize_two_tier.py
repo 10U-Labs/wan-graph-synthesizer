@@ -11,7 +11,8 @@ from __future__ import annotations
 import fixtures
 from fixtures import run_design
 from synthesizer.input_graph import edge_key
-from synthesizer.model import DesignArtifacts, DesignParams, ForcedConnection
+from synthesizer.model import DesignArtifacts, DesignParams, ForcedConnection, is_carrier_pop
+from synthesizer.synthesize import convergence_promotion_ids
 from synthesizer.validation import backbone_mesh_pairs
 
 ARTIFACTS = fixtures.ring_artifacts()
@@ -98,3 +99,29 @@ def test_off_net_design_validates_connected() -> None:
     """A design with an off-net backbone twin validates as a connected whole."""
     artifacts = _forced_off_net_artifacts()
     assert artifacts.validation["connected"] is True
+
+
+CONVERGENCE_HUB = fixtures.convergence_hub_artifacts()
+NON_DATACENTER_HUB = fixtures.convergence_hub_artifacts(promote_hub=False)
+
+
+def test_promoted_convergence_design_validates_connected() -> None:
+    """The design with the promoted hub still validates end-to-end as connected."""
+    assert "hub_dc" in CONVERGENCE_HUB.design.backbone_ids
+    assert CONVERGENCE_HUB.validation["connected"] is True
+
+
+def test_convergence_promotion_reaches_a_fixpoint() -> None:
+    """The returned design is stable: a further convergence pass promotes nothing."""
+    carrier_pops = [v for v in CONVERGENCE_HUB.vertices if is_carrier_pop(v)]
+    cities = frozenset(
+        (pop.info.municipality, pop.info.state) for pop in carrier_pops
+    )
+    assert convergence_promotion_ids(CONVERGENCE_HUB.design, carrier_pops, cities) == set()
+
+
+def test_non_data_center_convergence_hub_stays_transit() -> None:
+    """The same >= 3-line crossing with no data center is never promoted."""
+    design = NON_DATACENTER_HUB.design
+    assert "hub_dc" not in design.backbone_ids
+    assert "hub_dc" in design.transit_ids

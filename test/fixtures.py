@@ -261,6 +261,62 @@ def forced_connection_artifacts(
     return _forced_artifacts(params, forced_connections=forced_connections)
 
 
+# A four-PoP square around one central PoP. Short spokes to the centre and longer ring
+# edges make every diagonal backbone-mesh link route through the centre, so once the four
+# corners are the backbone the centre carries four of the design's lines as a transit
+# node. The convergence pass (issue #4) then promotes the centre when it is a data-center
+# city. Coordinates are a degenerate diamond; distances are pinned in
+# :func:`convergence_hub_inputs` so the diagonals are strictly shorter through the centre.
+_HUB_CORNERS = ("hub_b0", "hub_b1", "hub_b2", "hub_b3")
+_HUB_CENTER = "hub_dc"
+_HUB_COORDS = {
+    "hub_b0": (1.0, 0.0),
+    "hub_b1": (0.0, 1.0),
+    "hub_b2": (-1.0, 0.0),
+    "hub_b3": (0.0, -1.0),
+    "hub_dc": (0.0, 0.0),
+}
+
+
+def convergence_hub_inputs() -> RingInputs:
+    """The square-plus-centre carrier graph the convergence fixture is built on."""
+    pops = [carrier_pop(n, *_HUB_COORDS[n]) for n in (*_HUB_CORNERS, _HUB_CENTER)]
+    spokes = {(_HUB_CENTER, corner): 1.0 for corner in _HUB_CORNERS}
+    ring = {
+        (_HUB_CORNERS[i], _HUB_CORNERS[(i + 1) % 4]): 1.5 for i in range(4)
+    }
+    return pops, physical_edges_from({**spokes, **ring})
+
+
+def convergence_hub_artifacts(
+    promote_hub: bool = True, max_backbone_count: int | None = None
+) -> DesignArtifacts:
+    """Run the synthesizer with the four corners forced and the centre left transit.
+
+    The diagonal backbone-mesh links route through the centre, so it carries four of the
+    design's lines. When ``promote_hub`` is set the centre is a data-center city and the
+    convergence pass promotes it into the backbone and redraws; otherwise the centre is
+    barred from the gate and stays transit. A ``max_backbone_count`` of four (the four
+    forced corners) leaves no room for the promotion, so the centre stays transit even
+    though it qualifies -- the cap wins.
+    """
+    vertices, edges = convergence_hub_inputs()
+    datacenter_cities = frozenset(
+        (corner, _FIXTURE_STATE) for corner in _HUB_CORNERS
+    )
+    if promote_hub:
+        datacenter_cities = datacenter_cities | {(_HUB_CENTER, _FIXTURE_STATE)}
+    params = DesignParams(
+        min_backbone_count=2,
+        max_backbone_count=max_backbone_count,
+        forced_backbone_names=_HUB_CORNERS,
+        datacenter_cities=datacenter_cities,
+    )
+    vertices, edges, overrides = apply_role_overrides(vertices, edges, params, (), ())
+    design = synthesize_two_tier_design(vertices, edges, params, overrides)
+    return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
+
+
 def sample_sources() -> SourceFiles:
     """Provenance paths for output rendering tests."""
     return SourceFiles((Path("vertices/lumen.csv"),), Path("edges.csv"))
