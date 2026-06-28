@@ -45,11 +45,10 @@ _CONTINENT = {
 # cross-ocean edge may only connect two of these -- everywhere else reaches another
 # continent by routing terrestrially to one of them first.
 _GATEWAYS = {
-    ("New York", "NY"), ("Ashburn", "VA"), ("Seattle", "WA"),
-    ("Hillsboro", "OR"), ("Los Angeles", "CA"), ("Tuckerton", "NJ"),
+    ("New York", "NY"), ("Ashburn", "VA"), ("Seattle", "WA"), ("Hillsboro", "OR"),
+    ("San Jose", "CA"), ("Los Angeles", "CA"), ("Tuckerton", "NJ"),
     ("Manchester", ""), ("London", ""), ("Slough", ""), ("Paris", ""),
-    ("Frankfurt", ""), ("Marseille", ""),
-    ("Tokyo", ""), ("Hong Kong", ""), ("Singapore", ""), ("Sydney", ""),
+    ("Tokyo", ""), ("Singapore", ""), ("Sydney", ""),
     ("Sao Paulo", ""),
 }
 
