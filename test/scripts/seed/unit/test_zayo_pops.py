@@ -1,11 +1,10 @@
 """Data-integrity checks for the worldwide Zayo carrier graph.
 
-The Zayo vertices are merged from the mapbook's text IP PoP List, so they span the
-globe, and the subsea/core routes wire the overseas hubs into the substrate. These
-guard the invariants that keep that graph usable: every PoP has a distinct
-``(municipality, state)`` key, overseas PoPs carry their country, and the overseas
-hubs are edge-connected to endpoints that resolve back to real PoPs -- otherwise the
-substrate loader would drop them.
+The Zayo PoPs and links are digitized from the mapbook's network maps, so they span
+the globe. These guard the invariants that keep that graph usable: every PoP has a
+distinct ``(municipality, state)`` key, overseas PoPs carry their country, every PoP
+is named by at least one edge (or the substrate loader silently drops it), and no
+edge dangles to a city that is not a PoP.
 """
 
 from __future__ import annotations
@@ -17,19 +16,6 @@ from repo_utils import REPO_ROOT
 _DATA = REPO_ROOT / "data"
 _ZAYO = _DATA / "vertices" / "carriers" / "zayo.csv"
 _ZAYO_EDGES = _DATA / "edges" / "zayo.csv"
-
-# Overseas hub PoPs the subsea/core edges must connect, so they survive substrate load.
-_HUBS = {
-    ("Tokyo", ""),
-    ("London", ""),
-    ("Paris", ""),
-    ("Frankfurt", ""),
-    ("Amsterdam", ""),
-    ("Sydney", ""),
-    ("Singapore", ""),
-    ("Hong Kong", ""),
-    ("Sao Paulo", ""),
-}
 
 
 def _pops() -> list[dict[str, str]]:
@@ -64,9 +50,10 @@ def test_overseas_pops_carry_their_country() -> None:
     assert overseas <= located
 
 
-def test_overseas_hubs_are_edge_connected() -> None:
-    """Every overseas hub is named by a Zayo edge, so the substrate keeps it."""
-    assert _HUBS <= _edge_endpoints()
+def test_every_pop_is_connected() -> None:
+    """Every Zayo PoP is named by an edge, so the substrate loader keeps all of them."""
+    keys = {(pop["Municipality"], pop["State"]) for pop in _pops()}
+    assert keys <= _edge_endpoints()
 
 
 def test_edge_endpoints_resolve_to_pops() -> None:
