@@ -41,14 +41,15 @@ _CONTINENT = {
     "Brazil": "South America",
 }
 
-# The cities the mapbook's Subsea Routes section draws an intercontinental cable to. A
-# cross-ocean edge may only connect two of these -- everywhere else reaches another
-# continent by routing terrestrially to one of them first.
+# The cities the mapbook draws an intercontinental cable to -- the Subsea Routes
+# section plus the Global IP Network map's APAC inset, which lands trans-Pacific and
+# intra-APAC cables at Hong Kong. A cross-ocean edge may only connect two of these --
+# everywhere else reaches another continent by routing terrestrially to one first.
 _GATEWAYS = {
     ("New York", "NY"), ("Ashburn", "VA"), ("Seattle", "WA"), ("Hillsboro", "OR"),
     ("San Jose", "CA"), ("Los Angeles", "CA"), ("Tuckerton", "NJ"),
     ("Manchester", ""), ("London", ""), ("Slough", ""), ("Paris", ""),
-    ("Tokyo", ""), ("Singapore", ""), ("Sydney", ""),
+    ("Tokyo", ""), ("Hong Kong", ""), ("Singapore", ""), ("Sydney", ""),
     ("Sao Paulo", ""),
 }
 
