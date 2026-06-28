@@ -35,8 +35,6 @@ const map = L.map("map").setView(VIEW_CENTER, 4);
 L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(map);
 
 let drawn = [];
-// The tenant currently being viewed; shown on its own tenant demand sites.
-let viewedTenant = "";
 
 function styleFor(vertex) {
   if (vertex.kind === CSP_KIND) {
@@ -65,8 +63,7 @@ function displayName(vertex) {
   return prefix ? `${prefix} ${cityName(vertex)}` : vertex.name;
 }
 
-// Tooltip: the role-prefixed display name, its location beneath, and -- only for the
-// tenant's own (non-CSP) access sites -- the tenant being viewed. The location reads
+// Tooltip: the role-prefixed display name and its location beneath. The location reads
 // "City, State" for US places and "City, Country" for everywhere else.
 function vertexLabel(vertex) {
   const info = vertex.info || {};
@@ -74,10 +71,7 @@ function vertexLabel(vertex) {
   const located = info.municipality && region
     ? `<br>${info.municipality}, ${region}`
     : "";
-  const owned = vertex.tier_role === "tenant"
-    ? `<br>Tenant: ${viewedTenant}`
-    : "";
-  return `<strong>${displayName(vertex)}</strong>${located}${owned}`;
+  return `<strong>${displayName(vertex)}</strong>${located}`;
 }
 
 function edgeLabel(source, target) {
@@ -196,7 +190,6 @@ function showCounts(vertices) {
 
 async function render(tenantId) {
   clear();
-  viewedTenant = tenantId;
   let vertices;
   let edges;
   try {
