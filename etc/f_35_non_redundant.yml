@@ -15,9 +15,14 @@ forced_connections: []
 inputs:
   csps:
     AWS:
+      - data/vertices/csps/aws/aws_govcloud.csv
       - data/vertices/csps/aws/aws_secret_east.csv
+      - data/vertices/csps/aws/aws_secret_west.csv
+      - data/vertices/csps/aws/aws_top_secret_east.csv
+      - data/vertices/csps/aws/aws_top_secret_west.csv
     Azure:
       - data/vertices/csps/azure/azure_secret_east.csv
+      - data/vertices/csps/azure/azure_secret_west.csv
   locations:
     F-35: data/vertices/tenants/f_35.csv
   off_net: data/vertices/utilities/off_net.csv
