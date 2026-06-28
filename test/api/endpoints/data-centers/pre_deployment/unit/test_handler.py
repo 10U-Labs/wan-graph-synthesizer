@@ -40,7 +40,7 @@ _WRITER: dict[str, Any] = {
     "param": "provider",
     "key": "data-centers/flexential/vertices.json",
     "id": "flexential",
-    "valid": [{"municipality": "Denver", "state": "CO",
+    "valid": [{"municipality": "Denver", "state": "CO", "country": "United States",
                "latitude": 1.0, "longitude": 2.0}],
 }
 

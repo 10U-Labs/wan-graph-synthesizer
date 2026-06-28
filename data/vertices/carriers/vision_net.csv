@@ -1,10 +1,10 @@
-Municipality,State,Latitude,Longitude
-Billings,MT,45.787,-108.500
-Bozeman,MT,45.677,-111.043
-Great Falls,MT,47.507,-111.300
-Havre,MT,48.550,-109.684
-Helena,MT,46.589,-112.039
-Kalispell,MT,48.196,-114.314
-Miles City,MT,46.408,-105.840
-Missoula,MT,46.874,-114.026
-Williston,ND,48.181,-103.628
+Municipality,State,Country,Latitude,Longitude
+Billings,MT,United States,45.787,-108.500
+Bozeman,MT,United States,45.677,-111.043
+Great Falls,MT,United States,47.507,-111.300
+Havre,MT,United States,48.550,-109.684
+Helena,MT,United States,46.589,-112.039
+Kalispell,MT,United States,48.196,-114.314
+Miles City,MT,United States,46.408,-105.840
+Missoula,MT,United States,46.874,-114.026
+Williston,ND,United States,48.181,-103.628

@@ -50,8 +50,10 @@ RING_EDGE_PAIRS = [
     ("P0", "P6"),
 ]
 # The state every fixture carrier PoP is placed in; the city is the PoP id, so each
-# PoP has a distinct ``(municipality, state)`` the data-center gate can key on.
+# PoP has a distinct ``(municipality, state)`` the data-center gate can key on. The
+# country makes the tooltip's display rule resolve to the state, as for any US place.
 _FIXTURE_STATE = "XX"
+_FIXTURE_COUNTRY = "United States"
 
 
 def carrier_pop(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
@@ -61,7 +63,9 @@ def carrier_pop(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
         name=vertex_id,
         kind="PoP",
         coords=(lat, lon),
-        info=VertexInfo(municipality=vertex_id, state=_FIXTURE_STATE),
+        info=VertexInfo(
+            municipality=vertex_id, state=_FIXTURE_STATE, country=_FIXTURE_COUNTRY
+        ),
         shown_in_map=False,
     )
 
@@ -83,7 +87,9 @@ def off_net_site(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
         name=vertex_id,
         kind=OFF_NET_KIND,
         coords=(lat, lon),
-        info=VertexInfo(municipality=vertex_id, state=_FIXTURE_STATE),
+        info=VertexInfo(
+            municipality=vertex_id, state=_FIXTURE_STATE, country=_FIXTURE_COUNTRY
+        ),
     )
 
 

@@ -1,18 +1,18 @@
-Municipality,State,Latitude,Longitude
-Ashburn,VA,39.0438,-77.4874
-Culpeper,VA,38.4732,-77.9961
-Atlanta,GA,33.7490,-84.3880
-Boston,MA,42.3601,-71.0589
-Chicago,IL,41.8781,-87.6298
-Dallas,TX,32.7767,-96.7970
-Denver,CO,39.7392,-104.9903
-Houston,TX,29.7604,-95.3698
-Los Angeles,CA,34.0522,-118.2437
-Miami,FL,25.7617,-80.1918
-New York,NY,40.7128,-74.0060
-Secaucus,NJ,40.7895,-74.0565
-Newark,NJ,40.7357,-74.1724
-Philadelphia,PA,39.9526,-75.1652
-Seattle,WA,47.6062,-122.3321
-San Jose,CA,37.3382,-121.8863
-Santa Clara,CA,37.3541,-121.9552
+Municipality,State,Country,Latitude,Longitude
+Ashburn,VA,United States,39.0438,-77.4874
+Culpeper,VA,United States,38.4732,-77.9961
+Atlanta,GA,United States,33.7490,-84.3880
+Boston,MA,United States,42.3601,-71.0589
+Chicago,IL,United States,41.8781,-87.6298
+Dallas,TX,United States,32.7767,-96.7970
+Denver,CO,United States,39.7392,-104.9903
+Houston,TX,United States,29.7604,-95.3698
+Los Angeles,CA,United States,34.0522,-118.2437
+Miami,FL,United States,25.7617,-80.1918
+New York,NY,United States,40.7128,-74.0060
+Secaucus,NJ,United States,40.7895,-74.0565
+Newark,NJ,United States,40.7357,-74.1724
+Philadelphia,PA,United States,39.9526,-75.1652
+Seattle,WA,United States,47.6062,-122.3321
+San Jose,CA,United States,37.3382,-121.8863
+Santa Clara,CA,United States,37.3541,-121.9552

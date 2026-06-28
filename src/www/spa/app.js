@@ -51,10 +51,11 @@ const TIER_PREFIX = {
   backbone: "BACKBONE",
 };
 
-// The bare city: the vertex name stripped of any trailing ", ST" state, so the
-// role-prefixed name reads "BACKBONE Los Angeles", never "BACKBONE Los Angeles, CA".
+// The bare city: the vertex name stripped of any trailing ", Region" (a US state or a
+// country), so the role-prefixed name reads "BACKBONE Los Angeles" / "BACKBONE Tokyo",
+// never "BACKBONE Los Angeles, CA" or "BACKBONE Tokyo, Japan".
 function cityName(vertex) {
-  return vertex.name.replace(/,\s*[A-Z]{2}$/, "");
+  return vertex.name.replace(/,\s*[^,]+$/, "");
 }
 
 // Role-prefixed display name, e.g. "BACKBONE Los Angeles". Demand vertices
@@ -64,12 +65,14 @@ function displayName(vertex) {
   return prefix ? `${prefix} ${cityName(vertex)}` : vertex.name;
 }
 
-// Tooltip: the role-prefixed display name, its municipality/state beneath, and --
-// only for the tenant's own (non-CSP) access sites -- the tenant being viewed.
+// Tooltip: the role-prefixed display name, its location beneath, and -- only for the
+// tenant's own (non-CSP) access sites -- the tenant being viewed. The location reads
+// "City, State" for US places and "City, Country" for everywhere else.
 function vertexLabel(vertex) {
   const info = vertex.info || {};
-  const located = info.municipality && info.state
-    ? `<br>${info.municipality}, ${info.state}`
+  const region = info.country === "United States" ? info.state : info.country;
+  const located = info.municipality && region
+    ? `<br>${info.municipality}, ${region}`
     : "";
   const owned = vertex.tier_role === "tenant"
     ? `<br>Tenant: ${viewedTenant}`

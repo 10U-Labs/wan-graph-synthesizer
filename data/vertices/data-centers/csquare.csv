@@ -1,28 +1,28 @@
-Municipality,State,Latitude,Longitude
-Phoenix,AZ,33.4484,-112.0740
-Irvine,CA,33.6846,-117.8265
-Los Angeles,CA,34.0522,-118.2437
-Santa Clara,CA,37.3541,-121.9552
-Sunnyvale,CA,37.3688,-122.0363
-Denver,CO,39.7392,-104.9903
-Tampa,FL,27.9506,-82.4572
-Atlanta,GA,33.7490,-84.3880
-Chicago,IL,41.8781,-87.6298
-Boston,MA,42.3601,-71.0589
-Minneapolis,MN,44.9778,-93.2650
-St. Louis,MO,38.6270,-90.1994
-Las Vegas,NV,36.1699,-115.1398
-Jersey City,NJ,40.7178,-74.0431
-Newark,NJ,40.7357,-74.1724
-Secaucus,NJ,40.7895,-74.0565
-Piscataway,NJ,40.4993,-74.4574
-Albuquerque,NM,35.0844,-106.6504
-Raleigh,NC,35.7796,-78.6382
-Columbus,OH,39.9612,-82.9988
-Tulsa,OK,36.1540,-95.9928
-Nashville,TN,36.1627,-86.7816
-Fort Worth,TX,32.7555,-97.3308
-Dallas,TX,32.7767,-96.7970
-Ashburn,VA,39.0438,-77.4874
-Tukwila,WA,47.4623,-122.2607
-Seattle,WA,47.6062,-122.3321
+Municipality,State,Country,Latitude,Longitude
+Phoenix,AZ,United States,33.4484,-112.0740
+Irvine,CA,United States,33.6846,-117.8265
+Los Angeles,CA,United States,34.0522,-118.2437
+Santa Clara,CA,United States,37.3541,-121.9552
+Sunnyvale,CA,United States,37.3688,-122.0363
+Denver,CO,United States,39.7392,-104.9903
+Tampa,FL,United States,27.9506,-82.4572
+Atlanta,GA,United States,33.7490,-84.3880
+Chicago,IL,United States,41.8781,-87.6298
+Boston,MA,United States,42.3601,-71.0589
+Minneapolis,MN,United States,44.9778,-93.2650
+St. Louis,MO,United States,38.6270,-90.1994
+Las Vegas,NV,United States,36.1699,-115.1398
+Jersey City,NJ,United States,40.7178,-74.0431
+Newark,NJ,United States,40.7357,-74.1724
+Secaucus,NJ,United States,40.7895,-74.0565
+Piscataway,NJ,United States,40.4993,-74.4574
+Albuquerque,NM,United States,35.0844,-106.6504
+Raleigh,NC,United States,35.7796,-78.6382
+Columbus,OH,United States,39.9612,-82.9988
+Tulsa,OK,United States,36.1540,-95.9928
+Nashville,TN,United States,36.1627,-86.7816
+Fort Worth,TX,United States,32.7555,-97.3308
+Dallas,TX,United States,32.7767,-96.7970
+Ashburn,VA,United States,39.0438,-77.4874
+Tukwila,WA,United States,47.4623,-122.2607
+Seattle,WA,United States,47.6062,-122.3321

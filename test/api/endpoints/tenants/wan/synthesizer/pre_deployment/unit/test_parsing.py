@@ -7,11 +7,11 @@ from synthesizer.model import is_carrier_pop
 
 _SUBSTRATE_VERTICES = [
     {"carrier": "lumen", "municipality": "Denver", "state": "CO",
-     "latitude": 39.7392, "longitude": -104.9903},
+     "country": "United States", "latitude": 39.7392, "longitude": -104.9903},
     {"carrier": "lumen", "municipality": "Kansas City", "state": "MO",
-     "latitude": 39.0997, "longitude": -94.5786},
+     "country": "United States", "latitude": 39.0997, "longitude": -94.5786},
     {"carrier": "zayo", "municipality": "Denver", "state": "CO",
-     "latitude": 39.7392, "longitude": -104.9903},
+     "country": "United States", "latitude": 39.7392, "longitude": -104.9903},
 ]
 _SUBSTRATE_EDGES = [
     {"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
@@ -77,7 +77,7 @@ def test_substrate_drops_an_isolated_point() -> None:
     """A point no surviving connection touches is dropped from the substrate."""
     extra = _SUBSTRATE_VERTICES + [
         {"carrier": "lumen", "municipality": "Boise", "state": "ID",
-         "latitude": 43.6, "longitude": -116.2},
+         "country": "United States", "latitude": 43.6, "longitude": -116.2},
     ]
     pops, _edges = load_substrate(extra, _SUBSTRATE_EDGES)
     assert "boise-id" not in {pop.id for pop in pops}
@@ -95,7 +95,7 @@ def test_regions_are_cloud_data_centers() -> None:
     """Cloud regions carry the CSP kind so the map colours them."""
     regions = load_regions([
         {"name": "us-east-1", "municipality": "Ashburn", "state": "VA",
-         "latitude": 39.0, "longitude": -77.5},
+         "country": "United States", "latitude": 39.0, "longitude": -77.5},
     ])
     assert regions[0].kind == "CSP data center"
 
@@ -104,7 +104,7 @@ def test_sites_keep_their_given_name() -> None:
     """A tenant site is named by its ``name`` column."""
     sites = load_sites([
         {"name": "Buckley", "municipality": "Aurora", "state": "CO",
-         "latitude": 39.7, "longitude": -104.75},
+         "country": "United States", "latitude": 39.7, "longitude": -104.75},
     ])
     assert sites[0].name == "Buckley"
 
@@ -112,15 +112,27 @@ def test_sites_keep_their_given_name() -> None:
 def test_off_net_sites_are_named_by_city() -> None:
     """Off-net candidates have no name column, so they are named by ``City, ST``."""
     off_net = load_off_net([
-        {"municipality": "Dulles", "state": "VA", "latitude": 39.0, "longitude": -77.4},
+        {"municipality": "Dulles", "state": "VA", "country": "United States",
+         "latitude": 39.0, "longitude": -77.4},
     ])
     assert off_net[0].name == "Dulles, VA"
+
+
+def test_non_us_place_is_named_by_city_and_country() -> None:
+    """A non-US row is named ``City, Country`` (the country replaces the blank state)."""
+    off_net = load_off_net([
+        {"municipality": "Tokyo", "state": "", "country": "Japan",
+         "latitude": 35.6764, "longitude": 139.65},
+    ])
+    assert off_net[0].name == "Tokyo, Japan"
 
 
 def test_repeated_names_get_distinct_ids() -> None:
     """Two places with the same name are de-duplicated into distinct ids."""
     sites = load_sites([
-        {"name": "Hub", "municipality": "A", "state": "CO", "latitude": 1.0, "longitude": 2.0},
-        {"name": "Hub", "municipality": "B", "state": "CO", "latitude": 3.0, "longitude": 4.0},
+        {"name": "Hub", "municipality": "A", "state": "CO", "country": "United States",
+         "latitude": 1.0, "longitude": 2.0},
+        {"name": "Hub", "municipality": "B", "state": "CO", "country": "United States",
+         "latitude": 3.0, "longitude": 4.0},
     ])
     assert [site.id for site in sites] == ["site-hub", "site-hub-2"]

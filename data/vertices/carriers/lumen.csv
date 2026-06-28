@@ -1,93 +1,93 @@
-Municipality,State,Latitude,Longitude
-Akron,OH,41.0814,-81.519
-Albany,NY,42.6526,-73.7562
-Albuquerque,NM,35.0844,-106.6504
-Ashburn,VA,39.0438,-77.4875
-Atlanta,GA,33.749,-84.388
-Augusta,GA,33.4735,-81.9748
-Austin,TX,30.2672,-97.7431
-Baltimore,MD,39.2904,-76.6122
-Bandon,OR,43.119,-124.4098
-Billingsley,AL,32.6601,-86.7114
-Birmingham,AL,33.5186,-86.8025
-Boise,ID,43.615,-116.2023
-Boston,MA,42.3601,-71.0589
-Buffalo,NY,42.8864,-78.8784
-Cambridge,MA,42.3736,-71.1097
-Charlotte,NC,35.2271,-80.8431
-Cheyenne,WY,41.14,-104.8202
-Chicago,IL,41.8781,-87.6298
-Cincinnati,OH,39.1031,-84.512
-Cleveland,OH,41.4993,-81.6944
-Columbus,OH,39.9612,-82.9988
-Corpus Christi,TX,27.8006,-97.3964
-Dallas,TX,32.7767,-96.797
-Davenport,IA,41.5236,-90.5776
-Denver,CO,39.7392,-104.9903
-Des Moines,IA,41.5868,-93.6091
-Detroit,MI,42.3314,-83.0458
-El Paso,TX,31.7619,-106.485
-Emeryville,CA,37.8313,-122.2852
-Fort Meyers,FL,26.6406,-81.8723
-Fort Worth,TX,32.7555,-97.3308
-Goodyear,AZ,33.4353,-112.3582
-Harlingen,TX,26.1906,-97.6961
-Hayward,CA,37.6688,-122.0808
-Herndon,VA,38.9696,-77.3861
-Houston,TX,29.7604,-95.3698
-Indianapolis,IN,39.7684,-86.1581
-Jacksonville,FL,30.3322,-81.6557
-Kalamazoo,MI,42.2917,-85.5872
-Kansas City,MO,39.0997,-94.5786
-Laredo,TX,27.5306,-99.5075
-Las Vegas,NV,36.1699,-115.1398
-Los Angeles,CA,34.0522,-118.2437
-Madison,WI,43.0731,-89.4012
-McAllen,TX,26.2034,-98.23
-McLean,VA,38.9339,-77.1773
-Memphis,TN,35.1495,-90.049
-Miami,FL,25.7617,-80.1918
-Milwaukee,WI,43.0389,-87.9065
-Minneapolis,MN,44.9778,-93.265
-Missoula,MT,46.8721,-113.9966
-Modesto,CA,37.6391,-120.9969
-Nashville,TN,36.1627,-86.7816
-New York,NY,40.7128,-74.006
-Newark,NJ,40.7357,-74.1724
-Norfolk,VA,36.8508,-76.2859
-Ogden,UT,41.223,-111.9738
-Oklahoma City,OK,35.4676,-97.5164
-Omaha,NE,41.2565,-95.9345
-Orlando,FL,28.5383,-81.3792
-Philadelphia,PA,39.9526,-75.1652
-Phoenix,AZ,33.4484,-112.074
-Pittsburgh,PA,40.4406,-79.9959
-Portland,OR,45.5152,-122.6765
-Raleigh,NC,35.7796,-78.6382
-Reno,NV,39.5296,-119.8138
-Richmond,VA,37.5407,-77.436
-Riverside,CA,33.9533,-117.3962
-Sacramento,CA,38.5816,-121.4944
-Salt Lake City,UT,40.7608,-111.891
-San Antonio,TX,29.4241,-98.4936
-San Bernardino,CA,34.1083,-117.2898
-San Diego,CA,32.7157,-117.1611
-San Francisco,CA,37.7749,-122.4194
-San Jose,CA,37.3382,-121.8863
-San Luis Obispo,CA,35.2828,-120.6596
-Seattle,WA,47.6062,-122.3321
-South Bend,IN,41.6764,-86.25
-St. Louis,MO,38.627,-90.1994
-Stamford,CT,41.0534,-73.5387
-Stratford,TX,36.3361,-102.0721
-Sunnyvale,CA,37.3688,-122.0363
-Tallahassee,FL,30.4383,-84.2807
-Tampa,FL,27.9506,-82.4572
-Toledo,OH,41.6528,-83.5552
-Tuckerton,NJ,39.6032,-74.3402
-Tucson,AZ,32.2226,-110.9747
-Tulsa,OK,36.154,-95.9928
-Tustin,CA,33.7459,-117.8265
-Wall,NJ,40.1654,-74.0665
-Wichita,KS,37.6872,-97.3301
-Yakima,WA,46.6021,-120.5059
+Municipality,State,Country,Latitude,Longitude
+Akron,OH,United States,41.0814,-81.519
+Albany,NY,United States,42.6526,-73.7562
+Albuquerque,NM,United States,35.0844,-106.6504
+Ashburn,VA,United States,39.0438,-77.4875
+Atlanta,GA,United States,33.749,-84.388
+Augusta,GA,United States,33.4735,-81.9748
+Austin,TX,United States,30.2672,-97.7431
+Baltimore,MD,United States,39.2904,-76.6122
+Bandon,OR,United States,43.119,-124.4098
+Billingsley,AL,United States,32.6601,-86.7114
+Birmingham,AL,United States,33.5186,-86.8025
+Boise,ID,United States,43.615,-116.2023
+Boston,MA,United States,42.3601,-71.0589
+Buffalo,NY,United States,42.8864,-78.8784
+Cambridge,MA,United States,42.3736,-71.1097
+Charlotte,NC,United States,35.2271,-80.8431
+Cheyenne,WY,United States,41.14,-104.8202
+Chicago,IL,United States,41.8781,-87.6298
+Cincinnati,OH,United States,39.1031,-84.512
+Cleveland,OH,United States,41.4993,-81.6944
+Columbus,OH,United States,39.9612,-82.9988
+Corpus Christi,TX,United States,27.8006,-97.3964
+Dallas,TX,United States,32.7767,-96.797
+Davenport,IA,United States,41.5236,-90.5776
+Denver,CO,United States,39.7392,-104.9903
+Des Moines,IA,United States,41.5868,-93.6091
+Detroit,MI,United States,42.3314,-83.0458
+El Paso,TX,United States,31.7619,-106.485
+Emeryville,CA,United States,37.8313,-122.2852
+Fort Meyers,FL,United States,26.6406,-81.8723
+Fort Worth,TX,United States,32.7555,-97.3308
+Goodyear,AZ,United States,33.4353,-112.3582
+Harlingen,TX,United States,26.1906,-97.6961
+Hayward,CA,United States,37.6688,-122.0808
+Herndon,VA,United States,38.9696,-77.3861
+Houston,TX,United States,29.7604,-95.3698
+Indianapolis,IN,United States,39.7684,-86.1581
+Jacksonville,FL,United States,30.3322,-81.6557
+Kalamazoo,MI,United States,42.2917,-85.5872
+Kansas City,MO,United States,39.0997,-94.5786
+Laredo,TX,United States,27.5306,-99.5075
+Las Vegas,NV,United States,36.1699,-115.1398
+Los Angeles,CA,United States,34.0522,-118.2437
+Madison,WI,United States,43.0731,-89.4012
+McAllen,TX,United States,26.2034,-98.23
+McLean,VA,United States,38.9339,-77.1773
+Memphis,TN,United States,35.1495,-90.049
+Miami,FL,United States,25.7617,-80.1918
+Milwaukee,WI,United States,43.0389,-87.9065
+Minneapolis,MN,United States,44.9778,-93.265
+Missoula,MT,United States,46.8721,-113.9966
+Modesto,CA,United States,37.6391,-120.9969
+Nashville,TN,United States,36.1627,-86.7816
+New York,NY,United States,40.7128,-74.006
+Newark,NJ,United States,40.7357,-74.1724
+Norfolk,VA,United States,36.8508,-76.2859
+Ogden,UT,United States,41.223,-111.9738
+Oklahoma City,OK,United States,35.4676,-97.5164
+Omaha,NE,United States,41.2565,-95.9345
+Orlando,FL,United States,28.5383,-81.3792
+Philadelphia,PA,United States,39.9526,-75.1652
+Phoenix,AZ,United States,33.4484,-112.074
+Pittsburgh,PA,United States,40.4406,-79.9959
+Portland,OR,United States,45.5152,-122.6765
+Raleigh,NC,United States,35.7796,-78.6382
+Reno,NV,United States,39.5296,-119.8138
+Richmond,VA,United States,37.5407,-77.436
+Riverside,CA,United States,33.9533,-117.3962
+Sacramento,CA,United States,38.5816,-121.4944
+Salt Lake City,UT,United States,40.7608,-111.891
+San Antonio,TX,United States,29.4241,-98.4936
+San Bernardino,CA,United States,34.1083,-117.2898
+San Diego,CA,United States,32.7157,-117.1611
+San Francisco,CA,United States,37.7749,-122.4194
+San Jose,CA,United States,37.3382,-121.8863
+San Luis Obispo,CA,United States,35.2828,-120.6596
+Seattle,WA,United States,47.6062,-122.3321
+South Bend,IN,United States,41.6764,-86.25
+St. Louis,MO,United States,38.627,-90.1994
+Stamford,CT,United States,41.0534,-73.5387
+Stratford,TX,United States,36.3361,-102.0721
+Sunnyvale,CA,United States,37.3688,-122.0363
+Tallahassee,FL,United States,30.4383,-84.2807
+Tampa,FL,United States,27.9506,-82.4572
+Toledo,OH,United States,41.6528,-83.5552
+Tuckerton,NJ,United States,39.6032,-74.3402
+Tucson,AZ,United States,32.2226,-110.9747
+Tulsa,OK,United States,36.154,-95.9928
+Tustin,CA,United States,33.7459,-117.8265
+Wall,NJ,United States,40.1654,-74.0665
+Wichita,KS,United States,37.6872,-97.3301
+Yakima,WA,United States,46.6021,-120.5059

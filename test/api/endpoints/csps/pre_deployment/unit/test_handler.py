@@ -37,7 +37,7 @@ _WRITER: dict[str, Any] = {
     "key": "csps/aws/vertices.json",
     "id": "aws",
     "valid": [{"name": "r", "municipality": "Denver", "state": "CO",
-               "latitude": 1.0, "longitude": 2.0}],
+               "country": "United States", "latitude": 1.0, "longitude": 2.0}],
 }
 
 

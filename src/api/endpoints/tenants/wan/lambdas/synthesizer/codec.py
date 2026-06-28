@@ -27,8 +27,13 @@ def _slug(value: str) -> str:
 
 
 def _city(row: dict[str, Any]) -> str:
-    """The ``City, ST`` display name of a row (also how forced pins are written)."""
-    return f"{row['municipality']}, {row['state']}"
+    """The ``City, Region`` display name of a row (also how forced pins are written).
+
+    Region is the 2-letter state for US places (so ``City, ST`` is unchanged and forced
+    pins keep matching) and the country for everywhere else (``Tokyo, Japan``).
+    """
+    region = row["state"] if row["country"] == "United States" else row["country"]
+    return f"{row['municipality']}, {region}"
 
 
 def _unique(base: str, used: set[str]) -> str:
@@ -49,7 +54,9 @@ def _place(row: dict[str, Any], vertex_id: str, name: str, kind: str, shown: boo
         name=name,
         kind=kind,
         coords=(float(row["latitude"]), float(row["longitude"])),
-        info=VertexInfo(municipality=row["municipality"], state=row["state"]),
+        info=VertexInfo(
+            municipality=row["municipality"], state=row["state"], country=row["country"]
+        ),
         shown_in_map=shown,
     )
 

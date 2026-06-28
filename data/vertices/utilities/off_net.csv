@@ -1,10 +1,10 @@
-Municipality,State,Latitude,Longitude
-Charleston,SC,32.8990,-80.0410
-Colorado Springs,CO,38.8339,-104.8214
-Dulles,VA,38.9531,-77.4565
-Fredericksburg,VA,38.3032,-77.4605
-Laurel,MT,45.6691,-108.7710
-Manassas,VA,38.7509,-77.4753
-Montgomery,AL,32.3790,-86.3660
-Virginia Beach,VA,36.8529,-75.9780
-Wichita Falls,TX,33.9750,-98.4920
+Municipality,State,Country,Latitude,Longitude
+Charleston,SC,United States,32.8990,-80.0410
+Colorado Springs,CO,United States,38.8339,-104.8214
+Dulles,VA,United States,38.9531,-77.4565
+Fredericksburg,VA,United States,38.3032,-77.4605
+Laurel,MT,United States,45.6691,-108.7710
+Manassas,VA,United States,38.7509,-77.4753
+Montgomery,AL,United States,32.3790,-86.3660
+Virginia Beach,VA,United States,36.8529,-75.9780
+Wichita Falls,TX,United States,33.9750,-98.4920

@@ -46,7 +46,8 @@ _WRITER: dict[str, Any] = {
     "param": "carrier",
     "key": "carriers/lumen/vertices.json",
     "id": "lumen",
-    "valid": [{"municipality": "Denver", "state": "CO", "latitude": 1.0, "longitude": 2.0}],
+    "valid": [{"municipality": "Denver", "state": "CO", "country": "United States",
+               "latitude": 1.0, "longitude": 2.0}],
 }
 
 

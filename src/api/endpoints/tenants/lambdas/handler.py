@@ -43,11 +43,11 @@ _TENANT_MARKER = "label.json"
 # The vertex-list inputs are bare geographic rows with a known field set; the remaining
 # config resources (forced-*, degrees, knobs, label) are validated only by the schema
 # their consumers expect, so they pass through unchecked here.
-_SITE_FIELDS = {"name", "municipality", "state", "latitude", "longitude"}
+_SITE_FIELDS = {"name", "municipality", "state", "country", "latitude", "longitude"}
 _VERTEX_INPUT_FIELDS = {
     "locations": _SITE_FIELDS,
     "csp-regions": _SITE_FIELDS,
-    "off-net": {"municipality", "state", "latitude", "longitude"},
+    "off-net": {"municipality", "state", "country", "latitude", "longitude"},
 }
 
 

@@ -1,22 +1,22 @@
-Municipality,State,Latitude,Longitude
-Abercrombie,ND,46.448,-96.728
-Alexander,ND,47.838,-103.642
-Beach,ND,46.918,-104.001
-Bismarck,ND,46.808,-100.784
-Buffalo,ND,46.917,-97.547
-Carrington,ND,47.449,-99.126
-Devils Lake,ND,48.113,-98.865
-Dickinson,ND,46.879,-102.789
-Fargo,ND,46.877,-96.789
-Grand Forks,ND,47.925,-97.032
-Gwinner,ND,46.218,-97.661
-Jamestown,ND,46.910,-98.708
-Marion Jct.,ND,46.611,-98.343
-Max,ND,47.815,-101.298
-Minot,ND,48.232,-101.296
-Parshall,ND,47.952,-102.135
-Ray,ND,48.341,-103.166
-Rugby,ND,48.369,-99.996
-Stanley,ND,48.317,-102.388
-Steele,ND,46.857,-99.916
-Williston,ND,48.147,-103.618
+Municipality,State,Country,Latitude,Longitude
+Abercrombie,ND,United States,46.448,-96.728
+Alexander,ND,United States,47.838,-103.642
+Beach,ND,United States,46.918,-104.001
+Bismarck,ND,United States,46.808,-100.784
+Buffalo,ND,United States,46.917,-97.547
+Carrington,ND,United States,47.449,-99.126
+Devils Lake,ND,United States,48.113,-98.865
+Dickinson,ND,United States,46.879,-102.789
+Fargo,ND,United States,46.877,-96.789
+Grand Forks,ND,United States,47.925,-97.032
+Gwinner,ND,United States,46.218,-97.661
+Jamestown,ND,United States,46.910,-98.708
+Marion Jct.,ND,United States,46.611,-98.343
+Max,ND,United States,47.815,-101.298
+Minot,ND,United States,48.232,-101.296
+Parshall,ND,United States,47.952,-102.135
+Ray,ND,United States,48.341,-103.166
+Rugby,ND,United States,48.369,-99.996
+Stanley,ND,United States,48.317,-102.388
+Steele,ND,United States,46.857,-99.916
+Williston,ND,United States,48.147,-103.618

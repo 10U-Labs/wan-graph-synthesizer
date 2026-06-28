@@ -1,68 +1,68 @@
-Municipality,State,Latitude,Longitude
-Albany,NY,42.6526,-73.7562
-Ashburn,VA,39.0438,-77.4875
-Atlanta,GA,33.7490,-84.3880
-Augusta,GA,33.4735,-81.9748
-Birmingham,AL,33.5186,-86.8025
-Bloomington,IL,40.4842,-88.9937
-Boise,ID,43.6150,-116.2023
-Bristol,TN,36.5951,-82.1887
-Buffalo,NY,42.8864,-78.8784
-Charleston,SC,32.7765,-79.9311
-Charlotte,NC,35.2271,-80.8431
-Chicago,IL,41.8781,-87.6298
-Cleveland,OH,41.4993,-81.6944
-Colorado Springs,CO,38.8339,-104.8214
-Dallas,TX,32.7767,-96.7970
-Denver,CO,39.7392,-104.9903
-Des Moines,IA,41.5868,-93.6091
-El Paso,TX,31.7619,-106.4850
-Hillsboro,OR,45.5229,-122.9898
-Houston,TX,29.7604,-95.3698
-Indianapolis,IN,39.7684,-86.1581
-Jackson,MS,32.2988,-90.1848
-Jacksonville,FL,30.3322,-81.6557
-Kansas City,MO,39.0997,-94.5786
-Knoxville,TN,35.9606,-83.9207
-Laredo,TX,27.5306,-99.5075
-Las Vegas,NV,36.1699,-115.1398
-Lincoln,NE,40.8136,-96.7026
-Little Rock,AR,34.7465,-92.2896
-Los Angeles,CA,34.0522,-118.2437
-Louisville,KY,38.2527,-85.7585
-McAllen,TX,26.2034,-98.2300
-Memphis,TN,35.1495,-90.0490
-Miami,FL,25.7617,-80.1918
-Minneapolis,MN,44.9778,-93.2650
-Mobile,AL,30.6954,-88.0399
-Nashville,TN,36.1627,-86.7816
-New Orleans,LA,29.9511,-90.0715
-New York,NY,40.7128,-74.0060
-Newark,NJ,40.7357,-74.1724
-Oklahoma City,OK,35.4676,-97.5164
-Omaha,NE,41.2565,-95.9345
-Orlando,FL,28.5383,-81.3792
-Palo Alto,CA,37.4419,-122.1430
-Philadelphia,PA,39.9526,-75.1652
-Phoenix,AZ,33.4484,-112.0740
-Pittsburgh,PA,40.4406,-79.9959
-Portland,OR,45.5152,-122.6765
-Reno,NV,39.5296,-119.8138
-Richmond,VA,37.5407,-77.4360
-Sacramento,CA,38.5816,-121.4944
-Salt Lake City,UT,40.7608,-111.8910
-San Antonio,TX,29.4241,-98.4936
-San Diego,CA,32.7157,-117.1611
-San Francisco,CA,37.7749,-122.4194
-San Jose,CA,37.3382,-121.8863
-Savannah,GA,32.0809,-81.0912
-Seattle,WA,47.6062,-122.3321
-Shreveport,LA,32.5252,-93.7502
-St. Louis,MO,38.6270,-90.1994
-Tallahassee,FL,30.4383,-84.2807
-Tampa,FL,27.9506,-82.4572
-Toledo,OH,41.6528,-83.5552
-Tulsa,OK,36.1540,-95.9928
-Virginia Beach,VA,36.8529,-75.9780
-Wall,NJ,40.1654,-74.0665
-Washington,DC,38.9072,-77.0369
+Municipality,State,Country,Latitude,Longitude
+Albany,NY,United States,42.6526,-73.7562
+Ashburn,VA,United States,39.0438,-77.4875
+Atlanta,GA,United States,33.7490,-84.3880
+Augusta,GA,United States,33.4735,-81.9748
+Birmingham,AL,United States,33.5186,-86.8025
+Bloomington,IL,United States,40.4842,-88.9937
+Boise,ID,United States,43.6150,-116.2023
+Bristol,TN,United States,36.5951,-82.1887
+Buffalo,NY,United States,42.8864,-78.8784
+Charleston,SC,United States,32.7765,-79.9311
+Charlotte,NC,United States,35.2271,-80.8431
+Chicago,IL,United States,41.8781,-87.6298
+Cleveland,OH,United States,41.4993,-81.6944
+Colorado Springs,CO,United States,38.8339,-104.8214
+Dallas,TX,United States,32.7767,-96.7970
+Denver,CO,United States,39.7392,-104.9903
+Des Moines,IA,United States,41.5868,-93.6091
+El Paso,TX,United States,31.7619,-106.4850
+Hillsboro,OR,United States,45.5229,-122.9898
+Houston,TX,United States,29.7604,-95.3698
+Indianapolis,IN,United States,39.7684,-86.1581
+Jackson,MS,United States,32.2988,-90.1848
+Jacksonville,FL,United States,30.3322,-81.6557
+Kansas City,MO,United States,39.0997,-94.5786
+Knoxville,TN,United States,35.9606,-83.9207
+Laredo,TX,United States,27.5306,-99.5075
+Las Vegas,NV,United States,36.1699,-115.1398
+Lincoln,NE,United States,40.8136,-96.7026
+Little Rock,AR,United States,34.7465,-92.2896
+Los Angeles,CA,United States,34.0522,-118.2437
+Louisville,KY,United States,38.2527,-85.7585
+McAllen,TX,United States,26.2034,-98.2300
+Memphis,TN,United States,35.1495,-90.0490
+Miami,FL,United States,25.7617,-80.1918
+Minneapolis,MN,United States,44.9778,-93.2650
+Mobile,AL,United States,30.6954,-88.0399
+Nashville,TN,United States,36.1627,-86.7816
+New Orleans,LA,United States,29.9511,-90.0715
+New York,NY,United States,40.7128,-74.0060
+Newark,NJ,United States,40.7357,-74.1724
+Oklahoma City,OK,United States,35.4676,-97.5164
+Omaha,NE,United States,41.2565,-95.9345
+Orlando,FL,United States,28.5383,-81.3792
+Palo Alto,CA,United States,37.4419,-122.1430
+Philadelphia,PA,United States,39.9526,-75.1652
+Phoenix,AZ,United States,33.4484,-112.0740
+Pittsburgh,PA,United States,40.4406,-79.9959
+Portland,OR,United States,45.5152,-122.6765
+Reno,NV,United States,39.5296,-119.8138
+Richmond,VA,United States,37.5407,-77.4360
+Sacramento,CA,United States,38.5816,-121.4944
+Salt Lake City,UT,United States,40.7608,-111.8910
+San Antonio,TX,United States,29.4241,-98.4936
+San Diego,CA,United States,32.7157,-117.1611
+San Francisco,CA,United States,37.7749,-122.4194
+San Jose,CA,United States,37.3382,-121.8863
+Savannah,GA,United States,32.0809,-81.0912
+Seattle,WA,United States,47.6062,-122.3321
+Shreveport,LA,United States,32.5252,-93.7502
+St. Louis,MO,United States,38.6270,-90.1994
+Tallahassee,FL,United States,30.4383,-84.2807
+Tampa,FL,United States,27.9506,-82.4572
+Toledo,OH,United States,41.6528,-83.5552
+Tulsa,OK,United States,36.1540,-95.9928
+Virginia Beach,VA,United States,36.8529,-75.9780
+Wall,NJ,United States,40.1654,-74.0665
+Washington,DC,United States,38.9072,-77.0369

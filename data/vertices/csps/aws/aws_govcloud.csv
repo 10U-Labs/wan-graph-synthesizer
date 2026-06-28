@@ -1,3 +1,3 @@
-Name,Municipality,State,Latitude,Longitude
-AWS GovCloud East,Columbus,OH,39.9612,-82.9988
-AWS GovCloud West,Boardman,OR,45.8396,-119.7006
+Name,Municipality,State,Country,Latitude,Longitude
+AWS GovCloud East,Columbus,OH,United States,39.9612,-82.9988
+AWS GovCloud West,Boardman,OR,United States,45.8396,-119.7006

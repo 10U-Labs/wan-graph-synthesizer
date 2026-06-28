@@ -22,7 +22,7 @@ import boto3
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 # A carrier's points and connections are bare geographic rows; reject anything else.
-_VERTEX_FIELDS = {"municipality", "state", "latitude", "longitude"}
+_VERTEX_FIELDS = {"municipality", "state", "country", "latitude", "longitude"}
 _EDGE_FIELDS = {"a_municipality", "a_state", "z_municipality", "z_state"}
 
 
