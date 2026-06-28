@@ -137,15 +137,6 @@ jobs:
           --cov-fail-under=100
 name: seed
 on:
-  pull_request:
-    paths:
-      - .github/workflows/seed.yml
-      - data/**
-      - etc/**
-      - lib/python/**
-      - scripts/**
-      - src/www/api/openapi.json
-      - test/scripts/seed/**
   push:
     branches: [main]
     paths:

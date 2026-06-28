@@ -30,10 +30,6 @@ jobs:
             etc/f_35_non_redundant.yml etc/f_35_redundant.yml
 name: etc
 on:
-  pull_request:
-    paths:
-      - .github/workflows/etc.yml
-      - etc/**
   push:
     branches: [main]
     paths:
