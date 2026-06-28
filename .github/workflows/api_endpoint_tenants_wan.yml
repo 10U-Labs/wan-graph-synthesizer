@@ -209,9 +209,7 @@ on:
     branches: [main]
     paths:
       - src/api/endpoints/tenants/wan/**
-      - '!src/api/endpoints/tenants/wan/lambdas/synthesizer/**'
       - test/api/endpoints/tenants/wan/**
-      - '!test/api/endpoints/tenants/wan/synthesizer/**'
       - lib/python/**
       - lib/opentofu/common/**
       - .github/workflows/api_endpoint_tenants_wan.yml
