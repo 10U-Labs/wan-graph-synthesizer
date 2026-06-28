@@ -20,9 +20,6 @@ forced_connections:
   - source: Hanscom AFB
     target: New York, NY
     type: access-backbone
-  - source: Burlington ANGB
-    target: New York, NY
-    type: access-backbone
   - source: F.E. Warren AFB
     target: Salt Lake City, UT
     type: access-backbone
