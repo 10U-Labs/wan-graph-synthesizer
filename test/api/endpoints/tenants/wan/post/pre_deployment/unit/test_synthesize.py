@@ -30,6 +30,7 @@ from synthesizer.synthesize import (
     build_search_plan,
     convergence_promotion_ids,
     coverage_candidate_totals,
+    coverage_worst_haul,
     compute_eligible_backbone_ids,
     demand_haul_miles,
     enumeration_limit,
@@ -554,6 +555,16 @@ def test_demand_haul_miles_reports_worst_and_total_to_nearest_node() -> None:
     far_miles = haversine_miles(pops["far"], pops["node_w"])
     result = demand_haul_miles(("node_w", "node_e"), [pops["near"], pops["far"]], pops)
     assert result == pytest.approx((far_miles, near_miles + far_miles))
+
+
+def test_coverage_worst_haul_ignores_exempt_sites() -> None:
+    """The coverage stop signal skips sites marked exempt from the distance constraint."""
+    pops = {"node": pop("node", 40.0, -100.0)}
+    near = access("near", 40.0, -99.0)
+    far = replace(access("far", 10.0, -160.0), exempt_from_distance_constraint=True)
+    assert coverage_worst_haul(("node",), [near, far], pops) == pytest.approx(
+        haversine_miles(near, pops["node"])
+    )
 
 
 def test_coverage_candidate_totals_drops_an_infeasible_addition() -> None:

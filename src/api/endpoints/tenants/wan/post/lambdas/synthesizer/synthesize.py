@@ -494,6 +494,22 @@ def coverage_candidate_totals(
     return totals
 
 
+def coverage_worst_haul(
+    backbone_ids: tuple[str, ...],
+    access_vertices: list[Vertex],
+    pop_by_id: dict[str, Vertex],
+) -> float:
+    """The worst demand haul over only the non-exempt sites -- the coverage stop signal.
+
+    Sites the operator marked exempt from the distance constraint (OCONUS) are dropped:
+    each may sit farther than any backbone node can reach, so counting one would hold growth
+    open to the node cap. They still drive hub scoring and home to their nearest node
+    elsewhere; only this stop test ignores them. An all-exempt design reads as 0.
+    """
+    covered = [v for v in access_vertices if not v.exempt_from_distance_constraint]
+    return demand_haul_miles(backbone_ids, covered, pop_by_id)[0]
+
+
 def grow_backbone_for_coverage(
     base: Design,
     inputs: DesignInputs,
@@ -518,11 +534,6 @@ def grow_backbone_for_coverage(
     backbone_ids = base.backbone_ids
     design = base
     free = [pop_id for pop_id in plan.backbone_candidates if pop_id not in backbone_ids]
-    # Exempt (OCONUS) sites may sit farther than the target from every backbone node with no
-    # eligible node able to close the gap; they still drive hub scoring and home to their
-    # nearest node, but are dropped from the coverage stop test so one unreachable site cannot
-    # force growth all the way to the node cap.
-    covered = [v for v in inputs.access_vertices if not v.exempt_from_distance_constraint]
     logger.info(
         "Growing backbone for coverage: %d candidates, %.0f mi target", len(free), target_miles
     )
@@ -530,9 +541,9 @@ def grow_backbone_for_coverage(
         if params.max_backbone_count is not None and len(backbone_ids) >= params.max_backbone_count:
             logger.info("Coverage growth stopped at the %d-node cap", len(backbone_ids))
             break
-        # ``worst`` (the stop test) counts only non-exempt sites; ``total`` (the progress
-        # baseline below) counts all sites, matching coverage_candidate_totals' full-set score.
-        worst = demand_haul_miles(backbone_ids, covered, pop_by_id)[0]
+        # ``worst`` (the stop test) ignores exempt sites; ``total`` (the progress baseline
+        # below) counts all sites, matching coverage_candidate_totals' full-set score.
+        worst = coverage_worst_haul(backbone_ids, inputs.access_vertices, pop_by_id)
         total = demand_haul_miles(backbone_ids, inputs.access_vertices, pop_by_id)[1]
         if worst <= target_miles:
             logger.info("Coverage met at %d nodes (worst haul %.0f mi)", len(backbone_ids), worst)
