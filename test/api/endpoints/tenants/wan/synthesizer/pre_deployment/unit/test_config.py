@@ -20,9 +20,18 @@ _REQUIRED_DEGREES = {
 
 
 def _config(data: dict[str, Any]) -> AppConfig:
-    """Resolve a single in-memory config mapping (with required degrees) for one test."""
+    """Resolve a single in-memory config mapping (with required fields) for one test.
+
+    ``restrict_backbone_to_data_centers`` (like the two redundancy degrees) is required
+    with no default, so it is injected into the design section unless the test overrides
+    it -- letting each test focus on the field under test. A non-mapping ``design`` is
+    passed through so the "section must be a mapping" rejection still fires.
+    """
     merged = dict(data)
     merged["tuning"] = {**_REQUIRED_DEGREES, **data.get("tuning", {})}
+    design = data.get("design", {})
+    if isinstance(design, dict):
+        merged["design"] = {"restrict_backbone_to_data_centers": True, **design}
     return config_from_data(merged)
 
 
@@ -183,22 +192,30 @@ def test_default_has_no_prohibited_backbone() -> None:
     assert len(default_config().params.exclusions.prohibited_backbone_names) == 0
 
 
-def test_default_restricts_backbone_to_data_centers() -> None:
-    """The default config keeps the backbone gated to data-center cities."""
-    assert default_config().params.restrict_backbone_to_datacenters is True
+def test_reads_restrict_backbone_to_data_centers_true() -> None:
+    """A restrict_backbone_to_data_centers=true design gates the backbone to data centers."""
+    assert _config(
+        {"design": {"restrict_backbone_to_data_centers": True}}
+    ).restrict_backbone_to_datacenters is True
 
 
 def test_reads_restrict_backbone_to_data_centers_false() -> None:
     """A restrict_backbone_to_data_centers=false design opens the backbone to any city."""
     assert _config(
         {"design": {"restrict_backbone_to_data_centers": False}}
-    ).params.restrict_backbone_to_datacenters is False
+    ).restrict_backbone_to_datacenters is False
 
 
 def test_restrict_backbone_to_data_centers_must_be_a_boolean() -> None:
     """A non-boolean restrict_backbone_to_data_centers value is rejected."""
     with pytest.raises(ValueError):
         _config({"design": {"restrict_backbone_to_data_centers": "yes"}})
+
+
+def test_restrict_backbone_to_data_centers_is_required() -> None:
+    """A design omitting restrict_backbone_to_data_centers is rejected (no default)."""
+    with pytest.raises(ValueError):
+        config_from_data({"tuning": _REQUIRED_DEGREES})
 
 
 def test_reads_prohibited_backbone() -> None:
@@ -329,6 +346,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "backbone-node-count": {"min": 3, "max": 5},
         "backbone-mesh-degree": {"degree": 3},
         "access-homing-degree": {"degree": 2},
+        "backbone-placement": {"restrict": True},
         "knobs": {"compass_octants": 8},
         "label": {"label": "Joint"},
     }
@@ -404,15 +422,18 @@ def test_app_config_from_parts_reads_only_min_when_max_absent() -> None:
     assert (params.min_backbone_count, params.max_backbone_count) == (4, None)
 
 
-def test_app_config_from_parts_defaults_backbone_placement() -> None:
-    """An absent backbone-placement document keeps the data-center gate on."""
-    assert app_config_from_parts(_parts()).params.restrict_backbone_to_datacenters is True
-
-
 def test_app_config_from_parts_reads_backbone_placement() -> None:
-    """A backbone-placement document toggles the data-center gate off."""
+    """The backbone-placement document toggles the data-center gate off."""
     parts = _parts(**{"backbone-placement": {"restrict": False}})
-    assert app_config_from_parts(parts).params.restrict_backbone_to_datacenters is False
+    assert app_config_from_parts(parts).restrict_backbone_to_datacenters is False
+
+
+def test_app_config_from_parts_requires_backbone_placement() -> None:
+    """A missing backbone-placement document is rejected (no default)."""
+    parts = _parts()
+    del parts["backbone-placement"]
+    with pytest.raises(ValueError):
+        app_config_from_parts(parts)
 
 
 def test_app_config_from_parts_parses_connections() -> None:

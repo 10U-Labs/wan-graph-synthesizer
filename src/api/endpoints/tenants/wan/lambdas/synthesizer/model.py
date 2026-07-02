@@ -119,19 +119,18 @@ class DesignParams:
     if its city is one of them. The set gates both the automatic backbone selection
     and the operator's forced pins.
 
-    ``restrict_backbone_to_datacenters`` toggles that gate. When ``True`` (the default)
-    the data-center-city gate is absolute, as above. When ``False`` -- the operator's
-    free-for-all -- the gate is open: any carrier PoP with enough physical links is
-    eligible, forced pins are accepted anywhere, and convergence hubs promote regardless
-    of city. Candidates stay carrier PoPs either way; only the city filter changes.
+    ``datacenter_cities`` is ``None`` in the operator's free-for-all: the gate is open,
+    so any carrier PoP with enough physical links is eligible, forced pins are accepted
+    anywhere, and convergence hubs promote regardless of city. Candidates stay carrier
+    PoPs either way; ``None`` only lifts the city filter.
     """
 
     min_backbone_count: int = 3  # minimum backbone nodes; the search adds more only if needed
     max_backbone_count: int | None = None  # ceiling on backbone nodes; None leaves it uncapped
     forced_backbone_names: tuple[str, ...] = ()  # PoPs pinned as backbone by the operator
     exclusions: RoleExclusions = field(default_factory=RoleExclusions)  # role bars
-    datacenter_cities: frozenset[tuple[str, str]] = frozenset()  # cities a provider has a cage in
-    restrict_backbone_to_datacenters: bool = True  # False => any carrier PoP may be backbone
+    # cities a provider has a cage in; None lifts the gate (free-for-all)
+    datacenter_cities: frozenset[tuple[str, str]] | None = frozenset()
     tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)
@@ -238,13 +237,12 @@ def is_carrier_pop(vertex: Vertex) -> bool:
 
 def backbone_city_allowed(
     info: VertexInfo,
-    datacenter_cities: frozenset[tuple[str, str]],
-    restrict: bool = True,
+    datacenter_cities: frozenset[tuple[str, str]] | None,
 ) -> bool:
     """Whether a vertex's city passes the data-center backbone gate.
 
     The gate restricts backbone placement to cities where a colocation provider operates
-    a cage. When ``restrict`` is ``False`` (the operator's free-for-all, i.e.
-    ``restrict_backbone_to_datacenters`` off) the gate is open and every city passes.
+    a cage. When ``datacenter_cities`` is ``None`` (the operator's free-for-all) the gate
+    is open and every city passes.
     """
-    return not restrict or (info.municipality, info.state) in datacenter_cities
+    return datacenter_cities is None or (info.municipality, info.state) in datacenter_cities

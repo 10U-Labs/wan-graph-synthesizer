@@ -56,6 +56,7 @@ class AppConfig:
 
     paths: DesignPaths
     params: DesignParams
+    restrict_backbone_to_datacenters: bool  # required; the worker maps it to a gate or None
     label: str = ""
     forced_connections: tuple[ForcedConnection, ...] = ()
     excluded_connections: tuple[ForcedConnection, ...] = ()
@@ -77,9 +78,16 @@ def _str_list(data: dict[str, Any], key: str, default: list[str]) -> tuple[str, 
     return tuple(value)
 
 
-def _bool(data: dict[str, Any], key: str, default: bool) -> bool:
-    """Return a boolean config value, defaulting when absent and rejecting non-bools."""
-    value = data.get(key, default)
+def _required_bool(data: dict[str, Any], key: str) -> bool:
+    """Return a required boolean config value, rejecting an absent or non-bool value.
+
+    ``restrict_backbone_to_data_centers`` has no default: every tenant must state whether
+    the backbone is gated to data-center cities, so a missing key is an error rather than
+    a silently-filled fallback (as with the two redundancy degrees).
+    """
+    if key not in data:
+        raise ValueError(f"config key '{key}' is required and has no default")
+    value = data[key]
     if not isinstance(value, bool):
         raise ValueError(f"config key '{key}' must be a boolean")
     return value
@@ -203,11 +211,6 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
         exclusions=RoleExclusions(
             prohibited_backbone_names=_str_list(design, "prohibited_backbone", []),
         ),
-        restrict_backbone_to_datacenters=_bool(
-            design,
-            "restrict_backbone_to_data_centers",
-            base.restrict_backbone_to_datacenters,
-        ),
         tuning=_tuning(tuning),
     )
 
@@ -223,6 +226,9 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
     return AppConfig(
         paths=_paths(_mapping(data, "inputs")),
         params=_params(design, _mapping(data, "tuning")),
+        restrict_backbone_to_datacenters=_required_bool(
+            design, "restrict_backbone_to_data_centers"
+        ),
         label=str(data.get("label", "")),
         forced_connections=_forced_connections(design),
         excluded_connections=_excluded_connections(design),
@@ -259,10 +265,10 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
         "prohibited_backbone": parts.get("prohibited-backbone-nodes", []),
         "forced_connections": parts.get("forced-connections", []),
         "excluded_connections": parts.get("prohibited-connections", []),
-        "restrict_backbone_to_data_centers": _mapping(
-            parts, "backbone-placement"
-        ).get("restrict", True),
     }
+    placement = _mapping(parts, "backbone-placement")
+    if "restrict" in placement:
+        design["restrict_backbone_to_data_centers"] = placement["restrict"]
     if "min" in count:
         design["min_backbone_count"] = count["min"]
     if "max" in count:

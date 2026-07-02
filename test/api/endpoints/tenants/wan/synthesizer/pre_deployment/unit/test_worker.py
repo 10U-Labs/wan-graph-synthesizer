@@ -31,13 +31,21 @@ def worker_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
     return load_module_from_path("synthesizer_worker", _PATH)
 
 
-def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Replace the heavy design pipeline with light canned stand-ins."""
+def _stub_pipeline(
+    module: Any, monkeypatch: pytest.MonkeyPatch, restrict: bool = True
+) -> None:
+    """Replace the heavy design pipeline with light canned stand-ins.
+
+    ``restrict`` sets ``config.restrict_backbone_to_datacenters`` so both handler
+    branches -- gating the backbone to data-center cities vs the open free-for-all --
+    are exercised across the suite.
+    """
     pop = Vertex(id="P", name="P", kind="PoP", coords=(0.0, 0.0))
     site = Vertex(id="S", name="S", kind="Tenant site", coords=(1.0, 1.0))
     graph = [pop, site]
     config = SimpleNamespace(
         params=DesignParams(),
+        restrict_backbone_to_datacenters=restrict,
         forced_connections=(),
         excluded_connections=(),
     )
@@ -103,6 +111,17 @@ def test_records_failed_when_no_valid_wan(worker: Any, monkeypatch: pytest.Monke
     """When the synthesizer reports infeasibility, the status is recorded as failed."""
     objects = _run(worker, monkeypatch, fail=True)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
+
+
+def test_open_gate_build_maps_to_no_datacenter_restriction(
+    worker: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With restrict off, the worker opens the gate (datacenter_cities=None) and still builds."""
+    _stub_pipeline(worker, monkeypatch, restrict=False)
+    objects = _inputs(worker)
+    with patch("boto3.client", return_value=fake_s3(objects)):
+        worker.lambda_handler({"tenant": "f-35"}, None)
+    assert "tenants/f-35/wan.json" in objects
 
 
 def test_reads_the_tenant_from_the_event(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:

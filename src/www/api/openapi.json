@@ -521,6 +521,20 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
+    "/wan-graph-synthesizer/tenants/{tenant}/backbone-placement": {
+      "get": {
+        "summary": "A tenant's backbone placement policy (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The backbone placement policy." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a tenant's backbone placement policy (stores only).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The backbone placement policy was replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
     "/wan-graph-synthesizer/tenants/{tenant}/backbone-mesh-degree": {
       "get": {
         "summary": "A tenant's backbone mesh degree (input).",

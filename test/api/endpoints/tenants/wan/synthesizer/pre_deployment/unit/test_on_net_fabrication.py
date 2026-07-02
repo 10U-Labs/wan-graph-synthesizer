@@ -28,11 +28,10 @@ def _pops() -> list[Vertex]:
 def _fabricate(
     *extra: Vertex,
     forced: frozenset[str] = frozenset(),
-    cities: frozenset[tuple[str, str]] = _CITIES,
-    restrict: bool = True,
+    cities: frozenset[tuple[str, str]] | None = _CITIES,
 ) -> FabricatedOnNetNodes:
     """Fabricate on-net nodes over the three PoPs plus the given extra vertices."""
-    return fabricate_missing_on_net_nodes([*_pops(), *extra], {}, forced, cities, restrict)
+    return fabricate_missing_on_net_nodes([*_pops(), *extra], {}, forced, cities)
 
 
 def test_fabricates_a_forced_twin() -> None:
@@ -75,13 +74,12 @@ def test_forced_location_off_a_data_center_city_is_rejected() -> None:
         )
 
 
-def test_forced_location_off_a_data_center_city_is_fabricated_when_unrestricted() -> None:
-    """With the gate off, a forced location at any city is still fabricated on-net."""
+def test_forced_location_is_fabricated_anywhere_when_gate_is_open() -> None:
+    """With the gate open (cities=None), a forced location at any city is fabricated on-net."""
     result = _fabricate(
         fixtures.access_vertex("luke", 0.0, 0.5),
         forced=frozenset({"luke"}),
-        cities=frozenset(),
-        restrict=False,
+        cities=None,
     )
     assert result.on_net_ids == frozenset({"fac_luke"})
 

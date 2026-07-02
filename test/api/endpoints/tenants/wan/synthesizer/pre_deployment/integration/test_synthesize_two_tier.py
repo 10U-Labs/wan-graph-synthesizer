@@ -132,3 +132,27 @@ def test_non_data_center_convergence_hub_is_not_promoted() -> None:
 def test_non_data_center_convergence_hub_stays_transit() -> None:
     """The unpromoted >= 3-line crossing remains a transit node in the design."""
     assert "hub_dc" in NON_DATACENTER_HUB.design.transit_ids
+
+
+def _open_gate_artifacts() -> DesignArtifacts:
+    """Synthesize over the ring with the gate open (datacenter_cities=None) and P3 forced.
+
+    ``datacenter_cities=None`` is the operator's free-for-all: no data-center set is
+    supplied at all, so a forced PoP would be rejected under the default gate yet is
+    accepted here. Drives the full deployed pipeline (dual-home -> overrides ->
+    synthesize -> finalize) via ``run_design``.
+    """
+    params = DesignParams(
+        min_backbone_count=2, forced_backbone_names=("P3",), datacenter_cities=None
+    )
+    return run_design(fixtures.ring_vertices(), fixtures.ring_physical_edges(), params)
+
+
+def test_open_gate_seats_a_forced_non_data_center_backbone() -> None:
+    """With the gate open, a forced PoP at no data-center city is seated in the backbone."""
+    assert "P3" in _open_gate_artifacts().design.backbone_ids
+
+
+def test_open_gate_design_validates_connected() -> None:
+    """The open-gate design validates end-to-end as a single connected component."""
+    assert _open_gate_artifacts().validation["connected"] is True

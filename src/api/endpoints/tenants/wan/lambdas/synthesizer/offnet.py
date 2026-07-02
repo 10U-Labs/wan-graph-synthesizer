@@ -53,17 +53,16 @@ def realize_off_net_sites(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     sites: list[Vertex],
     forced_names: frozenset[str],
-    datacenter_cities: frozenset[tuple[str, str]] = frozenset(),
-    restrict: bool = True,
+    datacenter_cities: frozenset[tuple[str, str]] | None = frozenset(),
 ) -> RealizedOffNet:
     """Seat a local-fiber twin for every off-net site the operator has force-pinned.
 
     ``forced_names`` is the operator's forced backbone names. A site whose name is not
     forced is ignored. A forced site whose name is also a carrier PoP is already
-    on-net -- the pin seats there, so no off-net twin is built. When ``restrict`` is
-    ``True`` a forced site whose city is not in ``datacenter_cities`` raises
-    ``ValueError`` (the backbone gate is absolute); when ``restrict`` is ``False``
-    (free-for-all) the gate is lifted. A forced site that cannot reach
+    on-net -- the pin seats there, so no off-net twin is built. A forced site whose city
+    is not in ``datacenter_cities`` raises ``ValueError`` (the backbone gate is
+    absolute); when ``datacenter_cities`` is ``None`` (free-for-all) the gate is lifted.
+    A forced site that cannot reach
     :data:`~synthesizer.local_fiber.LOCAL_FIBER_MIN_LINKS` carrier PoPs within range
     raises ``ValueError``.
     """
@@ -79,7 +78,7 @@ def realize_off_net_sites(
         if site.name in carrier_names:
             # Already an on-net carrier PoP; the forced pin seats there, no twin needed.
             continue
-        if not backbone_city_allowed(site.info, datacenter_cities, restrict):
+        if not backbone_city_allowed(site.info, datacenter_cities):
             raise ValueError(
                 f"forced off-net site is not at a data-center city: {site.name}"
             )
