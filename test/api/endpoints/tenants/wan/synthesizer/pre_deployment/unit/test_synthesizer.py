@@ -107,7 +107,9 @@ def test_marks_status_ready_on_success(synthesizer: Any, monkeypatch: pytest.Mon
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "ready"
 
 
-def test_records_failed_when_no_valid_wan(synthesizer: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_records_failed_when_no_valid_wan(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """When the synthesizer reports infeasibility, the status is recorded as failed."""
     objects = _run(synthesizer, monkeypatch, fail=True)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
