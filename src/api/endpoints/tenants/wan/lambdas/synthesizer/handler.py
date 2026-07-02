@@ -94,8 +94,12 @@ def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
     # be a backbone node only where a colocation provider operates a cage. The set threads
     # through synthesis (eligibility) and the forced-pin/fabrication gates on DesignParams.
     # In the operator's free-for-all (restrict off) the gate is None and any PoP is eligible.
-    cities = _datacenter_cities(client) if config.restrict_backbone_to_datacenters else None
-    params = replace(config.params, datacenter_cities=cities)
+    params = replace(
+        config.params,
+        datacenter_cities=(
+            _datacenter_cities(client) if config.restrict_backbone_to_datacenters else None
+        ),
+    )
     graph = carrier_pops + locations + regions
     logger.info(
         "Dual-homing %d vertices over %d substrate edges", len(graph), len(physical_edges)

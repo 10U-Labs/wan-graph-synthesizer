@@ -42,6 +42,7 @@ inputs:
     F-35: locations/f35.csv
   off_net: offnet/off.csv
 label: F-35
+restrict_backbone_to_data_centers: true
 """
 
 
