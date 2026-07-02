@@ -37,7 +37,8 @@ from synthesizer.stages import dual_home, finalize
 logger = logging.getLogger(__name__)
 
 # The tenant config resources, each its own stored document, assembled back into a
-# single AppConfig. The two degrees are required; the rest default when empty.
+# single AppConfig. The two degrees and the ``knobs`` coverage target are required;
+# the rest default when empty.
 CONFIG_RESOURCES = (
     "forced-backbone-nodes",
     "forced-connections",

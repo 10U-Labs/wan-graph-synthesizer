@@ -108,6 +108,22 @@ def _required_int(data: dict[str, Any], key: str) -> int:
     return value
 
 
+def _required_float(data: dict[str, Any], key: str) -> float:
+    """Return a required numeric config value, rejecting an absent or non-number value.
+
+    ``backbone_coverage_target_miles`` has no default: every tenant must state how far
+    the backbone must grow to cover its demand, so a missing key is an error rather than
+    a silently-filled fallback (as with the two redundancy degrees). An ``int`` is
+    accepted and coerced; a ``bool`` (an int subclass) is not.
+    """
+    if key not in data:
+        raise ValueError(f"config key '{key}' is required and has no default")
+    value = data[key]
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"config key '{key}' must be a number")
+    return float(value)
+
+
 def _connection_list(
     design: dict[str, Any],
     key: str,
@@ -190,8 +206,8 @@ def _tuning(tuning: dict[str, Any]) -> Tuning:
     return Tuning(
         compass_octants=tuning.get("compass_octants", base.compass_octants),
         backbone_mesh_degree=_required_int(tuning, "backbone_mesh_degree"),
-        backbone_coverage_target_miles=tuning.get(
-            "backbone_coverage_target_miles", base.backbone_coverage_target_miles
+        backbone_coverage_target_miles=_required_float(
+            tuning, "backbone_coverage_target_miles"
         ),
         access_backbone_links=_required_int(tuning, "access_backbone_links"),
         enum_budget=EnumBudget(

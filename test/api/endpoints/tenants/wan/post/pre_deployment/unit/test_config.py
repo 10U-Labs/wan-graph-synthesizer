@@ -11,11 +11,12 @@ from synthesizer.config import AppConfig, app_config_from_parts, config_from_dat
 from synthesizer.model import ForcedConnection
 
 
-# The two redundancy degrees are required (no default); inject them so each test can
-# focus on the field under test without restating them.
-_REQUIRED_DEGREES = {
+# The two redundancy degrees and the coverage target are required (no default); inject
+# them so each test can focus on the field under test without restating them.
+_REQUIRED_TUNING = {
     "backbone_mesh_degree": 3,
     "access_backbone_links": 2,
+    "backbone_coverage_target_miles": 600.0,
 }
 
 
@@ -28,7 +29,7 @@ def _config(data: dict[str, Any]) -> AppConfig:
     passed through so the "section must be a mapping" rejection still fires.
     """
     merged = dict(data)
-    merged["tuning"] = {**_REQUIRED_DEGREES, **data.get("tuning", {})}
+    merged["tuning"] = {**_REQUIRED_TUNING, **data.get("tuning", {})}
     design = data.get("design", {})
     if isinstance(design, dict):
         merged["design"] = {"restrict_backbone_to_data_centers": True, **design}
@@ -215,7 +216,7 @@ def test_restrict_backbone_to_data_centers_must_be_a_boolean() -> None:
 def test_restrict_backbone_to_data_centers_is_required() -> None:
     """A design omitting restrict_backbone_to_data_centers is rejected (no default)."""
     with pytest.raises(ValueError):
-        config_from_data({"tuning": _REQUIRED_DEGREES})
+        config_from_data({"tuning": _REQUIRED_TUNING})
 
 
 def test_reads_prohibited_backbone() -> None:
@@ -324,6 +325,23 @@ def test_boolean_degree_is_rejected() -> None:
         )
 
 
+def test_missing_coverage_target_is_rejected() -> None:
+    """A config whose tuning omits the required coverage target is rejected."""
+    with pytest.raises(ValueError):
+        config_from_data(
+            {
+                "tuning": {"backbone_mesh_degree": 3, "access_backbone_links": 2},
+                "design": {"restrict_backbone_to_data_centers": True},
+            }
+        )
+
+
+def test_non_number_coverage_target_is_rejected() -> None:
+    """A coverage target that is not a number is rejected."""
+    with pytest.raises(ValueError):
+        _config({"tuning": {"backbone_coverage_target_miles": "far"}})
+
+
 def test_section_must_be_a_mapping() -> None:
     """A non-mapping section is rejected."""
     with pytest.raises(ValueError):
@@ -347,7 +365,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "backbone-mesh-degree": {"degree": 3},
         "access-homing-degree": {"degree": 2},
         "backbone-placement": {"restrict": True},
-        "knobs": {"compass_octants": 8},
+        "knobs": {"compass_octants": 8, "backbone_coverage_target_miles": 600.0},
         "label": {"label": "Joint"},
     }
     parts.update(overrides)
@@ -386,6 +404,13 @@ def test_app_config_from_parts_requires_each_degree() -> None:
     """A missing degree document is rejected by the assembler."""
     parts = _parts()
     del parts["access-homing-degree"]
+    with pytest.raises(ValueError):
+        app_config_from_parts(parts)
+
+
+def test_app_config_from_parts_requires_coverage_target() -> None:
+    """A knobs document omitting the coverage target is rejected by the assembler."""
+    parts = _parts(knobs={"compass_octants": 8})
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 

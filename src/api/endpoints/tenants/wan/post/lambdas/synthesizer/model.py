@@ -65,15 +65,18 @@ class EnumBudget:
 
 @dataclass(frozen=True)
 class Tuning:
-    """Algorithm dials plus the two required redundancy degrees.
+    """Algorithm dials plus the required redundancy degrees and coverage target.
 
     The two degrees are operator requirements the design must meet, each its own
     REST resource (``backbone-mesh-degree`` / ``access-homing-degree``) with no
     default at the config layer; the values here are construction fallbacks only.
     ``backbone_mesh_degree`` is how many other backbone nodes each backbone node
     links to on the mesh; ``access_backbone_links`` is how many backbone nodes each
-    demand vertex homes to. The remaining fields are the algorithm dials exposed
-    together as the ``knobs`` resource.
+    demand vertex homes to. ``backbone_coverage_target_miles`` is likewise required
+    at the config layer (its field default here is a construction fallback only,
+    kept because dataclass field ordering forces one); it lives in the ``knobs``
+    resource rather than its own. The remaining fields (``compass_octants``,
+    ``enum_budget``) are the truly-optional dials exposed as ``knobs``.
     """
 
     compass_octants: int = 8  # compass sectors used to score a backbone node's link spread
