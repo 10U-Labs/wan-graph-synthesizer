@@ -14,7 +14,7 @@ import pytest
 from repo_utils import REPO_ROOT
 from test_terraform_config import find_resource, load_tf
 
-SYNTH_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "tenants" / "wan" / "synthesizer"
+SYNTH_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "tenants" / "wan" / "post"
 
 
 @pytest.fixture(name="synth_main")

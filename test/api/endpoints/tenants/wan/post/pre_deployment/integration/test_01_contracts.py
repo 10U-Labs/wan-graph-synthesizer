@@ -13,7 +13,7 @@ import re
 from repo_utils import REPO_ROOT
 from test_terraform_config import COMMON_OUTPUTS_FILE, output_values
 
-SYNTH_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "tenants" / "wan" / "synthesizer"
+SYNTH_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "tenants" / "wan" / "post"
 
 
 def _stack_text() -> str:

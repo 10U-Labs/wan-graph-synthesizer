@@ -6,7 +6,7 @@ provider "aws" {
       ManagedBy  = "OpenTofu"
       Project    = "wan-graph-synthesizer"
       Repository = "10U-Labs/wan-graph-synthesizer"
-      Stack      = "endpoints/tenants/wan/synthesizer"
+      Stack      = "endpoints/tenants/wan/post"
     }
   }
 }

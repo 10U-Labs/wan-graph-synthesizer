@@ -1,6 +1,6 @@
 # The dispatching Lambda: POST async-invokes the synthesizer Lambda, GET reports the
 # tenant's WAN status from the store. The synthesizer lives in its own stack
-# (`./synthesizer/`); the dispatcher references it by its deterministic derived name
+# (`./post/`); the dispatcher references it by its deterministic derived name
 # (`module.common.lambda_handler_names.wan`-synthesizer), so the two stacks stay decoupled
 # -- no cross-stack resource reference or remote state.
 
@@ -16,7 +16,7 @@ data "terraform_remote_state" "routing" {
 
 data "archive_file" "handler" {
   type        = "zip"
-  source_file = "${path.module}/lambdas/endpoint/handler.py"
+  source_file = "${path.module}/lambdas/handler.py"
   output_path = "${path.module}/.terraform/lambda_packages/handler.zip"
 }
 

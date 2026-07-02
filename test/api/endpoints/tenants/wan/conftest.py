@@ -2,7 +2,7 @@
 
 These parse the stack's declared OpenTofu config (no AWS, no apply) and expose
 the deterministic Lambda and IAM role names every tier needs. The synthesizer
-Lambda lives in its own stack (``./synthesizer/``) with its own tests.
+Lambda lives in its own stack (``./post/``) with its own tests.
 """
 from __future__ import annotations
 

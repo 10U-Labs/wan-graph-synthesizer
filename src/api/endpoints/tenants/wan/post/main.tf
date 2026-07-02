@@ -5,18 +5,18 @@
 # the only build trigger, referencing it by its deterministic derived name.
 # A build is single-threaded, finishes in seconds with a few-GB working set, and needs
 # nothing beyond stdlib + boto3, so it fits Lambda's 15-minute / 10 GB envelope.
+# This `post/` stack (owned by the *_post.yml workflow) is self-contained: its lambda code
+# lives under `./lambdas/`.
 
 locals {
   store_bucket = data.terraform_remote_state.storage.outputs.bucket_name
 }
 
-# Package the synthesizer package (../lambdas/synthesizer/, handler + engine) into a zip,
-# preserving the synthesizer/ prefix so its `from synthesizer.X import ...` resolve. The
-# dispatcher (../lambdas/endpoint/handler.py) is excluded; it ships in its own stack's zip.
+# Package this stack's lambda code (./lambdas/synthesizer/, handler + engine) into a zip,
+# preserving the synthesizer/ prefix so its `from synthesizer.X import ...` resolve.
 data "archive_file" "synthesizer" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambdas"
-  excludes    = ["endpoint/handler.py"]
+  source_dir  = "${path.module}/lambdas"
   output_path = "${path.module}/.terraform/lambda_packages/synthesizer.zip"
 }
 

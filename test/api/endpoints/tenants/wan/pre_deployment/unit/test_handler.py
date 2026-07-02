@@ -20,7 +20,6 @@ def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
     return load_handler(
         "tenants/wan",
         monkeypatch,
-        subdir="endpoint",
         SYNTHESIZER_FUNCTION_NAME="wan-graph-synthesizer-wan-synthesizer",
     )
 

@@ -112,7 +112,7 @@ jobs:
           --tools pylint,mypy,yamllint
           --verbose
           ${{ github.workspace }}/lib/python
-          ${{ github.workspace }}/src/api/endpoints/tenants/wan/lambdas/endpoint
+          ${{ github.workspace }}/src/api/endpoints/tenants/wan/lambdas
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/conftest.py
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/pre_deployment
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/post_deployment
@@ -133,7 +133,7 @@ jobs:
         run: >-
           PYTHONPATH=lib/python:src/api/endpoints/tenants/wan/lambdas
           python3 -m pylint
-          src/api/endpoints/tenants/wan/lambdas/endpoint/handler.py
+          src/api/endpoints/tenants/wan/lambdas/handler.py
           lib/python/test_terraform_config
           lib/python/test_terraform_drift
           lib/python/test_fixtures
@@ -143,14 +143,14 @@ jobs:
           MYPYPATH=lib/python:src/api/endpoints/tenants/wan/lambdas
           python3 -m mypy --strict --explicit-package-bases
           --ignore-missing-imports
-          src/api/endpoints/tenants/wan/lambdas/endpoint/handler.py
+          src/api/endpoints/tenants/wan/lambdas/handler.py
           lib/python/test_terraform_config
           lib/python/test_terraform_drift
           lib/python/test_fixtures
       - name: Detect copy-paste in source
         run: >-
           jscpd --pattern "**/*.py" --threshold 0 --reporters console
-          src/api/endpoints/tenants/wan/lambdas/endpoint
+          src/api/endpoints/tenants/wan/lambdas
           lib/python/test_terraform_config
           lib/python/test_terraform_drift
           lib/python/test_fixtures
@@ -173,7 +173,7 @@ jobs:
       - name: Detect copy-paste in tests
         run: >-
           jscpd --pattern "test/api/endpoints/tenants/wan/**/*.py" --threshold 0
-          --ignore "**/synthesizer/**,**/pre_deployment/unit/test_handler.py"
+          --ignore "**/post/**,**/pre_deployment/unit/test_handler.py"
           --reporters console
           test/api/endpoints/tenants/wan/
       - name: Set up OpenTofu
@@ -199,7 +199,7 @@ jobs:
           test/api/endpoints/tenants/wan/pre_deployment/unit/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
-          --cov=src/api/endpoints/tenants/wan/lambdas/endpoint
+          --cov=src/api/endpoints/tenants/wan/lambdas
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
@@ -209,7 +209,7 @@ on:
     branches: [main]
     paths:
       - src/api/endpoints/tenants/wan/*.tf
-      - src/api/endpoints/tenants/wan/lambdas/endpoint/**
+      - src/api/endpoints/tenants/wan/lambdas/**
       - test/api/endpoints/tenants/wan/conftest.py
       - test/api/endpoints/tenants/wan/pre_deployment/**
       - test/api/endpoints/tenants/wan/post_deployment/**

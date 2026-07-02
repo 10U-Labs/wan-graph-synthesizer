@@ -24,7 +24,7 @@ jobs:
         run: >-
           PYTHONPATH=.:lib/python
           python3 -m pytest
-          test/api/endpoints/tenants/wan/synthesizer/post_deployment/integration/
+          test/api/endpoints/tenants/wan/post/post_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose
   pre-deployment-integration-tests:
@@ -37,9 +37,9 @@ jobs:
         run: pip install boto3 boto3-stubs pytest 'python-hcl2<8' pyyaml
       - name: Run pre-deployment integration tests
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/lambdas
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pytest
-          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration/
+          test/api/endpoints/tenants/wan/post/pre_deployment/integration/
           --verbose --pythonwarnings=error
   reconciliation:
     if: github.ref == 'refs/heads/main'
@@ -62,8 +62,8 @@ jobs:
           tofu_wrapper: false
       - name: Reconcile the synthesizer stack to its declared state
         run: |
-          tofu -chdir=src/api/endpoints/tenants/wan/synthesizer init -input=false
-          tofu -chdir=src/api/endpoints/tenants/wan/synthesizer apply -auto-approve -input=false
+          tofu -chdir=src/api/endpoints/tenants/wan/post init -input=false
+          tofu -chdir=src/api/endpoints/tenants/wan/post apply -auto-approve -input=false
   static-analysis:
     name: static-analysis
     runs-on: ubuntu-24.04
@@ -96,8 +96,8 @@ jobs:
           --tools pylint,mypy,yamllint
           --verbose
           ${{ github.workspace }}/lib/python
-          ${{ github.workspace }}/src/api/endpoints/tenants/wan/lambdas/synthesizer
-          ${{ github.workspace }}/test/api/endpoints/tenants/wan/synthesizer
+          ${{ github.workspace }}/src/api/endpoints/tenants/wan/post/lambdas/synthesizer
+          ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
       - name: Assert no linter config files
         run: >-
           assert-no-linter-config-files
@@ -108,9 +108,9 @@ jobs:
         run: >-
           assert-one-assert-per-pytest
           --verbose
-          ${{ github.workspace }}/test/api/endpoints/tenants/wan/synthesizer
+          ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
       # This source lint disables pylint's broad-exception-caught (W0718) check.
-      # lambdas/synthesizer/handler.py is the synthesizer Lambda that builds a tenant's
+      # post/lambdas/synthesizer/handler.py is the synthesizer Lambda that builds a tenant's
       # WAN, and it deliberately wraps the whole build in a catch-all
       # `except Exception`. The synthesizer's contract is to record the tenant's status
       # in S3 -- "building" when it starts, "ready" on success, and "failed" on ANY
@@ -137,47 +137,47 @@ jobs:
       # nudged by one rather than the data artificially partitioned.
       - name: Run pylint on source
         run: >-
-          PYTHONPATH=lib/python:src:src/api/endpoints/tenants/wan/lambdas
+          PYTHONPATH=lib/python:src:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint
-          src/api/endpoints/tenants/wan/lambdas/synthesizer/
+          src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
           --disable=broad-exception-caught
           --max-attributes=8
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on source
         run: >-
-          MYPYPATH=lib/python:src:src/api/endpoints/tenants/wan/lambdas
+          MYPYPATH=lib/python:src:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m mypy --strict --ignore-missing-imports
-          --explicit-package-bases src/api/endpoints/tenants/wan/lambdas/synthesizer/
+          --explicit-package-bases src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
       - name: Detect copy-paste in source
         run: >-
           jscpd --pattern "**/*.py" --threshold 0 --reporters console
           --ignore "**/test_handler_contracts/**,**/test_s3_store_mock/**"
-          lib/python/ src/api/endpoints/tenants/wan/lambdas/synthesizer/
+          lib/python/ src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
       - name: Run pylint on tests
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/lambdas
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint --recursive=y
-          test/api/endpoints/tenants/wan/synthesizer
+          test/api/endpoints/tenants/wan/post
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on tests
         run: >-
-          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/lambdas
+          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m mypy --strict --ignore-missing-imports
-          --explicit-package-bases test/api/endpoints/tenants/wan/synthesizer
+          --explicit-package-bases test/api/endpoints/tenants/wan/post
       - name: Detect copy-paste in tests
         run: >-
-          jscpd --pattern "test/api/endpoints/tenants/wan/synthesizer/**/*.py"
+          jscpd --pattern "test/api/endpoints/tenants/wan/post/**/*.py"
           --threshold 0 --reporters console
           --ignore "test/**/pre_deployment/unit/test_handler.py"
-          test/api/endpoints/tenants/wan/synthesizer
+          test/api/endpoints/tenants/wan/post
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v2
         with:
           tofu_wrapper: false
       - name: Validate the synthesizer stack
         run: |
-          tofu -chdir=src/api/endpoints/tenants/wan/synthesizer init -backend=false -input=false
-          tofu -chdir=src/api/endpoints/tenants/wan/synthesizer validate
+          tofu -chdir=src/api/endpoints/tenants/wan/post init -backend=false -input=false
+          tofu -chdir=src/api/endpoints/tenants/wan/post validate
   unit-tests:
     name: unit-tests
     needs: static-analysis
@@ -188,12 +188,12 @@ jobs:
         run: pip install boto3 boto3-stubs pytest pytest-cov 'python-hcl2<8' pyyaml
       - name: Run unit tests with a 100% coverage gate
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/lambdas
+          PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pytest
-          test/api/endpoints/tenants/wan/synthesizer/pre_deployment/unit/
+          test/api/endpoints/tenants/wan/post/pre_deployment/unit/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
-          --cov=src/api/endpoints/tenants/wan/lambdas/synthesizer
+          --cov=src/api/endpoints/tenants/wan/post/lambdas/synthesizer
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
@@ -202,10 +202,9 @@ on:
   push:
     branches: [main]
     paths:
-      - src/api/endpoints/tenants/wan/lambdas/synthesizer/**
-      - src/api/endpoints/tenants/wan/synthesizer/**
+      - src/api/endpoints/tenants/wan/post/**
       - test/api/endpoints/tenants/wan/conftest.py
-      - test/api/endpoints/tenants/wan/synthesizer/**
+      - test/api/endpoints/tenants/wan/post/**
       - lib/python/**
       - lib/opentofu/common/**
       - .github/workflows/api_endpoint_tenants_wan_post.yml

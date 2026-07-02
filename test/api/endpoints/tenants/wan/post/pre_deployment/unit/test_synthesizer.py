@@ -21,7 +21,7 @@ from test_s3_store_mock import fake_s3
 from synthesizer.input_graph import Vertex
 from synthesizer.model import DesignParams
 
-_PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/lambdas/synthesizer/handler.py"
+_PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/post/lambdas/synthesizer/handler.py"
 
 
 @pytest.fixture(name="synthesizer")
