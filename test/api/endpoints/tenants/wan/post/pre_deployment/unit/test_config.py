@@ -306,7 +306,9 @@ def test_rejects_non_list_regional_edges() -> None:
 def test_missing_required_degree_is_rejected() -> None:
     """A config whose tuning omits a required redundancy degree is rejected."""
     with pytest.raises(ValueError):
-        config_from_data({"tuning": {"backbone_mesh_degree": 3}})
+        config_from_data(
+            {"tuning": {"backbone_mesh_degree": 3, "backbone_coverage_target_miles": 600.0}}
+        )
 
 
 def test_non_integer_degree_is_rejected() -> None:
