@@ -164,6 +164,8 @@ def push_tenants(api: str) -> list[str]:
              _degree_doc(config["backbone_mesh_degree"]))
         _put(api, f"tenants/{tid}/access-homing-degree",
              _degree_doc(config["access_homing_degree"]))
+        _put(api, f"tenants/{tid}/backbone-placement",
+             {"restrict": config.get("restrict_backbone_to_data_centers", True)})
         _put(api, f"tenants/{tid}/knobs", config.get("knobs", {}))
         _put(api, f"tenants/{tid}/label", {"label": config.get("label", "")})
     return tenant_ids

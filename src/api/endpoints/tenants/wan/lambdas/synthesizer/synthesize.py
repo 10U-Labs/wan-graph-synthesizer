@@ -47,6 +47,7 @@ from synthesizer.model import (
     DesignParams,
     PathUse,
     RoleOverrides,
+    backbone_city_allowed,
     is_carrier_pop,
 )
 from synthesizer.forced import (
@@ -271,20 +272,23 @@ def compute_eligible_backbone_ids(
     carrier_pops: list[Vertex],
     adjacency: dict[str, list[tuple[str, float]]],
     datacenter_cities: frozenset[tuple[str, str]],
+    restrict: bool = True,
 ) -> set[str]:
     """Carrier PoPs that may serve as backbone nodes.
 
     A PoP needs at least two physical links to ever route redundantly, so degree-one
-    PoPs (spurs) are excluded. It must also sit at a data-center city -- a colocation
-    provider operates a cage there -- because the backbone is built from carrier PoPs
-    that can be lit at a provider facility; a PoP off every data-center city is never
-    eligible, no matter how strong.
+    PoPs (spurs) are excluded regardless of policy. When ``restrict`` is ``True`` a PoP
+    must also sit at a data-center city -- a colocation provider operates a cage there --
+    because the backbone is built from carrier PoPs that can be lit at a provider
+    facility; a PoP off every data-center city is never eligible, no matter how strong.
+    When ``restrict`` is ``False`` (the operator's free-for-all) the city gate is lifted
+    and any degree-two carrier PoP is eligible.
     """
     return {
         pop.id
         for pop in carrier_pops
         if len(adjacency.get(pop.id, [])) >= 2
-        and (pop.info.municipality, pop.info.state) in datacenter_cities
+        and backbone_city_allowed(pop.info, datacenter_cities, restrict)
     }
 
 
@@ -292,6 +296,7 @@ def convergence_promotion_ids(
     design: Design,
     carrier_pops: list[Vertex],
     datacenter_cities: frozenset[tuple[str, str]],
+    restrict: bool = True,
     min_degree: int = CONVERGENCE_BACKBONE_DEGREE,
 ) -> set[str]:
     """Non-backbone carrier PoPs at a data-center city where this design's fiber converges.
@@ -302,7 +307,9 @@ def convergence_promotion_ids(
     degree. A non-backbone carrier PoP only ever carries those edges as a transit node
     (demand homes to backbone nodes, never to transit), so its incident count is exactly
     the number of the design's lines meeting there. PoPs already seated in the backbone
-    are excluded; the caller forces the rest in and redraws.
+    are excluded; the caller forces the rest in and redraws. When ``restrict`` is
+    ``False`` (the operator's free-for-all) the data-center-city gate is lifted, so any
+    non-backbone convergence hub promotes.
     """
     counts: dict[str, int] = {}
     for left, right in design.physical_edge_keys:
@@ -315,8 +322,7 @@ def convergence_promotion_ids(
         for pop_id, degree in counts.items()
         if degree >= min_degree
         and pop_id not in backbone
-        and (pop_by_id[pop_id].info.municipality, pop_by_id[pop_id].info.state)
-        in datacenter_cities
+        and backbone_city_allowed(pop_by_id[pop_id].info, datacenter_cities, restrict)
     }
 
 
@@ -688,13 +694,17 @@ def synthesize_two_tier_design(
 
     context = graph_context(vertices, physical_edges)
     eligible_ids = compute_eligible_backbone_ids(
-        context.carrier_pops, context.adjacency, params.datacenter_cities
+        context.carrier_pops,
+        context.adjacency,
+        params.datacenter_cities,
+        params.restrict_backbone_to_datacenters,
     )
     eligible_ids = eligible_ids | overrides.forced_backbone_ids
     backbone_eligible_ids = eligible_ids - overrides.prohibited_backbone_ids
     if len(backbone_eligible_ids) < max(2, params.min_backbone_count):
+        gate = " at a data-center city" if params.restrict_backbone_to_datacenters else ""
         raise ValueError(
-            "Not enough eligible Carrier backbone PoPs (degree >= 2 at a data-center city)"
+            f"Not enough eligible Carrier backbone PoPs (degree >= 2{gate})"
         )
 
     inputs = DesignInputs(
@@ -721,7 +731,10 @@ def synthesize_two_tier_design(
         design = search_best_design(inputs, params, plan)
 
         new = convergence_promotion_ids(
-            design, inputs.carrier_pops, params.datacenter_cities
+            design,
+            inputs.carrier_pops,
+            params.datacenter_cities,
+            params.restrict_backbone_to_datacenters,
         ) - promoted
         if not new:
             return design

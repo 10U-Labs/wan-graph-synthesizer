@@ -27,9 +27,10 @@ def _realize(
     *sites: Vertex,
     forced: frozenset[str] = frozenset(),
     cities: frozenset[tuple[str, str]] = _CITIES,
+    restrict: bool = True,
 ) -> RealizedOffNet:
     """Realize the given off-net sites against the three carrier PoPs."""
-    return realize_off_net_sites(_pops(), {}, list(sites), forced, cities)
+    return realize_off_net_sites(_pops(), {}, list(sites), forced, cities, restrict)
 
 
 def test_realize_seats_a_forced_site() -> None:
@@ -77,6 +78,17 @@ def test_forced_site_off_a_data_center_city_is_rejected() -> None:
             forced=frozenset({"dulles"}),
             cities=frozenset(),
         )
+
+
+def test_forced_site_off_a_data_center_city_is_seated_when_unrestricted() -> None:
+    """With the gate off, a forced off-net site at any city is seated as a local-fiber twin."""
+    result = _realize(
+        fixtures.off_net_site("dulles", 0.0, 0.5),
+        forced=frozenset({"dulles"}),
+        cities=frozenset(),
+        restrict=False,
+    )
+    assert len(result.seat_ids) == 1
 
 
 def test_a_forced_site_already_on_net_seats_without_a_twin() -> None:
