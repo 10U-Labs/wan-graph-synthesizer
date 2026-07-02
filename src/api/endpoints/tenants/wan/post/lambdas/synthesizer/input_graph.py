@@ -51,9 +51,10 @@ class Vertex:
     # Descriptive (non-structural) attributes: source notes plus the serving
     # municipality, region/state and country shown in the map tooltip.
     info: VertexInfo = field(default_factory=VertexInfo)
-    # Whether the vertex appears on the source mapbook layer (carrier PoPs are
-    # backbone infrastructure and are not shown; installations and regions are).
-    shown_in_map: bool = True
+    # A demand site the operator has marked OCONUS: it is dropped from the backbone
+    # coverage-distance stop condition (it may sit farther than the target from every
+    # backbone node), but still homes to its nearest node like any other site.
+    exempt_from_distance_constraint: bool = False
 
     @property
     def lat(self) -> float:

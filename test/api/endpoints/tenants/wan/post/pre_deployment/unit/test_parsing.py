@@ -41,12 +41,6 @@ def test_substrate_points_are_carrier_pops() -> None:
     assert all(is_carrier_pop(pop) for pop in pops)
 
 
-def test_substrate_points_are_not_shown_on_the_map() -> None:
-    """Carrier points are backbone infrastructure, not drawn on the map."""
-    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
-    assert not any(pop.shown_in_map for pop in pops)
-
-
 def test_substrate_collapses_a_city_across_carriers() -> None:
     """Colocated points from different carriers collapse to one city node."""
     pops, _edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
@@ -107,6 +101,35 @@ def test_sites_keep_their_given_name() -> None:
          "country": "United States", "latitude": 39.7, "longitude": -104.75},
     ])
     assert sites[0].name == "Buckley"
+
+
+def test_sites_read_a_yes_exempt_column_as_exempt() -> None:
+    """A ``Yes`` in the exempt column marks the site exempt from the distance constraint."""
+    sites = load_sites([
+        {"name": "Shafter", "municipality": "Honolulu", "state": "HI",
+         "country": "United States", "latitude": 21.3, "longitude": -157.9,
+         "exemptfromdistanceconstraint": "Yes"},
+    ])
+    assert sites[0].exempt_from_distance_constraint
+
+
+def test_sites_read_a_no_exempt_column_as_not_exempt() -> None:
+    """A ``No`` in the exempt column leaves the site subject to the distance constraint."""
+    sites = load_sites([
+        {"name": "Buckley", "municipality": "Aurora", "state": "CO",
+         "country": "United States", "latitude": 39.7, "longitude": -104.75,
+         "exemptfromdistanceconstraint": "No"},
+    ])
+    assert not sites[0].exempt_from_distance_constraint
+
+
+def test_places_without_an_exempt_column_are_not_exempt() -> None:
+    """A row lacking the exempt column (regions, off-net, substrate) is not exempt."""
+    regions = load_regions([
+        {"name": "us-east-1", "municipality": "Ashburn", "state": "VA",
+         "country": "United States", "latitude": 39.0, "longitude": -77.5},
+    ])
+    assert not regions[0].exempt_from_distance_constraint
 
 
 def test_off_net_sites_are_named_by_city() -> None:

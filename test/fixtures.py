@@ -57,7 +57,7 @@ _FIXTURE_COUNTRY = "United States"
 
 
 def carrier_pop(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
-    """Build a carrier PoP vertex (a backbone PoP, not shown on the map)."""
+    """Build a carrier PoP vertex (a backbone PoP)."""
     return Vertex(
         id=vertex_id,
         name=vertex_id,
@@ -66,7 +66,6 @@ def carrier_pop(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
         info=VertexInfo(
             municipality=vertex_id, state=_FIXTURE_STATE, country=_FIXTURE_COUNTRY
         ),
-        shown_in_map=False,
     )
 
 

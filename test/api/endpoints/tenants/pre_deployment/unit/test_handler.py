@@ -100,7 +100,7 @@ def test_tenants_list_skips_non_label_objects(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_tenant_accepts_a_well_formed_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A locations PUT whose rows carry exactly the required fields is stored."""
+    """A locations PUT whose rows carry the required fields is stored."""
     module = _tenant(monkeypatch)
     objects: dict[str, bytes] = {}
     row = {
@@ -110,10 +110,69 @@ def test_tenant_accepts_a_well_formed_vertex_input(monkeypatch: pytest.MonkeyPat
         "country": "United States",
         "latitude": 1.0,
         "longitude": 2.0,
+        "exemptfromdistanceconstraint": "No",
     }
     with patch("boto3.client", side_effect=write_clients(objects, [])):
         module.lambda_handler(_tenant_put("locations", [row]), None)
     assert json.loads(objects["tenants/f-35/locations.json"]) == [row]
+
+
+def test_tenant_accepts_a_locations_row_with_an_extra_field(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A locations PUT is stored even when a row carries fields beyond the required set."""
+    module = _tenant(monkeypatch)
+    objects: dict[str, bytes] = {}
+    row = {
+        "name": "Site",
+        "municipality": "Denver",
+        "state": "CO",
+        "country": "United States",
+        "latitude": 1.0,
+        "longitude": 2.0,
+        "exemptfromdistanceconstraint": "No",
+        "note": "extra",
+    }
+    with patch("boto3.client", side_effect=write_clients(objects, [])):
+        module.lambda_handler(_tenant_put("locations", [row]), None)
+    assert json.loads(objects["tenants/f-35/locations.json"]) == [row]
+
+
+def test_tenant_rejects_a_locations_row_without_the_exempt_field(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A locations PUT is rejected when a row omits the exempt-from-distance-constraint field."""
+    module = _tenant(monkeypatch)
+    row = {
+        "name": "Site",
+        "municipality": "Denver",
+        "state": "CO",
+        "country": "United States",
+        "latitude": 1.0,
+        "longitude": 2.0,
+    }
+    with patch("boto3.client", side_effect=write_clients({}, [])):
+        response = module.lambda_handler(_tenant_put("locations", [row]), None)
+    assert response["statusCode"] == 400
+
+
+def test_tenant_accepts_a_provider_region_without_the_exempt_field(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A provider-regions PUT does not require the exempt field that tenant locations do."""
+    module = _tenant(monkeypatch)
+    objects: dict[str, bytes] = {}
+    row = {
+        "name": "us-east-1",
+        "municipality": "Ashburn",
+        "state": "VA",
+        "country": "United States",
+        "latitude": 1.0,
+        "longitude": 2.0,
+    }
+    with patch("boto3.client", side_effect=write_clients(objects, [])):
+        module.lambda_handler(_tenant_put("provider-regions", [row]), None)
+    assert json.loads(objects["tenants/f-35/provider-regions.json"]) == [row]
 
 
 def test_tenant_get_serves_an_input_document(monkeypatch: pytest.MonkeyPatch) -> None:

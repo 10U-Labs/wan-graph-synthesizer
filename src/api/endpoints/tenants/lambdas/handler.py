@@ -41,24 +41,30 @@ _INPUTS = frozenset({
 })
 # Tenants are enumerated by this marker document (every tenant has a label).
 _TENANT_MARKER = "label.json"
-# The vertex-list inputs are bare geographic rows with a known field set; the remaining
-# config resources (forced-*, degrees, knobs, label) are validated only by the schema
-# their consumers expect, so they pass through unchecked here.
+# The vertex-list inputs are geographic rows with a known set of required fields; the
+# remaining config resources (forced-*, degrees, knobs, label) are validated only by the
+# schema their consumers expect, so they pass through unchecked here. A row may carry
+# extra fields beyond the required set -- only tenant locations must additionally carry
+# the ``exemptfromdistanceconstraint`` column (cloud regions and off-net do not).
 _SITE_FIELDS = {"name", "municipality", "state", "country", "latitude", "longitude"}
+_LOCATION_FIELDS = _SITE_FIELDS | {"exemptfromdistanceconstraint"}
 _VERTEX_INPUT_FIELDS = {
-    "locations": _SITE_FIELDS,
+    "locations": _LOCATION_FIELDS,
     "provider-regions": _SITE_FIELDS,
     "off-net": {"municipality", "state", "country", "latitude", "longitude"},
 }
 
 
 def _validate_rows(body: Any, required: set[str]) -> str | None:
-    """Return an error message if body is not a list of rows each having exactly the fields."""
+    """Return an error message if body is not a list of rows each containing the fields.
+
+    A row must have at least the required fields; extra fields are allowed.
+    """
     if not isinstance(body, list):
         return "expected a list of rows"
     for row in body:
-        if not isinstance(row, dict) or set(row) != required:
-            return "each row must have exactly: " + ", ".join(sorted(required))
+        if not isinstance(row, dict) or not required.issubset(row):
+            return "each row must have at least: " + ", ".join(sorted(required))
     return None
 
 

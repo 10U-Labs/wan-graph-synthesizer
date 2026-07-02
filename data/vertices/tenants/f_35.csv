@@ -1,23 +1,23 @@
-Name,Municipality,State,Country,Latitude,Longitude
-Arlington,Arlington,VA,United States,38.8816,-77.0910
-Cheongju,Cheongju,,Republic of Korea,36.6424,127.4890
-Edwards AFB,Edwards,CA,United States,34.9054,-117.8837
-Eglin AFB,Valparaiso,FL,United States,30.4832,-86.5254
-Fort Worth,Fort Worth,TX,United States,32.7555,-97.3308
-Hill AFB,Layton,UT,United States,41.1240,-111.9731
-Langley AFB,Hampton,VA,United States,37.0829,-76.3603
-Luke AFB,Glendale,AZ,United States,33.5350,-112.3830
-MCAS Beaufort,Beaufort,SC,United States,32.4774,-80.7232
-MCAS Cherry Point,Havelock,NC,United States,34.9009,-76.8807
-MCAS Yuma,Yuma,AZ,United States,32.6566,-114.6060
-Manassas,Manassas,VA,United States,38.7509,-77.4753
-NAS Jacksonville,Jacksonville,FL,United States,30.2358,-81.6806
-NAS Patuxent River,Patuxent River,MD,United States,38.2860,-76.4119
-NAS Point Mugu,Point Mugu,CA,United States,34.1207,-119.1209
-NAWCTSD Orlando,Orlando,FL,United States,28.5882,-81.1995
-NAWS China Lake,Ridgecrest,CA,United States,35.6855,-117.6920
-NSA Lakehurst,Lakehurst,NJ,United States,40.0333,-74.3535
-Norfolk,Norfolk,VA,United States,36.8508,-76.2859
-Springfield,Springfield,VA,United States,38.7893,-77.1872
-Tokyo,Tokyo,,Japan,35.6764,139.6500
-Wright-Patterson AFB,Dayton,OH,United States,39.8137,-84.0492
+Name,Municipality,State,Country,Latitude,Longitude,ExemptFromDistanceConstraint
+Arlington,Arlington,VA,United States,38.8816,-77.0910,No
+Cheongju,Cheongju,,Republic of Korea,36.6424,127.4890,Yes
+Edwards AFB,Edwards,CA,United States,34.9054,-117.8837,No
+Eglin AFB,Valparaiso,FL,United States,30.4832,-86.5254,No
+Fort Worth,Fort Worth,TX,United States,32.7555,-97.3308,No
+Hill AFB,Layton,UT,United States,41.1240,-111.9731,No
+Langley AFB,Hampton,VA,United States,37.0829,-76.3603,No
+Luke AFB,Glendale,AZ,United States,33.5350,-112.3830,No
+MCAS Beaufort,Beaufort,SC,United States,32.4774,-80.7232,No
+MCAS Cherry Point,Havelock,NC,United States,34.9009,-76.8807,No
+MCAS Yuma,Yuma,AZ,United States,32.6566,-114.6060,No
+Manassas,Manassas,VA,United States,38.7509,-77.4753,No
+NAS Jacksonville,Jacksonville,FL,United States,30.2358,-81.6806,No
+NAS Patuxent River,Patuxent River,MD,United States,38.2860,-76.4119,No
+NAS Point Mugu,Point Mugu,CA,United States,34.1207,-119.1209,No
+NAWCTSD Orlando,Orlando,FL,United States,28.5882,-81.1995,No
+NAWS China Lake,Ridgecrest,CA,United States,35.6855,-117.6920,No
+NSA Lakehurst,Lakehurst,NJ,United States,40.0333,-74.3535,No
+Norfolk,Norfolk,VA,United States,36.8508,-76.2859,No
+Springfield,Springfield,VA,United States,38.7893,-77.1872,No
+Tokyo,Tokyo,,Japan,35.6764,139.6500,Yes
+Wright-Patterson AFB,Dayton,OH,United States,39.8137,-84.0492,No

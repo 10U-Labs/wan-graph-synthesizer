@@ -31,14 +31,13 @@ LOCAL_FIBER_RADIUS_MILES = 300.0
 
 @dataclass(frozen=True)
 class LocalFiberTwinSpec:
-    """How to seat a local-fiber twin: edge note, map visibility, and reach cap.
+    """How to seat a local-fiber twin: edge note and reach cap.
 
     ``max_radius`` of ``None`` removes the distance cap so an operator-forced site is
     always seated, wired to its nearest carrier PoPs regardless of distance.
     """
 
     note: str
-    shown_in_map: bool
     max_radius: float | None = LOCAL_FIBER_RADIUS_MILES
 
 
@@ -95,7 +94,6 @@ def build_local_fiber_twin(
         kind=KIND_POP,
         coords=site.coords,
         info=site.info,
-        shown_in_map=spec.shown_in_map,
     )
     edges: dict[tuple[str, str], PhysicalEdge] = {}
     for pop in neighbors:

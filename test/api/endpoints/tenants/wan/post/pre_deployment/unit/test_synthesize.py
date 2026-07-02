@@ -577,14 +577,15 @@ def test_coverage_candidate_totals_drops_an_infeasible_addition() -> None:
     assert not totals
 
 
-def _far_demand_inputs_plan() -> tuple[DesignInputs, _SearchPlan]:
+def _far_demand_inputs_plan(exempt: bool = False) -> tuple[DesignInputs, _SearchPlan]:
     """Two central nodes far (by geography) from west/east demand, plus two candidates.
 
     Shared by the growth and cap tests: a permissive coverage target holds the backbone
     at the two-node floor, while a tight one would grow it to seat a western (cw) and an
     eastern (ce) node that bring the far demand within reach. Every demand vertex wires
     into the graph through the central pair (cc1/cc2), so it always homes; the geography
-    is what drives -- or holds -- the coverage growth.
+    is what drives -- or holds -- the coverage growth. With ``exempt`` set, the demand
+    vertices are marked exempt from the distance constraint.
     """
     # cw and ce each wire to both central nodes, so every backbone candidate sits in one
     # biconnected block and the coverage growth (driven by geography, not edges) is what
@@ -606,6 +607,10 @@ def _far_demand_inputs_plan() -> tuple[DesignInputs, _SearchPlan]:
         access("aw1", 40.0, -120.3), access("aw2", 40.3, -119.7),
         access("ae1", 40.0, -76.3), access("ae2", 40.3, -75.7),
     ]
+    if exempt:
+        access_nodes = [
+            replace(node, exempt_from_distance_constraint=True) for node in access_nodes
+        ]
     inputs = _inputs_from_edges(ids, edges, {"cc1", "cc2", "cw", "ce"}, access_nodes, coords)
     plan = _plan(
         ["cc1", "cc2", "cw", "ce"],
@@ -632,6 +637,20 @@ def test_search_grows_past_the_floor_to_cover_far_demand() -> None:
         tuning=Tuning(backbone_coverage_target_miles=300.0),
     )
     assert set(search_best_design(inputs, params, plan).backbone_ids) == {"cc1", "cc2", "cw", "ce"}
+
+
+def test_exempt_demand_does_not_drive_coverage_growth() -> None:
+    """Demand marked exempt from the distance constraint holds the backbone at its floor.
+
+    Under the same 300 mi target that grows this design to four nodes when the far demand
+    counts, marking that demand exempt drops it from the stop test, so growth never starts.
+    """
+    inputs, plan = _far_demand_inputs_plan(exempt=True)
+    params = DesignParams(
+        min_backbone_count=2, datacenter_cities=frozenset(),
+        tuning=Tuning(backbone_coverage_target_miles=300.0),
+    )
+    assert search_best_design(inputs, params, plan).backbone_ids == ("cc1", "cc2")
 
 
 def test_search_exhausts_its_candidates_under_an_unreachable_target() -> None:

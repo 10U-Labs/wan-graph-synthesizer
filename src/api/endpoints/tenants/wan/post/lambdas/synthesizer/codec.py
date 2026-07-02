@@ -4,7 +4,7 @@ Each place is sent to the API as a bare geographic row -- ``municipality, state,
 latitude, longitude`` (plus ``name`` for cloud regions and tenant sites) -- and what it
 *is* comes from the endpoint it was stored under, not from a column. These loaders turn
 those rows into :class:`Vertex`/:class:`PhysicalEdge` objects, deriving
-``kind``/``name``/``shown_in_map`` from the source, generating ids, and resolving carrier
+``kind``/``name`` from the source, generating ids, and resolving carrier
 connections (listed by the two endpoints' city+state) to the points they name.
 """
 
@@ -47,8 +47,17 @@ def _unique(base: str, used: set[str]) -> str:
     return vertex_id
 
 
-def _place(row: dict[str, Any], vertex_id: str, name: str, kind: str, shown: bool) -> Vertex:
-    """Build one vertex from a geographic row with its derived role attributes."""
+def _yes(value: Any) -> bool:
+    """Parse a ``Yes``/``No`` cell (case-insensitively) into a bool; absent or blank is False."""
+    return str(value or "").strip().lower() == "yes"
+
+
+def _place(row: dict[str, Any], vertex_id: str, name: str, kind: str) -> Vertex:
+    """Build one vertex from a geographic row with its derived role attributes.
+
+    Tenant-site rows carry an ``ExemptFromDistanceConstraint`` (``Yes``/``No``) column;
+    substrate, cloud-region and off-net rows have none, so absence reads as not exempt.
+    """
     return Vertex(
         id=vertex_id,
         name=name,
@@ -57,7 +66,7 @@ def _place(row: dict[str, Any], vertex_id: str, name: str, kind: str, shown: boo
         info=VertexInfo(
             municipality=row["municipality"], state=row["state"], country=row["country"]
         ),
-        shown_in_map=shown,
+        exempt_from_distance_constraint=_yes(row.get("exemptfromdistanceconstraint")),
     )
 
 
@@ -71,7 +80,7 @@ def _load_places(rows: list[dict[str, Any]], prefix: str, kind: str, named: bool
     for row in rows:
         name = row["name"] if named else _city(row)
         vertex_id = _unique(f"{prefix}-{_slug(name)}", used)
-        places.append(_place(row, vertex_id, name, kind, shown=True))
+        places.append(_place(row, vertex_id, name, kind))
     return places
 
 
@@ -109,7 +118,7 @@ def load_substrate(
         if city in by_city:
             continue
         name = _city(row)
-        vertex = _place(row, _unique(_slug(name), used), name, CARRIER_KIND, shown=False)
+        vertex = _place(row, _unique(_slug(name), used), name, CARRIER_KIND)
         pops.append(vertex)
         by_city[city] = vertex
     edges: dict[tuple[str, str], PhysicalEdge] = {}

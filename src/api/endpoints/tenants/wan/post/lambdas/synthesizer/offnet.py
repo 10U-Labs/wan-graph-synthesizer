@@ -85,7 +85,7 @@ def realize_off_net_sites(
         twin_id = unique_twin_id(f"{OFF_NET_ID_PREFIX}{site.id}", used_ids)
         built = build_local_fiber_twin(
             site, twin_id, carrier_pops,
-            LocalFiberTwinSpec(note=OFF_NET_EDGE_NOTE, shown_in_map=True),
+            LocalFiberTwinSpec(note=OFF_NET_EDGE_NOTE),
         )
         if built is None:
             raise ValueError(
