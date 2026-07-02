@@ -11,5 +11,6 @@ outputs/
 .ci-venv/
 .DS_Store
 .terraform/
+.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
