@@ -183,6 +183,24 @@ def test_default_has_no_prohibited_backbone() -> None:
     assert len(default_config().params.exclusions.prohibited_backbone_names) == 0
 
 
+def test_default_restricts_backbone_to_data_centers() -> None:
+    """The default config keeps the backbone gated to data-center cities."""
+    assert default_config().params.restrict_backbone_to_datacenters is True
+
+
+def test_reads_restrict_backbone_to_data_centers_false() -> None:
+    """A restrict_backbone_to_data_centers=false design opens the backbone to any city."""
+    assert _config(
+        {"design": {"restrict_backbone_to_data_centers": False}}
+    ).params.restrict_backbone_to_datacenters is False
+
+
+def test_restrict_backbone_to_data_centers_must_be_a_boolean() -> None:
+    """A non-boolean restrict_backbone_to_data_centers value is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"restrict_backbone_to_data_centers": "yes"}})
+
+
 def test_reads_prohibited_backbone() -> None:
     """A prohibited_backbone list is read into the design params."""
     design = {"prohibited_backbone": ["Denver, CO", "Boise, ID"]}
@@ -384,6 +402,17 @@ def test_app_config_from_parts_reads_only_min_when_max_absent() -> None:
     parts["backbone-node-count"] = {"min": 4}
     params = app_config_from_parts(parts).params
     assert (params.min_backbone_count, params.max_backbone_count) == (4, None)
+
+
+def test_app_config_from_parts_defaults_backbone_placement() -> None:
+    """An absent backbone-placement document keeps the data-center gate on."""
+    assert app_config_from_parts(_parts()).params.restrict_backbone_to_datacenters is True
+
+
+def test_app_config_from_parts_reads_backbone_placement() -> None:
+    """A backbone-placement document toggles the data-center gate off."""
+    parts = _parts(**{"backbone-placement": {"restrict": False}})
+    assert app_config_from_parts(parts).params.restrict_backbone_to_datacenters is False
 
 
 def test_app_config_from_parts_parses_connections() -> None:

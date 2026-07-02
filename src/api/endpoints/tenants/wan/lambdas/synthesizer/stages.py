@@ -24,12 +24,15 @@ def dual_home(
 
     ``off_net_sites`` are the loaded off-net candidate vertices (the caller loads
     them, from a CSV file or the stored JSON), so this step is source-agnostic. Both
-    fabrication paths are gated by ``params.datacenter_cities``: a forced location off
-    a data-center city is rejected, since the backbone gate is absolute.
+    fabrication paths are gated by ``params.datacenter_cities`` when
+    ``params.restrict_backbone_to_datacenters`` is set: a forced location off a
+    data-center city is rejected, since the backbone gate is absolute. With the restrict
+    flag off (free-for-all) a forced location at any city is fabricated.
     """
     forced_backbone = frozenset(params.forced_backbone_names)
+    restrict = params.restrict_backbone_to_datacenters
     fabricated = fabricate_missing_on_net_nodes(
-        vertices, physical_edges, forced_backbone, params.datacenter_cities
+        vertices, physical_edges, forced_backbone, params.datacenter_cities, restrict
     )
     vertices, physical_edges = fabricated.vertices, fabricated.physical_edges
     off_net = realize_off_net_sites(
@@ -38,6 +41,7 @@ def dual_home(
         off_net_sites,
         forced_backbone,
         params.datacenter_cities,
+        restrict,
     )
     return off_net.vertices, off_net.physical_edges
 

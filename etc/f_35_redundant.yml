@@ -32,3 +32,4 @@ knobs:
 label: F-35 (redundant)
 prohibited_backbone_nodes: []
 prohibited_connections: []
+restrict_backbone_to_data_centers: true

@@ -40,6 +40,21 @@ def test_dual_home_fabricates_a_forced_on_net_location() -> None:
     assert any(vertex.id.startswith("fac_") for vertex in homed_vertices)
 
 
+def test_dual_home_fabricates_a_non_data_center_forced_location_when_unrestricted() -> None:
+    """With the gate off, dual_home fabricates a forced location at a non-provider city."""
+    luke = fixtures.access_vertex("Luke", 40.5, -100.0)
+    params = DesignParams(
+        min_backbone_count=2,
+        forced_backbone_names=("Luke",),
+        datacenter_cities=frozenset(),
+        restrict_backbone_to_datacenters=False,
+    )
+    homed_vertices, _edges = dual_home(
+        [*fixtures.ring_vertices(), luke], fixtures.ring_physical_edges(), params, []
+    )
+    assert any(vertex.id.startswith("fac_") for vertex in homed_vertices)
+
+
 def test_finalize_validates_a_design() -> None:
     """finalize validates a design and reports it connected."""
     art = fixtures.ring_artifacts()

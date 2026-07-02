@@ -818,3 +818,66 @@ def test_apply_role_overrides_rejects_a_forced_and_prohibited_pop() -> None:
     )
     with pytest.raises(ValueError):
         apply_role_overrides([pop("a"), pop("b")], physical({("a", "b"): 1.0}), params)
+
+
+# --- backbone placement: the free-for-all toggle (restrict_backbone_to_datacenters) ----
+
+def test_eligible_includes_a_non_data_center_pop_when_unrestricted() -> None:
+    """With the data-center gate off, a degree-two PoP off every provider city is eligible."""
+    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0})
+    pops = [pop(name) for name in ("a", "b", "c")]
+    # Only a and b are data-center cities, yet c is eligible because the gate is lifted.
+    eligible = compute_eligible_backbone_ids(
+        pops, build_adjacency(edges), _cities("a", "b"), restrict=False
+    )
+    assert eligible == {"a", "b", "c"}
+
+
+def test_eligible_still_excludes_a_spur_when_unrestricted() -> None:
+    """The degree-one spur exclusion holds in free-for-all -- it can never route redundantly."""
+    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0, ("a", "spur"): 1.0})
+    pops = [pop(name) for name in ("a", "b", "c", "spur")]
+    eligible = compute_eligible_backbone_ids(
+        pops, build_adjacency(edges), frozenset(), restrict=False
+    )
+    assert "spur" not in eligible
+
+
+def test_convergence_promotes_a_non_data_center_hub_when_unrestricted() -> None:
+    """With the gate off, a >= 3-line crossing promotes even off every data-center city."""
+    keys = {edge_key("hub", n) for n in ("b1", "b2", "x")}
+    design = _design(("b1", "b2"), keys)
+    pops = [pop(name) for name in ("hub", "b1", "b2", "x")]
+    promoted = convergence_promotion_ids(design, pops, frozenset(), restrict=False)
+    assert promoted == {"hub"}
+
+
+def test_apply_role_overrides_accepts_a_non_data_center_pin_when_unrestricted() -> None:
+    """With the gate off, a forced pin at any city resolves rather than being rejected."""
+    params = DesignParams(
+        forced_backbone_names=("a",),
+        datacenter_cities=frozenset(),
+        restrict_backbone_to_datacenters=False,
+    )
+    _vertices, _edges, overrides = apply_role_overrides(
+        [pop("a"), pop("b")], physical({("a", "b"): 1.0}), params
+    )
+    assert overrides.forced_backbone_ids == frozenset({"a"})
+
+
+def test_synthesize_seats_a_backbone_off_every_data_center_city_when_unrestricted() -> None:
+    """Free-for-all lets synthesis build a backbone from PoPs at no data-center city.
+
+    The same params with the gate on raise (see
+    ``test_not_enough_eligible_pops_is_rejected``); lifting it seats a design.
+    """
+    design = synthesize_two_tier_design(
+        fixtures.ring_vertices(),
+        fixtures.ring_physical_edges(),
+        DesignParams(
+            min_backbone_count=2,
+            datacenter_cities=frozenset(),
+            restrict_backbone_to_datacenters=False,
+        ),
+    )
+    assert len(design.backbone_ids) >= 2

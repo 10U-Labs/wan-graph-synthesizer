@@ -28,7 +28,7 @@ from synthesizer.local_fiber import (
     build_local_fiber_twin,
     unique_twin_id,
 )
-from synthesizer.model import is_carrier_pop
+from synthesizer.model import backbone_city_allowed, is_carrier_pop
 from synthesizer.input_graph import PhysicalEdge, Vertex
 
 logger = logging.getLogger(__name__)
@@ -62,14 +62,17 @@ def fabricate_missing_on_net_nodes(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     forced_backbone_names: frozenset[str] = frozenset(),
     datacenter_cities: frozenset[tuple[str, str]] = frozenset(),
+    restrict: bool = True,
 ) -> FabricatedOnNetNodes:
     """Fabricate an on-net twin for every operator-forced non-carrier location.
 
     A location the operator named in ``forced_backbone_names`` is fabricated on-net by
     the force pin alone, since any data-center place can become a hub. Carrier PoPs
-    named here are already on-net and need no twin. A forced location whose city is not
-    in ``datacenter_cities`` raises ``ValueError`` -- the backbone gate is absolute, so
-    a force cannot stand up a hub off a data-center city. Forced locations are taken in
+    named here are already on-net and need no twin. When ``restrict`` is ``True`` a
+    forced location whose city is not in ``datacenter_cities`` raises ``ValueError`` --
+    the backbone gate is absolute, so a force cannot stand up a hub off a data-center
+    city; when ``restrict`` is ``False`` (free-for-all) the gate is lifted and a forced
+    location at any city is fabricated. Forced locations are taken in
     a stable id order; co-located sites yield a single twin. The twin always wires to
     its nearest carrier PoPs regardless of distance, so a forced location is dropped
     only in the degenerate case of fewer than :data:`LOCAL_FIBER_MIN_LINKS` carrier
@@ -88,7 +91,7 @@ def fabricate_missing_on_net_nodes(
         ),
         key=lambda vertex: vertex.id,
     ):
-        if (location.info.municipality, location.info.state) not in datacenter_cities:
+        if not backbone_city_allowed(location.info, datacenter_cities, restrict):
             raise ValueError(
                 f"forced backbone location is not at a data-center city: {location.name}"
             )

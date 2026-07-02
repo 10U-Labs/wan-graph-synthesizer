@@ -96,7 +96,8 @@ def _resolve_operator_pins(
         params.exclusions.prohibited_backbone_names, name_to_id, "prohibited_backbone"
     )
     reject_override_conflicts(forced_backbone, prohibited_backbone)
-    _reject_non_datacenter_pins(forced_backbone, carrier_pops, params.datacenter_cities)
+    if params.restrict_backbone_to_datacenters:
+        _reject_non_datacenter_pins(forced_backbone, carrier_pops, params.datacenter_cities)
     return forced_backbone, prohibited_backbone
 
 
