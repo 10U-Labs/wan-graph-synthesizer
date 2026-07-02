@@ -1,6 +1,8 @@
-# The dispatching Lambda: POST async-invokes the synthesizer worker Lambda, GET reports
-# the tenant's WAN status from the store. It lives in the wan stack so it can reference
-# the worker function directly.
+# The dispatching Lambda: POST async-invokes the synthesizer Lambda, GET reports the
+# tenant's WAN status from the store. The synthesizer lives in its own stack
+# (`./synthesizer/`); the dispatcher references it by its deterministic derived name
+# (`module.common.lambda_handler_names.wan`-synthesizer), so the two stacks stay decoupled
+# -- no cross-stack resource reference or remote state.
 
 data "terraform_remote_state" "routing" {
   backend = "s3"
@@ -28,12 +30,12 @@ resource "aws_lambda_function" "handler" {
   architectures    = ["arm64"]
   timeout          = 10
   memory_size      = 128
-  description      = "WAN create endpoint: async-invoke the synthesize worker, report status."
+  description      = "WAN create endpoint: async-invoke the synthesizer, report status."
 
   environment {
     variables = {
-      STORE_BUCKET         = local.store_bucket
-      WORKER_FUNCTION_NAME = aws_lambda_function.worker.function_name
+      STORE_BUCKET              = local.store_bucket
+      SYNTHESIZER_FUNCTION_NAME = "${module.common.lambda_handler_names.wan}-synthesizer"
     }
   }
 

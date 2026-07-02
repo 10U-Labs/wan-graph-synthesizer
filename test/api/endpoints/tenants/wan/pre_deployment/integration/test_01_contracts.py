@@ -1,9 +1,10 @@
-"""Layer 1 (contracts): cross-file consistency for the wan stack.
+"""Layer 1 (contracts): cross-file consistency for the wan dispatcher stack.
 
-The wan stack couples to the shared common module (whose locals reference its
-outputs) and to the storage stack's remote state (where it reads the store
-bucket). Its outputs are wired to the dispatcher and synthesizer worker Lambdas it
-declares. These assert those couplings hold. No AWS calls.
+The dispatcher stack couples to the shared common module (whose locals reference its
+outputs) and to the storage stack's remote state (where it reads the store bucket).
+Its output is wired to the dispatcher Lambda it declares, and it invokes the
+synthesizer by the derived name from the common module (the synthesizer Lambda lives
+in its own stack). These assert those couplings hold. No AWS calls.
 """
 from __future__ import annotations
 
@@ -40,12 +41,11 @@ def test_lambda_arn_output_references_the_declared_handler() -> None:
     assert "aws_lambda_function.handler" in str(outputs["lambda_function_arn"])
 
 
-def test_worker_function_arn_output_references_the_worker() -> None:
-    """The ``worker_function_arn`` output is wired to the declared worker Lambda."""
-    outputs = output_values(WAN_DIR / "outputs.tf")
-    assert "aws_lambda_function.worker" in str(outputs["worker_function_arn"])
+def test_dispatcher_invokes_the_derived_synthesizer_name() -> None:
+    """The dispatcher derives the synthesizer function name from the common module."""
+    assert "${module.common.lambda_handler_names.wan}-synthesizer" in _stack_text()
 
 
-def test_dispatcher_invokes_the_worker_function_name() -> None:
-    """The dispatcher's WORKER_FUNCTION_NAME points at the declared worker Lambda."""
-    assert "aws_lambda_function.worker.function_name" in _stack_text()
+def test_dispatch_policy_targets_the_derived_synthesizer_arn() -> None:
+    """The dispatch invoke policy targets the synthesizer's derived ARN, not a resource."""
+    assert ":function:${module.common.lambda_handler_names.wan}-synthesizer" in _stack_text()

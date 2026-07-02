@@ -1,8 +1,8 @@
-"""Shared fixtures for the tenants/wan endpoint stack tests.
+"""Shared fixtures for the tenants/wan endpoint (dispatcher) stack tests.
 
 These parse the stack's declared OpenTofu config (no AWS, no apply) and expose
 the deterministic Lambda and IAM role names every tier needs. The synthesizer
-worker Lambda is declared in the same stack (``main.tf``) and parsed here too.
+Lambda lives in its own stack (``./synthesizer/``) with its own tests.
 """
 from __future__ import annotations
 
@@ -20,12 +20,6 @@ WAN_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "tenants" / "wan"
 def wan_dir_fixture() -> Path:
     """Return the directory holding the tenants/wan endpoint stack."""
     return WAN_DIR
-
-
-@pytest.fixture(name="wan_main")
-def wan_main_fixture() -> dict[str, object]:
-    """Return the parsed ``main.tf`` for the wan stack (synthesizer infra)."""
-    return load_tf(WAN_DIR / "main.tf")
 
 
 @pytest.fixture(name="wan_lambda")

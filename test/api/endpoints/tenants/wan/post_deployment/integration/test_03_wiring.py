@@ -1,8 +1,9 @@
-"""Layer 3 (wiring): the live wan resources are connected to each other.
+"""Layer 3 (wiring): the live wan dispatcher is connected to its dependencies.
 
 These verify the connections that existence and configuration cannot: the dispatcher
-assumes the declared role, API Gateway is allowed to invoke it, the dispatch role may
-invoke the worker, and the worker assumes its own role.
+assumes the declared role, API Gateway is allowed to invoke it, and the dispatch role
+may invoke the synthesizer by its derived name (the synthesizer itself lives in its own
+stack, verified by that stack's post-deployment suite).
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ def test_dispatch_role_grants_invoke(iam_client: Any, role_name: str) -> None:
     assert "lambda:InvokeFunction" in str(policy["PolicyDocument"])
 
 
-def test_worker_assumes_its_own_role(worker_config: dict[str, Any]) -> None:
-    """The live worker runs as its own dedicated execution role."""
-    assert worker_config["Role"].endswith("role/wan-graph-synthesizer-worker")
+def test_dispatch_role_targets_the_synthesizer(iam_client: Any, role_name: str) -> None:
+    """The dispatch invoke permission targets the synthesizer's derived function name."""
+    policy = iam_client.get_role_policy(RoleName=role_name, PolicyName="Dispatch")
+    assert "-synthesizer" in str(policy["PolicyDocument"])

@@ -16,7 +16,9 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Read/write status markers and async-invoke the synthesizer worker.
+# Read/write status markers and async-invoke the synthesizer. The synthesizer lives in
+# its own stack, so the invoke target is its deterministic derived ARN (from the shared
+# common module) rather than a cross-stack resource reference.
 resource "aws_iam_role_policy" "dispatch" {
   name = "Dispatch"
   role = aws_iam_role.lambda.id
@@ -30,9 +32,11 @@ resource "aws_iam_role_policy" "dispatch" {
         Resource = ["${data.terraform_remote_state.storage.outputs.bucket_arn}/*"]
       },
       {
-        Effect   = "Allow"
-        Action   = ["lambda:InvokeFunction"]
-        Resource = [aws_lambda_function.worker.arn]
+        Effect = "Allow"
+        Action = ["lambda:InvokeFunction"]
+        Resource = [
+          "arn:aws:lambda:${module.common.aws_region}:${module.common.aws_account_id}:function:${module.common.lambda_handler_names.wan}-synthesizer"
+        ]
       }
     ]
   })

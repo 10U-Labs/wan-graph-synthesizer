@@ -3,6 +3,30 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-tenants-wan-post-${{ github.ref }}
 jobs:
+  post-deployment-integration-tests:
+    if: github.ref == 'refs/heads/main'
+    name: post-deployment-integration-tests
+    needs: reconciliation
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Install tools
+        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8'
+      - name: Run post-deployment integration tests against live AWS
+        run: >-
+          PYTHONPATH=.:lib/python
+          python3 -m pytest
+          test/api/endpoints/tenants/wan/synthesizer/post_deployment/integration/
+          --import-mode=importlib --confcutdir=test
+          --verbose
   pre-deployment-integration-tests:
     name: pre-deployment-integration-tests
     needs: unit-tests
@@ -17,6 +41,29 @@ jobs:
           python3 -m pytest
           test/api/endpoints/tenants/wan/synthesizer/pre_deployment/integration/
           --verbose --pythonwarnings=error
+  reconciliation:
+    if: github.ref == 'refs/heads/main'
+    name: reconciliation
+    needs: pre-deployment-integration-tests
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_wrapper: false
+      - name: Reconcile the synthesizer stack to its declared state
+        run: |
+          tofu -chdir=src/api/endpoints/tenants/wan/synthesizer init -input=false
+          tofu -chdir=src/api/endpoints/tenants/wan/synthesizer apply -auto-approve -input=false
   static-analysis:
     name: static-analysis
     runs-on: ubuntu-24.04
@@ -63,15 +110,15 @@ jobs:
           --verbose
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/synthesizer
       # This source lint disables pylint's broad-exception-caught (W0718) check.
-      # lambdas/synthesizer/handler.py is the worker Lambda that builds a tenant's
+      # lambdas/synthesizer/handler.py is the synthesizer Lambda that builds a tenant's
       # WAN, and it deliberately wraps the whole build in a catch-all
-      # `except Exception`. The worker's contract is to record the tenant's status
+      # `except Exception`. The synthesizer's contract is to record the tenant's status
       # in S3 -- "building" when it starts, "ready" on success, and "failed" on ANY
       # failure -- so that a customer polling for their WAN always reaches a terminal
       # answer. The expected failure (an infeasible design) is a ValueError, but it
       # is not the only thing that can go wrong: reading the substrate and tenant
       # inputs from S3 can raise a boto error, and an unforeseen bug can raise
-      # anything at all. If such an error were allowed to escape, the worker would
+      # anything at all. If such an error were allowed to escape, the synthesizer would
       # exit with the status still on "building", and the customer would wait forever
       # for a result that never resolves. The catch-all is what guarantees every
       # run ends by writing a terminal status. pylint flags catch-all handlers
@@ -123,6 +170,14 @@ jobs:
           --threshold 0 --reporters console
           --ignore "test/**/pre_deployment/unit/test_handler.py"
           test/api/endpoints/tenants/wan/synthesizer
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_wrapper: false
+      - name: Validate the synthesizer stack
+        run: |
+          tofu -chdir=src/api/endpoints/tenants/wan/synthesizer init -backend=false -input=false
+          tofu -chdir=src/api/endpoints/tenants/wan/synthesizer validate
   unit-tests:
     name: unit-tests
     needs: static-analysis
@@ -148,7 +203,10 @@ on:
     branches: [main]
     paths:
       - src/api/endpoints/tenants/wan/lambdas/synthesizer/**
-      - test/api/endpoints/tenants/wan/**
+      - src/api/endpoints/tenants/wan/synthesizer/**
+      - test/api/endpoints/tenants/wan/conftest.py
+      - test/api/endpoints/tenants/wan/synthesizer/**
       - lib/python/**
+      - lib/opentofu/common/**
       - .github/workflows/api_endpoint_tenants_wan_post.yml
   workflow_dispatch: {}

@@ -1,7 +1,7 @@
-"""Unit tests for the synthesizer worker Lambda.
+"""Unit tests for the synthesizer Lambda handler.
 
-The heavy design pipeline is stubbed (it is exercised by the synthesizer tests);
-these tests cover the worker's own orchestration and S3 I/O: it reads the tenant from
+The heavy design pipeline is stubbed (it is exercised by the synthesizer engine tests);
+these tests cover the handler's own orchestration and S3 I/O: it reads the tenant from
 the invoke event, moves the status to ``building``, and publishes ``ready``/``failed``.
 """
 
@@ -24,11 +24,11 @@ from synthesizer.model import DesignParams
 _PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/lambdas/synthesizer/handler.py"
 
 
-@pytest.fixture(name="worker")
-def worker_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
-    """Load the synthesizer worker with the store bucket configured."""
+@pytest.fixture(name="synthesizer")
+def synthesizer_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
+    """Load the synthesizer handler with the store bucket configured."""
     monkeypatch.setenv("STORE_BUCKET", "test-bucket")
-    return load_module_from_path("synthesizer_worker", _PATH)
+    return load_module_from_path("synthesizer_handler", _PATH)
 
 
 def _stub_pipeline(
@@ -67,7 +67,7 @@ def _stub_pipeline(
 
 
 def _inputs(module: Any) -> dict[str, bytes]:
-    """Every object the worker reads (content unused; pipeline stubbed)."""
+    """Every object the synthesizer reads (content unused; pipeline stubbed)."""
     keys = [
         "carriers/merge/vertices.json",
         "carriers/merge/edges.json",
@@ -81,7 +81,7 @@ def _inputs(module: Any) -> dict[str, bytes]:
 
 
 def _run(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) -> dict[str, bytes]:
-    """Stub the pipeline (optionally failing the synthesize), run the worker, return the store."""
+    """Stub the pipeline (optionally failing the synthesize), run it, return the store."""
     _stub_pipeline(module, monkeypatch)
     if fail:
 
@@ -95,49 +95,49 @@ def _run(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) -> di
     return objects
 
 
-def test_publishes_the_wan_on_success(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_publishes_the_wan_on_success(synthesizer: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """A successful build writes the tenant's WAN JSON to the store."""
-    objects = _run(worker, monkeypatch)
+    objects = _run(synthesizer, monkeypatch)
     assert "tenants/f-35/wan.json" in objects
 
 
-def test_marks_status_ready_on_success(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_marks_status_ready_on_success(synthesizer: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """A successful build records a 'ready' status."""
-    objects = _run(worker, monkeypatch)
+    objects = _run(synthesizer, monkeypatch)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "ready"
 
 
-def test_records_failed_when_no_valid_wan(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_records_failed_when_no_valid_wan(synthesizer: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """When the synthesizer reports infeasibility, the status is recorded as failed."""
-    objects = _run(worker, monkeypatch, fail=True)
+    objects = _run(synthesizer, monkeypatch, fail=True)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
 
 
 def test_open_gate_build_maps_to_no_datacenter_restriction(
-    worker: Any, monkeypatch: pytest.MonkeyPatch
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """With restrict off, the worker opens the gate (datacenter_cities=None) and still builds."""
-    _stub_pipeline(worker, monkeypatch, restrict=False)
-    objects = _inputs(worker)
+    """With restrict off, the handler opens the gate (datacenter_cities=None) and still builds."""
+    _stub_pipeline(synthesizer, monkeypatch, restrict=False)
+    objects = _inputs(synthesizer)
     with patch("boto3.client", return_value=fake_s3(objects)):
-        worker.lambda_handler({"tenant": "f-35"}, None)
+        synthesizer.lambda_handler({"tenant": "f-35"}, None)
     assert "tenants/f-35/wan.json" in objects
 
 
-def test_reads_the_tenant_from_the_event(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    """The worker builds the tenant named in the invoke event."""
-    _stub_pipeline(worker, monkeypatch)
-    objects = _inputs(worker)
+def test_reads_the_tenant_from_the_event(synthesizer: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The synthesizer builds the tenant named in the invoke event."""
+    _stub_pipeline(synthesizer, monkeypatch)
+    objects = _inputs(synthesizer)
     with patch("boto3.client", return_value=fake_s3(objects)):
-        worker.lambda_handler({"tenant": "f-35"}, None)
+        synthesizer.lambda_handler({"tenant": "f-35"}, None)
     assert "tenants/f-35/wan.json" in objects
 
 
 def test_logs_progress_at_info(
-    worker: Any, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     """A run emits INFO progress so a long build is observable, not silent."""
     with caplog.at_level(logging.INFO):
-        _run(worker, monkeypatch)
+        _run(synthesizer, monkeypatch)
     messages = " ".join(record.getMessage() for record in caplog.records)
     assert "f-35" in messages and "Publishing" in messages

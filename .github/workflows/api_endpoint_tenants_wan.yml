@@ -208,8 +208,11 @@ on:
   push:
     branches: [main]
     paths:
-      - src/api/endpoints/tenants/wan/**
-      - test/api/endpoints/tenants/wan/**
+      - src/api/endpoints/tenants/wan/*.tf
+      - src/api/endpoints/tenants/wan/lambdas/endpoint/**
+      - test/api/endpoints/tenants/wan/conftest.py
+      - test/api/endpoints/tenants/wan/pre_deployment/**
+      - test/api/endpoints/tenants/wan/post_deployment/**
       - lib/python/**
       - lib/opentofu/common/**
       - .github/workflows/api_endpoint_tenants_wan.yml

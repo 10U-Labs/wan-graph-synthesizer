@@ -1,6 +1,6 @@
 """Unit tests for the tenants/wan endpoint Lambda handler (the dispatcher).
 
-A POST records a ``creating`` status and async-invokes the synthesizer worker Lambda;
+A POST records a ``creating`` status and async-invokes the synthesizer Lambda;
 a GET reports the tenant's WAN status from the store. All of this is endpoint-specific.
 """
 
@@ -16,12 +16,12 @@ from test_handler_contracts import load_handler, write_clients
 
 
 def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
-    """Load the wan dispatcher with the worker function name configured."""
+    """Load the wan dispatcher with the synthesizer function name configured."""
     return load_handler(
         "tenants/wan",
         monkeypatch,
         subdir="endpoint",
-        WORKER_FUNCTION_NAME="wan-graph-synthesizer-wan-worker",
+        SYNTHESIZER_FUNCTION_NAME="wan-graph-synthesizer-wan-synthesizer",
     )
 
 
@@ -34,8 +34,8 @@ def test_wan_post_returns_202(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response["statusCode"] == 202
 
 
-def test_wan_post_invokes_the_worker(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A create asynchronously invokes the synthesizer worker exactly once."""
+def test_wan_post_invokes_the_synthesizer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A create asynchronously invokes the synthesizer exactly once."""
     module = _wan(monkeypatch)
     invocations: list[dict[str, Any]] = []
     event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
@@ -44,18 +44,18 @@ def test_wan_post_invokes_the_worker(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(invocations) == 1
 
 
-def test_wan_post_invokes_the_named_worker(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The invoke targets the worker function named in the environment."""
+def test_wan_post_invokes_the_named_synthesizer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The invoke targets the synthesizer function named in the environment."""
     module = _wan(monkeypatch)
     invocations: list[dict[str, Any]] = []
     event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
     with patch("boto3.client", side_effect=write_clients({}, invocations)):
         module.lambda_handler(event, None)
-    assert invocations[0]["FunctionName"] == "wan-graph-synthesizer-wan-worker"
+    assert invocations[0]["FunctionName"] == "wan-graph-synthesizer-wan-synthesizer"
 
 
-def test_wan_post_invokes_the_worker_asynchronously(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The worker is invoked with the Event (async) invocation type."""
+def test_wan_post_invokes_the_synthesizer_asynchronously(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The synthesizer is invoked with the Event (async) invocation type."""
     module = _wan(monkeypatch)
     invocations: list[dict[str, Any]] = []
     event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
@@ -64,8 +64,8 @@ def test_wan_post_invokes_the_worker_asynchronously(monkeypatch: pytest.MonkeyPa
     assert invocations[0]["InvocationType"] == "Event"
 
 
-def test_wan_post_passes_the_tenant_to_the_worker(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The invoke payload carries the tenant the worker should build."""
+def test_wan_post_passes_the_tenant_to_the_synthesizer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The invoke payload carries the tenant the synthesizer should build."""
     module = _wan(monkeypatch)
     invocations: list[dict[str, Any]] = []
     event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}

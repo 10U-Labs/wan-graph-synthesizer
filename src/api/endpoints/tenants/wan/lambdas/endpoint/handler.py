@@ -1,10 +1,10 @@
-"""WAN create endpoint: start a tenant's synthesize worker and report its status.
+"""WAN create endpoint: start a tenant's synthesizer and report its status.
 
     POST /wan-graph-synthesizer/tenants/{tenant}/wan -> 202; start the create
     GET  /wan-graph-synthesizer/tenants/{tenant}/wan -> the WAN's status (422 if failed)
 
 The synthesize math takes longer than API Gateway's ~29s cap, so a POST async-invokes
-the synthesizer worker Lambda and returns immediately; the worker writes the finished WAN
+the synthesizer Lambda and returns immediately; the synthesizer writes the finished WAN
 and a status marker to S3. A GET reads that marker -- 422 when no valid WAN was possible,
 404 before the first create. Self-contained (stdlib + boto3); single-file Lambda.
 """
@@ -62,15 +62,15 @@ def _write_status(tenant: str, payload: dict[str, Any]) -> None:
 
 
 def _start_create(tenant: str) -> None:
-    """Mark the WAN as creating and async-invoke the synthesizer worker.
+    """Mark the WAN as creating and async-invoke the synthesizer.
 
-    ``InvocationType="Event"`` fires the worker and returns at once, so the POST answers
-    within API Gateway's timeout; the worker moves the status to ``building`` and then
-    ``ready``/``failed`` as it runs.
+    ``InvocationType="Event"`` fires the synthesizer and returns at once, so the POST
+    answers within API Gateway's timeout; the synthesizer moves the status to ``building``
+    and then ``ready``/``failed`` as it runs.
     """
     _write_status(tenant, {"status": "creating", "tenant": tenant})
     _lambda().invoke(
-        FunctionName=os.environ["WORKER_FUNCTION_NAME"],
+        FunctionName=os.environ["SYNTHESIZER_FUNCTION_NAME"],
         InvocationType="Event",
         Payload=json.dumps({"tenant": tenant}).encode(),
     )

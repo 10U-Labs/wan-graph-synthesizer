@@ -1,4 +1,4 @@
-"""Synthesizer worker Lambda: build a tenant's WAN from the stored inputs.
+"""Synthesizer Lambda: build a tenant's WAN from the stored inputs.
 
 Async-invoked by the dispatching Lambda with ``{"tenant": ...}`` (STORE_BUCKET in
 the environment): read the substrate and the tenant's inputs from S3, run the whole

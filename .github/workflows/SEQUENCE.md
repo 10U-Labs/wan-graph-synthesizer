@@ -5,8 +5,10 @@ Each node is one workflow (`api_common_*`, `api_endpoint_*`). `A ─→ B` means
 builds on A: every endpoint reads the common `storage` + `routing` state, a
 carrier/data-center/tenant write cascades to its builder (`carriers/merge`,
 `data-centers/merge`, `tenants/wan`), and the `tenants/wan` POST workflow
-(`*_post.yml`) lints and tests the synthesizer worker Lambda the `tenants/wan`
-stack deploys.
+(`*_post.yml`) lints, tests, and deploys the synthesizer's own stack
+(`tenants/wan/synthesizer`). The `tenants/wan` dispatcher stack invokes the
+synthesizer by its deterministic derived name (from the common module), so the two
+stacks stay decoupled -- each workflow owns and deploys its own stack.
 
 ```text
 api/common/storage ─┐
@@ -16,5 +18,5 @@ api/common/routing ─┤
                     ├─→ api/endpoints/providers
                     └─→ api/endpoints/tenants ──────→ api/endpoints/tenants/wan
                                                       │
-                                                      └─→ tenants/wan POST (worker)
+                                                      └─→ tenants/wan POST (synthesizer)
 ```

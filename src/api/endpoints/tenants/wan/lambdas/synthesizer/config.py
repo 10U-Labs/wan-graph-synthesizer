@@ -56,7 +56,7 @@ class AppConfig:
 
     paths: DesignPaths
     params: DesignParams
-    restrict_backbone_to_datacenters: bool  # required; the worker maps it to a gate or None
+    restrict_backbone_to_datacenters: bool  # required; the handler maps it to a gate or None
     label: str = ""
     forced_connections: tuple[ForcedConnection, ...] = ()
     excluded_connections: tuple[ForcedConnection, ...] = ()
@@ -220,7 +220,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
 
     Any key the mapping omits falls back to the matching built-in default, so a
     partial (even empty) mapping still yields a valid configuration. ``datacenter_cities``
-    is threaded by the worker handler, not parsed from these documents.
+    is threaded by the synthesizer handler, not parsed from these documents.
     """
     design = _mapping(data, "design")
     return AppConfig(
