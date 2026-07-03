@@ -288,7 +288,9 @@ def convergence_hub_inputs() -> RingInputs:
 
 
 def convergence_hub_artifacts(
-    promote_hub: bool = True, max_backbone_count: int | None = None
+    promote_hub: bool = True,
+    max_backbone_count: int | None = None,
+    promote_convergences: bool = True,
 ) -> DesignArtifacts:
     """Run the synthesizer with the four corners forced and the centre left transit.
 
@@ -297,7 +299,8 @@ def convergence_hub_artifacts(
     convergence pass promotes it into the backbone and redraws; otherwise the centre is
     barred from the gate and stays transit. A ``max_backbone_count`` of four (the four
     forced corners) leaves no room for the promotion, so the centre stays transit even
-    though it qualifies -- the cap wins.
+    though it qualifies -- the cap wins. ``promote_convergences=False`` disables the
+    promotion pass entirely, so the centre stays transit even at a data-center city.
     """
     vertices, edges = convergence_hub_inputs()
     datacenter_cities = frozenset(
@@ -310,6 +313,7 @@ def convergence_hub_artifacts(
         max_backbone_count=max_backbone_count,
         forced_backbone_names=_HUB_CORNERS,
         datacenter_cities=datacenter_cities,
+        promote_high_degree_convergences=promote_convergences,
     )
     vertices, edges, overrides = apply_role_overrides(vertices, edges, params, (), ())
     design = synthesize_two_tier_design(vertices, edges, params, overrides)

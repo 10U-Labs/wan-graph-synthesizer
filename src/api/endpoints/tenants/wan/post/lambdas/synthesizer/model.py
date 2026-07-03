@@ -126,6 +126,12 @@ class DesignParams:
     so any carrier PoP with enough physical links is eligible, forced pins are accepted
     anywhere, and convergence hubs promote regardless of city. Candidates stay carrier
     PoPs either way; ``None`` only lifts the city filter.
+
+    ``promote_high_degree_convergences`` toggles the convergence promotion pass: when
+    ``True`` a carrier PoP where enough of the design's own lines converge is forced into
+    the backbone and the design is redrawn; when ``False`` the pass is skipped and such a
+    hub stays a transit node. It is required (no default) at the config layer; the field
+    default here is a construction fallback only.
     """
 
     min_backbone_count: int = 3  # minimum backbone nodes; the search adds more only if needed
@@ -134,6 +140,7 @@ class DesignParams:
     exclusions: RoleExclusions = field(default_factory=RoleExclusions)  # role bars
     # cities a provider has a cage in; None lifts the gate (free-for-all)
     datacenter_cities: frozenset[tuple[str, str]] | None = frozenset()
+    promote_high_degree_convergences: bool = True  # force high-degree hubs into the backbone
     tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)

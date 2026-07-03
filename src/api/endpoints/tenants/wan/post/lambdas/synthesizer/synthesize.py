@@ -746,6 +746,8 @@ def synthesize_two_tier_design(
             raise ValueError(forced_error)
         design = search_best_design(inputs, params, plan)
 
+        if not params.promote_high_degree_convergences:
+            return design
         new = convergence_promotion_ids(
             design, inputs.carrier_pops, params.datacenter_cities
         ) - promoted

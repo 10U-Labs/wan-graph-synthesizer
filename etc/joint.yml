@@ -46,4 +46,5 @@ knobs:
 label: Joint
 prohibited_backbone_nodes: []
 prohibited_connections: []
+promote_high_degree_convergences_to_backbone_nodes: false
 restrict_backbone_to_data_centers: true

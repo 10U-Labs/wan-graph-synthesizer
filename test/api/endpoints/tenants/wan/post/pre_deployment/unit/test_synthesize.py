@@ -218,6 +218,14 @@ def test_synthesize_promotes_a_data_center_convergence_hub() -> None:
     assert "hub_dc" in design.backbone_ids
 
 
+_UNPROMOTED_CONVERGENCE = fixtures.convergence_hub_artifacts(promote_convergences=False).design
+
+
+def test_promotion_disabled_leaves_a_convergence_hub_transit() -> None:
+    """With promotion off, a >= 3-line data-center hub is left transit, not seated."""
+    assert "hub_dc" not in _UNPROMOTED_CONVERGENCE.backbone_ids
+
+
 _CAPPED_CONVERGENCE = fixtures.convergence_hub_artifacts(max_backbone_count=4).design
 
 

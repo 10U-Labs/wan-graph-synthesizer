@@ -42,6 +42,7 @@ inputs:
     F-35: locations/f35.csv
   off_net: offnet/off.csv
 label: F-35
+promote_high_degree_convergences_to_backbone_nodes: false
 restrict_backbone_to_data_centers: true
 """
 
@@ -301,6 +302,16 @@ def test_push_tenants_puts_the_label_resource(
     _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
     push_tenants("http://api")
     assert "tenants/f-35/label" in put_recorder.nth(1)
+
+
+def test_push_tenants_puts_the_convergence_promotion_resource(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants wraps the promotion flag as the convergence-promotion document."""
+    _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
+    push_tenants("http://api")
+    bodies = dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
+    assert bodies["tenants/f-35/convergence-promotion"] == {"promote": False}
 
 
 def test_push_tenants_reads_off_net_when_present(

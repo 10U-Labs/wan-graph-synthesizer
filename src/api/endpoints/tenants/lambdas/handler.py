@@ -36,6 +36,7 @@ _INPUTS = frozenset({
     "backbone-mesh-degree",
     "access-homing-degree",
     "backbone-placement",
+    "convergence-promotion",
     "knobs",
     "label",
 })

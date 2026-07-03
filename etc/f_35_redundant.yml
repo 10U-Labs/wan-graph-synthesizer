@@ -4,7 +4,7 @@
 access_homing_degree: 2
 backbone_mesh_degree: 3
 backbone_node_count:
-  max: 99
+  max: 8
   min: 3
 forced_backbone_nodes:
   - Ashburn, VA
@@ -31,4 +31,5 @@ knobs:
 label: F-35 (redundant)
 prohibited_backbone_nodes: []
 prohibited_connections: []
+promote_high_degree_convergences_to_backbone_nodes: false
 restrict_backbone_to_data_centers: true

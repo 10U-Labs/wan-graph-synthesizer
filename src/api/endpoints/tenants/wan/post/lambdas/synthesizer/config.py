@@ -227,6 +227,9 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
         exclusions=RoleExclusions(
             prohibited_backbone_names=_str_list(design, "prohibited_backbone", []),
         ),
+        promote_high_degree_convergences=_required_bool(
+            design, "promote_high_degree_convergences_to_backbone_nodes"
+        ),
         tuning=_tuning(tuning),
     )
 
@@ -285,6 +288,9 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     placement = _mapping(parts, "backbone-placement")
     if "restrict" in placement:
         design["restrict_backbone_to_data_centers"] = placement["restrict"]
+    promotion = _mapping(parts, "convergence-promotion")
+    if "promote" in promotion:
+        design["promote_high_degree_convergences_to_backbone_nodes"] = promotion["promote"]
     if "min" in count:
         design["min_backbone_count"] = count["min"]
     if "max" in count:

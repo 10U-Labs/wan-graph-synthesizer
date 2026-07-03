@@ -535,6 +535,20 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
+    "/wan-graph-synthesizer/tenants/{tenant}/convergence-promotion": {
+      "get": {
+        "summary": "A tenant's convergence promotion policy (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The convergence promotion policy." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a tenant's convergence promotion policy (stores only).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The convergence promotion policy was replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
     "/wan-graph-synthesizer/tenants/{tenant}/backbone-mesh-degree": {
       "get": {
         "summary": "A tenant's backbone mesh degree (input).",

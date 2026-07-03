@@ -32,7 +32,11 @@ def _config(data: dict[str, Any]) -> AppConfig:
     merged["tuning"] = {**_REQUIRED_TUNING, **data.get("tuning", {})}
     design = data.get("design", {})
     if isinstance(design, dict):
-        merged["design"] = {"restrict_backbone_to_data_centers": True, **design}
+        merged["design"] = {
+            "restrict_backbone_to_data_centers": True,
+            "promote_high_degree_convergences_to_backbone_nodes": True,
+            **design,
+        }
     return config_from_data(merged)
 
 
@@ -219,6 +223,37 @@ def test_restrict_backbone_to_data_centers_is_required() -> None:
         config_from_data({"tuning": _REQUIRED_TUNING})
 
 
+def test_reads_promote_high_degree_convergences_true() -> None:
+    """A promote...=true design lets the convergence pass seat high-degree hubs."""
+    assert _config(
+        {"design": {"promote_high_degree_convergences_to_backbone_nodes": True}}
+    ).params.promote_high_degree_convergences is True
+
+
+def test_reads_promote_high_degree_convergences_false() -> None:
+    """A promote...=false design turns the convergence promotion pass off."""
+    assert _config(
+        {"design": {"promote_high_degree_convergences_to_backbone_nodes": False}}
+    ).params.promote_high_degree_convergences is False
+
+
+def test_promote_high_degree_convergences_must_be_a_boolean() -> None:
+    """A non-boolean promote_high_degree_convergences_to_backbone_nodes value is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"promote_high_degree_convergences_to_backbone_nodes": "yes"}})
+
+
+def test_promote_high_degree_convergences_is_required() -> None:
+    """A design omitting promote_high_degree_convergences_to_backbone_nodes is rejected."""
+    with pytest.raises(ValueError):
+        config_from_data(
+            {
+                "tuning": _REQUIRED_TUNING,
+                "design": {"restrict_backbone_to_data_centers": True},
+            }
+        )
+
+
 def test_reads_prohibited_backbone() -> None:
     """A prohibited_backbone list is read into the design params."""
     design = {"prohibited_backbone": ["Denver, CO", "Boise, ID"]}
@@ -367,6 +402,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "backbone-mesh-degree": {"degree": 3},
         "access-homing-degree": {"degree": 2},
         "backbone-placement": {"restrict": True},
+        "convergence-promotion": {"promote": True},
         "knobs": {"compass_octants": 8, "backbone_coverage_target_miles": 600.0},
         "label": {"label": "Joint"},
     }
@@ -459,6 +495,20 @@ def test_app_config_from_parts_requires_backbone_placement() -> None:
     """A missing backbone-placement document is rejected (no default)."""
     parts = _parts()
     del parts["backbone-placement"]
+    with pytest.raises(ValueError):
+        app_config_from_parts(parts)
+
+
+def test_app_config_from_parts_reads_convergence_promotion() -> None:
+    """The convergence-promotion document toggles the promotion pass off."""
+    parts = _parts(**{"convergence-promotion": {"promote": False}})
+    assert app_config_from_parts(parts).params.promote_high_degree_convergences is False
+
+
+def test_app_config_from_parts_requires_convergence_promotion() -> None:
+    """A missing convergence-promotion document is rejected (no default)."""
+    parts = _parts()
+    del parts["convergence-promotion"]
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 
