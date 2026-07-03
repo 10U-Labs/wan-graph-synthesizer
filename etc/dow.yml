@@ -13,17 +13,20 @@ forced_backbone_nodes:
   - Cheyenne, WY
   - Colorado Springs, CO
   - Dallas, TX
+  - Denver, CO
   - Great Falls, MT
   - Las Vegas, NV
   - Los Angeles, CA
   - McLean, VA
   - New York, NY
+  - Orlando, FL
   - Salt Lake City, UT
   - San Diego, CA
   - San Francisco, CA
   - San Jose, CA
   - Seattle, WA
   - Tacoma, WA
+  - Tampa, FL
 forced_connections: []
 inputs:
   providers:
