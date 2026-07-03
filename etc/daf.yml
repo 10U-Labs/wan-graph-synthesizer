@@ -3,7 +3,7 @@
 # installations only (extracted from the DoW roster).
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 access_homing_degree: 2
-backbone_mesh_degree: 2
+backbone_mesh_degree: 3
 backbone_node_count:
   max: 30
   min: 3
