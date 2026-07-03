@@ -72,10 +72,10 @@ def _get(client: Any, event: dict[str, Any]) -> dict[str, Any]:
 
 
 def _put(client: Any, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace the provider regions (the vertices file). Rebuilds are a separate POST."""
-    collection = event.get("path", "").rsplit("/", 1)[-1]
-    if collection != "vertices":
-        return _response(404, {"error": collection})
+    """Replace the provider regions (the vertices file). Rebuilds are a separate POST.
+
+    The caller (``lambda_handler``) has already confirmed the collection is ``vertices``.
+    """
     rows = json.loads(event["body"])
     error = _validate_rows(rows, _REGION_FIELDS)
     if error:
