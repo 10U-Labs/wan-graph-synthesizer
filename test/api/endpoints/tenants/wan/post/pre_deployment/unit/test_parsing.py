@@ -85,8 +85,8 @@ def test_substrate_skips_an_intra_city_self_loop() -> None:
     assert not edges
 
 
-def test_regions_are_cloud_data_centers() -> None:
-    """Cloud regions carry the provider kind so the map colours them."""
+def test_regions_are_provider_regions() -> None:
+    """Provider regions carry the provider kind so the map colours them."""
     regions = load_regions([
         {"name": "us-east-1", "municipality": "Ashburn", "state": "VA",
          "country": "United States", "latitude": 39.0, "longitude": -77.5},

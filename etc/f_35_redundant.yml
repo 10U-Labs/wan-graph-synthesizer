@@ -18,19 +18,11 @@ forced_backbone_nodes:
   - Tallahassee, FL
 forced_connections: []
 inputs:
-  providers:
-    AWS:
-      - data/vertices/providers/providers.csv
-      - data/vertices/providers region.csv
-      - data/vertices/providers region.csv
-      - data/vertices/providers region.csv
-      - data/vertices/providers region.csv
-    provider:
-      - data/vertices/providers region.csv
-      - data/vertices/providers region.csv
   locations:
     F-35: data/vertices/tenants/f_35.csv
   off_net: data/vertices/utilities/off_net.csv
+  providers:
+    regions: data/vertices/providers/providers.csv
 knobs:
   backbone_coverage_target_miles: 400.0
   backbone_set_peak_bytes: 160

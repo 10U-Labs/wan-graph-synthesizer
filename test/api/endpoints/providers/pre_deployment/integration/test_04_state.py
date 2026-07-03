@@ -10,12 +10,12 @@ import pytest
 from repo_utils import REPO_ROOT
 from test_terraform_drift import find_orphaned_resources, get_state_resources
 
-providerS_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "providers"
+PROVIDERS_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "providers"
 
 
 def _has_existing_state() -> bool:
     """Report whether the stack already has resources tracked in state."""
-    return bool(get_state_resources(providerS_DIR))
+    return bool(get_state_resources(PROVIDERS_DIR))
 
 
 @pytest.mark.skipif(
@@ -24,4 +24,4 @@ def _has_existing_state() -> bool:
 )
 def test_no_orphaned_resources() -> None:
     """No resource the stack would create already exists unmanaged in AWS."""
-    assert not find_orphaned_resources(providerS_DIR)
+    assert not find_orphaned_resources(PROVIDERS_DIR)

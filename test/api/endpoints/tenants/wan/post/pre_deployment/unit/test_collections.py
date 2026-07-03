@@ -39,8 +39,8 @@ def test_vertex_role_tenant_for_a_site() -> None:
     assert gc.vertex_role(fixtures.access_vertex("s"), _design((), ())) == "tenant"
 
 
-def test_vertex_role_provider_for_a_cloud_region() -> None:
-    """A provider cloud-region demand vertex is labelled provider."""
+def test_vertex_role_provider_for_a_provider_region() -> None:
+    """A provider-region demand vertex is labelled provider."""
     assert gc.vertex_role(fixtures.provider_vertex("r"), _design((), ())) == "provider"
 
 
@@ -66,6 +66,6 @@ def test_tenant_nodes_are_all_tier_tenant() -> None:
     assert all(vertex["tier_role"] == "tenant" for vertex in gc.tenant_nodes(_payload()))
 
 
-def test_provider-nodes_are_all_tier_provider() -> None:
-    """provider-nodes() returns only provider-tier demand vertices."""
-    assert all(vertex["tier_role"] == "provider" for vertex in gc.provider-nodes(_payload()))
+def test_provider_nodes_are_all_tier_provider() -> None:
+    """provider_nodes() returns only provider-tier demand vertices."""
+    assert all(vertex["tier_role"] == "provider" for vertex in gc.provider_nodes(_payload()))

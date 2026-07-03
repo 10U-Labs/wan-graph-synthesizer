@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from synthesizer.codec import provider_KIND
+from synthesizer.codec import PROVIDER_KIND
 from synthesizer.input_graph import Vertex
 from synthesizer.model import Design, is_carrier_pop
 
@@ -22,10 +22,10 @@ def vertex_role(vertex: Vertex, design: Design) -> str:
 
     A selected carrier PoP is ``backbone``; a routing-only PoP is ``transit``; an
     unselected PoP is ``unused``. A demand vertex is ``provider`` when its kind is the
-    codec's cloud-region kind and ``tenant`` otherwise (a tenant site).
+    codec's provider-region kind and ``tenant`` otherwise (a tenant site).
     """
     if not is_carrier_pop(vertex):
-        return "provider" if vertex.kind == provider_KIND else "tenant"
+        return "provider" if vertex.kind == PROVIDER_KIND else "tenant"
     if vertex.id in design.backbone_ids:
         return "backbone"
     if vertex.id in design.transit_ids:
@@ -59,6 +59,6 @@ def tenant_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return _tier(payload, "tenant")
 
 
-def provider-nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """The provider cloud-region demand vertices homed into the design."""
+def provider_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """The provider-region demand vertices homed into the design."""
     return _tier(payload, "provider")

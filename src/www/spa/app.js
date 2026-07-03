@@ -11,10 +11,10 @@ const API_BASE = "https://api.10ulabs.com/wan-graph-synthesizer";
 // The tenant shown on first load, before the operator picks one.
 const DEFAULT_MAP_ID = "dow";
 
-// Vertex color and radius. provider regions are colored by kind; every other drawn
+// Vertex color and radius. Provider regions are colored by kind; every other drawn
 // vertex is colored by its tier role. Transit/unused carrier PoPs are not drawn.
-const provider_KIND = "provider region";
-const provider_STYLE = { color: "#ef6c00", radius: 5 };
+const PROVIDER_KIND = "provider region";
+const PROVIDER_STYLE = { color: "#ef6c00", radius: 5 };
 const ROLE_STYLE = {
   backbone: { color: "#6a1b9a", radius: 8 },
   tenant: { color: "#1565c0", radius: 4 },
@@ -37,8 +37,8 @@ L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(map);
 let drawn = [];
 
 function styleFor(vertex) {
-  if (vertex.kind === provider_KIND) {
-    return provider_STYLE;
+  if (vertex.kind === PROVIDER_KIND) {
+    return PROVIDER_STYLE;
   }
   return ROLE_STYLE[vertex.tier_role] || null;
 }
@@ -185,7 +185,7 @@ function showCounts(vertices) {
       tally[vertex.tier_role] += 1;
     }
   }
-  counts.textContent = `BACKBONE ${tally.backbone} TENANT ${tally.tenant} provider ${tally.provider}`;
+  counts.textContent = `BACKBONE ${tally.backbone} TENANT ${tally.tenant} PROVIDER ${tally.provider}`;
 }
 
 async function render(tenantId) {

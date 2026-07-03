@@ -29,22 +29,11 @@ forced_backbone_nodes:
   - Tampa, FL
 forced_connections: []
 inputs:
-  providers:
-    AWS:
-      - data/vertices/providers/providers.csv
-      - data/vertices/providers region.csv
-      - data/vertices/providers region.csv
-      - data/vertices/providers region.csv
-      - data/vertices/providers region.csv
-    provider:
-      - data/vertices/providers region.csv
-      - data/vertices/providers region.csv
-    provider:
-      - data/vertices/providers/providers.csv
-      - data/vertices/providers/providers.csv
   locations:
     DoW: data/vertices/tenants/dow.csv
   off_net: data/vertices/utilities/off_net.csv
+  providers:
+    regions: data/vertices/providers/providers.csv
 knobs:
   backbone_coverage_target_miles: 100.0
   backbone_set_peak_bytes: 160

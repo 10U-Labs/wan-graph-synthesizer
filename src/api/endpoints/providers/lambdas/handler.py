@@ -1,9 +1,8 @@
-"""providers endpoint: read and write a cloud provider's regions in the S3 store.
+"""Providers endpoint: read and write the provider regions in the S3 store.
 
-    GET    /wan-graph-synthesizer/providers                      -> the provider ids
-    GET    /wan-graph-synthesizer/providers/{provider}/vertices  -> that provider's regions
-    PUT    /wan-graph-synthesizer/providers/{provider}/vertices  -> replace its regions
-    DELETE /wan-graph-synthesizer/providers/{provider}           -> remove the provider
+    GET    /wan-graph-synthesizer/providers/vertices  -> the provider regions
+    PUT    /wan-graph-synthesizer/providers/vertices  -> replace the regions
+    DELETE /wan-graph-synthesizer/providers/vertices  -> remove the regions
 
 A provider graph is regions only (no fiber), so it exposes vertices but no edges. A write
 only stores the regions; building a tenant's WAN is a separate operation
@@ -19,8 +18,10 @@ import boto3
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-# A provider's regions are named geographic rows; reject anything else.
+# The provider regions are named geographic rows; reject anything else.
 _REGION_FIELDS = {"name", "municipality", "state", "country", "latitude", "longitude"}
+# The regions live in a single stored object (there is one provider set).
+_KEY = "providers/vertices.json"
 
 
 def _validate_rows(body: Any, required: set[str]) -> str | None:
@@ -50,40 +51,28 @@ def _response(status: int, body: Any) -> dict[str, Any]:
     return {"statusCode": status, "headers": dict(_HEADERS), "body": json.dumps(body)}
 
 
-def _provider_ids(client: Any) -> list[str]:
-    """List the provider ids: the first path segment under the providers/ prefix."""
-    listing = client.list_objects_v2(Bucket=os.environ["STORE_BUCKET"], Prefix="providers/")
-    return sorted({
-        item["Key"].removeprefix("providers/").split("/", 1)[0]
-        for item in listing.get("Contents", [])
-    })
-
-
-def _read_regions(client: Any, provider: str) -> Any:
-    """Read a provider's stored regions (its vertices file), or None when absent."""
-    key = f"providers/{provider}/vertices.json"
+def _read_regions(client: Any) -> Any:
+    """Read the stored provider regions (the vertices file), or None when absent."""
     try:
-        body = client.get_object(Bucket=os.environ["STORE_BUCKET"], Key=key)["Body"].read()
+        body = client.get_object(Bucket=os.environ["STORE_BUCKET"], Key=_KEY)["Body"].read()
     except client.exceptions.NoSuchKey:
         return None
     return json.loads(body)
 
 
-def _get(client: Any, provider: str | None, event: dict[str, Any]) -> dict[str, Any]:
-    """Serve the providers collection or one provider's regions (vertices)."""
-    if not provider:
-        return _response(200, _provider_ids(client))
+def _get(client: Any, event: dict[str, Any]) -> dict[str, Any]:
+    """Serve the provider regions (vertices)."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection != "vertices":
         return _response(404, {"error": collection})
-    rows = _read_regions(client, provider)
+    rows = _read_regions(client)
     if rows is None:
-        return _response(404, {"error": f"not built: {provider}"})
+        return _response(404, {"error": "not built: providers"})
     return _response(200, rows)
 
 
-def _put(client: Any, provider: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace a provider's regions (its vertices file). Rebuilds are a separate POST."""
+def _put(client: Any, event: dict[str, Any]) -> dict[str, Any]:
+    """Replace the provider regions (the vertices file). Rebuilds are a separate POST."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection != "vertices":
         return _response(404, {"error": collection})
@@ -91,23 +80,20 @@ def _put(client: Any, provider: str, event: dict[str, Any]) -> dict[str, Any]:
     error = _validate_rows(rows, _REGION_FIELDS)
     if error:
         return _response(400, {"error": error})
-    key = f"providers/{provider}/vertices.json"
-    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(rows).encode())
-    return _response(200, {"updated": f"{provider}/{collection}"})
+    client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=_KEY, Body=json.dumps(rows).encode())
+    return _response(200, {"updated": "providers/vertices"})
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    """Dispatch a providers request by method: read, replace, or delete."""
+    """Dispatch a providers request by method: read, replace, or delete the regions."""
     client = _s3()
     method = event.get("httpMethod", "GET")
-    provider = (event.get("pathParameters") or {}).get("provider")
     if method == "GET":
-        return _get(client, provider, event)
-    if not provider:
-        return _response(404, {"error": "provider required"})
+        return _get(client, event)
+    collection = event.get("path", "").rsplit("/", 1)[-1]
+    if collection != "vertices":
+        return _response(404, {"error": collection})
     if method == "DELETE":
-        client.delete_object(
-            Bucket=os.environ["STORE_BUCKET"], Key=f"providers/{provider}/vertices.json"
-        )
-        return _response(200, {"deleted": provider})
-    return _put(client, provider, event)
+        client.delete_object(Bucket=os.environ["STORE_BUCKET"], Key=_KEY)
+        return _response(200, {"deleted": "providers"})
+    return _put(client, event)

@@ -37,7 +37,7 @@ class Vertex:
     """A geographic vertex: an access site, a cloud region, or a carrier PoP.
 
     ``kind`` is the facility type derived from the endpoint the place was sent to
-    (``PoP`` for carriers, ``provider region`` for cloud regions, an access kind for
+    (``PoP`` for carriers, ``provider region`` for provider regions, an access kind for
     tenant sites and off-net candidates). Carrier PoPs are the vertices whose ``kind``
     marks them as routable backbone nodes (see ``synthesizer.model.is_carrier_pop``);
     everything else is an access/demand vertex. Who *owns* a place is the tenant the WAN

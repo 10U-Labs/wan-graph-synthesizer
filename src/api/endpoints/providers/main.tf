@@ -56,7 +56,7 @@ resource "aws_lambda_function" "handler" {
   architectures    = ["arm64"]
   timeout          = 10
   memory_size      = 128
-  description      = "providers read endpoint: serve a provider's regions from the store."
+  description      = "Providers endpoint: serve the provider regions from the store."
 
   environment {
     variables = {

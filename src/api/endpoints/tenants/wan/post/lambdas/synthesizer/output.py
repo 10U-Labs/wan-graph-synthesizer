@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from dataclasses import asdict
 from typing import Any
 
-from synthesizer.codec import provider_KIND
+from synthesizer.codec import PROVIDER_KIND
 from synthesizer.collections import vertex_role
 from synthesizer.input_graph import Vertex, edge_key
 from synthesizer.model import Design, DesignArtifacts, SourceFiles, is_carrier_pop
@@ -33,7 +33,7 @@ def included_demand_count(vertices: Iterable[Vertex], design: Design) -> int:
 
 def _demand_edge_kind(source_vertex: Vertex) -> str:
     """Label a demand-to-backbone access edge by its source vertex kind."""
-    return "provider_to_backbone" if source_vertex.kind == provider_KIND else "tenant_to_backbone"
+    return "provider_to_backbone" if source_vertex.kind == PROVIDER_KIND else "tenant_to_backbone"
 
 
 def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str, Any]:

@@ -23,8 +23,8 @@ from seed import (
     build_tenants,
     main,
     push_carriers,
-    push_providers,
     push_data_centers,
+    push_providers,
     push_tenants,
 )
 
@@ -35,12 +35,11 @@ backbone_node_count:
   max: 3
   min: 3
 inputs:
-  providers:
-    AWS:
-      - regions/aws.csv
   locations:
     F-35: locations/f35.csv
   off_net: offnet/off.csv
+  providers:
+    regions: regions/providers.csv
 label: F-35
 promote_high_degree_convergences_to_backbone_nodes: false
 restrict_backbone_to_data_centers: true
@@ -62,10 +61,10 @@ def _one_carrier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _one_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Lay down region files for the aws provider only under a temp DATA dir."""
+    """Lay down the single provider regions file under a temp DATA dir."""
     monkeypatch.setattr(seed, "DATA", tmp_path)
     _write_csv(
-        tmp_path / "vertices" / "providers" / "aws" / "east.csv", "city,state", "Reston,VA")
+        tmp_path / "vertices" / "providers" / "providers.csv", "city,state", "Reston,VA")
 
 
 def _one_data_center(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -79,7 +78,7 @@ def _one_tenant(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> N
     """Lay down one tenant config *body* and its input files under temp roots."""
     monkeypatch.setattr(seed, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(seed, "ETC", tmp_path / "etc")
-    _write_csv(tmp_path / "regions" / "aws.csv", "city,state", "Reston,VA")
+    _write_csv(tmp_path / "regions" / "providers.csv", "city,state", "Reston,VA")
     _write_csv(tmp_path / "locations" / "f35.csv", "city,state", "Luke,AZ")
     _write_csv(tmp_path / "offnet" / "off.csv", "city,state", "Edge,TX")
     (tmp_path / "etc").mkdir(parents=True, exist_ok=True)
@@ -148,7 +147,7 @@ def test_mapping_rows_concatenates_list_values(
     monkeypatch.setattr(seed, "REPO_ROOT", tmp_path)
     _write_csv(tmp_path / "a.csv", "city,state", "Reston,VA")
     _write_csv(tmp_path / "b.csv", "city,state", "Denver,CO")
-    assert len(_mapping_rows({"east": ["a.csv"], "west": ["b.csv"]})) == 2
+    assert len(_mapping_rows({"one": ["a.csv"], "two": ["b.csv"]})) == 2
 
 
 def test_mapping_rows_accepts_a_scalar_value(
@@ -164,7 +163,7 @@ def test_mapping_rows_drops_the_grouping_labels(
     """_mapping_rows discards the labels, keeping only row dicts."""
     monkeypatch.setattr(seed, "REPO_ROOT", tmp_path)
     _write_csv(tmp_path / "a.csv", "city,state", "Reston,VA")
-    assert "east" not in _mapping_rows({"east": "a.csv"})[0]
+    assert "group" not in _mapping_rows({"group": "a.csv"})[0]
 
 
 def test_carrier_names_returns_sorted_stems(
@@ -259,22 +258,13 @@ def test_push_carriers_puts_the_edges_path(
     assert "carriers/lumen/edges" in put_recorder.nth(1)
 
 
-def test_push_providers_pushes_provider_regions(
+def test_push_providers_pushes_regions(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
-    """push_providers PUTs the combined regions for a provider that has files."""
+    """push_providers PUTs the combined provider regions."""
     _one_provider(tmp_path, monkeypatch)
     push_providers("http://api")
-    assert "providers" in put_recorder.nth(1)
-
-
-def test_push_providers_skips_providers_without_files(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-        put_recorder: CallRecorder) -> None:
-    """push_providers does not PUT for providers that have no region files."""
-    _one_provider(tmp_path, monkeypatch)
-    push_providers("http://api")
-    assert "providers" not in put_recorder.nth(1)
+    assert "providers/vertices" in put_recorder.nth(1)
 
 
 def test_data_center_providers_returns_sorted_stems(

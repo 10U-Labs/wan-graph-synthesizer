@@ -11,13 +11,13 @@ import re
 from repo_utils import REPO_ROOT
 from test_terraform_config import COMMON_OUTPUTS_FILE, output_values
 
-providerS_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "providers"
+PROVIDERS_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "providers"
 
 
 def _stack_text() -> str:
     """Return the combined text of the providers stack's main.tf and iam.tf."""
-    return ((providerS_DIR / "main.tf").read_text(encoding="utf-8")
-            + (providerS_DIR / "iam.tf").read_text(encoding="utf-8"))
+    return ((PROVIDERS_DIR / "main.tf").read_text(encoding="utf-8")
+            + (PROVIDERS_DIR / "iam.tf").read_text(encoding="utf-8"))
 
 
 def test_locals_reference_only_declared_common_outputs() -> None:
@@ -34,5 +34,5 @@ def test_remote_state_reads_the_storage_stack() -> None:
 
 def test_lambda_arn_output_references_the_declared_handler() -> None:
     """The ``lambda_function_arn`` output is wired to the declared handler."""
-    outputs = output_values(providerS_DIR / "outputs.tf")
+    outputs = output_values(PROVIDERS_DIR / "outputs.tf")
     assert "aws_lambda_function.handler" in str(outputs["lambda_function_arn"])

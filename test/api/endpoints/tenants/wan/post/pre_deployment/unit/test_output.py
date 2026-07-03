@@ -82,7 +82,7 @@ def test_tenant_demand_edge_is_labelled_tenant_to_backbone() -> None:
 
 
 def test_provider_demand_edge_is_labelled_provider_to_backbone() -> None:
-    """A provider cloud-region demand homing reads as a provider_to_backbone access edge."""
+    """A provider-region demand homing reads as a provider_to_backbone access edge."""
     payload = _payload_for(fixtures.provider_vertex("r"))
     assert payload["access_edges"][0]["edge_kind"] == "provider_to_backbone"
 

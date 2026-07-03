@@ -1,53 +1,24 @@
 """Unit tests for the providers endpoint Lambda handler.
 
-The provider endpoint is a plain instance of the shared read/write framework, so its
-tests are exactly the two contracts bound to the provider endpoint's data.
+The providers endpoint stores a single fixed regions object (no id, no listing), so
+its tests are the single-resource contract bound to the endpoint's data.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from test_handler_contracts import ReaderContract, WriterContract
+from test_handler_contracts import RegionsContract
 
-_READER: dict[str, Any] = {
+_CFG: dict[str, Any] = {
     "endpoint": "providers",
-    "list_keys": ["providers", "providers"],
-    "ids": ["providers"],
-    "stored_key": "providers",
-    "stored": [{"id": "us-east"}],
-    "serve_event": {
-        "pathParameters": {"provider": "aws"},
-        "path": "/x/providers",
-    },
-    "serve_expect": [{"id": "us-east"}],
-    "unknown_event": {
-        "pathParameters": {"provider": "aws"},
-        "path": "/x/providers",
-    },
-    "notbuilt_event": {
-        "pathParameters": {"provider": "provider"},
-        "path": "/x/providers",
-    },
-}
-
-_WRITER: dict[str, Any] = {
-    "endpoint": "providers",
-    "param": "provider",
-    "key": "providers",
-    "id": "aws",
+    "key": "providers/vertices.json",
     "valid": [{"name": "r", "municipality": "Denver", "state": "CO",
                "country": "United States", "latitude": 1.0, "longitude": 2.0}],
 }
 
 
-class TestprovidersReader(ReaderContract):
-    """The shared read-side contract, applied to the providers endpoint."""
+class TestProvidersRegions(RegionsContract):
+    """The single-resource contract, applied to the providers endpoint."""
 
-    CFG = _READER
-
-
-class TestprovidersWriter(WriterContract):
-    """The shared write-side contract, applied to the providers endpoint."""
-
-    CFG = _WRITER
+    CFG = _CFG

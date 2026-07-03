@@ -4,9 +4,9 @@ A plain reader-and-sender: read each cleaned CSV into simple rows (city, state,
 latitude, longitude, plus a name where the source has one) and PUT them to the matching
 endpoint. What each place *is* comes from the endpoint it is sent to, so nothing is
 classified or shaped here; carrier connections (``A_/Z_`` city+state) are forwarded as
-they stand and resolved server-side. Carriers push their points and connections; providers
-push their regions; each tenant pushes its sites, provider-region selection, off-net
-candidates, and per-concern config resources. Writes only store inputs -- they trigger
+they stand and resolved server-side. Carriers push their points and connections;
+providers push their regions; each tenant pushes its sites, provider-region selection,
+off-net candidates, and per-concern config resources. Writes only store inputs -- they trigger
 nothing -- so the seed then explicitly rebuilds the shared substrate
 (``POST carriers/merge``) and each tenant's WAN (``POST tenants/{t}/wan``).
 
@@ -29,7 +29,6 @@ from repo_utils import REPO_ROOT
 DEFAULT_API = "https://api.10ulabs.com/wan-graph-synthesizer"
 DATA = REPO_ROOT / "data"
 ETC = REPO_ROOT / "etc"
-provider_PROVIDERS = ("providers",)
 
 
 def _rows(path: Path) -> list[dict[str, Any]]:
@@ -109,14 +108,10 @@ def push_carriers(api: str) -> None:
 
 
 def push_providers(api: str) -> None:
-    """Push each cloud provider's regions (all its region files combined)."""
-    for provider in provider_PROVIDERS:
-        files = sorted((DATA / "vertices" / "providers" / provider).glob("*.csv"))
-        if not files:
-            continue
-        regions = [row for path in files for row in _rows(path)]
-        print(f"provider {provider}: {len(regions)} regions", flush=True)
-        _put(api, f"providers/{provider}/vertices", regions)
+    """Push the provider regions (a single combined vertices file)."""
+    regions = _rows(DATA / "vertices" / "providers" / "providers.csv")
+    print(f"providers: {len(regions)} regions", flush=True)
+    _put(api, "providers/vertices", regions)
 
 
 def _data_center_providers() -> list[str]:

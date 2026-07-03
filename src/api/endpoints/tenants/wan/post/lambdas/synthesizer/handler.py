@@ -22,7 +22,7 @@ import boto3
 from synthesizer.codec import load_off_net, load_regions, load_sites, load_substrate
 from synthesizer.collections import (
     backbone_nodes,
-    provider-nodes,
+    provider_nodes,
     edges,
     tenant_nodes,
     vertices,
@@ -130,7 +130,7 @@ def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
         "edges": edges(payload),
         "backbone-nodes": backbone_nodes(payload),
         "tenant-nodes": tenant_nodes(payload),
-        "provider-nodes": provider-nodes(payload),
+        "provider-nodes": provider_nodes(payload),
     }
 
 

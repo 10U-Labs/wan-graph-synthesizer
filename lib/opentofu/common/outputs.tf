@@ -26,7 +26,7 @@ output "lambda_handler_names" {
   description = "Deterministic Lambda function names, one per REST resource."
   value = {
     carriers          = "wan-graph-synthesizer-carriers"
-    providers              = "wan-graph-synthesizer-providers"
+    providers         = "wan-graph-synthesizer-providers"
     datacenters       = "wan-graph-synthesizer-data-centers"
     datacenters_merge = "wan-graph-synthesizer-data-centers-merge"
     tenants           = "wan-graph-synthesizer-tenants"

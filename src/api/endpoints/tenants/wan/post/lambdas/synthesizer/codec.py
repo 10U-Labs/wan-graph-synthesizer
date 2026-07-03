@@ -1,7 +1,7 @@
 """Read the stored simple-shape JSON into the synthesizer's graph objects.
 
 Each place is sent to the API as a bare geographic row -- ``municipality, state,
-latitude, longitude`` (plus ``name`` for cloud regions and tenant sites) -- and what it
+latitude, longitude`` (plus ``name`` for provider regions and tenant sites) -- and what it
 *is* comes from the endpoint it was stored under, not from a column. These loaders turn
 those rows into :class:`Vertex`/:class:`PhysicalEdge` objects, deriving
 ``kind``/``name`` from the source, generating ids, and resolving carrier
@@ -15,7 +15,7 @@ from typing import Any
 
 from synthesizer.input_graph import PhysicalEdge, Vertex, VertexInfo, edge_key, haversine_miles
 
-provider_KIND = "provider region"
+PROVIDER_KIND = "provider region"
 CARRIER_KIND = "PoP"
 SITE_KIND = "Tenant site"
 OFF_NET_KIND = "Off-net site"
@@ -71,7 +71,7 @@ def _place(row: dict[str, Any], vertex_id: str, name: str, kind: str) -> Vertex:
 
 
 def _load_places(rows: list[dict[str, Any]], prefix: str, kind: str, named: bool) -> list[Vertex]:
-    """Load demand vertices (cloud regions, tenant sites, off-net) from simple rows.
+    """Load demand vertices (provider regions, tenant sites, off-net) from simple rows.
 
     ``named`` rows carry their own ``name``; the rest are named by their ``City, ST``.
     """
@@ -85,8 +85,8 @@ def _load_places(rows: list[dict[str, Any]], prefix: str, kind: str, named: bool
 
 
 def load_regions(rows: list[dict[str, Any]]) -> list[Vertex]:
-    """Cloud regions (provider regions), named, coloured by kind on the map."""
-    return _load_places(rows, "provider", provider_KIND, named=True)
+    """Provider regions, named, coloured by kind on the map."""
+    return _load_places(rows, "provider", PROVIDER_KIND, named=True)
 
 
 def load_sites(rows: list[dict[str, Any]]) -> list[Vertex]:

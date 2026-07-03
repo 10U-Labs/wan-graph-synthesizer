@@ -143,52 +143,30 @@
         }
       }
     },
-    "/wan-graph-synthesizer/providers": {
+    "/wan-graph-synthesizer/providers/vertices": {
       "get": {
-        "summary": "List providers.",
-        "responses": { "200": { "description": "The providers." } },
+        "summary": "The provider regions.",
+        "responses": { "200": { "description": "The provider regions." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${providersHandlerArn}",
-          "httpMethod": "POST",
-          "type": "aws_proxy"
-        }
-      }
-    },
-    "/wan-graph-synthesizer/providers/{provider}/vertices": {
-      "get": {
-        "summary": "A provider's regions.",
-        "parameters": [
-          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "The provider's regions." } },
-        "x-amazon-apigateway-integration": {
-          "uri": "${providersHandlerArn}",
+          "uri": "${ProvidersHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
       },
       "put": {
-        "summary": "Replace a provider's regions (stores only).",
-        "parameters": [
-          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "The provider's regions were replaced." } },
+        "summary": "Replace the provider regions (stores only).",
+        "responses": { "200": { "description": "The provider regions were replaced." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${providersHandlerArn}",
+          "uri": "${ProvidersHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }
-      }
-    },
-    "/wan-graph-synthesizer/providers/{provider}": {
+      },
       "delete": {
-        "summary": "Remove a provider.",
-        "parameters": [
-          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "The provider was removed." } },
+        "summary": "Remove the provider regions.",
+        "responses": { "200": { "description": "The provider regions were removed." } },
         "x-amazon-apigateway-integration": {
-          "uri": "${providersHandlerArn}",
+          "uri": "${ProvidersHandlerArn}",
           "httpMethod": "POST",
           "type": "aws_proxy"
         }

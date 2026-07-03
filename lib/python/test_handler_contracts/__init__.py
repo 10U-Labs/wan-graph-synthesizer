@@ -1,7 +1,9 @@
 """Shared handler-test scaffolding and the read/write endpoint contracts.
 
-The carrier, provider and tenant handlers are built on one uniform read/write framework,
-so their unit tests are identical bar the endpoint's data. To keep each endpoint's
+The carrier, data-center and tenant handlers are built on one uniform read/write
+framework, so their unit tests are identical bar the endpoint's data. The providers
+endpoint stores a single fixed object (no id, no listing), so it has its own
+:class:`RegionsContract`. To keep each endpoint's
 ``test_handler.py`` free of cross-file duplicate code (which the test pylint's R0801
 compares across all of ``test/``), the shared loader, the fake-client wiring and the
 parametric test bodies live here once. An endpoint test subclasses ``ReaderContract``
@@ -54,7 +56,7 @@ def write_event(cfg: dict[str, Any], collection: str, body: Any) -> dict[str, An
 
 
 class ReaderContract:
-    """The read-side tests shared by the carrier, provider and tenant endpoints.
+    """The read-side tests shared by the carrier, data-center and tenant endpoints.
 
     A subclass sets ``CFG`` to the endpoint's listing keys, ids and sample events.
     """
@@ -100,7 +102,7 @@ class ReaderContract:
 
 
 class WriterContract:
-    """The write-side tests shared by the carrier and provider endpoints.
+    """The write-side tests shared by the carrier and data-center endpoints.
 
     A subclass sets ``CFG`` to the endpoint's key, id and a valid row.
     """
@@ -175,4 +177,123 @@ class WriterContract:
         module = self._writer(monkeypatch)
         with patch("boto3.client", side_effect=write_clients({}, [])):
             response = module.lambda_handler({"httpMethod": "DELETE"}, None)
+        assert response["statusCode"] == 404
+
+
+class RegionsContract:
+    """Read/write tests for the single-resource providers endpoint.
+
+    Unlike the id-keyed framework endpoints, the providers endpoint stores one fixed
+    object (its regions), so there is no id path parameter and no listing. A subclass
+    sets ``CFG`` to the endpoint name, its stored key, and a valid row.
+    """
+
+    CFG: dict[str, Any]
+
+    def _load(self, monkeypatch: pytest.MonkeyPatch) -> Any:
+        """Load the endpoint's handler."""
+        return load_handler(self.CFG["endpoint"], monkeypatch)
+
+    def _get(self, collection: str = "vertices") -> dict[str, Any]:
+        """A GET event for one of the endpoint's collections."""
+        return {"httpMethod": "GET", "path": f"/x/{self.CFG['endpoint']}/{collection}"}
+
+    def _put(self, collection: str, body: Any) -> dict[str, Any]:
+        """A PUT event for one of the endpoint's collections."""
+        return {
+            "httpMethod": "PUT",
+            "path": f"/x/{self.CFG['endpoint']}/{collection}",
+            "body": json.dumps(body),
+        }
+
+    def test_serves_the_stored_regions(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A vertices GET returns the stored regions."""
+        module = self._load(monkeypatch)
+        stored = {self.CFG["key"]: json.dumps(self.CFG["valid"]).encode()}
+        with patch("boto3.client", return_value=fake_s3(stored)):
+            response = module.lambda_handler(self._get(), None)
+        assert json.loads(response["body"]) == self.CFG["valid"]
+
+    def test_404_for_an_unknown_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An unknown sub-collection is a 404."""
+        module = self._load(monkeypatch)
+        with patch("boto3.client", return_value=fake_s3({})):
+            response = module.lambda_handler(self._get("edges"), None)
+        assert response["statusCode"] == 404
+
+    def test_404_when_the_resource_is_not_built(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A vertices GET with no stored object returns a 'not built' 404."""
+        module = self._load(monkeypatch)
+        with patch("boto3.client", return_value=fake_s3({})):
+            response = module.lambda_handler(self._get(), None)
+        assert response["statusCode"] == 404
+
+    def test_caches_the_s3_client(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The second request reuses the cached client rather than rebuilding it."""
+        module = self._load(monkeypatch)
+        with patch("boto3.client", return_value=fake_s3({})) as mock_client:
+            module.lambda_handler(self._get(), None)
+            module.lambda_handler(self._get(), None)
+        assert mock_client.call_count == 1
+
+    def test_write_persists_the_regions(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A PUT into an empty store stores the new regions."""
+        module = self._load(monkeypatch)
+        objects: dict[str, bytes] = {}
+        with patch("boto3.client", side_effect=write_clients(objects, [])):
+            module.lambda_handler(self._put("vertices", self.CFG["valid"]), None)
+        assert json.loads(objects[self.CFG["key"]]) == self.CFG["valid"]
+
+    def test_write_replaces_the_regions(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A PUT over existing regions replaces them."""
+        module = self._load(monkeypatch)
+        objects = {self.CFG["key"]: json.dumps([{"stale": 1}]).encode()}
+        with patch("boto3.client", side_effect=write_clients(objects, [])):
+            module.lambda_handler(self._put("vertices", self.CFG["valid"]), None)
+        assert json.loads(objects[self.CFG["key"]]) == self.CFG["valid"]
+
+    def test_write_rejects_a_malformed_row(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A PUT whose rows lack the required geographic fields is rejected."""
+        module = self._load(monkeypatch)
+        with patch("boto3.client", side_effect=write_clients({}, [])):
+            response = module.lambda_handler(self._put("vertices", [{"oops": 1}]), None)
+        assert response["statusCode"] == 400
+
+    def test_write_rejects_a_non_list_body(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A PUT body that is not a list of rows is rejected."""
+        module = self._load(monkeypatch)
+        with patch("boto3.client", side_effect=write_clients({}, [])):
+            response = module.lambda_handler(self._put("vertices", {"not": "a list"}), None)
+        assert response["statusCode"] == 400
+
+    def test_write_does_not_trigger_a_build(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A PUT only stores the regions; building is a separate POST, so nothing is invoked."""
+        module = self._load(monkeypatch)
+        invocations: list[dict[str, Any]] = []
+        with patch("boto3.client", side_effect=write_clients({}, invocations)):
+            module.lambda_handler(self._put("vertices", []), None)
+        assert not invocations
+
+    def test_write_404_for_unknown_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A PUT to an unknown sub-collection is a 404."""
+        module = self._load(monkeypatch)
+        with patch("boto3.client", side_effect=write_clients({}, [])):
+            response = module.lambda_handler(self._put("bogus", []), None)
+        assert response["statusCode"] == 404
+
+    def test_delete_removes_the_regions(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A DELETE removes the stored regions object."""
+        module = self._load(monkeypatch)
+        objects = {self.CFG["key"]: b"{}"}
+        event = {"httpMethod": "DELETE", "path": f"/x/{self.CFG['endpoint']}/vertices"}
+        with patch("boto3.client", side_effect=write_clients(objects, [])):
+            module.lambda_handler(event, None)
+        assert self.CFG["key"] not in objects
+
+    def test_delete_404_for_unknown_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A DELETE of an unknown sub-collection is a 404."""
+        module = self._load(monkeypatch)
+        event = {"httpMethod": "DELETE", "path": f"/x/{self.CFG['endpoint']}/bogus"}
+        with patch("boto3.client", side_effect=write_clients({}, [])):
+            response = module.lambda_handler(event, None)
         assert response["statusCode"] == 404

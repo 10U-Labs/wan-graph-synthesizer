@@ -16,7 +16,7 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 
-from synthesizer.codec import provider_KIND, OFF_NET_KIND, SITE_KIND
+from synthesizer.codec import OFF_NET_KIND, PROVIDER_KIND, SITE_KIND
 from synthesizer.input_graph import PhysicalEdge, Vertex, VertexInfo, edge_key
 from synthesizer.model import (
     KIND_ROADM,
@@ -75,8 +75,8 @@ def access_vertex(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
 
 
 def provider_vertex(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
-    """Build a provider cloud-region demand vertex."""
-    return Vertex(id=vertex_id, name=vertex_id, kind=provider_KIND, coords=(lat, lon))
+    """Build a provider-region demand vertex."""
+    return Vertex(id=vertex_id, name=vertex_id, kind=PROVIDER_KIND, coords=(lat, lon))
 
 
 def off_net_site(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:

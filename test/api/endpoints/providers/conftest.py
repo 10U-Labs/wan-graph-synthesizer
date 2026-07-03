@@ -13,25 +13,25 @@ import pytest
 from repo_utils import REPO_ROOT
 from test_terraform_config import lambda_handler_names, load_tf
 
-providerS_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "providers"
+PROVIDERS_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "providers"
 
 
 @pytest.fixture(name="providers_dir")
 def providers_dir_fixture() -> Path:
     """Return the directory holding the providers endpoint stack."""
-    return providerS_DIR
+    return PROVIDERS_DIR
 
 
 @pytest.fixture(name="providers_main")
 def providers_main_fixture() -> dict[str, object]:
     """Return the parsed ``main.tf`` for the providers stack."""
-    return load_tf(providerS_DIR / "main.tf")
+    return load_tf(PROVIDERS_DIR / "main.tf")
 
 
 @pytest.fixture(name="providers_iam")
 def providers_iam_fixture() -> dict[str, object]:
     """Return the parsed ``iam.tf`` for the providers stack."""
-    return load_tf(providerS_DIR / "iam.tf")
+    return load_tf(PROVIDERS_DIR / "iam.tf")
 
 
 @pytest.fixture(name="providers_locals")

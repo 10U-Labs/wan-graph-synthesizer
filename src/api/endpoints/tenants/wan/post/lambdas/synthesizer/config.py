@@ -26,24 +26,10 @@ from synthesizer.model import (
 DEFAULT_VERTICES = {
     "AFLCMC": "data/vertices/tenants/aflcmc.csv",
     "AFNWC/NI": "data/vertices/tenants/afnwc_ni.csv",
-    "Providers": [
-        "data/vertices/providers/providers.csv",
-        "data/vertices/providers region.csv",
-        "data/vertices/providers region.csv",
-        "data/vertices/providers region.csv",
-        "data/vertices/providers region.csv",
-    ],
-    "provider": [
-        "data/vertices/providers region.csv",
-        "data/vertices/providers region.csv",
-    ],
     "DCN": "data/vertices/carriers/dcn.csv",
     "F-35": "data/vertices/tenants/f_35.csv",
     "Lumen": "data/vertices/carriers/lumen.csv",
-    "provider": [
-        "data/vertices/providers/providers.csv",
-        "data/vertices/providers/providers.csv",
-    ],
+    "Providers": "data/vertices/providers/providers.csv",
     "VisionNet": "data/vertices/carriers/vision_net.csv",
 }
 DEFAULT_CARRIER_EDGES = "data/edges/lumen.csv"

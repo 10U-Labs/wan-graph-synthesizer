@@ -6,7 +6,7 @@ synthesizer's own in-memory representation, layered on top of them.
 
 The design is two tiers: a meshed ``backbone`` of selected carrier PoPs (each at a
 data-center city) and the demand that homes into it. Demand is labelled ``tenant``
-(tenant sites) or ``provider`` (cloud regions); both home to the backbone identically.
+(tenant sites) or ``provider`` (provider regions); both home to the backbone identically.
 """
 
 from __future__ import annotations
