@@ -32,7 +32,7 @@ inputs:
     DoW: data/vertices/tenants/dow.csv
   off_net: data/vertices/utilities/off_net.csv
 knobs:
-  backbone_coverage_target_miles: 400.0
+  backbone_coverage_target_miles: 100.0
   backbone_set_peak_bytes: 160
   compass_octants: 8
   enum_memory_fraction: 0.6
