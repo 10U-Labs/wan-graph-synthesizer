@@ -4,10 +4,16 @@
 access_homing_degree: 2
 backbone_mesh_degree: 3
 backbone_node_count:
-  max: 4
+  max: 10
   min: 3
 forced_backbone_nodes:
   - Ashburn, VA
+  - Cincinnati, OH
+  - Fort Worth, TX
+  - McLean, VA
+  - Salt Lake City, UT
+  - Seattle, WA
+  - Tallahassee, FL
 forced_connections: []
 inputs:
   providers:
