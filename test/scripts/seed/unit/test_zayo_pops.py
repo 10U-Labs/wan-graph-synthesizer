@@ -18,11 +18,10 @@ _DATA = REPO_ROOT / "data"
 _ZAYO = _DATA / "vertices" / "carriers" / "zayo.csv"
 _ZAYO_EDGES = _DATA / "edges" / "zayo.csv"
 
-# Country -> continent. Same-continent links (Canada<->US land borders, intra-Europe,
-# intra-Asia) are not submarine crossings, so they are out of the gateway rule below.
+# Country -> continent. Same-continent links (intra-Europe, intra-Asia) are not
+# submarine crossings, so they are out of the gateway rule below.
 _CONTINENT = {
     "United States": "North America",
-    "Canada": "North America",
     "Austria": "Europe",
     "Belgium": "Europe",
     "France": "Europe",
