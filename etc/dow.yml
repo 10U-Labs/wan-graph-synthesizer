@@ -18,14 +18,12 @@ forced_backbone_nodes:
   - Los Angeles, CA
   - McLean, VA
   - New York, NY
-  - Norfolk, VA
   - Salt Lake City, UT
   - San Diego, CA
   - San Francisco, CA
   - San Jose, CA
   - Seattle, WA
   - Tacoma, WA
-  - Virginia Beach, VA
 forced_connections: []
 inputs:
   providers:
