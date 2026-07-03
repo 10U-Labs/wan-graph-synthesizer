@@ -227,10 +227,10 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
         exclusions=RoleExclusions(
             prohibited_backbone_names=_str_list(design, "prohibited_backbone", []),
         ),
+        tuning=_tuning(tuning),
         promote_high_degree_convergences=_required_bool(
             design, "promote_high_degree_convergences_to_backbone_nodes"
         ),
-        tuning=_tuning(tuning),
     )
 
 
