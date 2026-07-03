@@ -28,7 +28,7 @@ jobs:
             "{extends: default, rules: {$RULES}}" \
             .github/workflows/etc.yml etc/daf.yml etc/dow.yml \
             etc/f_35_non_redundant.yml etc/f_35_redundant.yml \
-            etc/joint.yml
+            etc/joint.yml etc/minuteman.yml
 name: etc
 on:
   push:
