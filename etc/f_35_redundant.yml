@@ -7,9 +7,7 @@ backbone_node_count:
   max: 99
   min: 3
 forced_backbone_nodes:
-  - Atlanta, GA
-  - Las Vegas, NV
-  - Los Angeles, CA
+  - Ashburn, VA
 forced_connections: []
 inputs:
   providers:
@@ -26,7 +24,7 @@ inputs:
     F-35: data/vertices/tenants/f_35.csv
   off_net: data/vertices/utilities/off_net.csv
 knobs:
-  backbone_coverage_target_miles: 600.0
+  backbone_coverage_target_miles: 300.0
   backbone_set_peak_bytes: 160
   compass_octants: 8
   enum_memory_fraction: 0.6
