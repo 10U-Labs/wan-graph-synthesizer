@@ -12,12 +12,12 @@ forced_backbone_nodes:
   - Ashburn, VA
   - Cheyenne, WY
   - Cincinnati, OH
+  - Cleveland, OH
   - Colorado Springs, CO
   - Dallas, TX
   - Los Angeles, CA
   - McLean, VA
   - New York, NY
-  - Pittsburgh, PA
   - Salt Lake City, UT
   - Seattle, WA
 forced_connections: []
