@@ -185,7 +185,7 @@ function showCounts(vertices) {
       tally[vertex.tier_role] += 1;
     }
   }
-  counts.textContent = `BACKBONE ${tally.backbone} TENANT ${tally.tenant} PROVIDER ${tally.provider}`;
+  counts.textContent = `POPS ${tally.backbone} TENANTS ${tally.tenant} PROVIDERS ${tally.provider}`;
 }
 
 async function render(tenantId) {
