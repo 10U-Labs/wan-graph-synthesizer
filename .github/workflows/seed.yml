@@ -3,17 +3,17 @@ concurrency:
   cancel-in-progress: false
   group: seed
 jobs:
-  concluding-test-unnecessary:
-    if: ${{ needs.determining.outputs.testing-necessary == 'false' }}
-    name: concluding-test-unnecessary
+  concluding-testing-necessary:
+    if: ${{ needs.determining.outputs.testing-necessary == 'true' }}
+    name: concluding-testing-necessary
     needs: determining
     runs-on: ubuntu-24.04
     steps:
       - name: No-op
         run: 'true'
-  concluding-testing-necessary:
-    if: ${{ needs.determining.outputs.testing-necessary == 'true' }}
-    name: concluding-testing-necessary
+  concluding-testing-unnecessary:
+    if: ${{ needs.determining.outputs.testing-necessary == 'false' }}
+    name: concluding-testing-unnecessary
     needs: determining
     runs-on: ubuntu-24.04
     steps:
@@ -78,7 +78,7 @@ jobs:
     if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
     name: seeding
     needs:
-      - concluding-test-unnecessary
+      - concluding-testing-unnecessary
       - e2e-tests
     runs-on: ubuntu-24.04
     steps:
