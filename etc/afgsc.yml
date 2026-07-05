@@ -1,11 +1,14 @@
 ---
-# AFGSC (Air Force Global Strike Command) WAN design: demand is the command's
-# strike and missile access nodes -- the five bomb wings (Barksdale, Minot,
-# Dyess, Ellsworth, Whiteman), three missile wings (F.E. Warren, Malmstrom,
-# Minot), the two numbered air force headquarters (Eighth at Barksdale,
-# Twentieth at F.E. Warren), plus the AFNWC host (Kirtland), airborne command
-# and control (Offutt) and ICBM flight test (Vandenberg). Modeled after the
-# DAF tenant, with coordinates extracted from the DAF roster.
+# AFGSC (Air Force Global Strike Command) WAN design, validated against the
+# official AFGSC / Eighth / Twentieth Air Force fact sheets (afgsc.af.mil).
+# Demand is the command's strike, missile and command-and-control access nodes:
+#   Eighth AF (HQ Barksdale) -- 2d BW (Barksdale, B-52), 5th BW (Minot, B-52),
+#     7th BW (Dyess, B-1), 28th BW (Ellsworth, B-1), 509th BW (Whiteman, B-2),
+#     95th Wing (Offutt, airborne C2; activated 28 Mar 2025).
+#   Twentieth AF (HQ F.E. Warren) -- 90th MW (F.E. Warren), 91st MW (Minot),
+#     341st MW (Malmstrom), 377th ABW host (Kirtland, to AFGSC 2015), and the
+#     576th Flight Test Squadron ICBM launch site (Vandenberg SFB).
+# Modeled after the DAF tenant, with coordinates extracted from the DAF roster.
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 access_homing_degree: 2
 backbone_mesh_degree: 4
