@@ -2,31 +2,28 @@
 # DoW WAN design across every carrier's fiber.
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 access_homing_degree: 2
-backbone_mesh_degree: 2
+backbone_mesh_degree: 3
 backbone_node_count:
   max: 30
   min: 3
 forced_backbone_nodes:
-  - Albany, NY
   - Ashburn, VA
-  - Atlanta, GA
+  - Boardman, OR
   - Cheyenne, WY
+  - Cincinnati, OH
   - Colorado Springs, CO
+  - Columbus, OH
   - Dallas, TX
   - Denver, CO
+  - Fort Worth, TX
   - Great Falls, MT
-  - Las Vegas, NV
-  - Los Angeles, CA
+  - Hillsboro, OR
+  - Houston, TX
   - McLean, VA
-  - New York, NY
-  - Orlando, FL
-  - Salt Lake City, UT
-  - San Diego, CA
-  - San Francisco, CA
-  - San Jose, CA
-  - Seattle, WA
-  - Tacoma, WA
-  - Tampa, FL
+  - Minot, ND
+  - Phoenix, AZ
+  - San Antonio, TX
+  - Tucson, AZ
 forced_connections: []
 inputs:
   locations:
@@ -35,7 +32,7 @@ inputs:
   providers:
     regions: data/vertices/providers/providers.csv
 knobs:
-  backbone_coverage_target_miles: 100.0
+  backbone_coverage_target_miles: 50.0
   backbone_set_peak_bytes: 160
   compass_octants: 8
   enum_memory_fraction: 0.6
