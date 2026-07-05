@@ -32,3 +32,28 @@ def test_entrypoint(synthesizer_config: dict[str, Any]) -> None:
 def test_carries_the_store_bucket(synthesizer_config: dict[str, Any]) -> None:
     """The live synthesizer carries the STORE_BUCKET it reads inputs from and writes to."""
     assert "STORE_BUCKET" in synthesizer_config["Environment"]["Variables"]
+
+
+def test_async_retries_are_disabled(synthesizer_invoke_config: dict[str, Any]) -> None:
+    """The live synthesizer does not retry a failed async invocation."""
+    assert synthesizer_invoke_config["MaximumRetryAttempts"] == 0
+
+
+def test_failure_handler_runtime_is_python313(failure_handler_config: dict[str, Any]) -> None:
+    """The live failure handler runs on Python 3.13."""
+    assert failure_handler_config["Runtime"] == "python3.13"
+
+
+def test_failure_handler_is_arm64(failure_handler_config: dict[str, Any]) -> None:
+    """The live failure handler runs on ARM64."""
+    assert "arm64" in failure_handler_config["Architectures"]
+
+
+def test_failure_handler_entrypoint(failure_handler_config: dict[str, Any]) -> None:
+    """The live failure handler invokes ``synthesizer.failure_handler.lambda_handler``."""
+    assert failure_handler_config["Handler"] == "synthesizer.failure_handler.lambda_handler"
+
+
+def test_failure_handler_carries_the_store_bucket(failure_handler_config: dict[str, Any]) -> None:
+    """The live failure handler carries the STORE_BUCKET it writes the status marker to."""
+    assert "STORE_BUCKET" in failure_handler_config["Environment"]["Variables"]

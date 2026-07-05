@@ -82,3 +82,63 @@ def test_synthesizer_log_group_retention(synth_main: dict[str, object]) -> None:
     """The synthesizer's log group retains events for fourteen days."""
     log_group = _resource(synth_main, "aws_cloudwatch_log_group", "synthesizer")
     assert log_group["retention_in_days"] == 14
+
+
+def test_synthesizer_async_retries_are_disabled(synth_main: dict[str, object]) -> None:
+    """The synthesizer's async invocation config pins retries to zero.
+
+    A wall-clock timeout kills the sandbox before the handler can record ``failed``, so a
+    retry would only re-stamp ``building`` and never reach a terminal status.
+    """
+    invoke_config = _resource(
+        synth_main, "aws_lambda_function_event_invoke_config", "synthesizer")
+    assert invoke_config["maximum_retry_attempts"] == 0
+
+
+def test_synthesizer_on_failure_targets_the_failure_handler(synth_main: dict[str, object]) -> None:
+    """A failed synthesizer invocation is routed to the failure handler."""
+    invoke_config = _resource(
+        synth_main, "aws_lambda_function_event_invoke_config", "synthesizer")
+    destination = invoke_config["destination_config"][0]["on_failure"][0]["destination"]
+    assert "aws_lambda_function.failure_handler" in destination
+
+
+def test_synthesizer_role_may_invoke_the_failure_handler(synth_main: dict[str, object]) -> None:
+    """The synthesizer role may invoke its on_failure destination (a Lambda)."""
+    policy = _resource(synth_main, "aws_iam_role_policy", "synthesizer_destination")
+    assert "lambda:InvokeFunction" in str(policy["policy"])
+
+
+def test_failure_handler_entrypoint(synth_main: dict[str, object]) -> None:
+    """The failure handler invokes ``synthesizer.failure_handler.lambda_handler``."""
+    failure_handler = _resource(synth_main, "aws_lambda_function", "failure_handler")
+    assert failure_handler["handler"] == "synthesizer.failure_handler.lambda_handler"
+
+
+def test_failure_handler_reuses_the_synthesizer_package(synth_main: dict[str, object]) -> None:
+    """The failure handler ships in the synthesizer's deployment zip."""
+    failure_handler = _resource(synth_main, "aws_lambda_function", "failure_handler")
+    assert "archive_file.synthesizer" in failure_handler["filename"]
+
+
+def test_failure_handler_role_is_declared(synth_main: dict[str, object]) -> None:
+    """The failure handler's own execution role is declared."""
+    assert find_resource(synth_main, "aws_iam_role", "failure_handler") is not None
+
+
+def test_failure_handler_role_grants_only_put_object(synth_main: dict[str, object]) -> None:
+    """The failure handler role is write-only: it grants ``s3:PutObject`` to record status."""
+    policy = _resource(synth_main, "aws_iam_role_policy", "failure_handler_s3")
+    assert "s3:PutObject" in str(policy["policy"])
+
+
+def test_failure_handler_role_cannot_read(synth_main: dict[str, object]) -> None:
+    """The failure handler role does not grant ``s3:GetObject`` -- it only writes."""
+    policy = _resource(synth_main, "aws_iam_role_policy", "failure_handler_s3")
+    assert "s3:GetObject" not in str(policy["policy"])
+
+
+def test_failure_handler_log_group_retention(synth_main: dict[str, object]) -> None:
+    """The failure handler's log group retains events for fourteen days."""
+    log_group = _resource(synth_main, "aws_cloudwatch_log_group", "failure_handler")
+    assert log_group["retention_in_days"] == 14

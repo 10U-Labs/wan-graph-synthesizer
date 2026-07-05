@@ -89,3 +89,104 @@ resource "aws_lambda_function" "synthesizer" {
     replace_triggered_by = [aws_iam_role.synthesizer.id]
   }
 }
+
+# The failure handler: a tiny Lambda wired to the synthesizer's async on_failure
+# destination. AWS delivers a failed synthesizer invocation here only when it did NOT
+# return -- a 900s timeout, an out-of-memory kill, or an unhandled crash -- because those
+# kill the sandbox before the synthesizer's `except` can record "failed", leaving the WAN
+# stuck on "building" forever. It reuses the synthesizer's deployment package but is its
+# own function, entered at a different handler and running as its own write-only role.
+resource "aws_iam_role" "failure_handler" {
+  name = "wan-graph-synthesizer-failure-handler"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "failure_handler_basic" {
+  role       = aws_iam_role.failure_handler.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# Write-only: the failure handler records a status marker and nothing else -- it never
+# reads inputs nor invokes anything (least privilege).
+resource "aws_iam_role_policy" "failure_handler_s3" {
+  name = "store-write"
+  role = aws_iam_role.failure_handler.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:PutObject"]
+      Resource = ["${data.terraform_remote_state.storage.outputs.bucket_arn}/*"]
+    }]
+  })
+}
+
+resource "aws_cloudwatch_log_group" "failure_handler" {
+  name              = "/aws/lambda/${module.common.lambda_handler_names.wan}-failure-handler"
+  retention_in_days = 14
+}
+
+resource "aws_lambda_function" "failure_handler" {
+  filename         = data.archive_file.synthesizer.output_path
+  function_name    = "${module.common.lambda_handler_names.wan}-failure-handler"
+  role             = aws_iam_role.failure_handler.arn
+  handler          = "synthesizer.failure_handler.lambda_handler"
+  source_code_hash = data.archive_file.synthesizer.output_base64sha256
+  runtime          = "python3.13"
+  architectures    = ["arm64"]
+  # It writes a single S3 object; the default envelope is ample.
+  timeout     = 30
+  memory_size = 128
+  description = "WAN failure handler: record a tenant's WAN as failed when the synthesizer dies."
+
+  environment {
+    variables = {
+      STORE_BUCKET = local.store_bucket
+    }
+  }
+
+  logging_config {
+    log_format = "Text"
+    log_group  = aws_cloudwatch_log_group.failure_handler.name
+  }
+
+  lifecycle {
+    replace_triggered_by = [aws_iam_role.failure_handler.id]
+  }
+}
+
+# Sending to a Lambda on_failure destination requires the source function's execution role
+# to be allowed to invoke the destination.
+resource "aws_iam_role_policy" "synthesizer_destination" {
+  name = "on-failure-destination"
+  role = aws_iam_role.synthesizer.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["lambda:InvokeFunction"]
+      Resource = [aws_lambda_function.failure_handler.arn]
+    }]
+  })
+}
+
+# Pin async retries to zero and route a failed invocation to the failure handler. A
+# timeout kill can't be caught in-process, so retrying would only re-stamp "building"
+# without ever reaching a terminal status; the destination records "failed" instead.
+resource "aws_lambda_function_event_invoke_config" "synthesizer" {
+  function_name          = aws_lambda_function.synthesizer.function_name
+  maximum_retry_attempts = 0
+
+  destination_config {
+    on_failure {
+      destination = aws_lambda_function.failure_handler.arn
+    }
+  }
+}
