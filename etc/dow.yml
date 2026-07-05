@@ -23,7 +23,10 @@ forced_backbone_nodes:
   - McLean, VA
   - Minot, ND
   - Phoenix, AZ
+  - Salt Lake City, UT
   - San Antonio, TX
+  - San Diego, CA
+  - Seattle, WA
   - Tucson, AZ
   - Umatilla, OR
 forced_connections: []
