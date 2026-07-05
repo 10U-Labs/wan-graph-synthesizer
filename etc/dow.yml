@@ -2,7 +2,7 @@
 # DoW WAN design across every carrier's fiber.
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 access_homing_degree: 2
-backbone_mesh_degree: 3
+backbone_mesh_degree: 2
 backbone_node_count:
   max: 1000
   min: 3
@@ -24,6 +24,7 @@ forced_backbone_nodes:
   - Phoenix, AZ
   - San Antonio, TX
   - Tucson, AZ
+  - Umatilla, OR
 forced_connections: []
 inputs:
   locations:
