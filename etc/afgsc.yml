@@ -16,16 +16,7 @@ backbone_node_count:
   max: 12
   min: 3
 forced_backbone_nodes:
-  - Albuquerque, NM
   - Ashburn, VA
-  - Cheyenne, WY
-  - Dallas, TX
-  - Denver, CO
-  - Great Falls, MT
-  - Los Angeles, CA
-  - Rapid City, SD
-  - Salt Lake City, UT
-  - St. Louis, MO
 forced_connections: []
 inputs:
   locations:
