@@ -36,7 +36,7 @@ jobs:
       - name: No-op
         run: 'true'
   determining-testing:
-    if: ${{ !cancelled() }}
+    if: ${{ !failure() && !cancelled() }}
     name: determining-testing
     needs:
       - concluding-yamllint-unnecessary
@@ -122,7 +122,7 @@ jobs:
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
   seeding:
-    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (needs.concluding-testing-unnecessary.result == 'success' || needs.e2e-tests.result == 'success') }}
     name: seeding
     needs:
       - concluding-testing-unnecessary
