@@ -8,7 +8,6 @@ forced_backbone_nodes:
   - Albuquerque, NM
   - Ashburn, VA
   - Cheyenne, WY
-  - Chicago, IL
   - Colorado Springs, CO
   - Dallas, TX
   - Fort Worth, TX
@@ -18,7 +17,6 @@ forced_backbone_nodes:
   - McLean, VA
   - Minot, ND
   - Omaha, NE
-  - Pittsburgh, PA
   - San Francisco, CA
   - Seattle, WA
   - Tacoma, WA
