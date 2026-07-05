@@ -4,7 +4,7 @@ concurrency:
   group: seed
 jobs:
   concluding-testing-necessary:
-    if: ${{ needs.determining-testing.outputs.testing-necessary == 'true' }}
+    if: ${{ !cancelled() && needs.determining-testing.outputs.testing-necessary == 'true' }}
     name: concluding-testing-necessary
     needs: determining-testing
     runs-on: ubuntu-24.04
@@ -12,7 +12,7 @@ jobs:
       - name: No-op
         run: 'true'
   concluding-testing-unnecessary:
-    if: ${{ needs.determining-testing.outputs.testing-necessary == 'false' }}
+    if: ${{ !cancelled() && needs.determining-testing.outputs.testing-necessary == 'false' }}
     name: concluding-testing-unnecessary
     needs: determining-testing
     runs-on: ubuntu-24.04
@@ -40,7 +40,7 @@ jobs:
     name: determining-testing
     needs:
       - concluding-yamllint-unnecessary
-      - etc-yamllint
+      - yamllint
     outputs:
       testing-necessary: ${{ steps.decide.outputs.testing-necessary }}
     runs-on: ubuntu-24.04
@@ -63,7 +63,7 @@ jobs:
           else
             necessary=false
           fi
-          echo "testing-necessary=$necessary" >> "$GITHUB_OUTPUT"
+          echo "testing-necessary=$necessary" | tee -a "$GITHUB_OUTPUT"
   determining-yamllint:
     name: determining-yamllint
     outputs:
@@ -104,34 +104,6 @@ jobs:
           test/scripts/seed/e2e/
           --import-mode=importlib --confcutdir=test
           --verbose
-  etc-yamllint:
-    name: etc-yamllint
-    needs: concluding-yamllint-necessary
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install tools
-        run: pip install assert-no-inline-directives yamllint
-      - name: Assert no inline directives
-        run: >-
-          assert-no-inline-directives
-          --tools yamllint
-          --verbose
-          .github/workflows/seed.yml etc/
-      - name: Lint YAML
-        run: |
-          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
-          KEY='key-ordering: enable'
-          LL='line-length: disable'
-          NL='new-line-at-end-of-file: enable'
-          TR='truthy: {allowed-values: ["true", "false", "on"]}'
-          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
-          yamllint --strict \
-            --config-data \
-            "{extends: default, rules: {$RULES}}" \
-            .github/workflows/seed.yml etc/afgsc.yml etc/daf.yml \
-            etc/dow.yml etc/f_35_non_redundant.yml etc/f_35_redundant.yml \
-            etc/joint.yml etc/minuteman.yml
   integration-tests:
     name: integration-tests
     needs: unit-tests
@@ -252,6 +224,34 @@ jobs:
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
+  yamllint:
+    name: yamllint
+    needs: concluding-yamllint-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-inline-directives yamllint
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools yamllint
+          --verbose
+          .github/workflows/seed.yml etc/
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/seed.yml etc/afgsc.yml etc/daf.yml \
+            etc/dow.yml etc/f_35_non_redundant.yml etc/f_35_redundant.yml \
+            etc/joint.yml etc/minuteman.yml
 name: seed
 on:
   push:
