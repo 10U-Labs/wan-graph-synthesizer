@@ -44,5 +44,5 @@ knobs:
 label: DoW
 prohibited_backbone_nodes: []
 prohibited_connections: []
-promote_high_degree_convergences_to_backbone_nodes: false
+promote_high_degree_convergences_to_backbone_nodes: true
 restrict_backbone_to_data_centers: false
