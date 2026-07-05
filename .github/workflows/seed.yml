@@ -4,23 +4,43 @@ concurrency:
   group: seed
 jobs:
   concluding-testing-necessary:
-    if: ${{ needs.determining.outputs.testing-necessary == 'true' }}
+    if: ${{ needs.determining-testing.outputs.testing-necessary == 'true' }}
     name: concluding-testing-necessary
-    needs: determining
+    needs: determining-testing
     runs-on: ubuntu-24.04
     steps:
       - name: No-op
         run: 'true'
   concluding-testing-unnecessary:
-    if: ${{ needs.determining.outputs.testing-necessary == 'false' }}
+    if: ${{ needs.determining-testing.outputs.testing-necessary == 'false' }}
     name: concluding-testing-unnecessary
-    needs: determining
+    needs: determining-testing
     runs-on: ubuntu-24.04
     steps:
       - name: No-op
         run: 'true'
-  determining:
-    name: determining
+  concluding-yamllint-necessary:
+    if: ${{ needs.determining-yamllint.outputs.yamllint-necessary == 'true' }}
+    name: concluding-yamllint-necessary
+    needs: determining-yamllint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: No-op
+        run: 'true'
+  concluding-yamllint-unnecessary:
+    if: ${{ needs.determining-yamllint.outputs.yamllint-necessary == 'false' }}
+    name: concluding-yamllint-unnecessary
+    needs: determining-yamllint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: No-op
+        run: 'true'
+  determining-testing:
+    if: ${{ !cancelled() }}
+    name: determining-testing
+    needs:
+      - concluding-yamllint-necessary
+      - concluding-yamllint-unnecessary
     outputs:
       testing-necessary: ${{ steps.decide.outputs.testing-necessary }}
     runs-on: ubuntu-24.04
@@ -44,6 +64,31 @@ jobs:
             necessary=false
           fi
           echo "testing-necessary=$necessary" >> "$GITHUB_OUTPUT"
+  determining-yamllint:
+    name: determining-yamllint
+    outputs:
+      yamllint-necessary: ${{ steps.decide.outputs.yamllint-necessary }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: decide
+        name: Decide whether YAML linting is necessary
+        run: |
+          base='${{ github.event.before }}'
+          head='${{ github.sha }}'
+          zero='0000000000000000000000000000000000000000'
+          if [ -z "$base" ] || [ "$base" = "$zero" ] \
+              || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            necessary=true
+          elif git diff --name-only "$base" "$head" \
+              | grep -qE '^etc/|^\.github/workflows/seed\.yml$'; then
+            necessary=true
+          else
+            necessary=false
+          fi
+          echo "yamllint-necessary=$necessary" >> "$GITHUB_OUTPUT"
   e2e-tests:
     name: e2e-tests
     needs: integration-tests
@@ -59,6 +104,34 @@ jobs:
           test/scripts/seed/e2e/
           --import-mode=importlib --confcutdir=test
           --verbose
+  etc-yamllint:
+    name: etc-yamllint
+    needs: concluding-yamllint-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-inline-directives yamllint
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools yamllint
+          --verbose
+          .github/workflows/seed.yml etc/
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/seed.yml etc/afgsc.yml etc/daf.yml \
+            etc/dow.yml etc/f_35_non_redundant.yml etc/f_35_redundant.yml \
+            etc/joint.yml etc/minuteman.yml
   integration-tests:
     name: integration-tests
     needs: unit-tests
@@ -75,11 +148,12 @@ jobs:
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
   seeding:
-    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.etc-yamllint.result != 'failure' }}
     name: seeding
     needs:
       - concluding-testing-unnecessary
       - e2e-tests
+      - etc-yamllint
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
