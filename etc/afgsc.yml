@@ -5,7 +5,19 @@ backbone_node_count:
   max: 99
   min: 3
 forced_backbone_nodes:
-  - Ashburn, VA
+  - Cheyenne, WY
+  - Cincinnati, OH
+  - Colorado Springs, CO
+  - Dallas, TX
+  - Fort Worth, TX
+  - Great Falls, MT
+  - Los Angeles, CA
+  - McLean, VA
+  - Minot, ND
+  - Pittsburgh, PA
+  - San Francisco, CA
+  - Seattle, WA
+  - Tacoma, WA
 forced_connections: []
 inputs:
   locations:
