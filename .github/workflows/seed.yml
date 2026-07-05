@@ -39,8 +39,8 @@ jobs:
     if: ${{ !cancelled() }}
     name: determining-testing
     needs:
-      - concluding-yamllint-necessary
       - concluding-yamllint-unnecessary
+      - etc-yamllint
     outputs:
       testing-necessary: ${{ steps.decide.outputs.testing-necessary }}
     runs-on: ubuntu-24.04
@@ -148,12 +148,11 @@ jobs:
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
   seeding:
-    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.etc-yamllint.result != 'failure' }}
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
     name: seeding
     needs:
       - concluding-testing-unnecessary
       - e2e-tests
-      - etc-yamllint
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
