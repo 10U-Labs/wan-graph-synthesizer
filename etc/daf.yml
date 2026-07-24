@@ -24,7 +24,7 @@ inputs:
   providers:
     regions: data/vertices/providers/providers.csv
 knobs:
-  backbone_coverage_target_miles: 400.0
+  backbone_coverage_target_miles: 300.0
   backbone_set_peak_bytes: 160
   compass_octants: 8
   enum_memory_fraction: 0.6
