@@ -15,6 +15,7 @@ forced_backbone_nodes:
   - Minot, ND
   - New York, NY
   - Salt Lake City, UT
+  - Virginia Beach, VA
 forced_connections: []
 inputs:
   locations:
