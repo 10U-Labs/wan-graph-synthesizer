@@ -9,11 +9,14 @@ backbone_node_count:
   max: 99
   min: 3
 forced_backbone_nodes:
+  - Ashburn, VA
   - Boston, MA
   - Cheyenne, WY
+  - Colorado Springs, CO
   - Great Falls, MT
   - Hillsboro, OR
   - Los Angeles, CA
+  - McLean, VA
   - Minot, ND
   - New York, NY
   - Salt Lake City, UT
@@ -25,7 +28,7 @@ inputs:
   providers:
     regions: data/vertices/providers/providers.csv
 knobs:
-  backbone_coverage_target_miles: 200.0
+  backbone_coverage_target_miles: 300.0
   backbone_set_peak_bytes: 160
   compass_octants: 8
   enum_memory_fraction: 0.6
