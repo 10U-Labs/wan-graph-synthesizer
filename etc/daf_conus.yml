@@ -13,13 +13,16 @@ forced_backbone_nodes:
   - Boston, MA
   - Cheyenne, WY
   - Colorado Springs, CO
+  - Dallas, TX
   - Great Falls, MT
   - Hillsboro, OR
+  - Houston, TX
   - Los Angeles, CA
   - McLean, VA
   - Minot, ND
   - New York, NY
   - Salt Lake City, UT
+  - Tallahassee, FL
 forced_connections: []
 inputs:
   locations:
