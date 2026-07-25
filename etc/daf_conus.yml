@@ -10,6 +10,7 @@ backbone_node_count:
   min: 3
 forced_backbone_nodes:
   - Ashburn, VA
+  - Atlanta, GA
   - Boston, MA
   - Cheyenne, WY
   - Colorado Springs, CO
@@ -17,6 +18,7 @@ forced_backbone_nodes:
   - Great Falls, MT
   - Hillsboro, OR
   - Houston, TX
+  - Las Vegas, NV
   - Los Angeles, CA
   - McLean, VA
   - Minot, ND
