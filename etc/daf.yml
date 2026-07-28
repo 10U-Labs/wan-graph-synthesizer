@@ -8,6 +8,7 @@ backbone_node_count:
   max: 99
   min: 3
 forced_backbone_nodes:
+  - Albuquerque, NM
   - Ashburn, VA
   - Atlanta, GA
   - Boston, MA
@@ -18,11 +19,11 @@ forced_backbone_nodes:
   - Hillsboro, OR
   - Houston, TX
   - Kansas City, MO
-  - Las Vegas, NV
   - Los Angeles, CA
   - McLean, VA
   - Minot, ND
   - New York, NY
+  - Sacramento, CA
   - Salt Lake City, UT
   - Tallahassee, FL
 forced_connections: []
