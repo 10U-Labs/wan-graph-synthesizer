@@ -137,20 +137,29 @@ def _domestic_neighbours(city: tuple[str, str]) -> set[tuple[str, str]]:
     return {other for other in linked if country.get(other) == "United States"}
 
 
-def test_portland_metro_is_a_through_junction() -> None:
-    """The Portland metro carries the long-haul corridors through it, not around it.
+def test_hillsboro_carries_the_i5_corridor() -> None:
+    """Hillsboro sits on the I-5 corridor, not on a spur hanging off Portland.
 
     The Wavelengths map draws Portland, Hillsboro and Beaverton as one overlapping
-    junction that the corridors run through: the I-5 chain arrives from Salem to the
-    south, the Bend/Boise spur leaves to the east, and the Seattle corridor comes down
-    from the north. Digitising that junction as a star centred on Portland would leave
-    Hillsboro a spur whose only other span is the trans-Pacific cable to Tokyo -- and a
-    design needing a route around Portland would then cross the Pacific twice to reach a
-    city fifteen miles away. Each metro member therefore keeps its own terrestrial spans.
+    junction that the corridors run through, the I-5 chain arriving from Salem to the
+    south. Digitising that junction as a star centred on Portland would leave Hillsboro a
+    spur whose only other span is the trans-Pacific cable to Tokyo -- and a design needing
+    a route around Portland would then cross the Pacific twice to reach a city fifteen
+    miles away.
     """
     assert {("Portland", "OR"), ("Salem", "OR"), ("Beaverton", "OR")} <= _domestic_neighbours(
         ("Hillsboro", "OR")
     )
+
+
+def test_beaverton_carries_the_bend_spur() -> None:
+    """Beaverton holds the metro's eastern corridor towards Bend and Boise.
+
+    The other half of the same junction (see
+    :func:`test_hillsboro_carries_the_i5_corridor`): the Bend/Boise spur leaves the metro
+    from Beaverton, so Beaverton is a through-node too rather than a second dead end
+    behind Portland.
+    """
     assert {("Portland", "OR"), ("Hillsboro", "OR"), ("Bend", "OR")} <= _domestic_neighbours(
         ("Beaverton", "OR")
     )
