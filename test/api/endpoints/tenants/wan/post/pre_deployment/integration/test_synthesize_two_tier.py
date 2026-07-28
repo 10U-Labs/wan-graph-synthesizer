@@ -21,15 +21,25 @@ FORCED_ROADM = fixtures.forced_roadm_backbone_artifacts("P3")
 PROHIBITED = fixtures.prohibited_backbone_artifacts("P4")
 
 # A forced backbone-backbone link over the ring, resolved through the operator-pin path
-# so the asserted edge reflects a genuinely honored request.
-FORCED_BACKBONE_LINK = fixtures.forced_connection_artifacts(
-    DesignParams(
-        min_backbone_count=2,
-        forced_backbone_names=("P0", "P3"),
-        datacenter_cities=fixtures.ring_datacenter_cities(),
-    ),
-    (ForcedConnection("backbone-backbone", "P0", "P3"),),
+# so the asserted edge reflects a genuinely honored request. All six ring PoPs are
+# seated so the mesh degree binds: P0 and P3 sit opposite each other, three hops apart,
+# and are each other's farthest peer, so a nearest-neighbour mesh never picks the pair
+# and the ring is already 2-edge-connected without it. The link can only be the pin.
+_RING_BACKBONE = ("P0", "P1", "P2", "P3", "P4", "P5")
+_MESHED_RING = DesignParams(
+    min_backbone_count=2,
+    forced_backbone_names=_RING_BACKBONE,
+    datacenter_cities=fixtures.ring_datacenter_cities(),
 )
+FORCED_BACKBONE_LINK = fixtures.forced_connection_artifacts(
+    _MESHED_RING, (ForcedConnection("backbone-backbone", "P0", "P3"),)
+)
+UNFORCED_RING = fixtures.forced_connection_artifacts(_MESHED_RING, ())
+
+
+def test_the_opposite_pair_is_never_meshed_on_its_own() -> None:
+    """Without the pin the opposite pair is unmeshed, so the forced case cannot pass by luck."""
+    assert edge_key("P0", "P3") not in backbone_mesh_pairs(UNFORCED_RING.design)
 
 
 def test_forced_backbone_connection_appears_in_the_mesh() -> None:

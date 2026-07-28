@@ -55,11 +55,13 @@ _FIVE_NODES = ("c1", "c2", "c3", "c4", "c5")
 
 
 def _backbone(
-    removed: frozenset[tuple[str, str]] = frozenset(), mesh_degree: int = 3
+    removed: frozenset[tuple[str, str]] = frozenset(),
+    mesh_degree: int = 3,
+    forced: frozenset[tuple[str, str]] = frozenset(),
 ) -> list[tuple[str, str]]:
     """The five-node backbone wiring each node to its nearest peers."""
     return select_backbone_mesh_pairs(
-        _FIVE_NODES, _FIVE_NODE_DISTANCES, removed, mesh_degree
+        _FIVE_NODES, _FIVE_NODE_DISTANCES, removed, mesh_degree, forced
     )
 
 
@@ -105,6 +107,26 @@ def test_a_removed_pair_gets_no_link() -> None:
 def test_a_removed_pair_is_filled_by_the_next_nearest() -> None:
     """Dropping c1-c2 makes c1 wire to c5, its next-nearest reachable node."""
     assert edge_key("c1", "c5") in _backbone(frozenset({edge_key("c1", "c2")}))
+
+
+# c1-c5 is the farthest pair in the table, so a nearest-neighbour mesh never picks it:
+# whatever the forced case asserts is the pin at work, not an emergent choice.
+_FORCED = frozenset({edge_key("c1", "c5")})
+
+
+def test_a_forced_pair_gets_a_mesh_link() -> None:
+    """An operator-forced backbone-backbone pair is wired even though it is the farthest."""
+    assert edge_key("c1", "c5") in _backbone(forced=_FORCED)
+
+
+def test_a_forced_link_counts_towards_the_mesh_degree() -> None:
+    """c5's forced link fills one of its three slots rather than adding a fourth."""
+    assert _node_degrees(_backbone(forced=_FORCED))["c5"] == 3
+
+
+def test_a_forced_link_displaces_the_farthest_pick() -> None:
+    """c5 spends a slot on the forced c1, so it drops c4, the farthest it would have picked."""
+    assert edge_key("c4", "c5") not in _backbone(forced=_FORCED)
 
 
 # Removing three of c1's four peers leaves it only c5, one link below the target of

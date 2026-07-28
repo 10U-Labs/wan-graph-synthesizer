@@ -2,10 +2,9 @@
 
 The overrides layer resolves the operator's forced connections into a
 :class:`~synthesizer.model.ForcedLinks` bundle; these helpers consume it while
-the synthesizer routes a design, so the pinned edges are honored:
-backbone-backbone pairs pruned from the mesh and access-backbone links pinned as
-homes. They depend only on the model, so the synthesizer imports them without a
-cycle.
+the synthesizer routes a design, so the pinned edges are honored: backbone-backbone
+pairs forced into or pruned from the mesh, and access-backbone links pinned as homes.
+They depend only on the model, so the synthesizer imports them without a cycle.
 """
 
 from __future__ import annotations
@@ -14,15 +13,32 @@ from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.model import ForcedLinks
 
 
+def _pairs_within(
+    backbone_set: set[str], pairs: frozenset[tuple[str, str]]
+) -> frozenset[tuple[str, str]]:
+    """The pairs whose both endpoints are in the current backbone set."""
+    return frozenset(
+        pair for pair in pairs if pair[0] in backbone_set and pair[1] in backbone_set
+    )
+
+
 def removed_backbone_pairs(
     backbone_set: set[str], links: ForcedLinks
 ) -> frozenset[tuple[str, str]]:
     """Operator-pruned backbone pairs whose both endpoints are in the current backbone."""
-    return frozenset(
-        pair
-        for pair in links.removed_backbone
-        if pair[0] in backbone_set and pair[1] in backbone_set
-    )
+    return _pairs_within(backbone_set, links.removed_backbone)
+
+
+def forced_backbone_pairs(
+    backbone_set: set[str], links: ForcedLinks
+) -> frozenset[tuple[str, str]]:
+    """Operator-forced backbone pairs whose both endpoints are in the current backbone.
+
+    A candidate backbone set that seats only one endpoint cannot carry the link, so the
+    pin simply does not apply there; the forced-backbone pins are what guarantee both
+    endpoints are seated in the design that wins.
+    """
+    return _pairs_within(backbone_set, links.backbone)
 
 
 def apply_forced_access_homes(

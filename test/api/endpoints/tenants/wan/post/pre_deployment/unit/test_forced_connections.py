@@ -9,7 +9,11 @@ from __future__ import annotations
 import pytest
 
 import fixtures
-from synthesizer.forced import apply_forced_access_homes, removed_backbone_pairs
+from synthesizer.forced import (
+    apply_forced_access_homes,
+    forced_backbone_pairs,
+    removed_backbone_pairs,
+)
 from synthesizer.overrides import resolve_forced_links
 from synthesizer.model import ForcedConnection, ForcedLinks
 from synthesizer.input_graph import edge_key
@@ -65,6 +69,12 @@ def test_removed_backbone_pairs_keeps_only_in_set_pairs() -> None:
     """Only pruned pairs with both endpoints in the current backbone set are removed."""
     links = ForcedLinks(removed_backbone=frozenset({edge_key("P0", "P1"), edge_key("P0", "P9")}))
     assert removed_backbone_pairs({"P0", "P1"}, links) == frozenset({edge_key("P0", "P1")})
+
+
+def test_forced_backbone_pairs_keeps_only_in_set_pairs() -> None:
+    """Only forced pairs with both endpoints in the current backbone set are wired."""
+    links = ForcedLinks(backbone=frozenset({edge_key("P0", "P1"), edge_key("P0", "P9")}))
+    assert forced_backbone_pairs({"P0", "P1"}, links) == frozenset({edge_key("P0", "P1")})
 
 
 def test_unknown_backbone_endpoint_is_rejected() -> None:

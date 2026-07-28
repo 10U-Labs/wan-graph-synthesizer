@@ -103,6 +103,7 @@ def select_backbone_mesh_pairs(
     all_distances: dict[str, dict[str, float]],
     removed_pairs: frozenset[tuple[str, str]] = frozenset(),
     mesh_degree: int = 3,
+    forced_pairs: frozenset[tuple[str, str]] = frozenset(),
 ) -> list[tuple[str, str]]:
     """Choose which backbone pairs get a logical mesh link.
 
@@ -112,6 +113,12 @@ def select_backbone_mesh_pairs(
     backbone-backbone link from ``etc/*.yml`` -- is skipped, so the node fills that
     slot with its next nearest peer. The per-node picks are unioned, so a node chosen
     by a farther peer can end with one more link than the target.
+
+    Any pair in ``forced_pairs`` -- an operator-forced backbone-backbone link from
+    ``etc/*.yml`` -- is wired however far apart its endpoints are, and counts against
+    each endpoint's degree: a node with one pin picks only ``mesh_degree - 1`` nearest
+    peers of its own, so the configured degree keeps meaning what it says and the pin
+    displaces the farthest link the node would otherwise have chosen.
 
     The nearest-neighbour pass alone can leave geographic clusters unlinked -- every
     node's nearest peers sit inside its own cluster -- so the mesh is then augmented
@@ -125,7 +132,7 @@ def select_backbone_mesh_pairs(
     deliberately isolate a node without blanking the whole mesh.
     """
     target = min(mesh_degree, len(backbone_ids) - 1)
-    selected: set[tuple[str, str]] = set()
+    selected: set[tuple[str, str]] = set(forced_pairs)
     for node in backbone_ids:
         distances = all_distances[node]
         nearest = sorted(
@@ -133,9 +140,13 @@ def select_backbone_mesh_pairs(
             for other in backbone_ids
             if other != node
             and edge_key(node, other) not in removed_pairs
+            and edge_key(node, other) not in forced_pairs
             and math.isfinite(distances.get(other, math.inf))
         )
-        selected.update(edge_key(node, other) for _distance, other in nearest[:target])
+        pinned = sum(1 for pair in forced_pairs if node in pair)
+        selected.update(
+            edge_key(node, other) for _distance, other in nearest[: max(target - pinned, 0)]
+        )
     return sorted(augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs))
 
 
@@ -245,10 +256,11 @@ def augment_physical_resilience(
 
 @dataclass(frozen=True)
 class BackboneConstraints:
-    """The backbone-mesh selection knobs: pruned backbone pairs and the link count."""
+    """The backbone-mesh selection knobs: the operator's pins, prunes, and link count."""
 
     removed_pairs: frozenset[tuple[str, str]] = frozenset()
     mesh_degree: int = 3
+    forced_pairs: frozenset[tuple[str, str]] = frozenset()
 
 
 def backbone_mesh_paths(
@@ -260,11 +272,16 @@ def backbone_mesh_paths(
 ) -> list[PathUse]:
     """Route a shortest path over each backbone-to-backbone mesh link.
 
-    The mesh wires each backbone node to its ``constraints.mesh_degree`` nearest
-    nodes, minus ``constraints.removed_pairs`` (see :func:`select_backbone_mesh_pairs`).
+    The mesh wires each backbone node to its ``constraints.mesh_degree`` nearest nodes,
+    plus ``constraints.forced_pairs`` and minus ``constraints.removed_pairs`` (see
+    :func:`select_backbone_mesh_pairs`).
     """
     pairs = select_backbone_mesh_pairs(
-        backbone_ids, all_distances, constraints.removed_pairs, constraints.mesh_degree
+        backbone_ids,
+        all_distances,
+        constraints.removed_pairs,
+        constraints.mesh_degree,
+        constraints.forced_pairs,
     )
     uses: list[PathUse] = []
     for left, right in pairs:

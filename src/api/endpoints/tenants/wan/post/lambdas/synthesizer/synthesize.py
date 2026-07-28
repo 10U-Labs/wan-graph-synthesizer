@@ -52,6 +52,7 @@ from synthesizer.model import (
 )
 from synthesizer.forced import (
     apply_forced_access_homes,
+    forced_backbone_pairs,
     removed_backbone_pairs,
 )
 from synthesizer.graphs import (
@@ -244,6 +245,7 @@ def routed_path_uses(
     constraints = BackboneConstraints(
         removed_backbone_pairs(backbone_set, plan.forced_links),
         mesh_degree=plan.tuning.backbone_mesh_degree,
+        forced_pairs=forced_backbone_pairs(backbone_set, plan.forced_links),
     )
     return backbone_mesh_paths(
         backbone_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
