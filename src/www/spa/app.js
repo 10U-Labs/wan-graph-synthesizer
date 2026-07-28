@@ -9,7 +9,7 @@ const TILE_ATTRIB = "© OpenStreetMap contributors";
 const API_BASE = "https://api.10ulabs.com/wan-graph-synthesizer";
 
 // The tenant shown on first load, before the operator picks one.
-const DEFAULT_MAP_ID = "dow";
+const DEFAULT_MAP_ID = "daf";
 
 // Vertex color and radius. Provider regions are colored by kind; every other drawn
 // vertex is colored by its tier role. Transit/unused carrier PoPs are not drawn.
