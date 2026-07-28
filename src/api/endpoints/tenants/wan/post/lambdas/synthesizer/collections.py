@@ -45,6 +45,17 @@ def edges(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
+def backbone_links(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """The logical backbone-to-backbone links of a computed tenant WAN.
+
+    One entry per ``backbone_mesh`` path use: the two hubs the link joins, the routed
+    distance, and the physical path it takes. These are the mesh links themselves --
+    including any the operator forced -- which no other collection exposes, because
+    ``edges`` carries only access homings and carrier fiber.
+    """
+    return [use for use in payload["path_uses"] if use["purpose"] == "backbone_mesh"]
+
+
 def _tier(payload: dict[str, Any], tier_role: str) -> list[dict[str, Any]]:
     return [vertex for vertex in payload["vertices"] if vertex["tier_role"] == tier_role]
 

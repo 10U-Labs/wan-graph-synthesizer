@@ -3,6 +3,7 @@
     GET    /wan-graph-synthesizer/tenants                              -> [{id, label}]
     GET    /wan-graph-synthesizer/tenants/{c}/vertices|edges           -> the WAN graph
     GET    /wan-graph-synthesizer/tenants/{c}/backbone-nodes|...        -> the WAN tiers
+    GET    /wan-graph-synthesizer/tenants/{c}/backbone-links            -> the WAN mesh links
     GET    /wan-graph-synthesizer/tenants/{c}/locations|forced-backbone-nodes|... -> an input
     PUT    /wan-graph-synthesizer/tenants/{c}/locations|forced-backbone-nodes|... -> set input
     DELETE /wan-graph-synthesizer/tenants/{c}                          -> remove the tenant
@@ -21,7 +22,14 @@ import boto3
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-_WAN_COLLECTIONS = ("vertices", "edges", "backbone-nodes", "tenant-nodes", "provider-nodes")
+_WAN_COLLECTIONS = (
+    "vertices",
+    "edges",
+    "backbone-nodes",
+    "backbone-links",
+    "tenant-nodes",
+    "provider-nodes",
+)
 # Each operator input is its own resource, stored as ``<collection>.json``. The former
 # ``config`` document is decomposed into the per-concern resources below.
 _INPUTS = frozenset({

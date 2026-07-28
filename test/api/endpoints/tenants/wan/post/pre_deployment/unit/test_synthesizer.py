@@ -53,6 +53,7 @@ def _stub_pipeline(
         "vertices": [{"id": "P", "tier_role": "backbone"}],
         "access_edges": [],
         "physical_edges": [],
+        "path_uses": [{"purpose": "backbone_mesh", "source_name": "P", "target_name": "Q"}],
     }
     monkeypatch.setattr(module, "load_substrate", lambda *_a: (graph, {}))
     monkeypatch.setattr(module, "load_sites", lambda _p: [])
@@ -99,6 +100,17 @@ def test_publishes_the_wan_on_success(synthesizer: Any, monkeypatch: pytest.Monk
     """A successful build writes the tenant's WAN JSON to the store."""
     objects = _run(synthesizer, monkeypatch)
     assert "tenants/f-35/wan.json" in objects
+
+
+def test_publishes_the_backbone_links_collection(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The published WAN carries the backbone-to-backbone links as their own collection."""
+    objects = _run(synthesizer, monkeypatch)
+    wan = json.loads(objects["tenants/f-35/wan.json"])
+    assert wan["backbone-links"] == [
+        {"purpose": "backbone_mesh", "source_name": "P", "target_name": "Q"}
+    ]
 
 
 def test_marks_status_ready_on_success(synthesizer: Any, monkeypatch: pytest.MonkeyPatch) -> None:

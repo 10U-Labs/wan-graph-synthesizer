@@ -69,3 +69,25 @@ def test_tenant_nodes_are_all_tier_tenant() -> None:
 def test_provider_nodes_are_all_tier_provider() -> None:
     """provider_nodes() returns only provider-tier demand vertices."""
     assert all(vertex["tier_role"] == "provider" for vertex in gc.provider_nodes(_payload()))
+
+
+def test_backbone_links_exist_for_a_meshed_design() -> None:
+    """A design whose backbone is meshed exposes at least one backbone-to-backbone link."""
+    assert gc.backbone_links(_payload())
+
+
+def test_backbone_links_are_all_backbone_mesh_uses() -> None:
+    """backbone_links() returns only the path uses recorded for the backbone mesh."""
+    assert all(link["purpose"] == "backbone_mesh" for link in gc.backbone_links(_payload()))
+
+
+def test_backbone_links_omit_other_path_uses() -> None:
+    """A path use recorded for any other purpose is left out."""
+    assert gc.backbone_links({"path_uses": [{"purpose": "access"}]}) == []
+
+
+def test_backbone_links_name_both_endpoints() -> None:
+    """Every link carries the names of the two backbone nodes it joins."""
+    assert all(
+        link["source_name"] and link["target_name"] for link in gc.backbone_links(_payload())
+    )

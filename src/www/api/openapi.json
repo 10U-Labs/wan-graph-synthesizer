@@ -323,6 +323,20 @@
         }
       }
     },
+    "/wan-graph-synthesizer/tenants/{tenant}/backbone-links": {
+      "get": {
+        "summary": "A tenant WAN's backbone-to-backbone mesh links.",
+        "parameters": [
+          { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "The backbone links." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${TenantsHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
     "/wan-graph-synthesizer/tenants/{tenant}/tenant-nodes": {
       "get": {
         "summary": "A tenant WAN's tenant-site demand, homed to the backbone.",

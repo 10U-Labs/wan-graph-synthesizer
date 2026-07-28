@@ -99,6 +99,20 @@ def test_tenants_list_skips_non_label_objects(monkeypatch: pytest.MonkeyPatch) -
     assert json.loads(response["body"]) == [{"id": "joint", "label": "Joint"}]
 
 
+def test_tenant_serves_the_backbone_links(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The backbone-links collection of a built WAN is served from the stored document."""
+    module = _tenant(monkeypatch)
+    links = [{"source_name": "Minot, ND", "target_name": "Kansas City, MO"}]
+    objects = {"tenants/f-35/wan.json": json.dumps({"backbone-links": links}).encode()}
+    event = {
+        "pathParameters": {"tenant": "f-35"},
+        "path": "/x/tenants/f-35/backbone-links",
+    }
+    with patch("boto3.client", return_value=fake_s3(objects)):
+        response = module.lambda_handler(event, None)
+    assert json.loads(response["body"]) == links
+
+
 def test_tenant_accepts_a_well_formed_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
     """A locations PUT whose rows carry the required fields is stored."""
     module = _tenant(monkeypatch)
