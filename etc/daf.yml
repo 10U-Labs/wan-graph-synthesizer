@@ -26,7 +26,16 @@ forced_backbone_nodes:
   - Sacramento, CA
   - Salt Lake City, UT
   - Tallahassee, FL
-forced_connections: []
+forced_connections:
+  - source: Minot, ND
+    target: Kansas City, MO
+    type: backbone-backbone
+  - source: Atlanta, GA
+    target: Dallas, TX
+    type: backbone-backbone
+  - source: Atlanta, GA
+    target: Kansas City, MO
+    type: backbone-backbone
 inputs:
   locations:
     DAF: data/vertices/tenants/daf.csv
