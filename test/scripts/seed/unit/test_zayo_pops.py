@@ -123,3 +123,47 @@ def test_intercontinental_edges_use_submarine_gateways() -> None:
         if _continent(a) != _continent(z) and not ({a, z} <= _GATEWAYS)
     }
     assert not offenders
+
+
+def _domestic_neighbours(city: tuple[str, str]) -> set[tuple[str, str]]:
+    """The US PoPs one Zayo span away from ``city``."""
+    country = {(pop["Municipality"], pop["State"]): pop["Country"] for pop in _pops()}
+    linked = set()
+    for near, far in _edge_pairs():
+        if near == city:
+            linked.add(far)
+        elif far == city:
+            linked.add(near)
+    return {other for other in linked if country.get(other) == "United States"}
+
+
+def test_portland_metro_is_a_through_junction() -> None:
+    """The Portland metro carries the long-haul corridors through it, not around it.
+
+    The Wavelengths map draws Portland, Hillsboro and Beaverton as one overlapping
+    junction that the corridors run through: the I-5 chain arrives from Salem to the
+    south, the Bend/Boise spur leaves to the east, and the Seattle corridor comes down
+    from the north. Digitising that junction as a star centred on Portland would leave
+    Hillsboro a spur whose only other span is the trans-Pacific cable to Tokyo -- and a
+    design needing a route around Portland would then cross the Pacific twice to reach a
+    city fifteen miles away. Each metro member therefore keeps its own terrestrial spans.
+    """
+    assert {("Portland", "OR"), ("Salem", "OR"), ("Beaverton", "OR")} <= _domestic_neighbours(
+        ("Hillsboro", "OR")
+    )
+    assert {("Portland", "OR"), ("Hillsboro", "OR"), ("Bend", "OR")} <= _domestic_neighbours(
+        ("Beaverton", "OR")
+    )
+
+
+def test_pacific_gateways_are_not_domestic_spurs() -> None:
+    """No trans-Pacific landing city hangs off a single inland hub.
+
+    A gateway with one terrestrial neighbour makes its submarine cable the cheapest way
+    around that neighbour, so a resilience detour routes offshore rather than declaring
+    the hub a chokepoint. Every Pacific gateway the map lands a cable at is a metro PoP
+    with terrestrial fiber of its own, so each has at least two domestic spans.
+    """
+    pacific = {("Seattle", "WA"), ("Hillsboro", "OR"), ("San Jose", "CA"), ("Los Angeles", "CA")}
+    spurs = {city for city in pacific if len(_domestic_neighbours(city)) < 2}
+    assert not spurs
