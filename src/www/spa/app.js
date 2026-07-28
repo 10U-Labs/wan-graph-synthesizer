@@ -31,10 +31,49 @@ const EDGE_STYLE = {
 // to, so far-side-of-the-antimeridian sites render on the world copy nearest it.
 const VIEW_CENTER = [39.5, -98.35];
 
+// The legend, one row per drawn symbol, in the map's bottom-right corner. The
+// tenant row is relabelled with the selected tenant, so it reads "DAF Location".
+const LEGEND_ROWS = [
+  { swatch: "dot", color: ROLE_STYLE.backbone.color, label: "WAN Backbone Node" },
+  { swatch: "dot", color: PROVIDER_STYLE.color, label: "Provider" },
+  { swatch: "dot", color: ROLE_STYLE.tenant.color, label: "Location", tenant: true },
+  { swatch: "line", color: EDGE_STYLE.backbone.color, label: "Fiber" },
+];
+
 const map = L.map("map").setView(VIEW_CENTER, 4);
 L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(map);
 
 let drawn = [];
+
+// The tenant row's text node, held so selecting a tenant can relabel it.
+let tenantLegendText = null;
+
+const legend = L.control({ position: "bottomright" });
+
+legend.onAdd = function onAdd() {
+  const box = L.DomUtil.create("div", "legend");
+  for (const row of LEGEND_ROWS) {
+    const item = L.DomUtil.create("div", "legend-item", box);
+    const swatch = L.DomUtil.create("span", `legend-swatch legend-${row.swatch}`, item);
+    swatch.style.background = row.color;
+    const text = L.DomUtil.create("span", "legend-label", item);
+    text.textContent = row.label;
+    if (row.tenant) {
+      tenantLegendText = text;
+    }
+  }
+  L.DomEvent.disableClickPropagation(box);
+  return box;
+};
+
+legend.addTo(map);
+
+// Name the legend's blue dot after the tenant on show, e.g. "DAF Location".
+function showLegendTenant(label) {
+  if (tenantLegendText) {
+    tenantLegendText.textContent = `${label} Location`;
+  }
+}
 
 function styleFor(vertex) {
   if (vertex.kind === PROVIDER_KIND) {
@@ -217,11 +256,12 @@ async function render(tenantId) {
   }
 }
 
-// Mark the chosen tenant link active and redraw its WAN map.
+// Mark the chosen tenant link active, name it in the legend, and redraw its map.
 function select(link, mapId) {
   for (const other of document.querySelectorAll("#tenants a")) {
     other.classList.toggle("active", other === link);
   }
+  showLegendTenant(link.textContent);
   return render(mapId);
 }
 

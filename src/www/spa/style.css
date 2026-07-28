@@ -46,3 +46,34 @@ body {
   height: calc(100% - 2.6rem);
   width: 100%;
 }
+
+.legend {
+  background: rgba(31, 41, 51, 0.9);
+  color: #fff;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.legend-swatch {
+  flex-shrink: 0;
+}
+
+.legend-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+}
+
+.legend-line {
+  width: 1rem;
+  height: 0.2rem;
+}
