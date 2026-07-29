@@ -68,13 +68,13 @@ def test_tenants_list_surfaces_each_label(monkeypatch: pytest.MonkeyPatch) -> No
     """The tenants collection returns each tenant's display label document."""
     module = _tenant(monkeypatch)
     objects = {
-        "tenants/f-35-redundant/label.json": json.dumps({"label": "F-35 (redundant)"}).encode(),
+        "tenants/f-35/label.json": json.dumps({"label": "F-35"}).encode(),
         "tenants/joint/label.json": json.dumps({"label": "Joint"}).encode(),
     }
     with patch("boto3.client", return_value=fake_s3(objects)):
         response = module.lambda_handler({}, None)
     assert json.loads(response["body"]) == [
-        {"id": "f-35-redundant", "label": "F-35 (redundant)"},
+        {"id": "f-35", "label": "F-35"},
         {"id": "joint", "label": "Joint"},
     ]
 

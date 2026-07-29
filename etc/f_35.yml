@@ -1,13 +1,25 @@
 ---
-# F-35-only WAN design, single-homed: each demand node homes to one backbone node
-# (homing degree of 1), unlike the redundant variant.
+# F-35-only WAN design: demand is F-35 installations only (no AFLCMC/AFNWC/NI).
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
-access_homing_degree: 1
-backbone_mesh_degree: 2
+access_homing_degree: 2
+backbone_mesh_degree: 3
 backbone_node_count:
-  max: 99
+  max: 16
   min: 3
-forced_backbone_nodes: []
+forced_backbone_nodes:
+  - Ashburn, VA
+  - Cincinnati, OH
+  - Colorado Springs, CO
+  - Dallas, TX
+  - Fort Worth, TX
+  - Jacksonville, FL
+  - Las Vegas, NV
+  - Los Angeles, CA
+  - McLean, VA
+  - Pittsburgh, PA
+  - Salt Lake City, UT
+  - Seattle, WA
+  - Tallahassee, FL
 forced_connections: []
 inputs:
   locations:
@@ -16,12 +28,12 @@ inputs:
   providers:
     regions: data/vertices/providers/providers.csv
 knobs:
-  backbone_coverage_target_miles: 600.0
+  backbone_coverage_target_miles: 400.0
   backbone_set_peak_bytes: 160
   compass_octants: 8
   enum_memory_fraction: 0.6
-label: F-35 (non-redundant)
+label: F-35
 prohibited_backbone_nodes: []
 prohibited_connections: []
 promote_high_degree_convergences_to_backbone_nodes: false
-restrict_backbone_to_data_centers: true
+restrict_backbone_to_data_centers: false

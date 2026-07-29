@@ -97,7 +97,7 @@ def _response(status: int, body: Any) -> dict[str, Any]:
 def _tenants(client: Any) -> list[dict[str, str]]:
     """List the tenants (those with a label) as ``{id, label}`` entries for the UI.
 
-    The display label is the tenant's ``label`` document (e.g. ``F-35 (redundant)``),
+    The display label is the tenant's ``label`` document (e.g. ``F-35``),
     falling back to the id when it is unset.
     """
     listing = client.list_objects_v2(

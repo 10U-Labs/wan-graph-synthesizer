@@ -87,7 +87,7 @@ def _one_tenant(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> N
 
 def test_slug_replaces_underscores_with_hyphens() -> None:
     """_slug turns underscores into hyphens."""
-    assert _slug("f_35_redundant") == "f-35-redundant"
+    assert _slug("daf_conus") == "daf-conus"
 
 
 def test_slug_leaves_a_plain_stem_unchanged() -> None:
