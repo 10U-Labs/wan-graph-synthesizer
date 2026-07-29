@@ -186,6 +186,20 @@ def _paths(inputs: dict[str, Any]) -> DesignPaths:
     )
 
 
+def _sector_count(settings: dict[str, Any], default: int) -> int:
+    """Return the compass sector count, rejecting a non-integer or one below one.
+
+    The count both cuts the compass into sectors and divides the sector tally in the
+    strength score, so zero is a division by zero and a fraction is a sector geometry
+    nothing can produce. Parse time is the only place either can be refused before a
+    design run starts.
+    """
+    value = settings.get("compass_octants", default)
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ValueError("config key 'compass_octants' must be an integer of at least 1")
+    return value
+
+
 def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
     """Resolve the tuning and settings configuration into a :class:`Tuning`.
 
@@ -197,7 +211,7 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
     """
     base = Tuning()
     return Tuning(
-        compass_octants=settings.get("compass_octants", base.compass_octants),
+        compass_octants=_sector_count(settings, base.compass_octants),
         backbone_mesh_degree=_required_int(tuning, "backbone_mesh_degree"),
         backbone_coverage_target_miles=_required_float(
             tuning, "backbone_coverage_target_miles"

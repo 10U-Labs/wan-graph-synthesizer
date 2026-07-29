@@ -295,6 +295,14 @@ def test_reads_settings_backbone_set_peak_bytes() -> None:
     ).params.tuning.enum_budget.set_peak_bytes == 200
 
 
+@pytest.mark.parametrize("value", [0, -1, 8.0, True, "8"])
+def test_rejects_a_compass_sector_count_that_is_not_a_positive_integer(
+        value: object) -> None:
+    """A sector count below one, or not an integer, is refused when the config parses."""
+    with pytest.raises(ValueError, match="compass_octants"):
+        _config({"settings": {"compass_octants": value}})
+
+
 def test_a_dial_left_in_the_tuning_section_is_not_read() -> None:
     """A dial left in the tuning section is ignored, so the built-in default stands."""
     assert _config({"tuning": {"compass_octants": 6}}).params.tuning.compass_octants == 8
