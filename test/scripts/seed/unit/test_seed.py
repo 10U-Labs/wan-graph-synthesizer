@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -33,7 +34,8 @@ from seed import (
 )
 
 _TENANT_YML = """\
-access_homing_degree: 1
+access:
+  homing_degree: 1
 backbone_mesh_degree: 2
 backbone_node_count:
   max: 3
@@ -89,6 +91,15 @@ def _one_tenant(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> N
     _write_csv(tmp_path / "offnet" / "off.csv", "city,state", "Edge,TX")
     (tmp_path / "etc").mkdir(parents=True, exist_ok=True)
     (tmp_path / "etc" / "f_35.yml").write_text(body, encoding="utf-8")
+
+
+def _pushed_bodies(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, put_recorder: CallRecorder,
+        body: str = _TENANT_YML) -> dict[str, Any]:
+    """Push one tenant config *body* and map each resource path to the document sent."""
+    _one_tenant(tmp_path, monkeypatch, body)
+    push_tenants("http://api")
+    return dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
 
 
 def test_slug_replaces_underscores_with_hyphens() -> None:
@@ -329,19 +340,23 @@ def test_push_tenants_puts_the_convergence_promotion_resource(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
     """push_tenants wraps the promotion flag as the convergence-promotion document."""
-    _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
-    push_tenants("http://api")
-    bodies = dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/convergence-promotion"] == {"promote": False}
+
+
+def test_push_tenants_puts_the_access_homing_degree_resource(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants reads the homing degree from the access block, not a root key."""
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/access-homing-degree"] == {"degree": 1}
 
 
 def test_push_tenants_puts_the_settings_document(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
     """push_tenants sends the tenant's settings block as its own document."""
-    _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
-    push_tenants("http://api")
-    bodies = dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/settings"] == {"compass_sector_count": 4}
 
 
@@ -349,9 +364,7 @@ def test_push_tenants_reads_off_net_when_present(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
     """push_tenants sends the off-net rows when an off_net file is given."""
-    _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
-    push_tenants("http://api")
-    bodies = dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/off-net"] == [{"city": "Edge", "state": "TX"}]
 
 
@@ -359,10 +372,9 @@ def test_push_tenants_uses_empty_off_net_when_absent(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
     """push_tenants sends an empty off-net list when no off_net is given."""
-    _one_tenant(tmp_path, monkeypatch, _TENANT_YML.replace(
-        "  off_net: offnet/off.csv\n", ""))
-    push_tenants("http://api")
-    bodies = dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
+    bodies = _pushed_bodies(
+        tmp_path, monkeypatch, put_recorder,
+        _TENANT_YML.replace("  off_net: offnet/off.csv\n", ""))
     assert bodies["tenants/f-35/off-net"] == []
 
 
