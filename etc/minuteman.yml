@@ -29,6 +29,6 @@ prohibited_connections: []
 promote_high_degree_convergences_to_backbone_nodes: false
 restrict_backbone_to_data_centers: false
 settings:
-  backbone_set_peak_bytes: 160
-  compass_octants: 8
-  enum_memory_fraction: 0.6
+  backbone_search_memory_share: 0.6
+  bytes_per_backbone_combination: 160
+  compass_sector_count: 8

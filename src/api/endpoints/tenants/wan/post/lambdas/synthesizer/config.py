@@ -186,6 +186,26 @@ def _paths(inputs: dict[str, Any]) -> DesignPaths:
     )
 
 
+# The keys the settings resource defines. Anything else in a stored settings document
+# is an operator typo or a key that has been renamed, and either way the value it holds
+# steers nothing -- so it is refused rather than silently replaced by a default.
+SETTINGS_KEYS = frozenset({
+    "backbone_search_memory_share",
+    "bytes_per_backbone_combination",
+    "compass_sector_count",
+})
+
+
+def _checked_settings(settings: dict[str, Any]) -> dict[str, Any]:
+    """Return the settings mapping, rejecting any key the resource does not define."""
+    unknown = sorted(set(settings) - SETTINGS_KEYS)
+    if unknown:
+        raise ValueError(
+            f"settings resource carries unknown keys: {', '.join(unknown)}"
+        )
+    return settings
+
+
 def _sector_count(settings: dict[str, Any], default: int) -> int:
     """Return the compass sector count, rejecting a non-integer or one below one.
 
@@ -194,9 +214,9 @@ def _sector_count(settings: dict[str, Any], default: int) -> int:
     nothing can produce. Parse time is the only place either can be refused before a
     design run starts.
     """
-    value = settings.get("compass_octants", default)
+    value = settings.get("compass_sector_count", default)
     if not isinstance(value, int) or isinstance(value, bool) or value < 1:
-        raise ValueError("settings key 'compass_octants' must be an integer of at least 1")
+        raise ValueError("settings key 'compass_sector_count' must be an integer of at least 1")
     return value
 
 
@@ -210,12 +230,12 @@ def _memory_share(settings: dict[str, Any], default: float) -> float:
     mentions configuration. Parse time is the only point either can be refused before a
     design run starts; failing inside ``enumeration_limit`` would waste the graph load.
     """
-    value = settings.get("enum_memory_fraction", default)
+    value = settings.get("backbone_search_memory_share", default)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError("settings key 'enum_memory_fraction' must be a number")
+        raise ValueError("settings key 'backbone_search_memory_share' must be a number")
     if not 0.0 < value <= 1.0:
         raise ValueError(
-            "settings key 'enum_memory_fraction' must be above 0 and at most 1"
+            "settings key 'backbone_search_memory_share' must be above 0 and at most 1"
         )
     return float(value)
 
@@ -227,9 +247,13 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
     ``tuning``, which the assembler builds from the ``knobs`` resource and the two
     degree resources. The implementation dials come from ``settings``, and only from
     there: a value left behind under ``knobs`` is not read, so it falls back to the
-    dataclass default rather than quietly continuing to steer the search.
+    dataclass default rather than quietly continuing to steer the search. A settings
+    document carrying a key the resource does not define -- a typo, or a name from
+    before a rename -- is refused outright, since defaulting past it would run the
+    design on values nobody chose (see :func:`_checked_settings`).
     """
     base = Tuning()
+    settings = _checked_settings(settings)
     return Tuning(
         compass_octants=_sector_count(settings, base.compass_octants),
         backbone_mesh_degree=_required_int(tuning, "backbone_mesh_degree"),
@@ -240,7 +264,7 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
         enum_budget=EnumBudget(
             memory_fraction=_memory_share(settings, base.enum_budget.memory_fraction),
             set_peak_bytes=settings.get(
-                "backbone_set_peak_bytes", base.enum_budget.set_peak_bytes
+                "bytes_per_backbone_combination", base.enum_budget.set_peak_bytes
             ),
         ),
     )

@@ -213,8 +213,8 @@ def test_tenant_put_persists_a_settings_document(monkeypatch: pytest.MonkeyPatch
     module = _tenant(monkeypatch)
     stored: dict[str, bytes] = {}
     with patch("boto3.client", side_effect=write_clients(stored, [])):
-        module.lambda_handler(_tenant_put("settings", {"compass_octants": 4}), None)
-    assert json.loads(stored["tenants/f-35/settings.json"]) == {"compass_octants": 4}
+        module.lambda_handler(_tenant_put("settings", {"compass_sector_count": 4}), None)
+    assert json.loads(stored["tenants/f-35/settings.json"]) == {"compass_sector_count": 4}
 
 
 def test_tenant_rejects_a_malformed_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:

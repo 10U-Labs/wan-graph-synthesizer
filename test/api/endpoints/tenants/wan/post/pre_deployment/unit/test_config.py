@@ -269,9 +269,9 @@ def test_prohibited_backbone_must_be_a_list_of_strings() -> None:
         _config({"design": {"prohibited_backbone": "Denver, CO"}})
 
 
-def test_reads_settings_compass_octants() -> None:
-    """A settings compass_octants value is read into the design params."""
-    assert _config({"settings": {"compass_octants": 6}}).params.tuning.compass_octants == 6
+def test_reads_settings_compass_sector_count() -> None:
+    """A settings compass_sector_count value is read into the design params."""
+    assert _config({"settings": {"compass_sector_count": 6}}).params.tuning.compass_octants == 6
 
 
 def test_reads_tuning_coverage_target() -> None:
@@ -281,17 +281,17 @@ def test_reads_tuning_coverage_target() -> None:
     ).params.tuning.backbone_coverage_target_miles == 250.0
 
 
-def test_reads_settings_enum_memory_fraction() -> None:
-    """A settings enum_memory_fraction value is read into the enumeration budget."""
+def test_reads_settings_backbone_search_memory_share() -> None:
+    """A settings memory-share value is read into the enumeration budget."""
     assert _config(
-        {"settings": {"enum_memory_fraction": 0.3}}
+        {"settings": {"backbone_search_memory_share": 0.3}}
     ).params.tuning.enum_budget.memory_fraction == 0.3
 
 
-def test_reads_settings_backbone_set_peak_bytes() -> None:
-    """A settings backbone_set_peak_bytes value is read into the enumeration budget."""
+def test_reads_settings_bytes_per_combination() -> None:
+    """A settings per-combination byte cost is read into the enumeration budget."""
     assert _config(
-        {"settings": {"backbone_set_peak_bytes": 200}}
+        {"settings": {"bytes_per_backbone_combination": 200}}
     ).params.tuning.enum_budget.set_peak_bytes == 200
 
 
@@ -299,21 +299,33 @@ def test_reads_settings_backbone_set_peak_bytes() -> None:
 def test_rejects_a_compass_sector_count_that_is_not_a_positive_integer(
         value: object) -> None:
     """A sector count below one, or not an integer, is refused when the config parses."""
-    with pytest.raises(ValueError, match="compass_octants"):
-        _config({"settings": {"compass_octants": value}})
+    with pytest.raises(ValueError, match="compass_sector_count"):
+        _config({"settings": {"compass_sector_count": value}})
 
 
 @pytest.mark.parametrize("value", [1.5, 0, 0.0, -0.1, True, "half"])
 def test_rejects_a_memory_share_outside_zero_to_one(value: object) -> None:
     """A memory share not above 0 and at most 1 is refused when the config parses."""
-    with pytest.raises(ValueError, match="enum_memory_fraction"):
-        _config({"settings": {"enum_memory_fraction": value}})
+    with pytest.raises(ValueError, match="backbone_search_memory_share"):
+        _config({"settings": {"backbone_search_memory_share": value}})
 
 
 def test_accepts_a_memory_share_of_exactly_one() -> None:
     """A memory share of exactly 1 -- all the memory the function has -- is accepted."""
-    budget = _config({"settings": {"enum_memory_fraction": 1}}).params.tuning.enum_budget
+    budget = _config({"settings": {"backbone_search_memory_share": 1}}).params.tuning.enum_budget
     assert budget.memory_fraction == 1.0
+
+
+def test_rejects_a_settings_document_written_before_the_rename() -> None:
+    """A stored document carrying only the old key names is refused, not defaulted."""
+    with pytest.raises(ValueError, match="unknown keys"):
+        _config({"settings": {"compass_octants": 8, "enum_memory_fraction": 0.6}})
+
+
+def test_rejects_an_unrecognised_settings_key() -> None:
+    """A key the settings resource does not define is refused when the config parses."""
+    with pytest.raises(ValueError, match="compass_sectors"):
+        _config({"settings": {"compass_sectors": 8}})
 
 
 def test_a_dial_left_in_the_tuning_section_is_not_read() -> None:
@@ -438,7 +450,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
 
 def test_app_config_from_parts_folds_settings_into_tuning() -> None:
     """A settings document supplies tuning values alongside the knobs document."""
-    parts = _parts(settings={"enum_memory_fraction": 0.25})
+    parts = _parts(settings={"backbone_search_memory_share": 0.25})
     budget = app_config_from_parts(parts).params.tuning.enum_budget
     assert budget.memory_fraction == 0.25
 
@@ -446,7 +458,8 @@ def test_app_config_from_parts_folds_settings_into_tuning() -> None:
 def test_app_config_from_parts_reads_every_dial_from_settings() -> None:
     """The three implementation dials come from the settings document."""
     parts = _parts(settings={
-        "compass_octants": 4, "enum_memory_fraction": 0.25, "backbone_set_peak_bytes": 320,
+        "compass_sector_count": 4, "backbone_search_memory_share": 0.25,
+        "bytes_per_backbone_combination": 320,
     })
     budget = app_config_from_parts(parts).params.tuning.enum_budget
     assert (budget.memory_fraction, budget.set_peak_bytes) == (0.25, 320)

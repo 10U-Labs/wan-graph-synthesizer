@@ -178,8 +178,8 @@ build. Write the sentence the name could not fit, in the present tense,
 describing the behaviour rather than the mechanics.
 
 ```python
-def test_enum_memory_fraction_above_one_is_rejected() -> None:
-    """A memory fraction above 1 is rejected when the config is parsed."""
+def test_memory_share_above_one_is_rejected() -> None:
+    """A memory share above 1 is rejected when the config is parsed."""
 ```
 
 Do not restate the function name in prose, and do not describe the setup
@@ -206,8 +206,8 @@ For raised errors, assert the type and the text that identifies it, using
 ```python
 def test_parse_rejects_a_zero_sector_count() -> None:
     """A sector count of 0 is rejected with a message naming the key."""
-    with pytest.raises(ValueError, match="compass_octants"):
-        app_config_from_parts(parts_with(compass_octants=0))
+    with pytest.raises(ValueError, match="compass_sector_count"):
+        app_config_from_parts(parts_with(compass_sector_count=0))
 ```
 
 ## No Test Interdependence
