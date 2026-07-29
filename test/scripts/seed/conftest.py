@@ -32,3 +32,11 @@ def post_recorder(monkeypatch: pytest.MonkeyPatch) -> CallRecorder:
     recorder = CallRecorder()
     monkeypatch.setattr(seed, "_post", recorder)
     return recorder
+
+
+@pytest.fixture
+def delete_recorder(monkeypatch: pytest.MonkeyPatch) -> CallRecorder:
+    """Replace seed._delete with a recorder of its (api, path) calls."""
+    recorder = CallRecorder()
+    monkeypatch.setattr(seed, "_delete", recorder)
+    return recorder

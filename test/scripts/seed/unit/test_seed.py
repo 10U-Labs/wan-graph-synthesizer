@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,8 @@ from seed import (
     _carrier_names,
     _data_center_providers,
     _degree_doc,
+    _delete,
+    _get,
     _mapping_rows,
     _post,
     _put,
@@ -22,6 +25,7 @@ from seed import (
     build_substrate,
     build_tenants,
     main,
+    prune_tenants,
     push_carriers,
     push_data_centers,
     push_providers,
@@ -240,6 +244,31 @@ def test_post_prints_the_response_status(capsys: pytest.CaptureFixture[str]) -> 
     assert "-> 200" in capsys.readouterr().out
 
 
+def test_get_uses_the_get_method(urlopen_recorder: UrlopenRecorder) -> None:
+    """_get issues an HTTP GET."""
+    _get("http://api", "tenants")
+    assert urlopen_recorder.requests[0].method == "GET"
+
+
+def test_get_sends_no_body(urlopen_recorder: UrlopenRecorder) -> None:
+    """_get sends no request body (a read takes none)."""
+    _get("http://api", "tenants")
+    assert urlopen_recorder.requests[0].data is None
+
+
+def test_get_decodes_the_json_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_get returns the response body decoded from JSON."""
+    monkeypatch.setattr(
+        urllib.request, "urlopen", UrlopenRecorder(body=b'[{"id": "f-35"}]'))
+    assert _get("http://api", "tenants") == [{"id": "f-35"}]
+
+
+def test_delete_uses_the_delete_method(urlopen_recorder: UrlopenRecorder) -> None:
+    """_delete issues an HTTP DELETE."""
+    _delete("http://api", "tenants/f-35")
+    assert urlopen_recorder.requests[0].method == "DELETE"
+
+
 def test_push_carriers_puts_the_vertices_path(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
@@ -342,6 +371,37 @@ def test_push_tenants_returns_the_tenant_ids(
     assert push_tenants("http://api") == ["f-35"]
 
 
+def _stored_tenants(monkeypatch: pytest.MonkeyPatch, *ids: str) -> None:
+    """Stub the tenant listing the API answers with as *ids*."""
+    listing = [{"id": tenant} for tenant in ids]
+    monkeypatch.setattr(seed, "_get", lambda _api, _path: listing)
+
+
+def test_prune_tenants_deletes_a_tenant_without_a_config(
+        monkeypatch: pytest.MonkeyPatch, delete_recorder: CallRecorder) -> None:
+    """prune_tenants DELETEs a stored tenant that etc/ no longer declares."""
+    _stored_tenants(monkeypatch, "f-35-non-redundant")
+    prune_tenants("http://api", ["f-35"])
+    assert delete_recorder.calls == [("http://api", "tenants/f-35-non-redundant")]
+
+
+def test_prune_tenants_keeps_a_tenant_with_a_config(
+        monkeypatch: pytest.MonkeyPatch, delete_recorder: CallRecorder) -> None:
+    """prune_tenants leaves a stored tenant that etc/ still declares."""
+    _stored_tenants(monkeypatch, "f-35")
+    prune_tenants("http://api", ["f-35"])
+    assert delete_recorder.calls == []
+
+
+@pytest.mark.usefixtures("delete_recorder")
+def test_prune_tenants_names_the_tenant_it_deletes(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """prune_tenants names each tenant it removes, so the deletion is not silent."""
+    _stored_tenants(monkeypatch, "f-35-redundant")
+    prune_tenants("http://api", [])
+    assert "f-35-redundant" in capsys.readouterr().out
+
+
 def test_build_substrate_posts_the_merge(post_recorder: CallRecorder) -> None:
     """build_substrate POSTs the carrier merge."""
     build_substrate("http://api")
@@ -385,6 +445,9 @@ def _run_main(
         seed, "build_data_centers", lambda api: calls.append(("dc-merge", api)))
     monkeypatch.setattr(seed, "push_tenants", _push_tenants)
     monkeypatch.setattr(
+        seed, "prune_tenants",
+        lambda _api, tenants: calls.append(("prune", ",".join(tenants))))
+    monkeypatch.setattr(
         seed, "build_tenants", lambda api, _tenants: calls.append(("build", api)))
     main()
     return calls
@@ -404,4 +467,11 @@ def test_main_seeds_inputs_then_triggers_builds_in_order(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """main seeds carriers, substrate, providers, data-centers (+union), tenants, then builds."""
     assert [name for name, _ in _run_main(monkeypatch, ["seed"])] == [
-        "carriers", "merge", "providers", "data-centers", "dc-merge", "tenants", "build"]
+        "carriers", "merge", "providers", "data-centers", "dc-merge", "tenants",
+        "prune", "build"]
+
+
+def test_main_prunes_against_the_pushed_tenant_ids(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """main hands the ids it just pushed to the prune step, as the roster to keep."""
+    assert ("prune", "t") in _run_main(monkeypatch, ["seed"])

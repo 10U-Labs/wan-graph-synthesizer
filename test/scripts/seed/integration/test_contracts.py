@@ -2,8 +2,8 @@
 
 These run the real CLI pipeline (``seed.main``) over the repository's own
 ``data/`` and ``etc/`` inputs with the HTTP boundary replaced in-process, then
-assert the cross-file contract that every resource seed writes is a declared
-PUT in the OpenAPI spec the API is built from.
+assert the cross-file contract that every resource seed touches is declared in
+the OpenAPI spec the API is built from.
 """
 
 from __future__ import annotations
@@ -21,20 +21,17 @@ from test_http_doubles import UrlopenRecorder
 _API = "http://stub"
 
 
-def _write_templates() -> set[str]:
-    """The PUT/POST path templates declared in the OpenAPI spec, minus the prefix.
+def _declared_templates() -> set[str]:
+    """The path templates declared in the OpenAPI spec, minus the prefix.
 
-    Seed both stores inputs (PUT) and triggers builds (POST ``carriers/merge`` and
-    ``tenants/{t}/wan``), so a declared write is either method.
+    Seed stores inputs (PUT), triggers builds (POST ``carriers/merge`` and
+    ``tenants/{t}/wan``), reads the tenant listing (GET) and removes tenants git has
+    dropped (DELETE), so every declared path is one seed may legitimately request.
     """
     spec = json.loads(
         (REPO_ROOT / "src/www/api/openapi.json").read_text(encoding="utf-8"))
     prefix = "/wan-graph-synthesizer/"
-    return {
-        path[len(prefix):]
-        for path, operations in spec["paths"].items()
-        if ("put" in operations or "post" in operations) and path.startswith(prefix)
-    }
+    return {path[len(prefix):] for path in spec["paths"] if path.startswith(prefix)}
 
 
 def _matches(path: str, template: str) -> bool:
@@ -50,10 +47,10 @@ def _seed(recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> list[st
     return recorder.paths(_API)
 
 
-def test_every_written_path_is_declared_in_openapi(
+def test_every_requested_path_is_declared_in_openapi(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Every path seed sends (PUT input or POST build) is declared in the OpenAPI spec."""
-    templates = _write_templates()
+    """Every path seed requests (input, build, listing or removal) is declared in the spec."""
+    templates = _declared_templates()
     undeclared = [
         path for path in _seed(urlopen_recorder, monkeypatch)
         if not any(_matches(path, template) for template in templates)

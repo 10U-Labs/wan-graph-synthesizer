@@ -6,7 +6,9 @@ endpoint. What each place *is* comes from the endpoint it is sent to, so nothing
 classified or shaped here; carrier connections (``A_/Z_`` city+state) are forwarded as
 they stand and resolved server-side. Carriers push their points and connections;
 providers push their regions; each tenant pushes its sites, provider-region selection,
-off-net candidates, and per-concern config resources. Writes only store inputs -- they trigger
+off-net candidates, and per-concern config resources. The tenant configs in ``etc/`` are
+the roster, so a tenant the API still lists once they have all been pushed is one git no
+longer declares and is deleted. Writes only store inputs -- they trigger
 nothing -- so the seed then explicitly rebuilds the shared substrate
 (``POST carriers/merge``) and each tenant's WAN (``POST tenants/{t}/wan``).
 
@@ -20,7 +22,7 @@ import json
 import sys
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -64,8 +66,8 @@ def _slug(stem: str) -> str:
     return stem.replace("_", "-")
 
 
-def _send(api: str, path: str, method: str, body: bytes) -> None:
-    """Send a JSON request to the API, raising on a non-2xx response."""
+def _send(api: str, path: str, method: str, body: bytes | None) -> bytes:
+    """Send a JSON request to the API and return its body, raising on a non-2xx response."""
     request = urllib.request.Request(
         f"{api}/{path}",
         data=body,
@@ -74,6 +76,7 @@ def _send(api: str, path: str, method: str, body: bytes) -> None:
     )
     with urllib.request.urlopen(request, timeout=60) as response:
         print(f"  {method} /{path} -> {response.status}", flush=True)
+        return cast("bytes", response.read())
 
 
 def _put(api: str, path: str, body: Any) -> None:
@@ -84,6 +87,16 @@ def _put(api: str, path: str, body: Any) -> None:
 def _post(api: str, path: str) -> None:
     """POST to a build operation (no body), raising on a non-2xx response."""
     _send(api, path, "POST", b"")
+
+
+def _get(api: str, path: str) -> Any:
+    """GET a JSON document from the API, raising on a non-2xx response."""
+    return json.loads(_send(api, path, "GET", None))
+
+
+def _delete(api: str, path: str) -> None:
+    """DELETE a resource from the API, raising on a non-2xx response."""
+    _send(api, path, "DELETE", None)
 
 
 def _degree_doc(value: Any) -> dict[str, Any]:
@@ -168,6 +181,21 @@ def push_tenants(api: str) -> list[str]:
     return tenant_ids
 
 
+def prune_tenants(api: str, tenants: list[str]) -> None:
+    """Delete every stored tenant that ``etc/`` no longer declares.
+
+    ``etc/`` is the roster: a tenant exists because a config file names it, so one the
+    API still lists after the push is a tenant git has dropped, and its stored inputs
+    and WAN go with it.
+    """
+    for entry in _get(api, "tenants"):
+        tenant = entry["id"]
+        if tenant in tenants:
+            continue
+        print(f"tenant {tenant}: deleting (no config in etc/)", flush=True)
+        _delete(api, f"tenants/{tenant}")
+
+
 def build_substrate(api: str) -> None:
     """Rebuild the shared carrier substrate from the pushed carriers."""
     print("merge: rebuilding substrate", flush=True)
@@ -188,7 +216,7 @@ def build_tenants(api: str, tenants: list[str]) -> None:
 
 
 def main() -> None:
-    """Seed inputs, then explicitly rebuild the substrate and each tenant's WAN."""
+    """Seed inputs, prune dropped tenants, then rebuild the substrate and each WAN."""
     api = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_API
     push_carriers(api)
     build_substrate(api)
@@ -196,6 +224,7 @@ def main() -> None:
     push_data_centers(api)
     build_data_centers(api)
     tenants = push_tenants(api)
+    prune_tenants(api, tenants)
     build_tenants(api, tenants)
 
 
