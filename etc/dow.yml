@@ -1,50 +1,53 @@
 ---
 # DoW WAN design across every carrier's fiber.
-# Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
+# Two blocks describe the design -- the meshed `backbone` and the `access` that
+# homes into it. Keys are kept alphabetical within each block, nested ones
+# included, to satisfy yamllint key-ordering.
 access:
   homing_degree: 2
 backbone:
+  coverage_target_miles: 300.0
+  forced:
+    connections: []
+    nodes:
+      - Ashburn, VA
+      - Boardman, OR
+      - Cheyenne, WY
+      - Cincinnati, OH
+      - Colorado Springs, CO
+      - Columbus, OH
+      - Dallas, TX
+      - Denver, CO
+      - Fort Worth, TX
+      - Great Falls, MT
+      - Hillsboro, OR
+      - Houston, TX
+      - Los Angeles, CA
+      - McLean, VA
+      - Minot, ND
+      - Phoenix, AZ
+      - Salt Lake City, UT
+      - San Antonio, TX
+      - San Diego, CA
+      - Seattle, WA
+      - Tucson, AZ
+      - Umatilla, OR
   mesh_degree: 3
   node_count:
     max: 1000
     min: 3
-forced_backbone_nodes:
-  - Ashburn, VA
-  - Boardman, OR
-  - Cheyenne, WY
-  - Cincinnati, OH
-  - Colorado Springs, CO
-  - Columbus, OH
-  - Dallas, TX
-  - Denver, CO
-  - Fort Worth, TX
-  - Great Falls, MT
-  - Hillsboro, OR
-  - Houston, TX
-  - Los Angeles, CA
-  - McLean, VA
-  - Minot, ND
-  - Phoenix, AZ
-  - Salt Lake City, UT
-  - San Antonio, TX
-  - San Diego, CA
-  - Seattle, WA
-  - Tucson, AZ
-  - Umatilla, OR
-forced_connections: []
+  prohibited:
+    connections: []
+    nodes: []
+  promote_high_degree_convergences: true
+  restrict_to_data_centers: false
 inputs:
   locations:
     DoW: data/vertices/tenants/dow.csv
   off_net: data/vertices/utilities/off_net.csv
   providers:
     regions: data/vertices/providers/providers.csv
-knobs:
-  backbone_coverage_target_miles: 300.0
 label: DoW
-prohibited_backbone_nodes: []
-prohibited_connections: []
-promote_high_degree_convergences_to_backbone_nodes: true
-restrict_backbone_to_data_centers: false
 settings:
   backbone_search_memory_share: 0.6
   bytes_per_backbone_combination: 160
