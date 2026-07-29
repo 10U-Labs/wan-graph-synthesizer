@@ -3,9 +3,9 @@
 Every backbone node links to its ``mesh_degree`` nearest reachable backbone nodes that
 do not route through one another, minus any backbone-backbone pairs the operator pruned
 in ``etc/*.yml``. Counting links that share a transit city would let a node report its
-full degree and still fall to one link when that city goes. The mesh is
-then augmented so the backbone is a single connected network and, wherever the carrier
-graph allows, 2-vertex-connected -- the physical fiber survives the loss of any single
+full degree and still fall to one link when that city goes. The mesh is then augmented
+so the backbone is a single connected network and, wherever the carrier graph allows,
+2-vertex-connected -- the physical fiber survives the loss of any single
 city, which also implies it survives any single cable cut. These helpers are split from
 the synthesizer so the backbone concern stays cohesive and the synthesizer module stays
 bounded.
@@ -100,7 +100,7 @@ def augment_for_resilience(
     return edges
 
 
-def shares_transit(
+def _shares_transit(
     node: str,
     candidate: str,
     chosen: set[str],
@@ -125,6 +125,34 @@ def shares_transit(
         )
         for peer in chosen
     )
+
+
+def _diverse_picks(
+    node: str,
+    nearest: list[tuple[float, str]],
+    pinned: set[str],
+    slots: int,
+    all_distances: dict[str, dict[str, float]],
+) -> list[str]:
+    """Fill ``node``'s free slots from ``nearest``, preferring peers it shares no transit with.
+
+    Candidates are walked nearest first; one that routes through a peer already held --
+    a pin or an earlier pick -- is passed over rather than taken. Slots left over once
+    the diverse candidates run out are filled from the passed-over ones, nearest first,
+    since a link through a chokepoint still beats no link at all.
+    """
+    chosen = set(pinned)
+    picks: list[str] = []
+    passed_over: list[str] = []
+    for _distance, other in nearest:
+        if len(picks) == slots:
+            break
+        if _shares_transit(node, other, chosen, all_distances):
+            passed_over.append(other)
+            continue
+        picks.append(other)
+        chosen.add(other)
+    return picks + passed_over[: slots - len(picks)]
 
 
 def select_backbone_mesh_pairs(
@@ -157,7 +185,7 @@ def select_backbone_mesh_pairs(
     Nearest is not the same as diverse. A candidate whose shortest path transits a peer
     the node has already picked shares that peer's city, so one city's loss takes both
     links and the node's nominal degree overstates what it survives. Such a candidate is
-    passed over for the next nearest one that is diverse (see :func:`shares_transit`),
+    passed over for the next nearest one that is diverse (see :func:`_shares_transit`),
     which is what makes the degree a count of independent links rather than of lines on
     a diagram. A node's pins count as picks here too, so a candidate reachable only
     through a pinned peer is passed over just the same. The pins themselves are wired
@@ -187,19 +215,10 @@ def select_backbone_mesh_pairs(
             and edge_key(node, other) not in forced_pairs
             and math.isfinite(distances.get(other, math.inf))
         )
-        chosen = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
-        slots = max(target - len(chosen), 0)
-        picks: list[str] = []
-        passed_over: list[str] = []
-        for _distance, other in nearest:
-            if len(picks) == slots:
-                break
-            if shares_transit(node, other, chosen, all_distances):
-                passed_over.append(other)
-                continue
-            picks.append(other)
-            chosen.add(other)
-        picks.extend(passed_over[: slots - len(picks)])
+        pinned = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
+        picks = _diverse_picks(
+            node, nearest, pinned, max(target - len(pinned), 0), all_distances
+        )
         selected.update(edge_key(node, other) for other in picks)
     return sorted(augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs))
 
