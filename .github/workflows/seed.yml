@@ -254,8 +254,7 @@ jobs:
             --config-data \
             "{extends: default, rules: {$RULES}}" \
             .github/workflows/seed.yml etc/afgsc.yml etc/daf.yml \
-            etc/daf_conus.yml etc/dow.yml etc/f_35.yml etc/joint.yml \
-            etc/minuteman.yml
+            etc/dow.yml etc/f_35.yml etc/minuteman.yml
 name: seed
 on:
   push:

@@ -91,7 +91,7 @@ def test_default_label_is_empty() -> None:
 
 def test_reads_label() -> None:
     """A top-level label is read into the config for the API to surface."""
-    assert _config({"label": "Joint"}).label == "Joint"
+    assert _config({"label": "Minuteman"}).label == "Minuteman"
 
 
 def test_reads_min_backbone_count() -> None:
@@ -404,7 +404,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "backbone-placement": {"restrict": True},
         "convergence-promotion": {"promote": True},
         "knobs": {"compass_octants": 8, "backbone_coverage_target_miles": 600.0},
-        "label": {"label": "Joint"},
+        "label": {"label": "Minuteman"},
     }
     parts.update(overrides)
     return parts
@@ -418,7 +418,7 @@ def test_app_config_from_parts_assembles_the_two_degrees() -> None:
 
 def test_app_config_from_parts_reads_the_label() -> None:
     """The assembler reads the display label from the label document."""
-    assert app_config_from_parts(_parts()).label == "Joint"
+    assert app_config_from_parts(_parts()).label == "Minuteman"
 
 
 def test_app_config_from_parts_reads_a_plain_label() -> None:

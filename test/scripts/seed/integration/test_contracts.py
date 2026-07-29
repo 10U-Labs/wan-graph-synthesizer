@@ -3,7 +3,9 @@
 These run the real CLI pipeline (``seed.main``) over the repository's own
 ``data/`` and ``etc/`` inputs with the HTTP boundary replaced in-process, then
 assert the cross-file contract that every resource seed touches is declared in
-the OpenAPI spec the API is built from.
+the OpenAPI spec the API is built from. The roster in ``etc/`` is also checked
+against the seed workflow's explicit yamllint file list, which names each config
+one by one and so goes stale whenever a tenant is added or dropped.
 """
 
 from __future__ import annotations
@@ -32,6 +34,16 @@ def _declared_templates() -> set[str]:
         (REPO_ROOT / "src/www/api/openapi.json").read_text(encoding="utf-8"))
     prefix = "/wan-graph-synthesizer/"
     return {path[len(prefix):] for path in spec["paths"] if path.startswith(prefix)}
+
+
+def _linted_configs() -> set[str]:
+    """The ``etc/`` configs the seed workflow's yamllint step names, minus the prefix.
+
+    The step lists every file explicitly rather than globbing, so these are the only
+    ``etc/<name>.yml`` tokens in the workflow.
+    """
+    workflow = (REPO_ROOT / ".github/workflows/seed.yml").read_text(encoding="utf-8")
+    return set(re.findall(r"etc/(\w+\.yml)", workflow))
 
 
 def _matches(path: str, template: str) -> bool:
@@ -63,6 +75,12 @@ def test_pipeline_writes_at_least_one_carrier(
     """Seeding the real inputs writes at least one carrier's vertices."""
     paths = _seed(urlopen_recorder, monkeypatch)
     assert any(re.fullmatch(r"carriers/[^/]+/vertices", path) for path in paths)
+
+
+def test_yamllint_names_every_tenant_config() -> None:
+    """The workflow's yamllint file list names exactly the configs the roster declares."""
+    declared = {path.name for path in seed.ETC.glob("*.yml")}
+    assert _linted_configs() == declared
 
 
 def test_pipeline_writes_a_label_for_every_tenant(

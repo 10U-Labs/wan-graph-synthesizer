@@ -91,7 +91,7 @@ def _one_tenant(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> N
 
 def test_slug_replaces_underscores_with_hyphens() -> None:
     """_slug turns underscores into hyphens."""
-    assert _slug("daf_conus") == "daf-conus"
+    assert _slug("f_35") == "f-35"
 
 
 def test_slug_leaves_a_plain_stem_unchanged() -> None:
@@ -416,8 +416,8 @@ def test_build_data_centers_posts_the_merge(post_recorder: CallRecorder) -> None
 
 def test_build_tenants_posts_a_wan_build_for_each(post_recorder: CallRecorder) -> None:
     """build_tenants POSTs a WAN build for every tenant id."""
-    build_tenants("http://api", ["f-35", "joint"])
-    assert post_recorder.nth(1) == ["tenants/f-35/wan", "tenants/joint/wan"]
+    build_tenants("http://api", ["f-35", "minuteman"])
+    assert post_recorder.nth(1) == ["tenants/f-35/wan", "tenants/minuteman/wan"]
 
 
 def test_build_tenants_posts_nothing_without_tenants(post_recorder: CallRecorder) -> None:

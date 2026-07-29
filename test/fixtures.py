@@ -232,7 +232,7 @@ def forced_roadm_backbone_artifacts(name: str) -> DesignArtifacts:
     """Ring artifacts forcing a transit-eligible ROADM onto the backbone.
 
     ROADMs are eligible like any other point, and a force always wins -- the mechanism
-    the Joint Great Falls/Minot pins use.
+    the AFGSC Great Falls/Minot pins use.
     """
     params = DesignParams(
         min_backbone_count=2,

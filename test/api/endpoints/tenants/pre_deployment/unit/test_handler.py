@@ -17,8 +17,8 @@ from test_s3_store_mock import fake_s3
 
 _READER: dict[str, Any] = {
     "endpoint": "tenants",
-    "list_keys": ["tenants/f-35/label.json", "tenants/joint/label.json"],
-    "ids": [{"id": "f-35", "label": "f-35"}, {"id": "joint", "label": "joint"}],
+    "list_keys": ["tenants/f-35/label.json", "tenants/minuteman/label.json"],
+    "ids": [{"id": "f-35", "label": "f-35"}, {"id": "minuteman", "label": "minuteman"}],
     "stored_key": "tenants/f-35/wan.json",
     "stored": {
         "vertices": [],
@@ -37,8 +37,8 @@ _READER: dict[str, Any] = {
         "path": "/x/tenants/f-35/bogus",
     },
     "notbuilt_event": {
-        "pathParameters": {"tenant": "joint"},
-        "path": "/x/tenants/joint/edges",
+        "pathParameters": {"tenant": "minuteman"},
+        "path": "/x/tenants/minuteman/edges",
     },
 }
 
@@ -69,34 +69,34 @@ def test_tenants_list_surfaces_each_label(monkeypatch: pytest.MonkeyPatch) -> No
     module = _tenant(monkeypatch)
     objects = {
         "tenants/f-35/label.json": json.dumps({"label": "F-35"}).encode(),
-        "tenants/joint/label.json": json.dumps({"label": "Joint"}).encode(),
+        "tenants/minuteman/label.json": json.dumps({"label": "Minuteman"}).encode(),
     }
     with patch("boto3.client", return_value=fake_s3(objects)):
         response = module.lambda_handler({}, None)
     assert json.loads(response["body"]) == [
         {"id": "f-35", "label": "F-35"},
-        {"id": "joint", "label": "Joint"},
+        {"id": "minuteman", "label": "Minuteman"},
     ]
 
 
 def test_tenants_list_falls_back_to_id_without_a_label(monkeypatch: pytest.MonkeyPatch) -> None:
     """A tenant whose label document is empty is listed with its id as the label."""
     module = _tenant(monkeypatch)
-    with patch("boto3.client", return_value=fake_s3({"tenants/joint/label.json": b"{}"})):
+    with patch("boto3.client", return_value=fake_s3({"tenants/minuteman/label.json": b"{}"})):
         response = module.lambda_handler({}, None)
-    assert json.loads(response["body"]) == [{"id": "joint", "label": "joint"}]
+    assert json.loads(response["body"]) == [{"id": "minuteman", "label": "minuteman"}]
 
 
 def test_tenants_list_skips_non_label_objects(monkeypatch: pytest.MonkeyPatch) -> None:
     """Stored objects that are not a tenant's label marker are ignored in the listing."""
     module = _tenant(monkeypatch)
     objects = {
-        "tenants/joint/label.json": json.dumps({"label": "Joint"}).encode(),
-        "tenants/joint/wan.json": b"{}",
+        "tenants/minuteman/label.json": json.dumps({"label": "Minuteman"}).encode(),
+        "tenants/minuteman/wan.json": b"{}",
     }
     with patch("boto3.client", return_value=fake_s3(objects)):
         response = module.lambda_handler({}, None)
-    assert json.loads(response["body"]) == [{"id": "joint", "label": "Joint"}]
+    assert json.loads(response["body"]) == [{"id": "minuteman", "label": "Minuteman"}]
 
 
 def test_tenant_serves_the_backbone_links(monkeypatch: pytest.MonkeyPatch) -> None:
