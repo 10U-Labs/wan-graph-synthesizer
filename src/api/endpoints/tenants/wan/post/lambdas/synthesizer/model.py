@@ -56,11 +56,11 @@ class Design:
     metrics: DesignMetrics
 
 @dataclass(frozen=True)
-class EnumBudget:
+class SearchMemoryBudget:
     """Memory budget governing how many backbone sets the search may enumerate."""
 
-    memory_fraction: float = 0.6  # share of RAM the backbone enumeration may use
-    set_peak_bytes: int = 160  # peak bytes one enumerated backbone set costs
+    memory_share: float = 0.6  # share of RAM the backbone enumeration may use
+    bytes_per_combination: int = 160  # peak bytes one enumerated backbone set costs
 
 
 @dataclass(frozen=True)
@@ -76,17 +76,18 @@ class Tuning:
     at the config layer (its field default here is a construction fallback only,
     kept because dataclass field ordering forces one); it lives in the ``knobs``
     resource rather than its own, since it describes the network an operator wants.
-    The remaining fields (``compass_octants``, ``enum_budget``) describe how the
+    The remaining fields (``compass_sector_count``, ``search_memory_budget``) describe how the
     search scores candidates and how much memory it may consume, which is nobody's
     requirement, so they live in the ``settings`` resource instead and are the only
     fields here that genuinely default.
     """
 
-    compass_octants: int = 8  # compass sectors used to score a backbone node's link spread
+    compass_sector_count: int = 8  # compass sectors used to score a backbone node's link spread
     backbone_mesh_degree: int = 3  # other backbone nodes each one wires to (backbone-mesh-degree)
     backbone_coverage_target_miles: float = 600.0  # grow backbone until every demand is this near
     access_backbone_links: int = 2  # backbone nodes each demand vertex homes to
-    enum_budget: EnumBudget = field(default_factory=EnumBudget)  # enumeration memory budget
+    # how much memory the backbone enumeration may spend
+    search_memory_budget: SearchMemoryBudget = field(default_factory=SearchMemoryBudget)
 
 # The two edge types a forced connection may pin, named as in ``README.md``.
 FORCED_CONNECTION_TYPES = frozenset({"backbone-backbone", "access-backbone"})

@@ -448,8 +448,8 @@ def total_memory_bytes() -> int:
 
 def enumeration_limit(memory_bytes: int, params: DesignParams) -> int:
     """How many backbone sets fit in the share of RAM the enumeration may use."""
-    budget = params.tuning.enum_budget
-    return int(memory_bytes * budget.memory_fraction / budget.set_peak_bytes)
+    budget = params.tuning.search_memory_budget
+    return int(memory_bytes * budget.memory_share / budget.bytes_per_combination)
 
 
 COVERAGE_EPSILON_MILES = 1.0  # a new backbone node must cut total demand haul by this
@@ -665,7 +665,7 @@ def build_search_plan(
     max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
     strength_by_id = {
         pop_id: backbone_strength(
-            pop_id, inputs, pop_by_id, max_degree, params.tuning.compass_octants
+            pop_id, inputs, pop_by_id, max_degree, params.tuning.compass_sector_count
         )
         for pop_id in eligible_ids
     }

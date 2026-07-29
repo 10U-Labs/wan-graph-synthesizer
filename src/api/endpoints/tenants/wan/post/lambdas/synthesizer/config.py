@@ -17,7 +17,7 @@ from synthesizer.model import (
     FORCED_CONNECTION_TYPES,
     DesignPaths,
     DesignParams,
-    EnumBudget,
+    SearchMemoryBudget,
     ForcedConnection,
     RoleExclusions,
     Tuning,
@@ -255,16 +255,16 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
     base = Tuning()
     settings = _checked_settings(settings)
     return Tuning(
-        compass_octants=_sector_count(settings, base.compass_octants),
+        compass_sector_count=_sector_count(settings, base.compass_sector_count),
         backbone_mesh_degree=_required_int(tuning, "backbone_mesh_degree"),
         backbone_coverage_target_miles=_required_float(
             tuning, "backbone_coverage_target_miles"
         ),
         access_backbone_links=_required_int(tuning, "access_backbone_links"),
-        enum_budget=EnumBudget(
-            memory_fraction=_memory_share(settings, base.enum_budget.memory_fraction),
-            set_peak_bytes=settings.get(
-                "bytes_per_backbone_combination", base.enum_budget.set_peak_bytes
+        search_memory_budget=SearchMemoryBudget(
+            memory_share=_memory_share(settings, base.search_memory_budget.memory_share),
+            bytes_per_combination=settings.get(
+                "bytes_per_backbone_combination", base.search_memory_budget.bytes_per_combination
             ),
         ),
     )

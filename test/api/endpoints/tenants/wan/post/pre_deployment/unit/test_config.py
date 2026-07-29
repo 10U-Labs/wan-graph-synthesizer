@@ -271,7 +271,8 @@ def test_prohibited_backbone_must_be_a_list_of_strings() -> None:
 
 def test_reads_settings_compass_sector_count() -> None:
     """A settings compass_sector_count value is read into the design params."""
-    assert _config({"settings": {"compass_sector_count": 6}}).params.tuning.compass_octants == 6
+    tuning = _config({"settings": {"compass_sector_count": 6}}).params.tuning
+    assert tuning.compass_sector_count == 6
 
 
 def test_reads_tuning_coverage_target() -> None:
@@ -285,14 +286,14 @@ def test_reads_settings_backbone_search_memory_share() -> None:
     """A settings memory-share value is read into the enumeration budget."""
     assert _config(
         {"settings": {"backbone_search_memory_share": 0.3}}
-    ).params.tuning.enum_budget.memory_fraction == 0.3
+    ).params.tuning.search_memory_budget.memory_share == 0.3
 
 
 def test_reads_settings_bytes_per_combination() -> None:
     """A settings per-combination byte cost is read into the enumeration budget."""
     assert _config(
         {"settings": {"bytes_per_backbone_combination": 200}}
-    ).params.tuning.enum_budget.set_peak_bytes == 200
+    ).params.tuning.search_memory_budget.bytes_per_combination == 200
 
 
 @pytest.mark.parametrize("value", [0, -1, 8.0, True, "8"])
@@ -312,8 +313,9 @@ def test_rejects_a_memory_share_outside_zero_to_one(value: object) -> None:
 
 def test_accepts_a_memory_share_of_exactly_one() -> None:
     """A memory share of exactly 1 -- all the memory the function has -- is accepted."""
-    budget = _config({"settings": {"backbone_search_memory_share": 1}}).params.tuning.enum_budget
-    assert budget.memory_fraction == 1.0
+    parsed = _config({"settings": {"backbone_search_memory_share": 1}})
+    budget = parsed.params.tuning.search_memory_budget
+    assert budget.memory_share == 1.0
 
 
 def test_rejects_a_settings_document_written_before_the_rename() -> None:
@@ -330,7 +332,7 @@ def test_rejects_an_unrecognised_settings_key() -> None:
 
 def test_a_dial_left_in_the_tuning_section_is_not_read() -> None:
     """A dial left in the tuning section is ignored, so the built-in default stands."""
-    assert _config({"tuning": {"compass_octants": 6}}).params.tuning.compass_octants == 8
+    assert _config({"tuning": {"compass_octants": 6}}).params.tuning.compass_sector_count == 8
 
 
 def test_reads_vertices_mapping() -> None:
@@ -451,8 +453,8 @@ def _parts(**overrides: Any) -> dict[str, Any]:
 def test_app_config_from_parts_folds_settings_into_tuning() -> None:
     """A settings document supplies tuning values alongside the knobs document."""
     parts = _parts(settings={"backbone_search_memory_share": 0.25})
-    budget = app_config_from_parts(parts).params.tuning.enum_budget
-    assert budget.memory_fraction == 0.25
+    budget = app_config_from_parts(parts).params.tuning.search_memory_budget
+    assert budget.memory_share == 0.25
 
 
 def test_app_config_from_parts_reads_every_dial_from_settings() -> None:
@@ -461,14 +463,14 @@ def test_app_config_from_parts_reads_every_dial_from_settings() -> None:
         "compass_sector_count": 4, "backbone_search_memory_share": 0.25,
         "bytes_per_backbone_combination": 320,
     })
-    budget = app_config_from_parts(parts).params.tuning.enum_budget
-    assert (budget.memory_fraction, budget.set_peak_bytes) == (0.25, 320)
+    budget = app_config_from_parts(parts).params.tuning.search_memory_budget
+    assert (budget.memory_share, budget.bytes_per_combination) == (0.25, 320)
 
 
 def test_app_config_from_parts_ignores_a_dial_left_in_knobs() -> None:
     """A dial an operator left behind under knobs no longer steers the search."""
     parts = _parts(knobs={"backbone_coverage_target_miles": 600.0, "compass_octants": 4})
-    assert app_config_from_parts(parts).params.tuning.compass_octants == 8
+    assert app_config_from_parts(parts).params.tuning.compass_sector_count == 8
 
 
 def test_app_config_from_parts_without_settings_is_unchanged() -> None:

@@ -25,21 +25,21 @@ def link_bearing(origin: Vertex, neighbor: Vertex) -> float:
     )
     return (math.degrees(math.atan2(x, y)) + 360.0) % 360.0
 
-def link_octants(
+def link_sectors(
     pop_id: str,
     adjacency: dict[str, list[tuple[str, float]]],
     pop_by_id: dict[str, Vertex],
-    compass_octants: int,
+    compass_sector_count: int,
 ) -> set[int]:
     """The distinct compass sectors the PoP's links point toward.
 
-    The compass is divided into ``compass_octants`` equal sectors, each centred on a
+    The compass is divided into ``compass_sector_count`` equal sectors, each centred on a
     direction rather than starting at one, so a due-north link lands in the middle of
     sector zero rather than on its edge. Deriving the width here from the same number
     the score divides by is what keeps the direction term between 0 and 1: at eight,
     the sectors are the 45-degree octants with the 22.5-degree offset this always used.
     """
-    width = 360.0 / compass_octants
+    width = 360.0 / compass_sector_count
     origin = pop_by_id[pop_id]
     return {
         int(((link_bearing(origin, pop_by_id[neighbor]) + width / 2.0) % 360.0) // width)
@@ -70,15 +70,15 @@ def backbone_strength(
     inputs: DesignInputs,
     pop_by_id: dict[str, Vertex],
     max_degree: int,
-    compass_octants: int,
+    compass_sector_count: int,
 ) -> float:
     """Score a PoP's strength: reach plus spread plus straightness (~0..3).
 
-    ``compass_octants`` both cuts the compass into sectors and divides the count of
+    ``compass_sector_count`` both cuts the compass into sectors and divides the count of
     sectors the links reach, so the direction term stays within 0..1 whatever the
     setting holds and the three terms keep the weighting they were given.
     """
     degree = len(inputs.adjacency[pop_id])
-    spread = len(link_octants(pop_id, inputs.adjacency, pop_by_id, compass_octants))
+    spread = len(link_sectors(pop_id, inputs.adjacency, pop_by_id, compass_sector_count))
     straight = vertex_straightness(pop_id, pop_by_id, inputs.all_predecessors[pop_id])
-    return degree / max_degree + spread / compass_octants + straight
+    return degree / max_degree + spread / compass_sector_count + straight
