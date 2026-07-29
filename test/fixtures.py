@@ -245,14 +245,16 @@ def _forced_artifacts(
 
     Resolving via ``apply_role_overrides`` -- the same step ``run_design`` takes --
     means the artifacts reflect genuinely honored force-backbone requests rather than
-    emergent selections.
+    emergent selections. Validation goes through ``finalize`` for the same reason: the
+    report then answers to the degrees ``params`` configures, not to the defaults.
     """
     vertices, edges = inputs if inputs is not None else _ring_inputs()
     vertices, edges, overrides = apply_role_overrides(
         vertices, edges, params, forced_connections, ()
     )
     design = synthesize_two_tier_design(vertices, edges, params, overrides)
-    return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
+    vertices, edges, design, validation = finalize(vertices, edges, design, params)
+    return DesignArtifacts(vertices, edges, design, validation)
 
 
 def forced_backbone_artifacts(name: str) -> DesignArtifacts:
