@@ -23,8 +23,9 @@ forced_backbone_nodes:
   - McLean, VA
   - Minot, ND
   - New York, NY
-  - Sacramento, CA
   - Salt Lake City, UT
+  - San Jose, CA
+  - Seattle, WA
   - Tallahassee, FL
 forced_connections:
   - source: Minot, ND
