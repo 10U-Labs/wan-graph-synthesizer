@@ -65,9 +65,19 @@ every descendant. An ordinary expression `if` does not break the cascade;
 each downstream job needs its own status-check function, normally
 `if: ${{ !cancelled() && needs.<parent>.result == 'success' }}`.
 
+A `seed` run whose push touched only `data/` or `etc/` reports success
+without testing anything: `determining-testing` sets
+`testing-necessary=false` and the static-analysis, unit, integration and
+e2e jobs all skip. Read the job list, not the conclusion. A series that
+moves configs in commits separate from the reader they feed therefore
+tests nothing, and `gh run rerun` recomputes the same decision — end it
+with `gh workflow run seed.yml --ref main`, which has no
+`github.event.before` and so runs every tier.
+
 Longer:
 [seed-races-routing-deploy](docs/claude/memories/seed-races-routing-deploy.md),
-[seed-skip-cascade-needs-guards](docs/claude/memories/seed-skip-cascade-needs-guards.md).
+[seed-skip-cascade-needs-guards](docs/claude/memories/seed-skip-cascade-needs-guards.md),
+[config-only-commits-skip-the-tests](docs/claude/memories/config-only-commits-skip-the-tests.md).
 
 ## Notes
 
