@@ -18,24 +18,25 @@ forced_backbone_nodes:
   - Great Falls, MT
   - Hillsboro, OR
   - Houston, TX
-  - Kansas City, MO
   - Los Angeles, CA
   - McLean, VA
   - Minot, ND
   - New York, NY
+  - Omaha, NE
   - Salt Lake City, UT
   - San Jose, CA
   - Seattle, WA
   - Tallahassee, FL
+  - Tulsa, OK
 forced_connections:
   - source: Minot, ND
-    target: Kansas City, MO
+    target: Omaha, NE
     type: backbone-backbone
   - source: Atlanta, GA
     target: Dallas, TX
     type: backbone-backbone
   - source: Atlanta, GA
-    target: Kansas City, MO
+    target: Omaha, NE
     type: backbone-backbone
 inputs:
   locations:
