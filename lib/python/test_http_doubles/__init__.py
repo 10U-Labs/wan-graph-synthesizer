@@ -3,8 +3,10 @@
 ``UrlopenRecorder`` replaces ``urllib.request.urlopen`` in-process so unit and
 integration tests can assert what a client would send without touching the
 network. ``StubApi`` runs a real localhost server that records the requests it
-receives, for end-to-end tests that drive a CLI as a subprocess. ``CallRecorder``
-records arbitrary calls. No live resource is ever touched.
+receives, for end-to-end tests that drive a CLI as a subprocess. Both reply with a
+canned body -- an empty JSON listing unless a test asks for another -- so a client
+that reads what it fetched can be exercised. ``CallRecorder`` records arbitrary
+calls. No live resource is ever touched.
 """
 
 from __future__ import annotations
@@ -14,12 +16,19 @@ import threading
 import urllib.request
 from typing import Any, cast
 
+EMPTY_LISTING = b"[]"
+
 
 class FakeResponse:
     """A context-manager stand-in for an HTTP response object."""
 
-    def __init__(self, status: int = 200) -> None:
+    def __init__(self, status: int = 200, body: bytes = EMPTY_LISTING) -> None:
         self.status = status
+        self._body = body
+
+    def read(self) -> bytes:
+        """The response body, as a client reading the stream would get it."""
+        return self._body
 
     def __enter__(self) -> "FakeResponse":
         return self
@@ -32,9 +41,10 @@ class FakeResponse:
 class UrlopenRecorder:
     """A drop-in for ``urllib.request.urlopen`` that records its requests."""
 
-    def __init__(self, status: int = 200) -> None:
+    def __init__(self, status: int = 200, body: bytes = EMPTY_LISTING) -> None:
         self.requests: list[urllib.request.Request] = []
         self._status = status
+        self._body = body
 
     def __call__(
             self, request: urllib.request.Request, timeout: float = 0.0,
@@ -42,7 +52,7 @@ class UrlopenRecorder:
         """Record *request* and return a fake response with the fixed status."""
         del timeout
         self.requests.append(request)
-        return FakeResponse(self._status)
+        return FakeResponse(self._status, self._body)
 
     def paths(self, base: str) -> list[str]:
         """Recorded resource paths with the ``{base}/`` prefix removed."""
@@ -84,15 +94,16 @@ class _RecordingHandler(socketserver.StreamRequestHandler):
         return method, path, self.rfile.read(length).decode("utf-8", "replace")
 
     def handle(self) -> None:
-        """Record one request and reply with the server's configured status."""
+        """Record one request and reply with the server's configured status and body."""
         server = cast("_RecordingServer", self.server)
         server.records.append(self.read_request())
         reason = "OK" if server.status < 400 else "Error"
         self.wfile.write(
             f"HTTP/1.1 {server.status} {reason}\r\n"
-            "Content-Length: 0\r\n"
+            f"Content-Length: {len(server.body)}\r\n"
             "Connection: close\r\n\r\n".encode("ascii"),
         )
+        self.wfile.write(server.body)
 
 
 class _RecordingServer(socketserver.ThreadingTCPServer):
@@ -100,17 +111,18 @@ class _RecordingServer(socketserver.ThreadingTCPServer):
 
     allow_reuse_address = True
 
-    def __init__(self, status: int) -> None:
+    def __init__(self, status: int, body: bytes) -> None:
         self.records: list[tuple[str, str, str]] = []
         self.status = status
+        self.body = body
         super().__init__(("127.0.0.1", 0), _RecordingHandler)
 
 
 class StubApi:
-    """A localhost HTTP server that records PUTs and replies with a status."""
+    """A localhost HTTP server that records requests and replies with a status."""
 
-    def __init__(self, status: int = 200) -> None:
-        self._server = _RecordingServer(status)
+    def __init__(self, status: int = 200, body: bytes = EMPTY_LISTING) -> None:
+        self._server = _RecordingServer(status, body)
         self._thread = threading.Thread(
             target=self._server.serve_forever, daemon=True)
 
