@@ -16,9 +16,11 @@ import sys
 from typing import cast
 
 import pytest
+import yaml
 
 import seed
 from repo_utils import REPO_ROOT
+from seed import _slug
 from test_http_doubles import UrlopenRecorder
 
 _API = "http://stub"
@@ -84,17 +86,34 @@ def test_yamllint_names_every_tenant_config() -> None:
     assert _linted_configs() == declared
 
 
-def test_pipeline_writes_knobs_without_the_implementation_dials(
+def _declared_coverage_targets() -> dict[str, float]:
+    """Each tenant's coverage target, read from the backbone block of its own config."""
+    return {
+        _slug(path.stem): yaml.safe_load(
+            path.read_text(encoding="utf-8"))["backbone"]["coverage_target_miles"]
+        for path in seed.ETC.glob("*.yml")
+    }
+
+
+def test_pipeline_writes_each_tenant_the_coverage_target_its_config_declares(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Every knobs document the real configs produce carries the coverage target alone."""
+    """Each knobs document carries the target its config declares, under the stored key.
+
+    The document is now assembled rather than passed through: the config names the
+    target ``backbone.coverage_target_miles`` and the synthesizer reads it as
+    ``backbone_coverage_target_miles``, so the two spellings must agree tenant by
+    tenant, which neither file can establish alone.
+    """
     _seed(urlopen_recorder, monkeypatch)
     written = {
-        key
+        request.full_url.split("/")[-2]: json.loads(cast("bytes", request.data))
         for request in urlopen_recorder.requests
         if request.full_url.endswith("/knobs")
-        for key in json.loads(cast("bytes", request.data))
     }
-    assert written == {"backbone_coverage_target_miles"}
+    assert written == {
+        tenant: {"backbone_coverage_target_miles": target}
+        for tenant, target in _declared_coverage_targets().items()
+    }
 
 
 def test_pipeline_writes_a_label_for_every_tenant(

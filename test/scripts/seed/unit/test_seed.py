@@ -37,10 +37,27 @@ _TENANT_YML = """\
 access:
   homing_degree: 1
 backbone:
+  coverage_target_miles: 500.0
+  forced:
+    connections:
+      - source: Luke, AZ
+        target: Nellis, NV
+        type: backbone-backbone
+    nodes:
+      - Luke, AZ
   mesh_degree: 2
   node_count:
     max: 3
     min: 3
+  prohibited:
+    connections:
+      - source: Luke, AZ
+        target: Edge, TX
+        type: backbone-backbone
+    nodes:
+      - Edge, TX
+  promote_high_degree_convergences: false
+  restrict_to_data_centers: true
 inputs:
   locations:
     F-35: locations/f35.csv
@@ -48,8 +65,6 @@ inputs:
   providers:
     regions: regions/providers.csv
 label: F-35
-promote_high_degree_convergences_to_backbone_nodes: false
-restrict_backbone_to_data_centers: true
 settings:
   compass_sector_count: 4
 """
@@ -367,6 +382,56 @@ def test_push_tenants_puts_the_backbone_node_count_resource(
     """push_tenants reads the node count bounds from the backbone block."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/backbone-node-count"] == {"max": 3, "min": 3}
+
+
+def test_push_tenants_puts_the_forced_backbone_nodes_resource(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants reads the pinned nodes from the backbone block's forced pair."""
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/forced-backbone-nodes"] == ["Luke, AZ"]
+
+
+def test_push_tenants_puts_the_forced_connections_resource(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants reads the pinned links from the backbone block's forced pair."""
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/forced-connections"] == [
+        {"source": "Luke, AZ", "target": "Nellis, NV", "type": "backbone-backbone"}]
+
+
+def test_push_tenants_puts_the_prohibited_backbone_nodes_resource(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants reads the pruned nodes from the backbone block's prohibited pair."""
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/prohibited-backbone-nodes"] == ["Edge, TX"]
+
+
+def test_push_tenants_puts_the_prohibited_connections_resource(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants reads the pruned links from the backbone block's prohibited pair."""
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/prohibited-connections"] == [
+        {"source": "Luke, AZ", "target": "Edge, TX", "type": "backbone-backbone"}]
+
+
+def test_push_tenants_puts_the_backbone_placement_resource(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants wraps the block's data-center restriction as the placement document."""
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/backbone-placement"] == {"restrict": True}
+
+
+def test_push_tenants_builds_the_knobs_document_from_the_coverage_target(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants spells the stored knobs key out from the block's coverage target."""
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/knobs"] == {"backbone_coverage_target_miles": 500.0}
 
 
 def test_push_tenants_puts_the_settings_document(

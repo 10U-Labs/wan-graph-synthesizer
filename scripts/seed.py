@@ -151,6 +151,9 @@ def push_tenants(api: str) -> list[str]:
         tid = _slug(path.stem)
         tenant_ids.append(tid)
         inputs = config.get("inputs", {})
+        backbone = config["backbone"]
+        forced = backbone.get("forced", {})
+        prohibited = backbone.get("prohibited", {})
         locations = _mapping_rows(inputs.get("locations", {}))
         regions = _mapping_rows(inputs.get("providers", {}))
         off_net_path = inputs.get("off_net")
@@ -160,24 +163,23 @@ def push_tenants(api: str) -> list[str]:
         _put(api, f"tenants/{tid}/locations", locations)
         _put(api, f"tenants/{tid}/provider-regions", regions)
         _put(api, f"tenants/{tid}/off-net", off_net)
-        _put(api, f"tenants/{tid}/forced-backbone-nodes",
-             config.get("forced_backbone_nodes", []))
-        _put(api, f"tenants/{tid}/forced-connections", config.get("forced_connections", []))
-        _put(api, f"tenants/{tid}/prohibited-backbone-nodes",
-             config.get("prohibited_backbone_nodes", []))
-        _put(api, f"tenants/{tid}/prohibited-connections",
-             config.get("prohibited_connections", []))
-        _put(api, f"tenants/{tid}/backbone-node-count",
-             config["backbone"].get("node_count", {}))
+        _put(api, f"tenants/{tid}/forced-backbone-nodes", forced.get("nodes", []))
+        _put(api, f"tenants/{tid}/forced-connections", forced.get("connections", []))
+        _put(api, f"tenants/{tid}/prohibited-backbone-nodes", prohibited.get("nodes", []))
+        _put(api, f"tenants/{tid}/prohibited-connections", prohibited.get("connections", []))
+        _put(api, f"tenants/{tid}/backbone-node-count", backbone.get("node_count", {}))
         _put(api, f"tenants/{tid}/backbone-mesh-degree",
-             _degree_doc(config["backbone"]["mesh_degree"]))
+             _degree_doc(backbone["mesh_degree"]))
         _put(api, f"tenants/{tid}/access-homing-degree",
              _degree_doc(config["access"]["homing_degree"]))
         _put(api, f"tenants/{tid}/backbone-placement",
-             {"restrict": config["restrict_backbone_to_data_centers"]})
+             {"restrict": backbone["restrict_to_data_centers"]})
         _put(api, f"tenants/{tid}/convergence-promotion",
-             {"promote": config["promote_high_degree_convergences_to_backbone_nodes"]})
-        _put(api, f"tenants/{tid}/knobs", config.get("knobs", {}))
+             {"promote": backbone["promote_high_degree_convergences"]})
+        # The stored document keeps the unshortened key: the config drops the prefix its
+        # block now supplies, but the synthesizer reads the target under the long name.
+        _put(api, f"tenants/{tid}/knobs",
+             {"backbone_coverage_target_miles": backbone["coverage_target_miles"]})
         _put(api, f"tenants/{tid}/settings", config.get("settings", {}))
         _put(api, f"tenants/{tid}/label", {"label": config.get("label", "")})
     return tenant_ids
