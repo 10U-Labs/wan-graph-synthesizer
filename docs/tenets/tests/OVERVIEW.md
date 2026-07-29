@@ -17,7 +17,7 @@ stack is rewritten; if a sentence would not, it does not belong here.
 - [Shared Code Sits as High as It Applies](#shared-code-sits-as-high-as-it-applies)
 - [Check Before You Create](#check-before-you-create)
 - [Enforcement Is Mechanical](#enforcement-is-mechanical)
-- [The Order of the Gates](#the-order-of-the-gates)
+- [Nothing Runs Before What It Presumes](#nothing-runs-before-what-it-presumes)
 
 ## Test Tiers
 
@@ -50,11 +50,11 @@ a literal, it is a unit test wherever it currently sits.
 A test's location is derived, never invented. It follows the structure
 of the code under test, and the tier is the last thing its path names.
 
-Two things depend on this. A reader who knows where the code lives
-knows where its tests live, without searching. And any pipeline that
-selects work by path can tell which tests a change implicates, which is
-what makes it possible to gate a change on exactly the checks it
-affects.
+Two things depend on this. A reader who knows where the code lives knows
+where its tests live, without searching. And the tests a change
+implicates are computable from the paths it touches alone, without
+understanding the change, which is what makes it possible to hold a
+change to exactly the checks that concern it and no others.
 
 Do not group tests by behaviour. A file collecting the happy paths and
 another collecting the error cases hide which unit broke, and the unit
@@ -83,49 +83,40 @@ Before writing a fixture, helper or double, look for the one that
 already exists: first in the enclosing scopes, then among the shared
 helpers.
 
-Duplication is not merely discouraged, it fails the build. A
-copy-paste gate runs at a zero-tolerance threshold over source and
-tests alike, so a copied fixture is a red run rather than a review
-comment.
+A second copy of something that already exists is a defect, in tests as
+much as in the code they cover. The copies drift, and a test standing on
+the stale one passes while what it claims to cover is broken.
+
+So duplication is not discouraged, it is disallowed, and the tolerance
+is none: not one copy, not for now, not with a note to remove it later.
+A machine can decide this one, which settles how it is held to
+([Enforcement Is Mechanical](#enforcement-is-mechanical)).
 
 ## Enforcement Is Mechanical
 
-Every tenet that a machine can check is checked by one, and the check
-runs before the tests do. A rule enforced by review is a rule that
-holds until the reviewer is busy.
+Any rule here that a machine can decide must be decided by one, and
+decided before anything that would rely on it. A rule that holds only
+while someone is watching for it does not hold.
 
-Suppression is not available. A per-line directive that silences a
-finding fails a gate of its own, and so does a configuration file that
-would relax a rule across the tree. There is no tolerance band on the
-static analysis and no partial credit on coverage. When a gate objects,
-the answer is to change the code.
+Silencing a finding is itself a violation, whether it is silenced on the
+line that raised it or in a setting that relaxes the rule everywhere. No
+rule carries a tolerance band and no rule takes partial credit. When a
+rule objects, what changes is the code.
 
-## The Order of the Gates
+## Nothing Runs Before What It Presumes
 
-Stages run cheapest and most local first, and each presumes the one
-before it passed.
+Nothing runs before what it presumes has been decided, and of the things
+that may run, the one depending on least runs first.
 
-```text
-static analysis
-  └── unit tests
-        └── pre-deployment integration tests
-              └── deployment
-                    └── post-deployment integration tests
-```
+That is a single rule, and it settles every question of order without
+anyone choosing one. A check that reads the code presumes nothing, so
+nothing may precede it. Unit tests presume the code survived being read.
+Pre-deployment integration presumes the units are correct and must
+precede the deployment it is asked about, which in turn presumes
+everything knowable without it is known. Post-deployment integration
+presumes a deployment, so nothing it asserts can be known sooner.
 
-- Static analysis depends on nothing, so it gives the fastest feedback.
-- Unit tests run behind it, because there is no point testing code that
-  does not lint. They carry the coverage gate.
-- Pre-deployment integration runs immediately before the deployment and
-  changes nothing itself.
-- The deployment runs only once everything knowable without it is
-  known.
-- Post-deployment integration runs last, because there is nothing live
-  to inspect until then.
-
-A tier that needs credentials or a deployed environment cannot run on
-every push. The tiers that need neither must, so the checks a
-contributor gets for free arrive first.
-
-One change may fire several pipelines. It is done when every pipeline
-that fired is green, not when the first one is.
+Cost follows from the same rule and does not compete with it. A tier
+that needs credentials or a live environment cannot be required of every
+change; a tier that needs neither must be, because no change may wait on
+an expensive answer that a cheap one already gave.

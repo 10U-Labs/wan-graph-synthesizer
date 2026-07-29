@@ -28,7 +28,7 @@ nothing else.
 - Do test: the connections between them.
 - Do NOT test: resources another unit owns. Its own tests cover them,
   and asserting on them here couples two units that are otherwise
-  independent, so one unit's outage turns the other's pipeline red.
+  independent, so one unit's outage fails the other unit's tests.
 - Do NOT test: application logic. That is a unit test, and it has
   already run.
 - Do NOT test: anything that requires invoking something.
@@ -125,7 +125,7 @@ A test that needs cleanup is in the wrong tier. Move it.
 
 ## Fail Fast with Granular Diagnostics
 
-- One assertion per test, enforced by a gate.
+- One assertion per test.
 - Layers run in order, so the first failure names the stage.
 - Assert the specific value, so both sides appear in the failure.
 - Name the resource in the assertion, not only the attribute.

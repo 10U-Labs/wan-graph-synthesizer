@@ -103,9 +103,9 @@ asserts. It belongs in the unit tier.
 Credentials only. Nothing about permissions and nothing about
 resources.
 
-Every unit's authentication layer is identical, so no unit writes its
-own. Instantiate the shared suite instead, which keeps the copy-paste
-gate quiet and keeps the coverage the same everywhere.
+Every unit's authentication layer asks the same question, so no unit
+writes its own. It takes the shared one, which is both what forbids the
+copy and what keeps the answer identical everywhere.
 
 Asking whether a call is permitted is an authorization test, not an
 authentication one, and belongs one layer down.
@@ -162,7 +162,7 @@ tier therefore has no cleanup rules, because it has nothing to clean up.
 A failure reading `access denied` and nothing else is not acceptable
 diagnostics.
 
-- One assertion per test, enforced by a gate.
+- One assertion per test.
 - Layers run in order, so the first failure names the stage.
 - A failure message carries the name of the thing and the expected
   value.
@@ -181,13 +181,14 @@ prevent.
 
 ## Why a Dry Run Is Not a Gate
 
-Layer 4 replaces a bare dry-run step in the pipeline.
+A bare dry run is not a substitute for layer 4.
 
-A dry run prints a diff. Nobody gates on a diff: it is read if someone
-is watching and ignored otherwise. Layer 4 consumes the same dry run,
-asserts on it, and reports drift in the same place as every other test
-failure. If layer 4 passes, the deployment will not collide with
-something untracked.
+A dry run prints a difference. A difference decides nothing: it is read
+if someone is watching and ignored otherwise, so it cannot stop a
+deployment. Layer 4 consumes the same dry run and asserts on it, which
+turns the same information into a result that can fail. Nothing else in
+the tier can answer the question layer 4 answers: that the deployment
+will not collide with something untracked.
 
 ## Quick Reference
 

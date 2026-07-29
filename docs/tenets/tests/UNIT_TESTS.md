@@ -55,9 +55,10 @@ definition of it.
 
 Each test verifies exactly one behaviour, with exactly one assertion.
 
-This is not a style preference. A gate enforces it, and it runs before
-any test does, so a second assertion fails the build rather than the
-review.
+This is not a style preference to be weighed against convenience. A
+second assertion is a violation, and one a machine can find, which
+settles how it is held to
+([OVERVIEW.md](OVERVIEW.md#enforcement-is-mechanical)).
 
 When two facts need asserting, write two tests. Setup they share belongs
 in a helper or a fixture, never in a second assertion. A helper that
@@ -96,11 +97,12 @@ is undone whether the test passes or fails.
 
 ## Test Every Branch
 
-The gate is total branch coverage, and it is enforced.
+Total branch coverage, with nothing exempted from it.
 
 Every conditional, every error path, every early return and every loop
-exit needs a test. A new branch without a test does not merely go
-unverified: it turns the tier red and blocks the deployment behind it.
+exit needs a test. A branch without a test is not merely unverified, it
+is a failure of this tier, and nothing that presumes this tier may
+proceed past it.
 
 Warnings count as failures in this tier too. Code that works while
 complaining is not covered, it is tolerated.
@@ -148,8 +150,8 @@ fixture that several tests read but none change.
 
 ## No Duplicated Setup
 
-A copy-paste gate runs over the test tree at a zero-tolerance
-threshold, so duplicated setup fails the build.
+Duplicated setup is a defect in a test exactly as it is in the code the
+test covers, and no quantity of it is acceptable.
 
 Place what you extract by scope, as
 [OVERVIEW.md](OVERVIEW.md#shared-code-sits-as-high-as-it-applies)
@@ -163,8 +165,8 @@ Unit tests are measured in milliseconds.
 
 When one takes noticeable time the cause is almost always that it is no
 longer a unit test: something is reaching the network, walking real data
-at production scale, or spawning a process. Move it to the tier it now
-belongs in rather than accepting the cost.
+at full size, or spawning a process. Move it to the tier it now belongs
+in rather than accepting the cost.
 
 ## Held to the Standards of Source
 

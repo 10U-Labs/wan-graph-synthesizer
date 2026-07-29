@@ -97,7 +97,7 @@ reports.
 
 Drive the far end to fail and assert that the entrypoint says so. An
 entrypoint that reports success after every write failed is worse than
-one that crashes, because a pipeline gating on it goes green.
+one that crashes, because everything relying on that report proceeds.
 
 ## Never Wait
 
@@ -139,11 +139,11 @@ path as well as the passing one.
 The tier runs after the cheaper tiers and before anything that writes to
 a live environment.
 
-That order is the whole reason it is worth its cost: whatever is about
-to write to production has just been run start to finish against a
-double. Because the tier is hermetic it needs no credentials, so unlike
-the deployment tiers it can gate every change rather than only the ones
-that reach a real environment.
+That position is the whole reason the tier is worth its cost: nothing
+writes to a live environment until it has been run start to finish
+against a double. And because the tier is hermetic it needs no
+credentials, so it must be required of every change, not only of the
+changes that reach a live environment.
 
 ## Boundary with the Deployed Tiers
 
