@@ -177,6 +177,7 @@ def push_tenants(api: str) -> list[str]:
         _put(api, f"tenants/{tid}/convergence-promotion",
              {"promote": config["promote_high_degree_convergences_to_backbone_nodes"]})
         _put(api, f"tenants/{tid}/knobs", config.get("knobs", {}))
+        _put(api, f"tenants/{tid}/settings", config.get("settings", {}))
         _put(api, f"tenants/{tid}/label", {"label": config.get("label", "")})
     return tenant_ids
 

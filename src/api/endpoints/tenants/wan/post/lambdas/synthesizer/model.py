@@ -75,8 +75,11 @@ class Tuning:
     demand vertex homes to. ``backbone_coverage_target_miles`` is likewise required
     at the config layer (its field default here is a construction fallback only,
     kept because dataclass field ordering forces one); it lives in the ``knobs``
-    resource rather than its own. The remaining fields (``compass_octants``,
-    ``enum_budget``) are the truly-optional dials exposed as ``knobs``.
+    resource rather than its own, since it describes the network an operator wants.
+    The remaining fields (``compass_octants``, ``enum_budget``) describe how the
+    search scores candidates and how much memory it may consume, which is nobody's
+    requirement, so they live in the ``settings`` resource instead and are the only
+    fields here that genuinely default.
     """
 
     compass_octants: int = 8  # compass sectors used to score a backbone node's link spread

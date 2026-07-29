@@ -186,25 +186,38 @@ def _paths(inputs: dict[str, Any]) -> DesignPaths:
     )
 
 
-def _tuning(tuning: dict[str, Any]) -> Tuning:
-    """Resolve the tuning configuration into a :class:`Tuning`."""
+def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
+    """Resolve the tuning and settings configuration into a :class:`Tuning`.
+
+    The operator's requirements -- the two degrees and the coverage target -- come from
+    ``tuning``, which the assembler builds from the ``knobs`` resource and the two
+    degree resources. The implementation dials come from ``settings``, and only from
+    there: a value left behind under ``knobs`` is not read, so it falls back to the
+    dataclass default rather than quietly continuing to steer the search.
+    """
     base = Tuning()
     return Tuning(
-        compass_octants=tuning.get("compass_octants", base.compass_octants),
+        compass_octants=settings.get("compass_octants", base.compass_octants),
         backbone_mesh_degree=_required_int(tuning, "backbone_mesh_degree"),
         backbone_coverage_target_miles=_required_float(
             tuning, "backbone_coverage_target_miles"
         ),
         access_backbone_links=_required_int(tuning, "access_backbone_links"),
         enum_budget=EnumBudget(
-            memory_fraction=tuning.get("enum_memory_fraction", base.enum_budget.memory_fraction),
-            set_peak_bytes=tuning.get("backbone_set_peak_bytes", base.enum_budget.set_peak_bytes),
+            memory_fraction=settings.get(
+                "enum_memory_fraction", base.enum_budget.memory_fraction
+            ),
+            set_peak_bytes=settings.get(
+                "backbone_set_peak_bytes", base.enum_budget.set_peak_bytes
+            ),
         ),
     )
 
 
-def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
-    """Resolve the design and tuning configuration into :class:`DesignParams`."""
+def _params(
+    design: dict[str, Any], tuning: dict[str, Any], settings: dict[str, Any]
+) -> DesignParams:
+    """Resolve the design, tuning and settings configuration into :class:`DesignParams`."""
     base = DesignParams()
     return DesignParams(
         min_backbone_count=design.get("min_backbone_count", base.min_backbone_count),
@@ -213,7 +226,7 @@ def _params(design: dict[str, Any], tuning: dict[str, Any]) -> DesignParams:
         exclusions=RoleExclusions(
             prohibited_backbone_names=_str_list(design, "prohibited_backbone", []),
         ),
-        tuning=_tuning(tuning),
+        tuning=_tuning(tuning, settings),
         promote_high_degree_convergences=_required_bool(
             design, "promote_high_degree_convergences_to_backbone_nodes"
         ),
@@ -230,7 +243,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
     design = _mapping(data, "design")
     return AppConfig(
         paths=_paths(_mapping(data, "inputs")),
-        params=_params(design, _mapping(data, "tuning")),
+        params=_params(design, _mapping(data, "tuning"), _mapping(data, "settings")),
         restrict_backbone_to_datacenters=_required_bool(
             design, "restrict_backbone_to_data_centers"
         ),
@@ -262,11 +275,9 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     expects and delegates to it, so all parsing and validation stays in one place. The
     two redundancy degrees are required -- a missing one raises in :func:`_degree`.
 
-    ``knobs`` and ``settings`` both carry tuning values and are merged in that order,
-    so a key held by both resolves to the ``settings`` one. That precedence is what
-    lets the implementation dials move out of ``knobs`` a tenant at a time instead of
-    in one flag day across the API, the seed script and every tenant file; it comes
-    out again once nothing reads the old location.
+    ``knobs`` carries the operator's coverage target and ``settings`` the
+    implementation dials, and the two are passed on separately: nothing merges them, so
+    a dial left behind under ``knobs`` is not read at all.
     ``paths`` is left at its defaults: the deployed synthesizer reads its substrate
     from the merged carriers, not from these documents.
     """
@@ -289,10 +300,14 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
         design["max_backbone_count"] = count["max"]
     tuning = {
         **_mapping(parts, "knobs"),
-        **_mapping(parts, "settings"),
         "backbone_mesh_degree": _degree(parts, "backbone-mesh-degree"),
         "access_backbone_links": _degree(parts, "access-homing-degree"),
     }
     label = parts.get("label", {})
     label_text = label.get("label", "") if isinstance(label, dict) else str(label)
-    return config_from_data({"design": design, "tuning": tuning, "label": label_text})
+    return config_from_data({
+        "design": design,
+        "tuning": tuning,
+        "settings": _mapping(parts, "settings"),
+        "label": label_text,
+    })

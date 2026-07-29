@@ -46,11 +46,12 @@ inputs:
     regions: data/vertices/providers/providers.csv
 knobs:
   backbone_coverage_target_miles: 400.0
-  backbone_set_peak_bytes: 160
-  compass_octants: 8
-  enum_memory_fraction: 0.6
 label: DAF
 prohibited_backbone_nodes: []
 prohibited_connections: []
 promote_high_degree_convergences_to_backbone_nodes: false
 restrict_backbone_to_data_centers: false
+settings:
+  backbone_set_peak_bytes: 160
+  compass_octants: 8
+  enum_memory_fraction: 0.6

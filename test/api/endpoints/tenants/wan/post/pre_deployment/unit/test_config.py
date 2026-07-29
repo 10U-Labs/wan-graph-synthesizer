@@ -269,9 +269,9 @@ def test_prohibited_backbone_must_be_a_list_of_strings() -> None:
         _config({"design": {"prohibited_backbone": "Denver, CO"}})
 
 
-def test_reads_tuning_compass_octants() -> None:
-    """A tuning compass_octants value is read into the design params."""
-    assert _config({"tuning": {"compass_octants": 6}}).params.tuning.compass_octants == 6
+def test_reads_settings_compass_octants() -> None:
+    """A settings compass_octants value is read into the design params."""
+    assert _config({"settings": {"compass_octants": 6}}).params.tuning.compass_octants == 6
 
 
 def test_reads_tuning_coverage_target() -> None:
@@ -281,18 +281,23 @@ def test_reads_tuning_coverage_target() -> None:
     ).params.tuning.backbone_coverage_target_miles == 250.0
 
 
-def test_reads_tuning_enum_memory_fraction() -> None:
-    """A tuning enum_memory_fraction value is read into the enumeration budget."""
+def test_reads_settings_enum_memory_fraction() -> None:
+    """A settings enum_memory_fraction value is read into the enumeration budget."""
     assert _config(
-        {"tuning": {"enum_memory_fraction": 0.3}}
+        {"settings": {"enum_memory_fraction": 0.3}}
     ).params.tuning.enum_budget.memory_fraction == 0.3
 
 
-def test_reads_tuning_backbone_set_peak_bytes() -> None:
-    """A tuning backbone_set_peak_bytes value is read into the enumeration budget."""
+def test_reads_settings_backbone_set_peak_bytes() -> None:
+    """A settings backbone_set_peak_bytes value is read into the enumeration budget."""
     assert _config(
-        {"tuning": {"backbone_set_peak_bytes": 200}}
+        {"settings": {"backbone_set_peak_bytes": 200}}
     ).params.tuning.enum_budget.set_peak_bytes == 200
+
+
+def test_a_dial_left_in_the_tuning_section_is_not_read() -> None:
+    """A dial left in the tuning section is ignored, so the built-in default stands."""
+    assert _config({"tuning": {"compass_octants": 6}}).params.tuning.compass_octants == 8
 
 
 def test_reads_vertices_mapping() -> None:
@@ -403,7 +408,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "access-homing-degree": {"degree": 2},
         "backbone-placement": {"restrict": True},
         "convergence-promotion": {"promote": True},
-        "knobs": {"compass_octants": 8, "backbone_coverage_target_miles": 600.0},
+        "knobs": {"backbone_coverage_target_miles": 600.0},
         "label": {"label": "Minuteman"},
     }
     parts.update(overrides)
@@ -417,10 +422,19 @@ def test_app_config_from_parts_folds_settings_into_tuning() -> None:
     assert budget.memory_fraction == 0.25
 
 
-def test_app_config_from_parts_prefers_settings_over_knobs() -> None:
-    """A key carried by both documents resolves to the settings value."""
-    parts = _parts(settings={"compass_octants": 4})
-    assert app_config_from_parts(parts).params.tuning.compass_octants == 4
+def test_app_config_from_parts_reads_every_dial_from_settings() -> None:
+    """The three implementation dials come from the settings document."""
+    parts = _parts(settings={
+        "compass_octants": 4, "enum_memory_fraction": 0.25, "backbone_set_peak_bytes": 320,
+    })
+    budget = app_config_from_parts(parts).params.tuning.enum_budget
+    assert (budget.memory_fraction, budget.set_peak_bytes) == (0.25, 320)
+
+
+def test_app_config_from_parts_ignores_a_dial_left_in_knobs() -> None:
+    """A dial an operator left behind under knobs no longer steers the search."""
+    parts = _parts(knobs={"backbone_coverage_target_miles": 600.0, "compass_octants": 4})
+    assert app_config_from_parts(parts).params.tuning.compass_octants == 8
 
 
 def test_app_config_from_parts_without_settings_is_unchanged() -> None:

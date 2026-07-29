@@ -47,6 +47,8 @@ inputs:
 label: F-35
 promote_high_degree_convergences_to_backbone_nodes: false
 restrict_backbone_to_data_centers: true
+settings:
+  compass_octants: 4
 """
 
 
@@ -331,6 +333,16 @@ def test_push_tenants_puts_the_convergence_promotion_resource(
     push_tenants("http://api")
     bodies = dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
     assert bodies["tenants/f-35/convergence-promotion"] == {"promote": False}
+
+
+def test_push_tenants_puts_the_settings_document(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants sends the tenant's settings block as its own document."""
+    _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
+    push_tenants("http://api")
+    bodies = dict(zip(put_recorder.nth(1), put_recorder.nth(2)))
+    assert bodies["tenants/f-35/settings"] == {"compass_octants": 4}
 
 
 def test_push_tenants_reads_off_net_when_present(

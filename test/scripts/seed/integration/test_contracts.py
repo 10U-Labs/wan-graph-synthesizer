@@ -83,6 +83,19 @@ def test_yamllint_names_every_tenant_config() -> None:
     assert _linted_configs() == declared
 
 
+def test_pipeline_writes_knobs_without_the_implementation_dials(
+        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every knobs document the real configs produce carries the coverage target alone."""
+    _seed(urlopen_recorder, monkeypatch)
+    written = {
+        key
+        for request in urlopen_recorder.requests
+        if request.full_url.endswith("/knobs")
+        for key in json.loads(request.data or b"{}")
+    }
+    assert written == {"backbone_coverage_target_miles"}
+
+
 def test_pipeline_writes_a_label_for_every_tenant(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
     """Seeding writes a label resource for every tenant config file."""
