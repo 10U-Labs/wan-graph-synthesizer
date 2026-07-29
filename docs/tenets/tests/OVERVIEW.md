@@ -83,14 +83,14 @@ Before writing a fixture, helper or double, look for the one that
 already exists: first in the enclosing scopes, then among the shared
 helpers.
 
-A second copy of something that already exists is a defect, in tests as
-much as in the code they cover. The copies drift, and a test standing on
-the stale one passes while what it claims to cover is broken.
+Each thing has one definition, and a second copy of it is a defect, in
+tests as much as in the code they cover. The copies drift. A test
+standing on the stale one passes while what it claims to cover is
+broken, which is worse than having no test at all.
 
-So duplication is not discouraged, it is disallowed, and the tolerance
-is none: not one copy, not for now, not with a note to remove it later.
-A machine can decide this one, which settles how it is held to
-([Enforcement Is Mechanical](#enforcement-is-mechanical)).
+There is no amount of this that is harmless. A copy is a copy at one
+line as much as at fifty, and one written to be temporary is still the
+one that drifts.
 
 ## Enforcement Is Mechanical
 
@@ -98,10 +98,9 @@ Any rule here that a machine can decide must be decided by one, and
 decided before anything that would rely on it. A rule that holds only
 while someone is watching for it does not hold.
 
-Silencing a finding is itself a violation, whether it is silenced on the
-line that raised it or in a setting that relaxes the rule everywhere. No
-rule carries a tolerance band and no rule takes partial credit. When a
-rule objects, what changes is the code.
+A rule that can be set aside where it is inconvenient is not being
+applied, it is being negotiated, and it stops predicting anything about
+the code it governs. When a rule objects, what changes is the code.
 
 ## Nothing Runs Before What It Presumes
 

@@ -55,10 +55,10 @@ definition of it.
 
 Each test verifies exactly one behaviour, with exactly one assertion.
 
-This is not a style preference to be weighed against convenience. A
-second assertion is a violation, and one a machine can find, which
-settles how it is held to
-([OVERVIEW.md](OVERVIEW.md#enforcement-is-mechanical)).
+The reason is not tidiness. A test stops at its first failed assertion,
+so a second one is a fact the test claims to check and then never
+reports. And a test that can fail for two reasons no longer names the
+reason it failed, which is the whole of what a failure is worth.
 
 When two facts need asserting, write two tests. Setup they share belongs
 in a helper or a fixture, never in a second assertion. A helper that
