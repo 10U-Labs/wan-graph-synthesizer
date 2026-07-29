@@ -24,21 +24,12 @@ stack is rewritten; if a sentence would not, it does not belong here.
 There are four tiers, separated by what a test may touch and by when it
 becomes possible to run.
 
-| Tier | The question it answers |
-| --- | --- |
-| Unit | Is this unit correct on its own |
-| Pre-deployment integration | Can this change be deployed |
-| Post-deployment integration | Did the deployment succeed |
-| End to end | Does the whole entrypoint behave |
-
-- Unit tests exercise one unit of code with nothing external in reach.
-- Pre-deployment integration tests prove the change is deployable: the
-  files that must agree do agree, the credentials work, and the
-  declared state matches the world the deployment will land in.
-- Post-deployment integration tests inspect what was just deployed: it
-  exists, it is configured as declared, and it is wired to its
-  neighbours.
-- End-to-end tests drive a real entrypoint the way its caller does.
+| Tier | The question it answers | What it may touch | What it needs to run |
+| --- | --- | --- | --- |
+| Unit | Is this unit correct alone | Nothing external | Nothing |
+| Pre-deployment | Can this be deployed | Live state, read only | Credentials |
+| Post-deployment | Did the deployment succeed | What it created | Deployment |
+| End to end | Does the entrypoint behave | A local double | Nothing |
 
 Each tier has its own tenets.
 
