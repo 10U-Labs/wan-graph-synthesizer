@@ -1,58 +1,61 @@
 ---
 # Department of the Air Force WAN design: demand is Air Force and Space Force
 # installations only (extracted from the DoW roster).
-# Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
+# Two blocks describe the design -- the meshed `backbone` and the `access` that
+# homes into it. Keys are kept alphabetical within each block, nested ones
+# included, to satisfy yamllint key-ordering.
 access:
   homing_degree: 2
 backbone:
+  coverage_target_miles: 400.0
+  forced:
+    connections:
+      - source: Minot, ND
+        target: Omaha, NE
+        type: backbone-backbone
+      - source: Atlanta, GA
+        target: Dallas, TX
+        type: backbone-backbone
+      - source: Atlanta, GA
+        target: Omaha, NE
+        type: backbone-backbone
+    nodes:
+      - Albuquerque, NM
+      - Ashburn, VA
+      - Atlanta, GA
+      - Boston, MA
+      - Cheyenne, WY
+      - Colorado Springs, CO
+      - Dallas, TX
+      - Great Falls, MT
+      - Hillsboro, OR
+      - Houston, TX
+      - Los Angeles, CA
+      - McLean, VA
+      - Minot, ND
+      - New York, NY
+      - Omaha, NE
+      - Salt Lake City, UT
+      - San Jose, CA
+      - Seattle, WA
+      - Tallahassee, FL
+      - Tulsa, OK
   mesh_degree: 3
   node_count:
     max: 99
     min: 3
-forced_backbone_nodes:
-  - Albuquerque, NM
-  - Ashburn, VA
-  - Atlanta, GA
-  - Boston, MA
-  - Cheyenne, WY
-  - Colorado Springs, CO
-  - Dallas, TX
-  - Great Falls, MT
-  - Hillsboro, OR
-  - Houston, TX
-  - Los Angeles, CA
-  - McLean, VA
-  - Minot, ND
-  - New York, NY
-  - Omaha, NE
-  - Salt Lake City, UT
-  - San Jose, CA
-  - Seattle, WA
-  - Tallahassee, FL
-  - Tulsa, OK
-forced_connections:
-  - source: Minot, ND
-    target: Omaha, NE
-    type: backbone-backbone
-  - source: Atlanta, GA
-    target: Dallas, TX
-    type: backbone-backbone
-  - source: Atlanta, GA
-    target: Omaha, NE
-    type: backbone-backbone
+  prohibited:
+    connections: []
+    nodes: []
+  promote_high_degree_convergences: false
+  restrict_to_data_centers: false
 inputs:
   locations:
     DAF: data/vertices/tenants/daf.csv
   off_net: data/vertices/utilities/off_net.csv
   providers:
     regions: data/vertices/providers/providers.csv
-knobs:
-  backbone_coverage_target_miles: 400.0
 label: DAF
-prohibited_backbone_nodes: []
-prohibited_connections: []
-promote_high_degree_convergences_to_backbone_nodes: false
-restrict_backbone_to_data_centers: false
 settings:
   backbone_search_memory_share: 0.6
   bytes_per_backbone_combination: 160
