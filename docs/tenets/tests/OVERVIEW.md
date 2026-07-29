@@ -21,20 +21,15 @@ stack is rewritten; if a sentence would not, it does not belong here.
 
 ## Test Tiers
 
-There are four tiers, separated by what a test may touch, which is also
-what decides when it becomes possible to run. Each links to its tenets.
+There are four tiers, separated by what a test may touch and by when it
+becomes possible to run. Each name links to that tier's own tenets.
 
-| Tier | The question it answers | What it may touch |
-| --- | --- | --- |
-| [Unit][unit] | Is this unit correct alone | Nothing external |
-| [Pre-deployment][pre] | Can this be deployed | Live state, read only |
-| [Post-deployment][post] | Did the deployment succeed | What it created |
-| [End to end][e2e] | Does the entrypoint behave | A local double |
-
-[unit]: UNIT_TESTS.md
-[pre]: PRE_DEPLOYMENT_INTEGRATION_TESTS.md
-[post]: POST_DEPLOYMENT_INTEGRATION_TESTS.md
-[e2e]: E2E_TESTS.md
+| Tier | The question it answers | What it may touch | What it needs before it can run |
+| --- | --- | --- | --- |
+| [Unit](UNIT_TESTS.md) | Is this unit correct on its own | Nothing external | Nothing |
+| [Pre-deployment integration](PRE_DEPLOYMENT_INTEGRATION_TESTS.md) | Can this change be deployed | Live state, read only | Credentials |
+| [Post-deployment integration](POST_DEPLOYMENT_INTEGRATION_TESTS.md) | Did the deployment succeed | What it just created | A deployment |
+| [End to end](E2E_TESTS.md) | Does the whole entrypoint behave | A local double | Nothing |
 
 ## Cover Every Tier the Change Touches
 

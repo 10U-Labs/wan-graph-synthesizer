@@ -163,8 +163,13 @@ jobs:
           --linters markdownlint
           --verbose
           ${{ github.workspace }}
+      # MD013 is off because a table row is one line and cannot be
+      # wrapped: a row carrying a link outgrows eighty columns without
+      # any way to shorten it but deleting a column. Prose is still
+      # wrapped at eighty columns, by hand rather than by the linter.
+      # --disable is variadic, so the glob goes before it.
       - name: Lint Markdown
-        run: markdownlint '**/*.md'
+        run: markdownlint '**/*.md' --disable MD013
   yamllint:
     needs: concluding-yamllint-necessary
     runs-on: ubuntu-24.04
