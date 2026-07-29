@@ -7,6 +7,7 @@ number of nearest backbone nodes on the mesh.
 
 from __future__ import annotations
 
+import fixtures
 from synthesizer.validation import demand_without_backbone_redundancy, validate_design
 from synthesizer.model import AccessEdge, Design, DesignMetrics, PathUse, ValidationReport
 from synthesizer.input_graph import Vertex, edge_key
@@ -173,6 +174,35 @@ def test_backbone_below_the_target_names_the_deficient_nodes() -> None:
 def test_small_backbone_is_exempt_from_the_mesh_rule() -> None:
     """With only three nodes the three-link target cannot apply, so it passes."""
     assert _mesh_report(*_SMALL)["backbone_meets_mesh_link_target"] is True
+
+
+def _independence_report(routes: list[tuple[str, ...]]) -> ValidationReport:
+    """Validate one of the shared/diverse routed meshes against a two-link target."""
+    return validate_design(
+        [make_pop(name) for name in (*fixtures.SHARED_TRANSIT_BACKBONE, "x", "y")],
+        fixtures.meshed_backbone_design(routes, fixtures.SHARED_TRANSIT_BACKBONE),
+        backbone_mesh_degree=2,
+    )
+
+
+def test_shared_transit_fails_the_independent_mesh_target() -> None:
+    """A node whose two links cross one transit city misses the two-link target."""
+    assert _independence_report(fixtures.SHARED_TRANSIT_ROUTES)[
+        "backbone_meets_independent_mesh_link_target"
+    ] is False
+
+
+def test_shared_transit_names_the_node_that_falls_short() -> None:
+    """The independence list names the node whose links a single city would both take."""
+    report = _independence_report(fixtures.SHARED_TRANSIT_ROUTES)
+    assert {item["id"] for item in report["backbone_mesh_independence_deficient"]} == {"a"}
+
+
+def test_diverse_transit_meets_the_independent_mesh_target() -> None:
+    """The same mesh with one link rerouted through its own city meets the target."""
+    assert _independence_report(fixtures.DIVERSE_TRANSIT_ROUTES)[
+        "backbone_meets_independent_mesh_link_target"
+    ] is True
 
 
 def test_healthy_backbone_is_two_edge_connected() -> None:

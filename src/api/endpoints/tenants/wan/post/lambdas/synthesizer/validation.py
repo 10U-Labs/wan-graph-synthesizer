@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from itertools import combinations
 
 from synthesizer.input_graph import Vertex, edge_key
 from synthesizer.model import Design, ValidationReport
@@ -123,6 +124,72 @@ def backbone_mesh_two_vertex_connected(design: Design) -> bool:
     """
     return _backbone_mesh_survives(design, is_two_vertex_connected)
 
+def mesh_link_failure_cities(design: Design, node: str) -> list[frozenset[str]]:
+    """Per mesh link at ``node``, the cities whose loss would take that link down.
+
+    Every city the link's routed path visits except ``node`` itself: a transit city, and
+    the peer at the far end, which is a city too. Two routes for the same pair both carry
+    that pair's peer, so a detour never reads as a second independent link to it.
+    """
+    return [
+        frozenset(use.path) - {node}
+        for use in design.path_uses
+        if use.purpose == "backbone_mesh" and node in (use.source, use.target)
+    ]
+
+
+def _all_disjoint(failure_cities: tuple[frozenset[str], ...]) -> bool:
+    """Whether no city appears in two of these links' failure sets."""
+    seen: set[str] = set()
+    for cities in failure_cities:
+        if seen & cities:
+            return False
+        seen |= cities
+    return True
+
+
+def independent_mesh_degree(design: Design, node: str) -> int:
+    """How many of ``node``'s mesh links no single city's loss can take two of.
+
+    A node's nominal degree counts lines on a diagram. This counts links that fail
+    independently, which is the number the configured degree is asking for: the largest
+    set of the node's links whose failure cities are pairwise disjoint. Searched largest
+    first over a handful of links, so the exhaustive walk stays cheap.
+    """
+    links = mesh_link_failure_cities(design, node)
+    for size in range(len(links), 0, -1):
+        if any(_all_disjoint(combo) for combo in combinations(links, size)):
+            return size
+    return 0
+
+
+def backbone_mesh_independence_deficient(
+    design: Design,
+    vertices_by_id: dict[str, Vertex],
+    mesh_degree: int,
+) -> list[dict[str, object]]:
+    """Backbone nodes without ``mesh_degree`` independently failing mesh links.
+
+    The city-diversity counterpart of :func:`backbone_mesh_deficient`: a node can hold its
+    full nominal degree and still fall below it when one transit city goes, because two of
+    its links cross that city. With ``mesh_degree`` or fewer backbone nodes the target
+    cannot be met at all, so the list is empty.
+    """
+    if len(design.backbone_ids) <= mesh_degree:
+        return []
+    return [
+        {
+            "id": backbone_id,
+            "name": vertices_by_id[backbone_id].name,
+            "independent_degree": degree,
+        }
+        for backbone_id, degree in sorted(
+            (node, independent_mesh_degree(design, node)) for node in design.backbone_ids
+        )
+        if degree < mesh_degree
+    ]
+
+
 def neighbor_degrees(
     ids: set[str], edges: set[tuple[str, str]]
 ) -> dict[str, int]:
@@ -158,6 +225,9 @@ def validate_design(
     mesh_deficient = backbone_mesh_deficient(
         design.backbone_ids, backbone_degrees, vertices_by_id, backbone_mesh_degree
     )
+    independence_deficient = backbone_mesh_independence_deficient(
+        design, vertices_by_id, backbone_mesh_degree
+    )
 
     return {
         "connected": len(components) == 1,
@@ -180,6 +250,8 @@ def validate_design(
         ],
         "backbone_meets_mesh_link_target": not mesh_deficient,
         "backbone_mesh_degree_deficient": mesh_deficient,
+        "backbone_meets_independent_mesh_link_target": not independence_deficient,
+        "backbone_mesh_independence_deficient": independence_deficient,
         "backbone_mesh_two_edge_connected": backbone_mesh_two_edge_connected(design),
         "backbone_mesh_two_vertex_connected": backbone_mesh_two_vertex_connected(design),
     }

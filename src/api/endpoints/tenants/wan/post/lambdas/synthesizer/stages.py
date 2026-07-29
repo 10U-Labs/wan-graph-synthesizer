@@ -52,11 +52,18 @@ def finalize(
 ) -> tuple[
     list[Vertex], dict[tuple[str, str], PhysicalEdge], Design, ValidationReport
 ]:
-    """Validate the design over the real fiber.
+    """Validate the design over the real fiber, refusing one that misses the mesh degree.
 
     Resilience is the operator's two required redundancy degrees, enforced over the
     real fiber and reported by :func:`validate_design`; there is no silent edge
     augmentation.
+
+    ``backbone_mesh_degree`` is a count of links that fail independently, so a design
+    where some backbone node cannot reach that many is not a design that meets the
+    configuration and is refused by name. The fiber sometimes cannot support the
+    configured degree at a city the operator pinned; that is the operator's to resolve,
+    by pinning elsewhere or lowering the degree, and it is not something a synthesizer
+    can route around silently.
     """
     validation = validate_design(
         vertices,
@@ -64,4 +71,13 @@ def finalize(
         params.tuning.access_backbone_links,
         params.tuning.backbone_mesh_degree,
     )
+    deficient = validation["backbone_mesh_independence_deficient"]
+    if deficient:
+        shortfalls = ", ".join(
+            f"{entry['name']} ({entry['independent_degree']})" for entry in deficient
+        )
+        raise ValueError(
+            f"No {params.tuning.backbone_mesh_degree} independently failing backbone mesh "
+            f"links at: {shortfalls}"
+        )
     return vertices, physical_edges, design, validation

@@ -20,9 +20,12 @@ from synthesizer.codec import OFF_NET_KIND, PROVIDER_KIND, SITE_KIND
 from synthesizer.input_graph import PhysicalEdge, Vertex, VertexInfo, edge_key
 from synthesizer.model import (
     KIND_ROADM,
+    Design,
     DesignArtifacts,
+    DesignMetrics,
     DesignParams,
     ForcedConnection,
+    PathUse,
     RoleExclusions,
     SourceFiles,
 )
@@ -119,6 +122,41 @@ def ring_physical_edges(distance: float = 100.0) -> dict[tuple[str, str], Physic
         key = edge_key(left, right)
         edges[key] = PhysicalEdge(source=key[0], target=key[1], distance_miles=distance)
     return edges
+
+
+# A three-node backbone mesh in two routings, the pair the independence check exists to
+# tell apart: in the first, node a's links to b and to c both cross transit city x, so one
+# city's loss takes both and a holds a single independent link; in the second, a's second
+# link is rerouted through x's alternative y and both links stand on their own. Node b and
+# node c hold two independent links in either routing.
+SHARED_TRANSIT_BACKBONE = ("a", "b", "c")
+SHARED_TRANSIT_ROUTES = [("a", "x", "b"), ("a", "x", "c"), ("b", "c")]
+DIVERSE_TRANSIT_ROUTES = [("a", "x", "b"), ("a", "y", "c"), ("b", "c")]
+
+
+def meshed_backbone_design(
+    routes: list[tuple[str, ...]], backbone_ids: tuple[str, ...]
+) -> Design:
+    """A design whose backbone mesh rides the given routed paths, one link per route.
+
+    Shared by the tiers that judge a routed mesh rather than build one: each route's ends
+    are its link's endpoints, so the cities in between are the link's transit.
+    """
+    return Design(
+        backbone_ids=backbone_ids,
+        transit_ids=(),
+        access_edges=[],
+        physical_edge_keys=set(),
+        path_uses=[
+            PathUse("backbone_mesh", route[0], route[-1], route, 1.0) for route in routes
+        ],
+        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+    )
+
+
+def carrier_pops_by_id(vertex_ids: str) -> dict[str, Vertex]:
+    """A carrier PoP per single-character id, keyed by id, for validation lookups."""
+    return {vertex_id: carrier_pop(vertex_id) for vertex_id in vertex_ids}
 
 
 def physical_edges_from(

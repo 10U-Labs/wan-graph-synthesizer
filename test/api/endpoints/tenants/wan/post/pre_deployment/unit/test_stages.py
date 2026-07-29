@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import fixtures
+import pytest
 from synthesizer.stages import dual_home, finalize
-from synthesizer.model import DesignParams
+from synthesizer.model import DesignParams, Tuning
 
 
 def test_dual_home_returns_a_graph_without_off_net() -> None:
@@ -70,3 +71,26 @@ def test_finalize_returns_the_design_unchanged() -> None:
         art.vertices, art.physical_edges, art.design, fixtures.ring_params()
     )
     assert design is art.design
+
+
+def test_finalize_reports_the_independent_mesh_target() -> None:
+    """finalize reports whether the mesh links of every backbone node fail independently."""
+    art = fixtures.ring_artifacts()
+    _vertices, _edges, _design, validation = finalize(
+        art.vertices, art.physical_edges, art.design, fixtures.ring_params()
+    )
+    assert validation["backbone_meets_independent_mesh_link_target"] is True
+
+
+def test_finalize_refuses_a_design_short_of_the_configured_mesh_degree() -> None:
+    """A backbone node without the configured independent links makes finalize raise.
+
+    Node a's two links both leave through transit city x, so one city's loss takes both
+    and a holds a single independent link where the configuration asks for two.
+    """
+    design = fixtures.meshed_backbone_design(
+        fixtures.SHARED_TRANSIT_ROUTES, fixtures.SHARED_TRANSIT_BACKBONE
+    )
+    params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_mesh_degree=2))
+    with pytest.raises(ValueError, match="independently failing backbone mesh links at"):
+        finalize(list(fixtures.carrier_pops_by_id("abcx").values()), {}, design, params)

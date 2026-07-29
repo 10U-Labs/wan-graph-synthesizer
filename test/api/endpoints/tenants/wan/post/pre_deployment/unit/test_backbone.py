@@ -9,6 +9,7 @@ from synthesizer.backbone import (
     BackboneConstraints,
     augment_physical_resilience,
     backbone_mesh_paths,
+    diverse_mesh_routes,
     select_backbone_mesh_pairs,
 )
 from synthesizer.synthesize import all_pairs_shortest
@@ -347,3 +348,67 @@ def test_augment_physical_resilience_skips_pruned_detour_pairs() -> None:
     assert augment_physical_resilience(_BASE_HUB, ("a", "b", "c"), _HUB_EDGES, pruned) == (
         _BASE_HUB
     )
+
+
+# h reaches both p and q through g on the cheap side, and q again through r the long way
+# round. Routing each link on its own shortest path would send both of h's links through
+# g, so one city's loss would take both.
+_SHARED_EGRESS_EDGES = physical({
+    ("h", "g"): 1.0, ("g", "p"): 1.0, ("g", "q"): 1.0,
+    ("h", "r"): 1.0, ("r", "q"): 5.0,
+})
+# The same fiber with the long way round missing, so q is reachable only through g.
+_ONLY_EGRESS_EDGES = physical({
+    ("h", "g"): 1.0, ("g", "p"): 1.0, ("g", "q"): 1.0, ("h", "r"): 1.0,
+})
+
+
+def _routes(
+    pairs: list[tuple[str, str]],
+    edges: dict[tuple[str, str], PhysicalEdge],
+) -> dict[tuple[str, str], tuple[str, ...]]:
+    """Route the given mesh pairs over ``edges``, keyed by the pair they route."""
+    adjacency = build_adjacency(edges)
+    ids = {vertex_id for pair in edges for vertex_id in pair}
+    _distances, predecessors = all_pairs_shortest([pop(i) for i in sorted(ids)], adjacency)
+    return {
+        (left, right): path
+        for left, right, path in diverse_mesh_routes(pairs, predecessors, adjacency)
+    }
+
+
+def test_the_first_link_of_a_node_takes_its_shortest_path() -> None:
+    """With nothing yet to route clear of, a link takes the cheapest path it has."""
+    routes = _routes([("h", "p"), ("h", "q")], _SHARED_EGRESS_EDGES)
+    assert routes[("h", "p")] == ("h", "g", "p")
+
+
+def test_a_second_link_routes_clear_of_the_first_links_transit_city() -> None:
+    """h's second link takes the long way round rather than cross g a second time."""
+    routes = _routes([("h", "p"), ("h", "q")], _SHARED_EGRESS_EDGES)
+    assert routes[("h", "q")] == ("h", "r", "q")
+
+
+def test_a_link_with_no_clear_route_falls_back_to_its_shortest_path() -> None:
+    """Where the fiber offers no alternative the link is still wired, through g."""
+    routes = _routes([("h", "p"), ("h", "q")], _ONLY_EGRESS_EDGES)
+    assert routes[("h", "q")] == ("h", "g", "q")
+
+
+def test_links_of_unrelated_nodes_do_not_constrain_each_other() -> None:
+    """A city another node's link crosses is no reason to route this one around it."""
+    routes = _routes([("g", "p"), ("h", "q")], _SHARED_EGRESS_EDGES)
+    assert routes[("h", "q")] == ("h", "g", "q")
+
+
+def test_backbone_mesh_paths_route_a_nodes_links_over_distinct_cities() -> None:
+    """Routed through backbone_mesh_paths, h's two links still share no city but h."""
+    adjacency = build_adjacency(_SHARED_EGRESS_EDGES)
+    ids = sorted({vertex_id for pair in _SHARED_EGRESS_EDGES for vertex_id in pair})
+    distances, predecessors = all_pairs_shortest([pop(i) for i in ids], adjacency)
+    uses = backbone_mesh_paths(
+        ("h", "p", "q"), distances, predecessors, _SHARED_EGRESS_EDGES,
+        BackboneConstraints(mesh_degree=2),
+    )
+    routed = {edge_key(use.source, use.target): set(use.path) - {"h"} for use in uses}
+    assert not routed[edge_key("h", "p")] & routed[edge_key("h", "q")]

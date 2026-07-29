@@ -327,6 +327,57 @@ def augment_physical_resilience(
     return uses
 
 
+def _route_avoiding(
+    left: str,
+    right: str,
+    avoid: set[str],
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> tuple[str, ...]:
+    """The shortest ``left``-to-``right`` route clear of ``avoid``, or empty when none is.
+
+    A city is kept off the route by blocking every span that touches it, the same way
+    :func:`_resilience_detour` puts a cut city off the only path.
+    """
+    blocked = frozenset(
+        edge_key(city, neighbor)
+        for city in avoid
+        for neighbor, _weight in adjacency.get(city, [])
+    )
+    _distances, predecessors = dijkstra(adjacency, left, blocked)
+    return reconstruct_path(left, right, predecessors)
+
+
+def diverse_mesh_routes(
+    pairs: list[tuple[str, str]],
+    all_predecessors: dict[str, dict[str, str]],
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> list[tuple[str, str, tuple[str, ...]]]:
+    """Route every mesh link, keeping one node's links clear of each other's cities.
+
+    Routing each link along its own shortest path independently lets a node's links share
+    their cheapest egress corridor, so one city's loss takes several at once and the
+    node's degree overstates what it survives. Each link is therefore routed clear of the
+    cities its endpoints' earlier links already ride, accepting a longer path to buy the
+    independence -- selection can only choose which peers a node links to, and no choice
+    of peer helps when the shortest routes to all of them leave through one city.
+
+    The endpoints themselves are never avoided, since a link cannot route around its own
+    ends. A link with no clear route falls back to its shortest path: the fiber genuinely
+    offers no alternative there, and validation is what reports the shortfall.
+    """
+    carried: dict[str, set[str]] = {}
+    routes: list[tuple[str, str, tuple[str, ...]]] = []
+    for left, right in pairs:
+        avoid = (carried.get(left, set()) | carried.get(right, set())) - {left, right}
+        path = _route_avoiding(left, right, avoid, adjacency) if avoid else ()
+        if not path:
+            path = reconstruct_path(left, right, all_predecessors[left])
+        routes.append((left, right, path))
+        for node in (left, right):
+            carried.setdefault(node, set()).update(set(path) - {node})
+    return routes
+
+
 @dataclass(frozen=True)
 class BackboneConstraints:
     """The backbone-mesh selection knobs: the operator's pins, prunes, and link count."""
@@ -343,11 +394,13 @@ def backbone_mesh_paths(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     constraints: BackboneConstraints = BackboneConstraints(),
 ) -> list[PathUse]:
-    """Route a shortest path over each backbone-to-backbone mesh link.
+    """Route each backbone-to-backbone mesh link, diversely where the fiber allows.
 
     The mesh wires each backbone node to its ``constraints.mesh_degree`` nearest nodes,
     plus ``constraints.forced_pairs`` and minus ``constraints.removed_pairs`` (see
-    :func:`select_backbone_mesh_pairs`).
+    :func:`select_backbone_mesh_pairs`). Routing is not per-link shortest path: a node's
+    links are routed clear of one another's cities so the degree counts links that fail
+    independently (see :func:`diverse_mesh_routes`).
     """
     pairs = select_backbone_mesh_pairs(
         backbone_ids,
@@ -356,12 +409,11 @@ def backbone_mesh_paths(
         constraints.mesh_degree,
         constraints.forced_pairs,
     )
-    uses: list[PathUse] = []
-    for left, right in pairs:
-        path = reconstruct_path(left, right, all_predecessors[left])
-        uses.append(
-            PathUse("backbone_mesh", left, right, path, path_geometry_miles(path, physical_edges))
-        )
+    adjacency = build_adjacency(physical_edges)
+    uses = [
+        PathUse("backbone_mesh", left, right, path, path_geometry_miles(path, physical_edges))
+        for left, right, path in diverse_mesh_routes(pairs, all_predecessors, adjacency)
+    ]
     return augment_physical_resilience(
         uses, backbone_ids, physical_edges, constraints.removed_pairs
     )

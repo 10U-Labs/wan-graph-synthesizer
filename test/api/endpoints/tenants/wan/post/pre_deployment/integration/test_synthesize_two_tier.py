@@ -8,10 +8,19 @@ homing is exercised at the unit level (see ``test_synthesize.py``).
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import fixtures
+import pytest
 from fixtures import run_design
 from synthesizer.input_graph import edge_key
-from synthesizer.model import DesignArtifacts, DesignParams, ForcedConnection, is_carrier_pop
+from synthesizer.model import (
+    DesignArtifacts,
+    DesignParams,
+    ForcedConnection,
+    Tuning,
+    is_carrier_pop,
+)
 from synthesizer.synthesize import convergence_promotion_ids
 from synthesizer.validation import backbone_mesh_pairs
 
@@ -25,11 +34,16 @@ PROHIBITED = fixtures.prohibited_backbone_artifacts("P4")
 # seated so the mesh degree binds: P0 and P3 sit opposite each other, three hops apart,
 # and are each other's farthest peer, so a nearest-neighbour mesh never picks the pair
 # and the ring is already 2-edge-connected without it. The link can only be the pin.
+#
+# The degree is two because each ring PoP has two fiber directions, so two links is the
+# most any of them can hold independently and a three-link design over this graph is
+# refused (see ``test_the_ring_cannot_meet_a_degree_its_fiber_cannot_carry``).
 _RING_BACKBONE = ("P0", "P1", "P2", "P3", "P4", "P5")
 _MESHED_RING = DesignParams(
     min_backbone_count=2,
     forced_backbone_names=_RING_BACKBONE,
     datacenter_cities=fixtures.ring_datacenter_cities(),
+    tuning=Tuning(backbone_mesh_degree=2),
 )
 FORCED_BACKBONE_LINK = fixtures.forced_connection_artifacts(
     _MESHED_RING, (ForcedConnection("backbone-backbone", "P0", "P3"),)
@@ -89,6 +103,22 @@ def test_design_is_connected() -> None:
 def test_backbone_survives_any_single_city() -> None:
     """The ring backbone's physical fiber has no single-city chokepoint (biconnected)."""
     assert ARTIFACTS.validation["backbone_mesh_two_vertex_connected"] is True
+
+
+def test_every_meshed_ring_node_holds_its_links_independently() -> None:
+    """Each seated ring PoP holds two mesh links no single city's loss can both take."""
+    assert UNFORCED_RING.validation["backbone_meets_independent_mesh_link_target"] is True
+
+
+def test_the_ring_cannot_meet_a_degree_its_fiber_cannot_carry() -> None:
+    """Asking three independent links of two-direction fiber is refused, naming the node.
+
+    The configured degree is a count of links that fail independently, so a graph that
+    cannot carry it is refused rather than reported: no PoP on a ring has a third way out.
+    """
+    params = replace(_MESHED_RING, tuning=Tuning(backbone_mesh_degree=3))
+    with pytest.raises(ValueError, match="independently failing backbone mesh links at"):
+        fixtures.forced_connection_artifacts(params, ())
 
 
 def _forced_off_net_artifacts() -> DesignArtifacts:
