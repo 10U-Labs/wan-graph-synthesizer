@@ -1,259 +1,275 @@
 # Post-Deployment Integration Test Tenets
 
 These are the non-negotiable rules for post-deployment integration tests.
+They live under a stack's `post_deployment/integration/` directory and
+run against live AWS after the `reconciliation` job has applied the
+stack.
 
 ## Table of Contents
 
-- [Only Test This Deployment's Resources](#only-test-this-deployments-resources)
-- [Three-Layer Testing Model](#three-layer-testing-model)
+- [Only This Stack's Resources](#only-this-stacks-resources)
+- [The Three-Layer Model](#the-three-layer-model)
 - [Test File Organization](#test-file-organization)
-- [Layer Marker Implementation](#layer-marker-implementation)
-- [Fail Fast with Granular Diagnostics](#fail-fast-with-granular-diagnostics)
-- [Boundary with E2E Tests](#boundary-with-e2e-tests)
+- [Layer 1, Existence](#layer-1-existence)
+- [Layer 2, Configuration](#layer-2-configuration)
+- [Layer 3, Wiring](#layer-3-wiring)
+- [Assert Against the Declaration](#assert-against-the-declaration)
+- [Inspect, Never Invoke](#inspect-never-invoke)
 - [No Cleanup Required](#no-cleanup-required)
+- [Fail Fast with Granular Diagnostics](#fail-fast-with-granular-diagnostics)
 - [Fixture Usage](#fixture-usage)
+- [Position in the Workflow](#position-in-the-workflow)
 - [Quick Reference](#quick-reference)
 
-## Only Test This Deployment's Resources
+## Only This Stack's Resources
 
-**Post-deployment tests ONLY test resources created by THIS workflow.**
+A post-deployment test inspects what this workflow's `tofu apply` just
+created, and nothing else.
 
-- Do test: Resources created by terraform apply
-- Do test: Resource configuration matches expected values
-- Do test: Component wiring (triggers, layers, IAM cross-service)
-- Do NOT test: Full user journeys (those are e2e tests)
-- Do NOT test: Resources created by other workflows
-- Do NOT test: Application logic or business rules (unit tests)
+- Do test: the resources this stack declares.
+- Do test: their configuration against the declaration.
+- Do test: the connections between them.
+- Do NOT test: resources another workflow owns. Their own workflow tests
+  them, and asserting on them here couples two stacks that are otherwise
+  independent.
+- Do NOT test: application logic. That is a unit test, and it has
+  already run.
+- Do NOT test: behaviour that requires invoking anything.
 
-Post-deployment tests answer: "Did my deployment succeed?"
-E2E tests answer: "Does the user journey work?"
+## The Three-Layer Model
 
-## Three-Layer Testing Model
+Every deployed resource is checked through three layers, in order.
 
-Every deployed resource must be tested through three layers, in order:
+| Layer | Question |
+| --- | --- |
+| 1. Existence | Was it created? |
+| 2. Configuration | Does it match the declaration? |
+| 3. Wiring | Is it connected to its neighbours? |
 
-| Layer | Purpose | Example |
-|-------|---------|---------|
-| 1. Existence | Resource was created | Lambda function exists |
-| 2. Configuration | Resource configured correctly | SQS queue has 14-day retention |
-| 3. Wiring | Components connected properly | Lambda has Layer attached, SQS triggers Lambda |
+Each layer isolates a different failure.
 
-Each layer catches different failure modes:
-- Layer 1 fails → terraform didn't create the resource
-- Layer 2 fails → resource exists but misconfigured
-- Layer 3 fails → resources exist and configured, but not connected
+- Layer 1 fails: the apply did not create the resource.
+- Layer 2 fails: it exists but carries the wrong settings.
+- Layer 3 fails: it exists and is configured, but nothing can reach it
+  or it cannot reach what it needs.
 
 ## Test File Organization
 
-Tests MUST be organized into exactly three files by layer:
+Tests are organised into exactly three files, one per layer.
 
+```text
+test/api/endpoints/<endpoint>/post_deployment/
+├── conftest.py                    # Re-exports the boto3 clients used
+└── integration/
+    ├── conftest.py                # Fixtures fetched once per module
+    ├── test_01_existence.py       # Layer 1
+    ├── test_02_configuration.py   # Layer 2
+    └── test_03_wiring.py          # Layer 3
 ```
-test/api/endpoints/{endpoint}/post_deployment/integration/
-├── test_01_existence.py       # Layer 1: All resources exist
-├── test_02_configuration.py   # Layer 2: All resources configured correctly
-└── test_03_wiring.py          # Layer 3: All components connected properly
-```
 
-Do NOT organize by resource (test_lambda.py, test_sqs.py, test_dynamodb.py).
-Organizing by resource makes it impossible to know which layer failed.
+Do not organise by resource. A `test_lambda.py` alongside a `test_iam.py`
+hides which layer broke, and the layer is the diagnostic.
 
-### Layer 1: Existence Tests (test_01_existence.py)
+## Layer 1, Existence
 
-Test ONLY that resources exist. No configuration checks.
+Existence only. No settings, no connections.
 
 ```python
-# CORRECT - existence only
-def test_webhook_handler_lambda_exists(lambda_client, config):
-    """Verify TenULabsWebhookHandler Lambda exists."""
-    response = lambda_client.get_function(FunctionName="TenULabsWebhookHandler")
-    assert response["Configuration"]["FunctionName"] == "TenULabsWebhookHandler"
+"""Layer 1 (existence): the tenants stack's resources exist in AWS."""
+from test_fixtures.aws import get_log_group_info
 
-def test_runners_layer_exists(lambda_client):
-    """Verify TenULabsRunnersLayer exists."""
-    response = lambda_client.list_layer_versions(LayerName="TenULabsRunnersLayer")
-    assert len(response["LayerVersions"]) > 0
 
-def test_job_queue_exists(sqs_client, config):
-    """Verify job queue exists."""
-    queue_url = sqs_client.get_queue_url(QueueName="TenULabsRunnersJobQueue")
-    assert queue_url["QueueUrl"] is not None
+def test_lambda_function_exists(
+        lambda_config: dict[str, Any], function_name: str) -> None:
+    """The tenants handler Lambda exists under its deterministic name."""
+    assert lambda_config["FunctionName"] == function_name
 
-def test_idempotency_table_exists(dynamodb_client):
-    """Verify idempotency DynamoDB table exists."""
-    response = dynamodb_client.describe_table(TableName="TenULabsRunnersIdempotency")
-    assert response["Table"]["TableName"] == "TenULabsRunnersIdempotency"
+
+def test_iam_role_exists(iam_client: Any, role_name: str) -> None:
+    """The Lambda execution role exists."""
+    role = iam_client.get_role(RoleName=role_name)
+    assert role["Role"]["RoleName"] == role_name
+
+
+def test_log_group_exists(logs_client: Any, function_name: str) -> None:
+    """The handler's CloudWatch log group exists."""
+    info = get_log_group_info(logs_client, f"/aws/lambda/{function_name}")
+    assert info["exists"]
 ```
 
+Folding a timeout assertion into the existence test would mean a
+configuration drift reports as a missing resource.
+
+## Layer 2, Configuration
+
+Settings only, assuming existence has passed.
+
 ```python
-# WRONG - mixing existence with configuration
-def test_webhook_handler_lambda_exists_with_correct_timeout(lambda_client):
-    response = lambda_client.get_function(FunctionName="TenULabsWebhookHandler")
-    assert response["Configuration"]["Timeout"] == 30  # This is configuration, not existence
+def test_runtime_is_python313(lambda_config: dict[str, Any]) -> None:
+    """The live Lambda runs on Python 3.13."""
+    assert lambda_config["Runtime"] == "python3.13"
+
+
+def test_timeout_is_ten_seconds(lambda_config: dict[str, Any]) -> None:
+    """The live Lambda's timeout matches the declaration."""
+    assert lambda_config["Timeout"] == 10
+
+
+def test_entrypoint(lambda_config: dict[str, Any]) -> None:
+    """The live Lambda invokes ``handler.lambda_handler``."""
+    assert lambda_config["Handler"] == "handler.lambda_handler"
 ```
 
-### Layer 2: Configuration Tests (test_02_configuration.py)
+Do not re-fetch a resource to prove it is there before reading a setting.
+The fixture already holds it, and the extra call is a second assertion
+wearing a disguise.
 
-Test that resources have correct settings. Assumes existence tests passed.
+## Layer 3, Wiring
+
+Connections only, assuming existence and configuration have passed.
 
 ```python
-# CORRECT - configuration only
-def test_job_queue_has_14_day_retention(sqs_client, job_queue_url):
-    """Verify job queue retains messages for 14 days."""
-    attrs = sqs_client.get_queue_attributes(
-        QueueUrl=job_queue_url,
-        AttributeNames=["MessageRetentionPeriod"]
-    )
-    assert attrs["Attributes"]["MessageRetentionPeriod"] == "1209600"
+def test_lambda_assumes_the_declared_role(
+        lambda_config: dict[str, Any], role_name: str) -> None:
+    """The live Lambda runs as the declared execution role."""
+    assert lambda_config["Role"].endswith(f"role/{role_name}")
 
-def test_webhook_handler_has_30_second_timeout(lambda_client):
-    """Verify webhook handler timeout is 30 seconds."""
-    response = lambda_client.get_function(FunctionName="TenULabsWebhookHandler")
-    assert response["Configuration"]["Timeout"] == 30
 
-def test_idempotency_table_has_ttl_enabled(dynamodb_client):
-    """Verify idempotency table has TTL on expiration_time."""
-    response = dynamodb_client.describe_time_to_live(
-        TableName="TenULabsRunnersIdempotency"
-    )
-    assert response["TimeToLiveDescription"]["TimeToLiveStatus"] == "ENABLED"
-    assert response["TimeToLiveDescription"]["AttributeName"] == "expiration_time"
+def test_api_gateway_may_invoke_the_lambda(
+        lambda_client: Any, function_name: str) -> None:
+    """API Gateway holds permission to invoke the live Lambda."""
+    policy = lambda_client.get_policy(FunctionName=function_name)["Policy"]
+    assert "apigateway.amazonaws.com" in policy
+
+
+def test_role_grants_store_access(iam_client: Any, role_name: str) -> None:
+    """The execution role grants the Lambda read/write access to the store."""
+    policy = iam_client.get_role_policy(
+        RoleName=role_name, PolicyName="StoreAccess")
+    assert "s3:GetObject" in str(policy["PolicyDocument"])
 ```
 
-```python
-# WRONG - checking existence in configuration test
-def test_job_queue_retention(sqs_client):
-    queue_url = sqs_client.get_queue_url(QueueName="TenULabsRunnersJobQueue")  # existence check
-    attrs = sqs_client.get_queue_attributes(...)
-    assert attrs["Attributes"]["MessageRetentionPeriod"] == "1209600"
-```
+Wiring is the layer that catches what the other two cannot: a permission
+that was never attached, a role the function does not actually assume, a
+trigger nothing registered.
 
-Use fixtures to get resource identifiers. Don't re-check existence.
+## Assert Against the Declaration
 
-### Layer 3: Wiring Tests (test_03_wiring.py)
+Where a value is derived rather than chosen, read it from the same source
+the stack does instead of copying the literal into the test.
 
-Test that components are connected. Assumes existence and configuration passed.
+The stack's `conftest.py` parses the declared OpenTofu configuration and
+exposes `function_name` and `role_name`. A test that hardcodes the name
+passes while the stack renames the resource underneath it, which is
+exactly the drift this tier exists to catch.
 
-```python
-# CORRECT - wiring only
-def test_webhook_handler_has_runners_layer_attached(lambda_client):
-    """Verify webhook handler has the runners layer attached."""
-    response = lambda_client.get_function_configuration(
-        FunctionName="TenULabsWebhookHandler"
-    )
-    layer_arns = [layer["Arn"] for layer in response.get("Layers", [])]
-    assert any("TenULabsRunnersLayer" in arn for arn in layer_arns)
+Fixed values that the declaration itself states, such as a timeout of 10
+or a runtime of `python3.13`, are written as literals on purpose: the
+test is the second opinion, and deriving both sides from one source would
+assert nothing.
 
-def test_sqs_handler_triggered_by_job_queue(lambda_client):
-    """Verify SQS handler has job queue as event source."""
-    response = lambda_client.list_event_source_mappings(
-        FunctionName="TenULabsSqsHandler"
-    )
-    sources = [m["EventSourceArn"] for m in response["EventSourceMappings"]]
-    assert any("TenULabsRunnersJobQueue" in arn for arn in sources)
+## Inspect, Never Invoke
 
-def test_webhook_handler_can_write_to_job_queue(iam_client, lambda_role_arn):
-    """Verify webhook handler role has sqs:SendMessage permission."""
-    # Check IAM policy allows cross-service access
-    ...
-```
+If a test invokes a Lambda, sends an HTTP request or enqueues a message,
+it has left this tier.
 
 ```python
-# WRONG - invoking Lambda (that's e2e)
-def test_webhook_handler_processes_events(lambda_client):
+def test_handler_returns_200(lambda_client: Any, function_name: str) -> None:
+    """The handler answers an invocation."""
     response = lambda_client.invoke(
-        FunctionName="TenULabsWebhookHandler",
-        Payload=json.dumps({"test": "event"})
-    )
+        FunctionName=function_name, Payload=b"{}")
     assert response["StatusCode"] == 200
 ```
 
-## Fail Fast with Granular Diagnostics
+That is not a post-deployment test. Handler behaviour is covered by unit
+tests over the handler module, and whole-entrypoint behaviour by the
+end-to-end tier described in [E2E_TESTS.md](E2E_TESTS.md).
 
-Cryptic errors like "Lambda invocation failed" are unacceptable.
-
-- Each test must be atomic: one assertion per test
-- Tests must run in layer order (existence before configuration before wiring)
-- When a test fails, the developer must know exactly what's wrong
-- Failure messages must include resource names and expected values
-
-## Boundary with E2E Tests
-
-Post-deployment integration tests verify the deployment. E2E tests verify user journeys.
-
-### This belongs in post-deployment integration:
-- Lambda exists
-- Lambda has correct timeout
-- Lambda has Layer attached
-- SQS queue exists
-- SQS queue has correct retention
-- Lambda has SQS trigger configured
-- Layer contains expected files
-
-### This belongs in e2e tests:
-- Webhook receives HTTP request and returns 200
-- Message flows through SQS to Lambda
-- Label routing correctly identifies runner type
-- Circuit breaker opens after failures
-- Full runner provisioning workflow
-
-**Rule of thumb**: If the test invokes a Lambda, sends an HTTP request, or sends a message to SQS, it's an e2e test.
+The permitted calls are the read-only ones: `get_function`,
+`get_function_configuration`, `get_policy`, `get_role`,
+`get_role_policy`, `describe_log_groups` and their equivalents.
 
 ## No Cleanup Required
 
-Post-deployment tests MUST NOT create test artifacts. They only inspect what terraform created.
+Post-deployment tests create nothing, so they clean up nothing.
 
-- Do: Read resource configuration (get_function, describe_table, get_queue_attributes)
-- Do: Verify resource exists (get_function, describe_table, get_queue_url)
-- Do: Check component connections (list_event_source_mappings, get Layers)
-- Do NOT: Write test data to DynamoDB
-- Do NOT: Send test messages to SQS
-- Do NOT: Invoke Lambdas with test payloads
+- Do: read configuration.
+- Do: read policies and role documents.
+- Do NOT: write an object, a record or a message anywhere.
 
-If a test needs cleanup, it's probably an e2e test.
+A test that needs cleanup is in the wrong tier. Move it.
+
+## Fail Fast with Granular Diagnostics
+
+- One assert per test, enforced by `assert-one-assert-per-pytest`.
+- Layers run in numeric order, so the first failure names the stage.
+- Assert the specific value, so pytest prints both sides.
+- Name the resource in the assertion, not just the attribute.
 
 ## Fixture Usage
 
-Use fixtures to:
-1. Create AWS clients once per module
-2. Cache resource identifiers (queue URLs, ARNs)
-3. Download and cache layer contents for inspection
+Two levels of `conftest.py` carry this tier. The tier root re-exports the
+boto3 clients its tests use:
 
 ```python
-# conftest.py
-@pytest.fixture(scope="module")
-def lambda_client(config):
-    return boto3.client("lambda", region_name=config["aws_region"])
+"""Boto3 client fixtures shared by the tenants post-deployment tier."""
+from test_fixtures.aws import iam_client, lambda_client, logs_client
 
-@pytest.fixture(scope="module")
-def job_queue_url(sqs_client):
-    response = sqs_client.get_queue_url(QueueName="TenULabsRunnersJobQueue")
-    return response["QueueUrl"]
-
-@pytest.fixture(scope="module")
-def layer_contents(lambda_client):
-    """Download layer and return file list for inspection."""
-    # Get latest layer version
-    response = lambda_client.list_layer_versions(LayerName="TenULabsRunnersLayer")
-    layer_arn = response["LayerVersions"][0]["LayerVersionArn"]
-    # Download and extract...
-    return file_list
+__all__ = ["iam_client", "lambda_client", "logs_client"]
 ```
+
+The integration directory derives anything fetched once and shared by the
+three layers, so the tier costs one API call rather than one per test:
+
+```python
+@pytest.fixture(name="lambda_config")
+def lambda_config_fixture(
+        lambda_client: Any, function_name: str) -> dict[str, Any]:
+    """Return the live tenants Lambda's configuration block."""
+    response = lambda_client.get_function(FunctionName=function_name)
+    return cast("dict[str, Any]", response["Configuration"])
+```
+
+`function_name` and `role_name` come from the stack's `conftest.py`,
+which parses the declaration. Do not re-derive them here.
+
+## Position in the Workflow
+
+```text
+static-analysis
+  └── unit-tests
+        └── pre-deployment-integration-tests
+              └── reconciliation
+                    └── post-deployment-integration-tests
+```
+
+The job assumes the OIDC role and runs pytest against live AWS. It needs
+no OpenTofu setup, because it reads AWS rather than state.
+
+```yaml
+- name: Run post-deployment integration tests against live AWS
+  run: >-
+    PYTHONPATH=.:lib/python
+    python3 -m pytest
+    test/api/endpoints/tenants/post_deployment/integration/
+    --import-mode=importlib --confcutdir=test
+    --verbose
+```
+
+Like reconciliation, it is gated on `github.ref == 'refs/heads/main'`.
 
 ## Quick Reference
 
-| If you want to test... | Layer | File |
-|------------------------|-------|------|
-| Lambda exists | 1. Existence | test_01_existence.py |
-| SQS queue exists | 1. Existence | test_01_existence.py |
-| DynamoDB table exists | 1. Existence | test_01_existence.py |
-| Layer exists | 1. Existence | test_01_existence.py |
-| Lambda timeout is 30s | 2. Configuration | test_02_configuration.py |
-| Queue retention is 14 days | 2. Configuration | test_02_configuration.py |
-| Table has TTL enabled | 2. Configuration | test_02_configuration.py |
-| Layer contains file X | 2. Configuration | test_02_configuration.py |
-| Lambda has Layer attached | 3. Wiring | test_03_wiring.py |
-| Lambda has SQS trigger | 3. Wiring | test_03_wiring.py |
-| IAM allows cross-service | 3. Wiring | test_03_wiring.py |
-| HTTP request works | N/A | e2e tests |
-| Message flow works | N/A | e2e tests |
-| Full workflow works | N/A | e2e tests |
+| To test | Layer | File |
+| --- | --- | --- |
+| A Lambda exists | 1 | `test_01_existence.py` |
+| An IAM role exists | 1 | `test_01_existence.py` |
+| A log group exists | 1 | `test_01_existence.py` |
+| Runtime and architecture | 2 | `test_02_configuration.py` |
+| Timeout and memory | 2 | `test_02_configuration.py` |
+| Environment variables set | 2 | `test_02_configuration.py` |
+| The Lambda assumes its role | 3 | `test_03_wiring.py` |
+| API Gateway may invoke it | 3 | `test_03_wiring.py` |
+| A role grants store access | 3 | `test_03_wiring.py` |
+| Handler logic | — | Unit |
+| An entrypoint end to end | — | End to end |

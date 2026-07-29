@@ -1,378 +1,299 @@
 # Unit Test Tenets
 
-These are the non-negotiable rules for unit tests.
+These are the non-negotiable rules for unit tests. They are pytest tests
+under a stack's `pre_deployment/unit/` directory, and they touch nothing
+outside the process.
 
 ## Table of Contents
 
-- [Unit Tests Are the Primary Line of Defense](#unit-tests-are-the-primary-line-of-defense)
-- [Extreme Atomicity](#extreme-atomicity)
+- [The Primary Line of Defense](#the-primary-line-of-defense)
+- [One Assert Per Test](#one-assert-per-test)
 - [Test File Organization](#test-file-organization)
 - [Complete Isolation](#complete-isolation)
-- [Test Every Code Path](#test-every-code-path)
+- [Test Every Branch](#test-every-branch)
 - [Descriptive Test Names](#descriptive-test-names)
-- [Test Error Messages](#test-error-messages)
+- [Every Test Carries a Docstring](#every-test-carries-a-docstring)
+- [Assertions That Explain Themselves](#assertions-that-explain-themselves)
 - [No Test Interdependence](#no-test-interdependence)
+- [No Duplicated Setup](#no-duplicated-setup)
 - [Fast Execution](#fast-execution)
-- [Pre-Deployment Coverage Requirements](#pre-deployment-coverage-requirements)
+- [Typed and Lint-Clean](#typed-and-lint-clean)
+- [What Unit Tests Must Catch](#what-unit-tests-must-catch)
 - [Quick Reference](#quick-reference)
 
-## Unit Tests Are the Primary Line of Defense
+## The Primary Line of Defense
 
-**Almost everything wrong should be caught by unit tests.**
+Almost everything wrong should be caught by a unit test.
 
-The testing pyramid dictates that unit tests form the base - the number of unit tests should be absurdly larger than integration and e2e tests combined. If a bug could be caught by a unit test but wasn't, that's a failure of test coverage.
+The pyramid puts unit tests at the base, and the count should be far
+larger than every other tier combined. If a bug could have been caught by
+a unit test and was not, that is a coverage failure, not bad luck.
 
-```
+```text
         /\
-       /  \     E2E tests (few)
+       /  \     End to end (one entrypoint)
       /----\
-     /      \   Integration tests (some)
+     /      \   Integration (some)
     /--------\
    /          \
-  /            \ Unit tests (many)
+  /            \ Unit (many)
  /______________\
 ```
 
-- Unit tests: Test a single component (function, class, module) in isolation
-- Integration tests: Test how multiple components work together
-- E2E tests: Test full user journeys
+The dividing line is dependencies, not I/O. If the test exercises one
+module with everything else supplied as a literal or a double, it is a
+unit test. If it exercises two or more modules against each other, it is
+an integration test, whether or not anything leaves the process.
 
-**Rule of thumb**: If you're testing a single component with all dependencies mocked, it's a unit test. If you're testing how two or more components interact, it's an integration test - regardless of whether network calls are involved.
+## One Assert Per Test
 
-## Extreme Atomicity
+Each test verifies exactly one behaviour, with exactly one `assert`.
 
-**One logical assertion per test. No exceptions.**
+This is not a style preference. `assert-one-assert-per-pytest` runs as a
+static-analysis step in every workflow, so a second assert fails the
+build before any test executes.
 
-Each test must verify exactly one behavior. This ensures:
-- When a test fails, you know exactly what broke
-- Tests are independent and can run in any order
-- Test names accurately describe what's being tested
-
-```javascript
-// CORRECT - atomic tests
-describe('parseLabels', () => {
-  test('extracts runner type from labels', () => {
-    const result = parseLabels(['self-hosted', 'ecs', 'linux']);
-    expect(result.runnerType).toBe('ecs');
-  });
-
-  test('extracts architecture from labels', () => {
-    const result = parseLabels(['self-hosted', 'ecs', 'arm64']);
-    expect(result.architecture).toBe('arm64');
-  });
-
-  test('defaults architecture to x64 when not specified', () => {
-    const result = parseLabels(['self-hosted', 'ecs']);
-    expect(result.architecture).toBe('x64');
-  });
-
-  test('throws LabelParseError when runner type missing', () => {
-    expect(() => parseLabels(['self-hosted'])).toThrow(LabelParseError);
-  });
-});
+```python
+def test_backbone_mesh_paths_empty_when_nodes_disconnected() -> None:
+    """Backbone mesh paths empty when the backbone nodes are disconnected."""
+    edges = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
+    adjacency = build_adjacency(edges)
+    distances, predecessors = all_pairs_shortest(
+        [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
+    )
+    assert not backbone_mesh_paths(("a", "c"), distances, predecessors, edges)
 ```
 
-```javascript
-// WRONG - multiple assertions testing different behaviors
-describe('parseLabels', () => {
-  test('parses labels correctly', () => {
-    const result = parseLabels(['self-hosted', 'ecs', 'arm64']);
-    expect(result.runnerType).toBe('ecs');
-    expect(result.architecture).toBe('arm64');
-    expect(result.isSpot).toBe(false);
-    // If architecture assertion fails, you don't know if isSpot is correct
-  });
-});
+When two facts need asserting, write two tests. Setup they share belongs
+in a helper or a fixture, not in a second assert.
+
+```python
+def test_timeout_matches_declaration(parsed: Tuning) -> None:
+    """The parsed timeout matches the declared value."""
+    assert parsed.timeout == 10
+
+
+def test_memory_matches_declaration(parsed: Tuning) -> None:
+    """The parsed memory matches the declared value."""
+    assert parsed.memory == 128
 ```
 
-```javascript
-// WRONG - testing error and success in same test
-test('parseLabels handles valid and invalid input', () => {
-  const valid = parseLabels(['self-hosted', 'ecs']);
-  expect(valid.runnerType).toBe('ecs');
+Use `pytest.mark.parametrize` when the same single assertion applies over
+a set of inputs. That stays one assert and keeps each case named in the
+failure output.
 
-  expect(() => parseLabels([])).toThrow();
-  // These are two different behaviors - split them
-});
+```python
+@pytest.mark.parametrize("variable", ["STORE_BUCKET"])
+def test_environment_variable_is_set(
+        lambda_config: dict[str, Any], variable: str) -> None:
+    """The live Lambda carries each environment variable it reads."""
+    assert variable in lambda_config["Environment"]["Variables"]
 ```
 
 ## Test File Organization
 
-**One test file per source file. 1:1 mapping.**
+One test file per source module, named for the module it covers.
 
-```
-src/api/endpoints/runners/lambdas/
-├── webhook_router.js
-├── job_starter.js
-└── layer/
-    ├── aws_clients.js
-    ├── runner_labels.js
-    └── webhook_ingress.js
+```text
+src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
+├── backbone.py
+├── config.py
+├── strength.py
+├── synthesize.py
+└── validation.py
 
-test/api/endpoints/runners/pre_deployment/unit/
-├── webhook_router.test.js       # Tests webhook_router.js
-├── job_starter.test.js          # Tests job_starter.js
-├── aws_clients.test.js          # Tests layer/aws_clients.js
-├── runner_labels.test.js        # Tests layer/runner_labels.js
-└── webhook_ingress.test.js      # Tests layer/webhook_ingress.js
+test/api/endpoints/tenants/wan/post/pre_deployment/unit/
+├── test_backbone.py      # Covers backbone.py
+├── test_config.py        # Covers config.py
+├── test_synthesize.py    # Covers synthesize.py
+└── test_validate_design.py
 ```
 
-Do NOT organize tests by behavior (test_happy_path.js, test_error_cases.js).
-Do NOT put multiple source files' tests in one test file.
+Do not organise by behaviour: there is no `test_happy_path.py` and no
+`test_error_cases.py`. Do not cover two source modules from one test
+file, and do not split one module's tests across several files without a
+reason the file names make obvious.
 
 ## Complete Isolation
 
-**Unit tests must have zero external dependencies.**
+A unit test has zero external dependencies.
 
-- No network calls (HTTP, AWS SDK calls)
-- No file system access (except test fixtures)
-- No database connections
-- No environment variable side effects
+- No network calls, including boto3 calls against real AWS.
+- No file system writes, and reads only of committed inputs.
+- No subprocesses.
+- No environment variable left mutated after the test.
 
-Mock everything external:
+Use the doubles in `lib/python/` rather than reaching for a live client.
 
-```javascript
-// CORRECT - fully mocked
-const { getSQSClient } = require('./aws_clients');
-jest.mock('./aws_clients');
+```python
+from test_module_utils import create_lambda_loader
+from test_s3_store_mock import fake_s3
 
-test('enqueues message to job queue', async () => {
-  const mockSend = jest.fn().mockResolvedValue({ MessageId: '123' });
-  getSQSClient.mockReturnValue({ send: mockSend });
-
-  await enqueueJob({ jobId: 'job-1' });
-
-  expect(mockSend).toHaveBeenCalledWith(
-    expect.objectContaining({
-      input: expect.objectContaining({
-        QueueUrl: expect.stringContaining('JobQueue')
-      })
-    })
-  );
-});
+def test_handler_reads_the_stored_document() -> None:
+    """The handler returns the document stored under the requested key."""
+    handler = load_handler("tenants", monkeypatch, STORE_BUCKET="bucket")
+    handler.s3 = fake_s3({"tenants/daf/knobs.json": b"{}"})
+    assert handler.lambda_handler(event, None)["statusCode"] == 200
 ```
 
-```javascript
-// WRONG - real AWS call
-test('enqueues message to job queue', async () => {
-  const client = new SQSClient({ region: 'us-east-1' });
-  await client.send(new SendMessageCommand({...}));
-  // This is an integration test, not a unit test
-});
+Set environment variables through `monkeypatch`, never through `os.environ`
+directly, so the change is undone when the test ends.
+
+## Test Every Branch
+
+The gate is 100% branch coverage, and it is enforced.
+
+```text
+--cov=src/api/endpoints/tenants/lambdas
+--cov-branch
+--cov-report=term-missing
+--cov-fail-under=100
 ```
 
-## Test Every Code Path
+Every `if`, `else`, `except`, early return and loop exit needs a test.
+A new branch without a test does not merely go unverified, it turns the
+unit-tests job red and blocks reconciliation.
 
-**100% branch coverage is the goal.**
-
-Every `if`, `else`, `try`, `catch`, `switch` case, and early return must have a test.
-
-```javascript
-// Source code
-function getRunnerType(labels) {
-  if (labels.includes('ecs')) {
-    return 'ecs';
-  } else if (labels.includes('ec2')) {
-    return 'ec2';
-  } else {
-    throw new LabelValidationError('Unknown runner type');
-  }
-}
-
-// CORRECT - tests all branches
-test('returns ecs when labels include ecs', () => {
-  expect(getRunnerType(['self-hosted', 'ecs'])).toBe('ecs');
-});
-
-test('returns ec2 when labels include ec2', () => {
-  expect(getRunnerType(['self-hosted', 'ec2'])).toBe('ec2');
-});
-
-test('throws when labels have no runner type', () => {
-  expect(() => getRunnerType(['self-hosted'])).toThrow(LabelValidationError);
-});
-```
-
-```javascript
-// WRONG - only tests happy path
-test('returns runner type', () => {
-  expect(getRunnerType(['self-hosted', 'ecs'])).toBe('ecs');
-  // Missing ec2 case and error case
-});
-```
+The `--pythonwarnings=error` flag is set alongside the coverage flags, so
+a `DeprecationWarning` raised during a unit test is a failure too.
 
 ## Descriptive Test Names
 
-**Test names must describe the specific behavior being tested.**
+The name states the subject, the condition and the expected result, so a
+failure in the log is legible without opening the file.
 
-Format: `[function/method] [condition] [expected result]`
-
-```javascript
-// CORRECT - descriptive names
-test('parseLabels extracts runner type from labels array', () => {...});
-test('parseLabels throws LabelParseError when labels array is empty', () => {...});
-test('parseLabels defaults architecture to x64 when not specified', () => {...});
-test('validateLabels returns false when runner type is missing', () => {...});
-test('getInstanceType returns t3.medium for small size label', () => {...});
+```python
+def test_backbone_mesh_paths_empty_when_nodes_disconnected() -> None: ...
+def test_seed_cli_fails_when_the_api_rejects_writes() -> None: ...
+def test_role_grants_store_access() -> None: ...
 ```
 
-```javascript
-// WRONG - vague names
-test('parseLabels works', () => {...});
-test('parseLabels test 1', () => {...});
-test('error handling', () => {...});
-test('should work correctly', () => {...});
+Names like `test_config`, `test_it_works` or `test_error_handling` say
+nothing and are not acceptable.
+
+## Every Test Carries a Docstring
+
+pylint runs with `--fail-on=C,R,W`, so a missing docstring is a failed
+build. Write the sentence the name could not fit, in the present tense,
+describing the behaviour rather than the mechanics.
+
+```python
+def test_enum_memory_fraction_above_one_is_rejected() -> None:
+    """A memory fraction above 1 is rejected when the config is parsed."""
 ```
 
-## Test Error Messages
+Do not restate the function name in prose, and do not describe the setup
+the reader can see two lines below.
 
-**When tests fail, the error message must explain the problem.**
+## Assertions That Explain Themselves
 
-Use assertion messages and custom matchers:
+Assert the specific value, not its truthiness.
 
-```javascript
-// CORRECT - clear failure messages
-test('webhook signature verification rejects tampered payload', () => {
-  const result = verifySignature(tamperedPayload, signature);
-  expect(result).toBe(false);
-  // Jest shows: Expected: false, Received: true
-});
-
-test('job queue URL is constructed correctly', () => {
-  const url = getJobQueueUrl('us-east-1', '123456789');
-  expect(url).toMatch(/sqs\.us-east-1\.amazonaws\.com/);
-  expect(url).toContain('JobQueue');
-});
+```python
+def test_runtime_is_python313(lambda_config: dict[str, Any]) -> None:
+    """The live Lambda runs on Python 3.13."""
+    assert lambda_config["Runtime"] == "python3.13"
 ```
 
-```javascript
-// WRONG - unhelpful assertion
-test('verifySignature works', () => {
-  expect(verifySignature(payload, sig)).toBeTruthy();
-  // If this fails, you just see "expected truthy, got falsy"
-});
+An `assert result` tells the reader nothing when it fails. Compare
+against the expected value so pytest can print both sides. Where the
+subject is a collection, assert the membership or the count that matters,
+not that the collection is non-empty.
+
+For raised errors, assert the type and the text that identifies it, using
+`pytest.raises` with `match` so the two stay one assertion.
+
+```python
+def test_parse_rejects_a_zero_sector_count() -> None:
+    """A sector count of 0 is rejected with a message naming the key."""
+    with pytest.raises(ValueError, match="compass_octants"):
+        app_config_from_parts(parts_with(compass_octants=0))
 ```
 
 ## No Test Interdependence
 
-**Each test must be completely independent.**
+Each test passes on its own, in any order, with no shared mutable state.
 
-- Tests must pass when run individually
-- Tests must pass when run in any order
-- Tests must not share mutable state
+Build state inside the test or in a function-scoped fixture. A
+module-level mutable object that tests write to couples them, and the
+failure surfaces as an unrelated test breaking when a new one is added.
 
-```javascript
-// CORRECT - independent tests with setup
-describe('CircuitBreaker', () => {
-  let breaker;
-
-  beforeEach(() => {
-    breaker = new CircuitBreaker({ threshold: 3 });
-  });
-
-  test('starts in closed state', () => {
-    expect(breaker.state).toBe('closed');
-  });
-
-  test('opens after threshold failures', () => {
-    breaker.recordFailure();
-    breaker.recordFailure();
-    breaker.recordFailure();
-    expect(breaker.state).toBe('open');
-  });
-
-  test('resets failure count on success', () => {
-    breaker.recordFailure();
-    breaker.recordSuccess();
-    expect(breaker.failureCount).toBe(0);
-  });
-});
+```python
+@pytest.fixture(name="design")
+def design_fixture() -> DesignArtifacts:
+    """Build a fresh two-tier design over the ring fixture."""
+    return fixtures.run_design()
 ```
 
-```javascript
-// WRONG - tests depend on each other
-describe('CircuitBreaker', () => {
-  const breaker = new CircuitBreaker({ threshold: 3 });
+Module-level constants are fine when they are immutable inputs, which is
+how the synthesizer's distance tables are written.
 
-  test('starts closed', () => {
-    expect(breaker.state).toBe('closed');
-  });
+## No Duplicated Setup
 
-  test('records failure', () => {
-    breaker.recordFailure(); // Mutates shared state!
-    expect(breaker.failureCount).toBe(1);
-  });
+`jscpd` runs over the test tree at a zero-tolerance threshold, so a
+copied block of setup fails the build.
 
-  test('opens after more failures', () => {
-    // Depends on previous test running first!
-    breaker.recordFailure();
-    breaker.recordFailure();
-    expect(breaker.state).toBe('open');
-  });
-});
-```
+Shared inputs go in `test/fixtures.py` when they are graphs, vertices or
+designs, in the stack's `conftest.py` when they are stack-specific, and
+in `lib/python/` when more than one stack needs them. A local helper
+function at the top of the test module is the right answer when the reuse
+is confined to that module.
 
 ## Fast Execution
 
-**Unit tests must be fast. Milliseconds, not seconds.**
+Unit tests are measured in milliseconds.
 
-If a test takes more than 100ms, something is wrong:
-- You're making real network calls (mock them)
-- You're doing expensive setup (optimize or share via beforeAll)
-- You're testing too much in one test (split it)
+If one takes noticeable time, the cause is nearly always that it is not a
+unit test any more: something is reaching the network, walking a real
+graph at production scale, or spawning a process. Move it to the tier it
+belongs in rather than accepting the cost.
 
-```javascript
-// CORRECT - fast with mocks
-test('fetches GitHub token from cache', async () => {
-  mockSSM.getParameter.mockResolvedValue({ Parameter: { Value: 'token' }});
-  const token = await getGitHubToken();
-  expect(token).toBe('token');
-  // Runs in <10ms
-});
+## Typed and Lint-Clean
+
+Tests are held to the same static analysis as source. mypy runs with
+`--strict` over the test tree, so every test function is annotated,
+including the `-> None` return.
+
+```python
+def test_iam_role_exists(iam_client: Any, role_name: str) -> None:
+    """The Lambda execution role exists."""
+    role = iam_client.get_role(RoleName=role_name)
+    assert role["Role"]["RoleName"] == role_name
 ```
 
-```javascript
-// WRONG - slow real call
-test('fetches GitHub token', async () => {
-  const token = await getGitHubToken(); // Real SSM call
-  expect(token).toBeDefined();
-  // Takes 200-500ms per test
-});
-```
+Suppressing a finding inline is not available: `assert-no-inline-directives`
+fails on a `# pylint: disable` or `# type: ignore` comment, and
+`assert-no-linter-config-files` fails on a configuration file that would
+relax the rule globally. Fix the code instead.
 
-## Pre-Deployment Coverage Requirements
+## What Unit Tests Must Catch
 
-**Unit tests must catch these issues before deployment:**
-
-| Issue Type | Must Be Caught By |
-|------------|-------------------|
-| Syntax errors | Unit tests (imports fail) |
-| Type mismatches | Unit tests |
-| Null/undefined handling | Unit tests |
-| Edge cases (empty arrays, etc.) | Unit tests |
-| Business logic errors | Unit tests |
-| Error handling paths | Unit tests |
-| Input validation | Unit tests |
-| Single-file configuration parsing | Unit tests |
-| Cross-file contract mismatches | Integration tests (local) |
-| AWS resource misconfiguration | Integration tests (AWS) |
-| Missing IAM permissions | Integration tests (AWS) |
-| Network connectivity | E2E tests |
-| Full workflow behavior | E2E tests |
-
-If a bug could have been caught by a unit test, the test suite failed.
+| Issue | Caught by |
+| --- | --- |
+| Import and syntax errors | Unit |
+| Type mismatches | Unit and mypy |
+| Missing input validation | Unit |
+| Edge cases and empty inputs | Unit |
+| Business logic errors | Unit |
+| Error paths and messages | Unit |
+| Single-file config parsing | Unit |
+| Cross-file contract drift | Pre-deployment integration |
+| Credentials and permissions | Pre-deployment integration |
+| State drift | Pre-deployment integration |
+| Resource misconfiguration | Post-deployment integration |
+| Component wiring | Post-deployment integration |
+| Whole-entrypoint behaviour | End to end |
 
 ## Quick Reference
 
-| If you want to test... | Test Type | Location |
-|------------------------|-----------|----------|
-| Function returns correct value | Unit | pre_deployment/unit/ |
-| Error is thrown for bad input | Unit | pre_deployment/unit/ |
-| Class method behavior | Unit | pre_deployment/unit/ |
-| Mock interactions (call count, args) | Unit | pre_deployment/unit/ |
-| JSON parsing/serialization | Unit | pre_deployment/unit/ |
-| String formatting | Unit | pre_deployment/unit/ |
-| AWS resource exists | Integration | pre_deployment/integration/ or post_deployment/integration/ |
-| IAM permissions work | Integration | pre_deployment/integration/ |
-| Lambda can be invoked | E2E | e2e/ |
-| Full webhook flow works | E2E | e2e/ |
+| To test | Tier |
+| --- | --- |
+| A function's return value | Unit |
+| An error raised for bad input | Unit |
+| A parsed configuration value | Unit |
+| A handler's response shape | Unit |
+| Two modules agreeing | Pre-deployment integration |
+| Declared state matching AWS | Pre-deployment integration |
+| A live resource's settings | Post-deployment integration |
+| A live resource's connections | Post-deployment integration |
+| The seed CLI end to end | End to end |

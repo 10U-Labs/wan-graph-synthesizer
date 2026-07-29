@@ -1,247 +1,372 @@
 # Test Architecture Overview
 
-This document explains the test infrastructure, where to put common code, and what reusable utilities exist.
+This document explains the test infrastructure of this repository: the
+tiers a change must cover, where common code goes, and which reusable
+utilities already exist.
+
+The repository is Python on AWS Lambda, with the infrastructure declared
+in OpenTofu and reconciled by GitHub Actions. Every test is pytest.
+There is no JavaScript test suite and no test runner other than pytest.
 
 ## Table of Contents
 
-- [Test Hierarchy](#test-hierarchy)
-- [Directory Scope](#directory-scope)
-- [Reusable Utilities in lib/python/](#reusable-utilities-in-libpython)
-  - [test_fixtures/](#test_fixtures)
-  - [terraform_config/](#terraform_config)
-  - [terraform_drift/](#terraform_drift)
-  - [naming_conventions/](#naming_conventions)
-  - [boto_mocks/](#boto_mocks)
-  - [event_factories/](#event_factories)
-  - [lambda_response/](#lambda_response)
-  - [module_utils/](#module_utils)
+- [Test Tiers](#test-tiers)
+- [Directory Layout](#directory-layout)
+- [Where Shared Code Goes](#where-shared-code-goes)
+- [Reusable Utilities](#reusable-utilities)
 - [Check Before You Create](#check-before-you-create)
-- [Layer Marker System](#layer-marker-system)
 - [Static Analysis in Workflows](#static-analysis-in-workflows)
+- [Workflow Job Order](#workflow-job-order)
 
-## Test Hierarchy
+## Test Tiers
 
-Tests follow a cascading conftest.py pattern. Each level inherits from parents and adds specifics.
+A stack's tests live under `test/` in a directory mirroring its path
+under `src/`, split into tiers by when they can run.
 
-```
+| Tier | Directory under the stack's test root |
+| --- | --- |
+| Unit | `pre_deployment/unit/` |
+| Pre-deployment integration | `pre_deployment/integration/` |
+| Post-deployment integration | `post_deployment/integration/` |
+
+Each tier answers a different question.
+
+- Unit: is this module correct on its own? Nothing external is touched.
+- Pre-deployment integration: can this stack be reconciled? Local files
+  agree with each other, credentials work, and declared state matches
+  AWS reality.
+- Post-deployment integration: did reconciliation succeed? The live
+  resources exist, are configured as declared, and are wired together.
+
+The end-to-end tier is separate. It exists only for the seed script, at
+`test/scripts/seed/e2e/`, and runs the real entrypoint as a subprocess
+against a localhost stub API. See
+[E2E_TESTS.md](E2E_TESTS.md).
+
+Unit tests alone are never sufficient. Add coverage at every tier the
+change touches.
+
+## Directory Layout
+
+Tests follow a cascading `conftest.py` pattern. Each level inherits from
+its parents and adds what only it needs.
+
+```text
 test/
-├── conftest.py                              # Level 0: Path setup (lib/python)
+├── conftest.py                     # Import paths: repo, lib, src, test
+├── fixtures.py                     # Synthesizer graph fixtures
 ├── api/
-│   ├── conftest.py                          # Level 1: API fixtures, terraform utilities
-│   └── backend/
-│       ├── conftest.py                      # Level 2: Backend config parsing
-│       ├── pre_deployment/
-│       │   ├── unit/conftest.py             # Level 3: Lambda mocks, event factories
-│       │   └── integration/conftest.py      # Level 3: Layer markers, bootstrap fixtures
-│       └── post_deployment/
-│           ├── integration/conftest.py      # Level 3: AWS clients, layer markers
-│           └── e2e/conftest.py              # Level 3: Endpoint deployment checks
+│   ├── common/
+│   │   ├── routing/
+│   │   │   ├── conftest.py         # Parsed routing stack config
+│   │   │   ├── pre_deployment/
+│   │   │   │   ├── unit/
+│   │   │   │   └── integration/
+│   │   │   └── post_deployment/
+│   │   │       └── integration/
+│   │   └── storage/
+│   └── endpoints/
+│       ├── carriers/
+│       ├── data-centers/
+│       ├── providers/
+│       └── tenants/
+│           ├── conftest.py         # Lambda and role names for the stack
+│           ├── pre_deployment/
+│           ├── post_deployment/
+│           └── wan/
+│               └── post/           # The synthesizer stack
+└── scripts/
+    └── seed/
+        ├── unit/
+        ├── integration/
+        └── e2e/
 ```
 
-### Where to Put Common Things
+There is no `test/api/conftest.py` and no `test/api/endpoints/`
+`conftest.py`. Shared setup lives either at `test/conftest.py` or in
+`lib/python/`, and stack-specific fixtures live in the stack's own
+`conftest.py`.
 
-| Scope | Location | Examples |
-|-------|----------|----------|
-| All tests | `test/conftest.py` | Path setup (already done) |
-| All API tests | `test/api/conftest.py` | Terraform utilities, runner labels |
-| All backend tests | `test/api/backend/conftest.py` | Config parsing from tfvars/locals |
-| Pre-deployment unit | `test/.../pre_deployment/unit/conftest.py` | Lambda mocks, event factories |
-| Pre-deployment integration | `test/.../pre_deployment/integration/conftest.py` | Layer markers, bootstrap fixtures |
-| Post-deployment integration | `test/.../post_deployment/integration/conftest.py` | Layer markers, AWS service clients |
+`test/conftest.py` does one job: it puts the repository root,
+`lib/python/`, `src/` and `test/` on `sys.path`. Workflows set
+`PYTHONPATH` to the same directories, so a test module imports
+`synthesizer.backbone` or `test_terraform_config` directly.
 
-**Rule:** Put fixtures at the highest level where they apply. Don't duplicate.
+## Where Shared Code Goes
 
-## Directory Scope
+Put a fixture at the highest level where it applies, and no higher.
 
-Shared directories are for codebase-wide utilities, not module-specific code.
+| Scope | Location |
+| --- | --- |
+| Every test in the repository | `test/conftest.py` |
+| Every codebase user | `lib/python/` |
+| Synthesizer inputs | `test/fixtures.py` |
+| One stack, every tier | `test/.../<stack>/conftest.py` |
+| One stack, one tier | `test/.../<tier>/conftest.py` |
 
-| Directory | Scope | Example Contents |
-|-----------|-------|------------------|
-| `lib/python/` | Entire codebase | `boto_mocks/`, `terraform_config/`, `test_fixtures/aws.py` |
-| `test/` root | All tests | `conftest.py` (path setup), codebase-wide test utilities |
-| `test/<module>/` | Module-specific | `test/workflowctl/conftest.py`, inline `SAMPLE_GRAPH` constants |
+A stack's `conftest.py` parses that stack's declared OpenTofu config and
+exposes the derived names (`function_name`, `role_name`) that every tier
+needs. A tier's `conftest.py` re-exports the boto3 client fixtures the
+tier uses and derives anything fetched once per module, such as the live
+Lambda configuration block shared by the three post-deployment layers.
 
-**Key principle:** If a fixture or utility is only used by one module's tests, keep it within that module's test directory. Don't pollute shared directories with module-specific code.
+Do not put stack-specific code in `lib/python/`, and do not put
+codebase-wide code in a stack's test directory.
 
-Examples:
-- ✅ `lib/python/boto_mocks/` — Used by API, Lambda, and infrastructure tests across the codebase
-- ✅ `test/api/conftest.py` — Terraform utilities used by all API endpoint tests
-- ✅ `test/workflowctl/conftest.py` — Fixtures specific to workflowctl tests
-- ❌ `lib/python/test_fixtures/workflowctl.py` — Wrong: workflowctl-specific code in codebase-wide lib/
-- ❌ `test/workflowctl_fixtures.py` — Wrong: workflowctl-specific code at test/ root level
+## Reusable Utilities
 
-## Reusable Utilities in lib/python/
+Before writing a fixture, check whether `lib/python/` already has it.
+Every module there is importable from tests because `test/conftest.py`
+and the workflows both put `lib/python/` on the path.
 
-Before creating new fixtures, check if they exist in `lib/python/`. Import via `pytest_plugins` or direct import.
+### repo_utils
 
-### test_fixtures/
-
-AWS fixtures ready to use via pytest plugin:
+Locate the repository root without relative-path arithmetic.
 
 ```python
-# In conftest.py
-pytest_plugins = ['test_fixtures.aws']
+from repo_utils import REPO_ROOT
 
-# Provides these fixtures:
-# - shared_config: Parsed shared Terraform module config
-# - aws_region: AWS region from config
-# - state_bucket_name: Terraform state bucket
-# - sts_client, iam_client, s3_client, ssm_client, kms_client, ecr_client
-# - caller_identity, current_role_arn, current_role_name
+TENANTS_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "tenants"
 ```
 
-### terraform_config/
+### test_fixtures.aws
 
-Parse Terraform configuration as single source of truth:
+Session-scoped boto3 clients and the shared configuration they need.
 
 ```python
-from terraform_config import (
-    get_shared_config,        # Combined locals + outputs + handlers
-    parse_locals,             # Parse locals.tf
-    parse_outputs,            # Parse outputs.tf
-    get_tfvars_values,        # Parse terraform.tfvars
-    get_resource_prefix,      # Resource naming prefix
-    extract_lambda_function_names,  # Lambda names from .tf files
-    TEST_AWS_REGION,          # Standard region for test mocks
+from test_fixtures.aws import (
+    config,                # Parsed shared common outputs
+    state_bucket_name,     # Shared OpenTofu state bucket
+    sts_client,
+    iam_client,
+    s3_client,
+    lambda_client,
+    apigateway_client,
+    logs_client,
+    dynamodb_client,
+    sqs_client,
+    sns_client,
+    events_client,
+    ecr_client,
+    iam_role_exists,       # Helper: does a role exist?
+    get_log_group_info,    # Helper: existence and retention
 )
 ```
 
-### terraform_drift/
-
-Detect orphaned resources (resources in AWS but not in Terraform state):
+A tier `conftest.py` re-exports only the clients that tier uses:
 
 ```python
-from terraform_drift import check_resource_exists, get_planned_creates
-from terraform_drift.test_helpers import create_orphaned_resource_tests
+from test_fixtures.aws import iam_client, lambda_client, logs_client
 
-# Generate test class for orphaned resource detection
-TestOrphanedResources = create_orphaned_resource_tests(
-    terraform_dir=TERRAFORM_DIR,
-    region="us-east-2",
+__all__ = ["iam_client", "lambda_client", "logs_client"]
+```
+
+### test_fixtures.integration
+
+Generated test classes for the pre-deployment layers that are identical
+across every stack, so no stack hand-writes them.
+
+```python
+from test_fixtures.integration import (
+    check_s3_head_bucket_permission,
+    create_simple_layer1_authentication_tests,
+    create_layer2_s3_authorization_tests,
+)
+
+TestAWSAuthentication = create_simple_layer1_authentication_tests()
+```
+
+### test_terraform_config
+
+Parse declared OpenTofu configuration as the single source of truth, so
+a test asserts against the declaration rather than a copied literal.
+
+```python
+from test_terraform_config import (
+    COMMON_OUTPUTS_FILE,
+    load_tf,               # Parse one .tf file
+    find_resource,         # Locate a resource block
+    output_values,         # Parse an outputs.tf
+    common_outputs,        # Parsed shared common outputs
+    lambda_handler_names,  # Derived Lambda function names
 )
 ```
 
-### naming_conventions/
+### test_terraform_drift
 
-Validate AWS resource names follow PascalCase:
-
-```python
-from naming_conventions import is_pascalcase, validate_name
-from naming_conventions.test_helpers import (
-    create_lambda_function_tests,
-    create_iam_role_tests,
-    create_sqs_queue_tests,
-)
-
-# Generate parametrized naming tests
-TestLambdaNaming = create_lambda_function_tests(lambda_names)
-```
-
-### boto_mocks/
-
-Factory functions for boto3 mocks in unit tests:
+Detect resources that exist in AWS but not in state.
 
 ```python
-from boto_mocks import (
-    create_client_error,      # Create ClientError for error testing
-    create_boto_client_mock,  # Create flexible boto3.client mock
-    create_mock_lambda_with_mappings,
-    create_mock_sns_publish_error,
+from test_terraform_drift import (
+    check_resource_exists,
+    get_planned_creates,
+    get_state_resources,
+    is_resource_in_state,
+    find_orphaned_resources,
 )
 ```
 
-### event_factories/
+### test_naming_conventions
 
-Create test Lambda event payloads:
+Validate AWS resource names and API path segments.
 
 ```python
-from event_factories import (
-    create_workflow_job_event,     # GitHub workflow_job webhook
-    create_sqs_event,              # SQS trigger event
-    create_dlq_message,            # DLQ message format
-    create_circuit_breaker_closed_state,
-    create_circuit_breaker_open_state,
+from test_naming_conventions import (
+    is_pascalcase,
+    validate_name,
+    find_violations,
+    is_kebabcase,
+    validate_kebab_name,
 )
 ```
 
-### lambda_response/
+### test_s3_store_mock
 
-Assert Lambda response structure:
+In-memory doubles for the AWS services a handler calls, for unit tests.
 
 ```python
-from lambda_response import (
-    parse_response_body,
-    assert_response_status,
-    assert_json_content_type,
-    assert_cors_headers,
+from test_s3_store_mock import (
+    NoSuchKey,
+    fake_s3,
+    fake_ecs,
+    fake_scheduler,
+    fake_lambda,
 )
 ```
 
-### module_utils/
+### test_http_doubles
 
-Reset module state between tests (for Lambda handlers with cached clients):
+HTTP doubles for code that speaks to an API rather than to boto3.
 
 ```python
-from module_utils import reset_module_state
+from test_http_doubles import (
+    EMPTY_LISTING,
+    FakeResponse,
+    UrlopenRecorder,
+    CallRecorder,
+    StubApi,          # A real localhost server recording requests
+)
+```
 
-def test_something(handler_module):
-    reset_module_state(handler_module, boto_client=None, cache={})
+### test_handler_contracts
+
+Shared contract suites for the endpoint handlers, which are the same
+reader and writer shape repeated per collection.
+
+```python
+from test_handler_contracts import (
+    load_handler,
+    write_clients,
+    write_event,
+    ReaderContract,
+    WriterContract,
+    RegionsContract,
+)
+```
+
+### test_module_utils
+
+Load a Lambda handler module by path, since handlers are not packages.
+
+```python
+from test_module_utils import create_lambda_loader, load_module_from_path
 ```
 
 ## Check Before You Create
 
-Before writing new fixtures or utilities:
+Before writing a new fixture or helper:
 
-1. **Check parent conftest files** - The fixture may already exist at a higher level
-2. **Check lib/python/** - Reusable utilities may already solve your problem
-3. **Check test_fixtures.aws** - Common AWS fixtures are already available
+1. Check the parent `conftest.py` files. The fixture may already exist
+   at a higher level.
+2. Check `lib/python/`. A utility may already solve the problem.
+3. Check `test/fixtures.py` if the input is a graph, vertex or design.
 
-If your fixture is useful beyond your specific test file:
-- Put it in the appropriate conftest.py level
-- Or add it to lib/python/ if it's broadly reusable
+Duplication is not merely discouraged here, it fails the build: every
+workflow runs `jscpd` at a zero-tolerance threshold over both source and
+tests. A copied fixture is a red run, not a review comment.
 
 ## Static Analysis in Workflows
 
-Linting and type checking must run separately for source and test code.
+Linting and type checking run separately for source and for tests,
+because the two need different import paths and because a failure should
+name which side broke.
 
-### Required Workflow Steps
+| Step name | Target |
+| --- | --- |
+| `Run pylint on source` | Lambda sources and `lib/python/` |
+| `Run mypy on source` | Lambda sources and `lib/python/` |
+| `Detect copy-paste in source` | The same source set |
+| `Run pylint on tests` | The stack's conftest and tiers |
+| `Run mypy on tests` | The same test set |
+| `Detect copy-paste in tests` | The stack's test directory |
 
-| Step Name | Target |
-|-----------|--------|
-| `Run pylint on source` | `lib/python/` and `src/.../lambdas/` |
-| `Run pylint on tests` | `lib/python/`, parent conftest files, and `test/.../endpoint/` (with `PYTHONPATH=lib/python`) |
-| `Run mypy on source` | `lib/python/` and `src/.../lambdas/` |
-| `Run mypy on tests` | `lib/python/`, parent conftest files, and `test/.../endpoint/` (with `MYPYPATH=lib/python`) |
+Four gates run before those, and they are the reason no local linter
+configuration exists anywhere in the tree.
 
-### Why Separate Steps?
+| Step name | What it forbids |
+| --- | --- |
+| `Lint YAML` | yamllint findings in the workflow |
+| `Assert no inline directives` | Per-line linter suppressions |
+| `Assert no linter config files` | Repository-level rule overrides |
+| `Assert one assert per pytest` | More than one assert per test |
 
-1. **Different configurations** - Tests need `PYTHONPATH`/`MYPYPATH` set to resolve `lib/python/` imports
-2. **Clear failure attribution** - When a step fails, you immediately know if it's source or test code
-3. **Consistent naming** - All workflows use the same step names for easy identification
+The last of those makes the atomicity rule in
+[UNIT_TESTS.md](UNIT_TESTS.md) mechanical rather than advisory.
 
-### Example
+An example, from `api_endpoint_tenants.yml`:
 
 ```yaml
 - name: Run pylint on source
-  run: |
-    python3 -m pylint \
-      lib/python/ src/api/endpoints/example/lambdas/ \
-      --fail-on=C,R,W \
-      --fail-under=10.0
-- name: Run pylint on tests
-  run: |
-    PYTHONPATH=lib/python python3 -m pylint \
-      lib/python/ test/conftest.py test/api/conftest.py \
-      test/api/endpoints/conftest.py test/api/endpoints/example/ \
-      --fail-on=C,R,W \
-      --fail-under=10.0
+  run: >-
+    PYTHONPATH=lib/python:src/api/endpoints/tenants/lambdas
+    python3 -m pylint
+    src/api/endpoints/tenants/lambdas/handler.py
+    lib/python/test_terraform_config
+    lib/python/test_terraform_drift
+    lib/python/test_fixtures
+    --fail-on=C,R,W --fail-under=10.0
 - name: Run mypy on source
-  run: |
-    python3 -m mypy \
-      lib/python/ src/api/endpoints/example/lambdas/
-- name: Run mypy on tests
-  run: |
-    MYPYPATH=lib/python python3 -m mypy \
-      lib/python/ test/conftest.py test/api/conftest.py \
-      test/api/endpoints/conftest.py test/api/endpoints/example/
+  run: >-
+    MYPYPATH=lib/python:src/api/endpoints/tenants/lambdas
+    python3 -m mypy --strict --explicit-package-bases
+    --ignore-missing-imports
+    src/api/endpoints/tenants/lambdas/handler.py
+    lib/python/test_terraform_config
+    lib/python/test_terraform_drift
+    lib/python/test_fixtures
 ```
+
+Note `--fail-on=C,R,W` and `--fail-under=10.0` for pylint, and `--strict`
+for mypy. There is no tolerance band: a convention warning fails the run.
+
+## Workflow Job Order
+
+Each stack has one workflow, path-filtered to that stack. Its jobs run in
+a fixed order, and each needs the one before it.
+
+```text
+static-analysis
+  └── unit-tests
+        └── pre-deployment-integration-tests
+              └── reconciliation
+                    └── post-deployment-integration-tests
+```
+
+The reasoning behind the order:
+
+- `static-analysis` needs nothing, so it gives the fastest feedback.
+- `unit-tests` runs behind it, because there is no point testing code
+  that does not lint. It carries the coverage gate.
+- `pre-deployment-integration-tests` runs `tofu init` first, because the
+  state layer inspects state. It does not apply anything.
+- `reconciliation` runs `tofu apply`, and only after the pre-deployment
+  tier has confirmed nothing it would create already exists.
+- `post-deployment-integration-tests` runs last, because there are no
+  live resources to inspect until reconciliation has finished.
+
+Reconciliation and the two integration tiers are gated on
+`github.ref == 'refs/heads/main'`. Static analysis and unit tests are
+not, so they run on every push.
+
+A push can trigger several path-filtered workflows at once. The change is
+done when each workflow that fired is green, not when the first one is.

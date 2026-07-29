@@ -2,451 +2,262 @@
 
 These are the non-negotiable rules for end-to-end tests.
 
+This repository has exactly one end-to-end tier, at
+`test/scripts/seed/e2e/`. It covers the seed CLI, which is the only
+entrypoint a person runs directly. Everything else is a Lambda behind API
+Gateway, and the deployed side of those is covered by
+[POST_DEPLOYMENT_INTEGRATION_TESTS.md](POST_DEPLOYMENT_INTEGRATION_TESTS.md).
+
 ## Table of Contents
 
 - [Top of the Pyramid](#top-of-the-pyramid)
-- [Production-Safe](#production-safe)
-- [Test the Full Path](#test-the-full-path)
+- [Hermetic by Construction](#hermetic-by-construction)
+- [Run the Real Entrypoint](#run-the-real-entrypoint)
+- [Assert on Observable Outcomes](#assert-on-observable-outcomes)
 - [Last Line of Defense, Not First](#last-line-of-defense-not-first)
-- [Run During CI/CD](#run-during-cicd)
+- [Cover the Failure Path](#cover-the-failure-path)
 - [Fail Fast](#fail-fast)
-- [Clear Ownership](#clear-ownership)
+- [Document the Journey](#document-the-journey)
 - [Test File Organization](#test-file-organization)
 - [Fixture Requirements](#fixture-requirements)
-- [AWS Configuration vs Real-World Verification](#aws-configuration-vs-real-world-verification)
-- [Boundary with Post-Deployment Integration](#boundary-with-post-deployment-integration)
+- [Position in the Workflow](#position-in-the-workflow)
+- [Boundary with the Other Tiers](#boundary-with-the-other-tiers)
 - [Quick Reference](#quick-reference)
 
 ## Top of the Pyramid
 
-**E2E tests are few in number. Only test critical user journeys.**
+End-to-end tests are few. There are four today, and that is the right
+order of magnitude.
 
-```
+```text
         /\
-       /  \     E2E tests (few) ← YOU ARE HERE
+       /  \     End to end (one entrypoint)
       /----\
-     /      \   Integration tests (some)
+     /      \   Integration (some)
     /--------\
    /          \
-  /            \ Unit tests (many)
+  /            \ Unit (many)
  /______________\
 ```
 
-E2E tests are expensive:
-- Slow (seconds to minutes, not milliseconds)
-- Flaky (network, timing, external dependencies)
-- Run in production (real resources, real costs)
-
-Each test should represent a critical user journey that, if broken, would constitute a major incident.
+Each one stands for a journey that, if broken, makes the tool unusable:
+the CLI runs, the CLI writes what it is supposed to write, the CLI fails
+when the far end fails. An edge case in a parser is not a journey, and it
+is cheaper and clearer as a unit test.
 
 ```python
-# CORRECT - critical user journeys only
-def test_webhook_creates_runner():
-    """Verify a GitHub webhook results in a running ECS task."""
-    ...
-
-def test_invalid_signature_rejected():
-    """Verify tampered webhooks are rejected."""
-    ...
+def test_seed_cli_exits_zero_against_the_stub(stub_api: StubApi) -> None:
+    """The seed CLI exits 0 when the API accepts every write."""
+    assert _run_seed(stub_api.url).returncode == 0
 ```
 
-```python
-# WRONG - testing edge cases in e2e
-def test_webhook_with_empty_labels():
-    """Verify webhook with empty labels fails gracefully."""
-    # This is a unit test, not e2e
-    ...
+## Hermetic by Construction
 
-def test_webhook_with_invalid_json():
-    """Verify malformed JSON is rejected."""
-    # This is a unit test, not e2e
-    ...
-```
+An end-to-end test touches no live resource, sends nothing off the
+machine, and costs nothing to run.
 
-## Production-Safe
+The far end is replaced at the boundary the entrypoint speaks to. For the
+seed CLI that is HTTP, so `StubApi` from `lib/python/test_http_doubles`
+serves a real localhost server and records every request. Everything on
+this side of that boundary is the real thing: the real module, the real
+argument parsing, the real inputs under `etc/`.
 
-**E2E tests run in production. They must be non-destructive or use test flags.**
+There is no staging environment and there is no end-to-end test against
+production. If a journey can only be exercised against live AWS, it is
+not an end-to-end test here. Either it becomes an inspection in the
+post-deployment tier, or it does not exist.
 
-There is no staging environment. E2E tests execute against production resources. Every e2e test must follow one of these patterns:
+That rule is what makes this tier free to run on every push, including
+pushes that never touch AWS credentials.
 
-### Pattern A: Read-Only Verification
+## Run the Real Entrypoint
 
-Test only inspects state, creates nothing.
-
-```python
-# CORRECT - read-only
-def test_api_gateway_responds(api_endpoint):
-    """Verify API Gateway returns 200 for health check."""
-    response = requests.get(f"{api_endpoint}/health")
-    assert response.status_code == 200
-```
-
-### Pattern B: Test Flag with Minimal Side Effects
-
-Test uses a flag that causes the system to skip or minimize resource creation.
+Invoke the entrypoint the way a person does, as its own process.
 
 ```python
-# CORRECT - test flag skips resource creation
-def test_webhook_processing_with_dry_run(api_endpoint, signed_payload):
-    """Verify webhook is processed (dry-run mode)."""
-    response = requests.post(
-        f"{api_endpoint}/v1/github-workflows/webhooks",
-        headers={
-            "X-Hub-Signature-256": signed_payload["signature"],
-            "X-Dry-Run": "true"  # System processes but doesn't create runner
-        },
-        json=signed_payload["body"]
+def _run_seed(url: str) -> subprocess.CompletedProcess[str]:
+    """Invoke ``python -m seed <url>`` as a subprocess against a stub API."""
+    env = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join([
+            str(REPO_ROOT / "scripts"),
+            str(REPO_ROOT / "lib" / "python"),
+            str(REPO_ROOT),
+        ]),
+    }
+    return subprocess.run(
+        [sys.executable, "-m", "seed", url],
+        cwd=str(REPO_ROOT), env=env,
+        capture_output=True, text=True, check=False,
     )
-    assert response.status_code == 200
-    assert response.json()["dry_run"] is True
 ```
 
-### Pattern C: Self-Cleanup Resources
+Importing the module and calling a function inside it skips the argument
+parsing, the module entrypoint and the exit code, which are three of the
+things this tier exists to cover. Use `check=False` and assert on the
+result, so a non-zero exit is a readable assertion rather than an
+exception from the harness.
 
-Test creates minimal resources that immediately self-terminate.
+## Assert on Observable Outcomes
+
+Assert what the outside world sees: the exit code, and the requests that
+reached the far end.
 
 ```python
-# CORRECT - self-cleanup
-def test_runner_provisioning(api_endpoint, canary_payload):
-    """Verify runner is provisioned for canary workflow."""
-    # Canary payload uses labels that create a minimal runner
-    # Runner runs a 5-second health check and terminates
-    response = requests.post(
-        f"{api_endpoint}/v1/github-workflows/webhooks",
-        headers=canary_payload["headers"],
-        json=canary_payload["body"]
-    )
-    assert response.status_code == 200
-
-    # Wait for runner to terminate (max 60 seconds)
-    task_id = response.json()["task_id"]
-    wait_for_task_stopped(task_id, timeout=60)
+def test_seed_cli_writes_carrier_vertices(stub_api: StubApi) -> None:
+    """The seed CLI writes carrier vertices to the API."""
+    _run_seed(stub_api.url)
+    paths = [path for _method, path, _body in stub_api.records]
+    assert any("/carriers/" in path and path.endswith("/vertices")
+               for path in paths)
 ```
 
-```python
-# WRONG - creates persistent resources
-def test_runner_provisioning():
-    """Verify runner is provisioned."""
-    response = requests.post(endpoint, json=payload)
-    assert response.status_code == 200
-    # No cleanup! Runner keeps running, costing money
-```
-
-### Cleanup Must Succeed
-
-**If cleanup fails, the test fails.** No silent exception handling.
-
-Leaked test resources cost money, clutter AWS, and cause confusing failures later. If a test creates something, it must clean it up successfully.
-
-```python
-# CORRECT - cleanup failure = test failure
-def test_can_create_record(client, resource_id):
-    test_id = f"test-{uuid.uuid4()}"
-    try:
-        client.put_item(Id=test_id, Data="test")
-        # ... assertions ...
-    finally:
-        client.delete_item(Id=test_id)  # Let it raise if it fails
-```
-
-```python
-# WRONG - silent cleanup failure
-def test_can_create_record(client, resource_id):
-    test_id = f"test-{uuid.uuid4()}"
-    try:
-        client.put_item(Id=test_id, Data="test")
-    finally:
-        try:
-            client.delete_item(Id=test_id)
-        except ClientError:
-            pass  # NEVER DO THIS - leaked resources are unacceptable
-```
-
-## Test the Full Path
-
-**E2E tests verify end-to-end behavior that unit and integration tests cannot catch.**
-
-E2E tests exercise the complete path:
-- HTTP request → API Gateway → Lambda → SQS → Lambda → Resource
-
-```python
-# CORRECT - full path
-def test_webhook_to_runner_flow(api_endpoint, signed_webhook):
-    """Verify webhook flows through to runner creation."""
-    # 1. Send HTTP request
-    response = requests.post(
-        f"{api_endpoint}/v1/github-workflows/webhooks",
-        headers=signed_webhook["headers"],
-        json=signed_webhook["body"]
-    )
-    assert response.status_code == 200
-
-    # 2. Verify message reached SQS (via CloudWatch logs or metrics)
-    assert_log_contains("Enqueued job", timeout=10)
-
-    # 3. Verify runner was created (or would be in dry-run)
-    assert_log_contains("Runner started", timeout=30)
-```
-
-```python
-# WRONG - partial path (this is integration, not e2e)
-def test_lambda_processes_sqs_message(lambda_client):
-    """Verify Lambda processes SQS message."""
-    # Directly invoking Lambda bypasses API Gateway, signature verification, etc.
-    response = lambda_client.invoke(
-        FunctionName="TenULabsWebhookHandler",
-        Payload=json.dumps({"test": "event"})
-    )
-    assert response["StatusCode"] == 200
-```
+Do not reach inside the process for internal state. If an internal value
+needs asserting, that is a unit test over the module that owns it.
 
 ## Last Line of Defense, Not First
 
-**If an e2e test catches a bug that a unit test should have caught, that's a unit test gap.**
+If an end-to-end test catches something a unit test could have caught,
+the unit tests have a gap and the gap is the bug to fix.
 
-E2E tests should only catch issues that cannot be caught earlier:
-- Race conditions in distributed systems
-- Network/timing issues between components
-- Production configuration drift
-- Integration issues between independently-deployed services
+| Issue | Should be caught by |
+| --- | --- |
+| A parsing error in one module | Unit |
+| A mis-built request body | Unit |
+| Two modules disagreeing | Integration |
+| A wrong entrypoint name | End to end |
+| An unhandled non-zero exit | End to end |
+| A missing PYTHONPATH entry | End to end |
 
-| Issue Type | Should Be Caught By |
-|------------|---------------------|
-| Logic error in label parsing | Unit test |
-| Missing null check | Unit test |
-| Lambda timeout too short | Post-deployment integration |
-| SQS queue missing | Post-deployment integration |
-| HTTP request doesn't reach Lambda | E2E test |
-| Message lost between SQS and Lambda | E2E test |
-| Circuit breaker triggers incorrectly | E2E test |
+The tier's value is the wiring nothing else sees: module resolution,
+argument handling, process exit codes, and the fact that the real inputs
+in the repository are still readable by the real code.
 
-```python
-# CORRECT - catches integration issue
-def test_message_flows_through_queue():
-    """Verify messages are not lost between SQS and Lambda."""
-    # This catches: queue misconfiguration, visibility timeout issues,
-    # Lambda trigger not working, dead letter queue problems
-    ...
-```
+## Cover the Failure Path
+
+A tier that only covers success proves the entrypoint runs, not that it
+reports.
 
 ```python
-# WRONG - should be unit test
-def test_labels_parsed_correctly():
-    """Verify runner labels are parsed."""
-    # This should be tested in unit tests, not e2e
-    response = requests.post(endpoint, json={"labels": ["ecs", "arm64"]})
-    assert "ecs" in response.json()["runner_type"]
+def test_seed_cli_fails_when_the_api_rejects_writes() -> None:
+    """The seed CLI exits non-zero when the API returns an error status."""
+    with StubApi(status=500) as api:
+        result = _run_seed(api.url)
+    assert result.returncode != 0
 ```
 
-## Run During CI/CD
-
-**E2E tests run as workflow steps, not on schedule.**
-
-E2E tests execute:
-- As a step in the deployment workflow
-- After post-deployment integration tests pass
-- Only for the component being deployed
-
-```yaml
-# CORRECT - e2e as workflow step
-jobs:
-  deploy:
-    steps:
-      - name: Deploy
-        run: terraform apply
-
-      - name: Post-deployment integration tests
-        run: pytest test/api/endpoints/runners/post_deployment/integration/
-
-      - name: E2E tests
-        run: pytest test/api/endpoints/runners/e2e/
-```
-
-```yaml
-# WRONG - scheduled e2e tests
-on:
-  schedule:
-    - cron: '0 0 * * *'  # We don't run tests on schedule
-```
+An entrypoint that exits 0 after every write failed is worse than one
+that crashes, because a workflow gating on it goes green.
 
 ## Fail Fast
 
-**E2E tests should fail quickly when something is wrong.**
+The stub is on localhost, so a correct run is immediate.
 
-Don't wait for long timeouts. If the system is working, responses are fast.
+No retry loops, no polling, no sleeps. A test that waits is waiting for
+something this tier does not have: there is no eventual consistency
+behind a localhost socket. If a wait seems necessary, the double is
+wrong, not the timeout.
 
-```python
-# CORRECT - aggressive timeouts
-def test_webhook_response_time(api_endpoint, signed_payload):
-    """Verify webhook returns within 5 seconds."""
-    start = time.time()
-    response = requests.post(
-        f"{api_endpoint}/v1/github-workflows/webhooks",
-        headers=signed_payload["headers"],
-        json=signed_payload["body"],
-        timeout=5  # Fail fast
-    )
-    elapsed = time.time() - start
-    assert elapsed < 5
-    assert response.status_code == 200
-```
+## Document the Journey
+
+Each test's docstring states the journey and the failure it stands for,
+in one sentence. The tier is small enough that every test earns its
+description.
 
 ```python
-# WRONG - waiting too long
-def test_webhook_eventually_works(api_endpoint, payload):
-    """Verify webhook works."""
-    for attempt in range(30):  # 30 retries?!
-        try:
-            response = requests.post(endpoint, json=payload, timeout=60)
-            if response.status_code == 200:
-                return
-        except:
-            pass
-        time.sleep(10)  # Waiting 5 minutes total before failing
-    pytest.fail("Webhook never worked")
-```
-
-## Clear Ownership
-
-**Each e2e test must document the user journey it validates.**
-
-```python
-# CORRECT - clear documentation
-def test_github_webhook_provisions_ecs_runner():
-    """
-    User Journey: GitHub workflow triggers self-hosted ECS runner
-
-    When: A GitHub workflow_job webhook with labels [self-hosted, ecs] arrives
-    Then: An ECS task is started to handle the job
-
-    Critical Path: API Gateway → WebhookHandler → JobQueue → SQSHandler → ECS
-    Failure Impact: All GitHub Actions using ECS runners will fail
-    """
-    ...
-```
-
-```python
-# WRONG - no context
-def test_webhook():
-    """Test webhook."""
-    ...
+def test_seed_cli_writes_a_tenant_label(stub_api: StubApi) -> None:
+    """The seed CLI writes a tenant label to the API."""
 ```
 
 ## Test File Organization
 
-```
-test/api/endpoints/{endpoint}/e2e/
-├── conftest.py           # Fixtures for API endpoints, signed payloads
-├── test_happy_path.py    # Critical happy path journeys
-└── test_security.py      # Critical security journeys
+The seed script's tests carry all three tiers.
+
+```text
+test/scripts/seed/
+├── conftest.py            # Shared seed fixtures
+├── unit/
+│   ├── test_seed.py
+│   └── test_zayo_pops.py
+├── integration/
+│   └── test_contracts.py
+└── e2e/
+    ├── conftest.py        # The stub API fixture
+    └── test_cli.py
 ```
 
-E2E tests are organized by journey type, not by component.
+The end-to-end directory holds one module per entrypoint, named for the
+entrypoint. There is no split by journey type, because there is one
+entrypoint and four tests.
 
 ## Fixture Requirements
 
-E2E fixtures must:
-1. Create properly signed payloads (real GitHub signature format)
-2. Use test flags to minimize production impact
-3. Provide cleanup utilities for any resources created
+An end-to-end fixture stands up the double, yields it, and tears it down
+on the way out.
 
 ```python
-# conftest.py
 @pytest.fixture
-def api_endpoint(config):
-    """Production API endpoint."""
-    return config["api_gateway_url"]
-
-@pytest.fixture
-def signed_webhook(config):
-    """Create a properly signed GitHub webhook payload."""
-    payload = {
-        "action": "queued",
-        "workflow_job": {
-            "labels": ["self-hosted", "ecs", "e2e-test"]  # e2e-test label
-        }
-    }
-    signature = sign_payload(payload, config["webhook_secret"])
-    return {
-        "headers": {
-            "X-Hub-Signature-256": f"sha256={signature}",
-            "X-GitHub-Event": "workflow_job"
-        },
-        "body": payload
-    }
+def stub_api() -> Iterator[StubApi]:
+    """Run a localhost stub API recording PUTs for the duration of a test."""
+    with StubApi() as api:
+        yield api
 ```
 
-## AWS Configuration vs Real-World Verification
+Function scope, not module scope: each test gets a stub with an empty
+record list, so one test's requests cannot satisfy another's assertion.
 
-**Integration tests verify what AWS says. E2E tests verify what the real world experiences.**
+A test needing different far-end behaviour, such as an error status,
+constructs its own `StubApi` in a `with` block rather than adding a
+parameter to the shared fixture.
 
-This is a critical distinction. Just because AWS reports a resource is configured correctly does not mean the outside world can actually use it. E2E tests must verify the real-world experience.
+## Position in the Workflow
 
-### Why This Matters
+`seed.yml` runs the tiers in order, and only the last job talks to the
+real API.
 
-AWS API responses confirm configuration state. They do NOT confirm:
-- DNS propagation completed successfully
-- Nameserver delegation is working
-- Network paths are functioning
-- Caching layers are behaving correctly
-- External services can reach your resources
-
-### Examples
-
-| What You Want to Verify | Integration Test (AWS API) | E2E Test (Real World) |
-|------------------------|---------------------------|----------------------|
-| DNS record works | Route53 `list_resource_record_sets` returns record | `dns.resolver.resolve()` returns record |
-| API is reachable | API Gateway exists, Lambda attached | HTTP request to endpoint succeeds |
-| IAM role works | Role exists with correct policy | `assume-role-with-web-identity` succeeds |
-| S3 is accessible | Bucket exists with correct ACL | HTTP GET to S3 URL succeeds |
-| Certificate is valid | ACM shows certificate issued | TLS handshake succeeds |
-
-### The Test
-
-Ask yourself: "If AWS says it's configured correctly, could it still fail for a real user?"
-
-- **Yes** → E2E test (verify real-world behavior)
-- **No** → Integration test (verify AWS configuration)
-
-### DNS Example
-
-```python
-# INTEGRATION TEST - Verifies AWS configuration
-def test_mx_record_has_correct_priority(route53_client, hosted_zone):
-    """Verify Route53 has MX record with priority 1."""
-    records = route53_client.list_resource_record_sets(...)
-    # This confirms AWS has the record configured
-
-# E2E TEST - Verifies real-world behavior
-def test_mx_record_returns_correct_priority_via_dns(zone_nameservers):
-    """Verify DNS query returns MX record with priority 1."""
-    answers = resolver.resolve(domain, 'MX')
-    # This confirms the outside world can resolve the record
+```text
+static-analysis
+  └── unit-tests
+        └── integration-tests
+              └── e2e-tests
+                    └── seeding
 ```
 
-Both tests are necessary. The integration test catches deployment failures. The E2E test catches propagation, delegation, and resolution failures that the integration test cannot detect.
+```yaml
+- name: Run end-to-end tests against a stub API
+  run: >-
+    PYTHONPATH=.:lib/python:scripts
+    python3 -m pytest test/scripts/seed/e2e/
+    --import-mode=importlib --confcutdir=test
+    --verbose
+```
 
-## Boundary with Post-Deployment Integration
+`seeding` is the job that pushes the git-authored inputs to the live API.
+It runs after the end-to-end tests pass, which is the whole reason the
+tier is worth its cost: the CLI that is about to write to production has
+just been run start to finish against a stub.
 
-Post-deployment integration tests answer: "Did my deployment succeed?"
-E2E tests answer: "Does the user journey work?"
+Note that a first `seeding` run can fail with `HTTP 403` on a resource
+whose route was added in the same push, because `seed` and
+`api_common_routing` are independent workflows racing on one push. Wait
+for routing, then re-run the failed jobs.
 
-| Post-Deployment Integration | E2E |
-|----------------------------|-----|
-| Lambda exists | Lambda responds to HTTP |
-| SQS queue exists | Messages flow through queue |
-| Lambda has SQS trigger | Trigger actually fires |
-| IAM policy attached | IAM policy works in practice |
-| Configuration is correct | System behaves correctly |
+## Boundary with the Other Tiers
+
+| Post-deployment integration | End to end |
+| --- | --- |
+| The Lambda exists | The CLI runs |
+| Its settings are right | Its exit code is right |
+| Its role is attached | Its requests arrive |
+| AWS reports it correct | The process behaves |
 
 ## Quick Reference
 
-| If you want to test... | Test Type | Why |
-|------------------------|-----------|-----|
-| Label parsing logic | Unit | Pure function, no I/O |
-| Error message format | Unit | Pure function, no I/O |
-| Lambda timeout is 30s | Post-deployment integration | Resource configuration |
-| SQS has Lambda trigger | Post-deployment integration | Component wiring |
-| HTTP request reaches Lambda | E2E | Full path verification |
-| Webhook signature verified | E2E | Security-critical path |
-| Runner actually starts | E2E | End-to-end user journey |
+| To test | Tier |
+| --- | --- |
+| A function's return value | Unit |
+| A request body's shape | Unit |
+| Two modules agreeing | Integration |
+| The CLI's exit code | End to end |
+| The CLI's requests | End to end |
+| A live resource's settings | Post-deployment |
