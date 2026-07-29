@@ -1,0 +1,213 @@
+---
+concurrency:
+  cancel-in-progress: true
+  group: documentation-${{ github.ref }}
+jobs:
+  concluding-markdownlint-necessary:
+    # determining-markdownlint runs on a push where one of the jobs it
+    # needs was skipped, and that skip carries on down to anything
+    # without a status function of its own. !cancelled() supplies one.
+    # The output test still does the deciding: an absent output matches
+    # neither conclusion, so a determining-markdownlint that never ran
+    # leaves both of them out.
+    if: ${{ !cancelled() && needs.determining-markdownlint.outputs.markdownlint-necessary == 'true' }}
+    needs: determining-markdownlint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: No-op
+        run: 'true'
+  concluding-markdownlint-unnecessary:
+    # Carries !cancelled() for the reason given on
+    # concluding-markdownlint-necessary.
+    if: ${{ !cancelled() && needs.determining-markdownlint.outputs.markdownlint-necessary == 'false' }}
+    needs: determining-markdownlint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: No-op
+        run: 'true'
+  concluding-yamllint-necessary:
+    if: ${{ needs.determining-yamllint.outputs.yamllint-necessary == 'true' }}
+    needs: determining-yamllint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: No-op
+        run: 'true'
+  concluding-yamllint-unnecessary:
+    if: ${{ needs.determining-yamllint.outputs.yamllint-necessary == 'false' }}
+    needs: determining-yamllint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: No-op
+        run: 'true'
+  determining-changes:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: List the files this push changed
+        run: |
+          base='${{ github.event.before }}'
+          head='${{ github.sha }}'
+          zero='0000000000000000000000000000000000000000'
+          if [ -z "$base" ] || [ "$base" = "$zero" ] \
+              || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            git ls-files | tee changed-files.txt
+          else
+            git diff --name-only "$base" "$head" | tee changed-files.txt
+          fi
+      - name: Publish the list of changed files
+        uses: actions/upload-artifact@v4
+        with:
+          name: changed-files
+          path: changed-files.txt
+  determining-markdownlint:
+    # markdownlint runs a command written in documentation.yml, so a
+    # linter is only as trustworthy as the file defining it and nothing
+    # is decided about Markdown until that file is known good: either
+    # yamllint passed it, or determining-yamllint found it unchanged and
+    # concluding-yamllint-unnecessary stood in for the run. Exactly one
+    # of those two needs happens and the other is skipped, which the
+    # default success() condition reads as a reason not to run, so
+    # !failure() takes its place.
+    if: ${{ !failure() && !cancelled() }}
+    needs:
+      - concluding-yamllint-unnecessary
+      - determining-changes
+      - yamllint
+    outputs:
+      markdownlint-necessary: >-
+        ${{ steps.decide.outputs.markdownlint-necessary }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: changed-files
+      - id: decide
+        name: Decide whether Markdown linting is necessary
+        run: |
+          PATTERN='\.md$'
+          if grep -qE "$PATTERN" changed-files.txt; then
+            necessary=true
+          else
+            necessary=false
+          fi
+          echo "markdownlint-necessary=$necessary" | tee -a "$GITHUB_OUTPUT"
+  determining-yamllint:
+    needs: determining-changes
+    outputs:
+      yamllint-necessary: ${{ steps.decide.outputs.yamllint-necessary }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: changed-files
+      - id: decide
+        name: Decide whether YAML linting is necessary
+        run: |
+          PATTERN='^\.github/workflows/documentation\.yml$'
+          if grep -qE "$PATTERN" changed-files.txt; then
+            necessary=true
+          else
+            necessary=false
+          fi
+          echo "yamllint-necessary=$necessary" | tee -a "$GITHUB_OUTPUT"
+  ending:
+    # Every need below is skipped on some push, so the default success()
+    # condition would stop this job reporting on the very runs it exists
+    # to summarise.
+    if: ${{ !failure() && !cancelled() }}
+    needs:
+      - concluding-markdownlint-unnecessary
+      - concluding-yamllint-unnecessary
+      - markdownlint
+      - yamllint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: No-op
+        run: 'true'
+  markdownlint:
+    # The skip that reaches concluding-markdownlint-necessary reaches
+    # here too, so !cancelled() supplies a status function and the
+    # result test puts back what the default condition provided: run
+    # when that conclusion succeeded, stay out when it was skipped.
+    if: ${{ !cancelled() && needs.concluding-markdownlint-necessary.result == 'success' }}
+    needs: concluding-markdownlint-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Restore pip cache
+        uses: actions/cache@v5
+        with:
+          key: >-
+            pip-${{ github.job }}-${{
+            hashFiles('.github/workflows/documentation.yml') }}
+          path: ~/.cache/pip
+          restore-keys: |
+            pip-${{ github.job }}-
+      - name: Install tools
+        run: |
+          npm install -g markdownlint-cli
+          pip install \
+            assert-no-inline-directives \
+            assert-no-linter-config-files
+      - name: Assert no inline markdownlint disables
+        run: >-
+          assert-no-inline-directives
+          --tools markdownlint
+          --verbose
+          ${{ github.workspace }}/**/*
+      - name: Assert no markdownlint config files
+        run: >-
+          assert-no-linter-config-files
+          --linters markdownlint
+          --verbose
+          ${{ github.workspace }}
+      - name: Lint Markdown
+        run: markdownlint '**/*.md'
+  yamllint:
+    needs: concluding-yamllint-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Restore pip cache
+        uses: actions/cache@v5
+        with:
+          key: >-
+            pip-${{ github.job }}-${{
+            hashFiles('.github/workflows/documentation.yml') }}
+          path: ~/.cache/pip
+          restore-keys: |
+            pip-${{ github.job }}-
+      - name: Install tools
+        run: >-
+          pip install
+          assert-no-inline-directives
+          assert-no-linter-config-files
+          yamllint
+      - name: Assert no inline yamllint disables
+        run: >-
+          assert-no-inline-directives
+          --tools yamllint
+          --verbose
+          .github/workflows/documentation.yml
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/documentation.yml
+name: documentation
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.md'
+      - .github/workflows/documentation.yml
+  workflow_dispatch: {}
