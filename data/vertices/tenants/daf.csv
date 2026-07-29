@@ -5,6 +5,7 @@ Barksdale AFB,Bossier City,LA,United States,32.5018,-93.6627,No
 Beale AFB,Marysville,CA,United States,39.1360,-121.4360,No
 Buckley SFB,Aurora,CO,United States,39.7020,-104.7520,No
 Burlington ANGB,South Burlington,VT,United States,44.4719,-73.1533,No
+Camp H.M. Smith,Halawa,HI,United States,21.3858,-157.9064,Yes
 Cannon AFB,Clovis,NM,United States,34.3828,-103.3222,No
 Cape Canaveral Space Force Station,Cape Canaveral,FL,United States,28.4889,-80.5778,No
 Cavalier Space Force Station,Cavalier,ND,United States,48.7240,-97.9000,No
@@ -51,8 +52,12 @@ Moody AFB,Valdosta,GA,United States,30.9670,-83.1930,No
 Mountain Home AFB,Mountain Home,ID,United States,43.0430,-115.8720,No
 Nellis AFB,Las Vegas,NV,United States,36.2362,-115.0343,No
 Offutt AFB,Omaha,NE,United States,41.1180,-95.9120,No
+Osan Air Base,Pyeongtaek,,South Korea,37.0906,127.0297,Yes
+Patch Barracks,Stuttgart,,Germany,48.7364,9.0811,Yes
 Patrick SFB,Cocoa Beach,FL,United States,28.2350,-80.6100,No
 Peterson SFB,Colorado Springs,CO,United States,38.8230,-104.7000,No
+RAAF Base Tindal,Katherine,,Australia,-14.5211,132.3778,Yes
+RAF Marham,Marham,,United Kingdom,52.6483,0.5506,Yes
 Robins AFB,Warner Robins,GA,United States,32.6400,-83.5919,No
 Schriever SFB,Colorado Springs,CO,United States,38.8030,-104.5260,No
 Scott AFB,Belleville,IL,United States,38.5450,-89.8350,No
@@ -67,3 +72,4 @@ Vance AFB,Enid,OK,United States,36.3390,-97.9160,No
 Vandenberg SFB,Lompoc,CA,United States,34.7420,-120.5724,No
 Whiteman AFB,Knob Noster,MO,United States,38.7300,-93.5480,No
 Wright-Patterson AFB,Dayton,OH,United States,39.8261,-84.0488,No
+Yokota Air Base,Fussa,,Japan,35.7486,139.3486,Yes
