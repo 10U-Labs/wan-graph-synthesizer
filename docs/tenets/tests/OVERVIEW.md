@@ -21,22 +21,20 @@ stack is rewritten; if a sentence would not, it does not belong here.
 
 ## Test Tiers
 
-There are four tiers, separated by what a test may touch and by when it
-becomes possible to run.
+There are four tiers, separated by what a test may touch, which is also
+what decides when it becomes possible to run. Each links to its tenets.
 
-| Tier | The question it answers | What it may touch | What it needs to run |
-| --- | --- | --- | --- |
-| Unit | Is this unit correct alone | Nothing external | Nothing |
-| Pre-deployment | Can this be deployed | Live state, read only | Credentials |
-| Post-deployment | Did the deployment succeed | What it created | Deployment |
-| End to end | Does the entrypoint behave | A local double | Nothing |
+| Tier | The question it answers | What it may touch |
+| --- | --- | --- |
+| [Unit][unit] | Is this unit correct alone | Nothing external |
+| [Pre-deployment][pre] | Can this be deployed | Live state, read only |
+| [Post-deployment][post] | Did the deployment succeed | What it created |
+| [End to end][e2e] | Does the entrypoint behave | A local double |
 
-Each tier has its own tenets.
-
-- [UNIT_TESTS.md](UNIT_TESTS.md)
-- [PRE_DEPLOYMENT_INTEGRATION_TESTS.md](PRE_DEPLOYMENT_INTEGRATION_TESTS.md)
-- [POST_DEPLOYMENT_INTEGRATION_TESTS.md](POST_DEPLOYMENT_INTEGRATION_TESTS.md)
-- [E2E_TESTS.md](E2E_TESTS.md)
+[unit]: UNIT_TESTS.md
+[pre]: PRE_DEPLOYMENT_INTEGRATION_TESTS.md
+[post]: POST_DEPLOYMENT_INTEGRATION_TESTS.md
+[e2e]: E2E_TESTS.md
 
 ## Cover Every Tier the Change Touches
 
