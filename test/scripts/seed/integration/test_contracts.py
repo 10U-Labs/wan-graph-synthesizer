@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from typing import cast
 
 import pytest
 
@@ -91,7 +92,7 @@ def test_pipeline_writes_knobs_without_the_implementation_dials(
         key
         for request in urlopen_recorder.requests
         if request.full_url.endswith("/knobs")
-        for key in json.loads(request.data or b"{}")
+        for key in json.loads(cast("bytes", request.data))
     }
     assert written == {"backbone_coverage_target_miles"}
 
