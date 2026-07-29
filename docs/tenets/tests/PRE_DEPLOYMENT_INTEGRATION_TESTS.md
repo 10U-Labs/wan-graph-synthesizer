@@ -1,334 +1,203 @@
 # Pre-Deployment Integration Test Tenets
 
-These are the non-negotiable rules for pre-deployment integration tests.
-They live under a stack's `pre_deployment/integration/` directory and run
-before the `reconciliation` job applies anything.
+These are the non-negotiable rules for pre-deployment integration tests:
+the tier that runs before anything is deployed.
 
-Pre-deployment tests answer one question: can this stack be reconciled?
-Post-deployment tests answer the other: did reconciliation succeed?
+Pre-deployment tests answer one question. Can this change be deployed.
+Post-deployment tests answer the other. Did the deployment succeed.
 
 ## Table of Contents
 
 - [Two Kinds of Test](#two-kinds-of-test)
 - [The Four-Layer Model](#the-four-layer-model)
-- [Test File Organization](#test-file-organization)
+- [One File Per Layer](#one-file-per-layer)
 - [Layer 1, Contracts](#layer-1-contracts)
 - [Layer 2, Authentication](#layer-2-authentication)
 - [Layer 3, Authorization](#layer-3-authorization)
 - [Layer 4, State](#layer-4-state)
-- [Behavioural Integration Modules](#behavioural-integration-modules)
+- [Behavioural Integration Tests](#behavioural-integration-tests)
 - [Read Only, Never Write](#read-only-never-write)
 - [Fail Fast with Granular Diagnostics](#fail-fast-with-granular-diagnostics)
-- [Fixture Usage](#fixture-usage)
-- [Why There Is No Plan Step](#why-there-is-no-plan-step)
-- [Position in the Workflow](#position-in-the-workflow)
+- [Shared Setup Is Declared, Not Rebuilt](#shared-setup-is-declared-not-rebuilt)
+- [Why a Dry Run Is Not a Gate](#why-a-dry-run-is-not-a-gate)
 - [Quick Reference](#quick-reference)
-- [Stack Reference](#stack-reference)
 
 ## Two Kinds of Test
 
-### Local contract tests
+### Contract tests
 
-Verify that files which must agree with each other do agree. No AWS.
+Verify that files which must agree with each other do agree. Nothing
+remote is touched.
 
-- Do test: every `module.common.*` reference resolves to a declared
-  output of the shared common module.
-- Do test: the stack's `outputs.tf` is wired to the resource it claims.
-- Do test: remote state references point at the stack that owns them.
+- Do test: every reference to a value another unit declares resolves to
+  something that unit actually declares.
+- Do test: what this unit publishes is wired to the thing it claims.
+- Do test: a reference to state another unit owns points at that unit.
 - Do NOT test: the structure of a single file on its own. Parsing one
   file is a unit test.
 
-### AWS prerequisite tests
+### Prerequisite tests
 
-Verify that the credentials and the state this reconciliation depends on
-are sound.
+Verify that the credentials and the state this deployment depends on are
+sound.
 
-- Do test: credentials exist and resolve to an account.
-- Do test: those credentials may inspect the shared state bucket.
-- Do test: nothing the stack would create already exists unmanaged.
-- Do NOT test: resources this stack is about to create. They do not
-  exist yet, and asserting on them belongs to the post-deployment tier.
+- Do test: credentials exist and resolve to an identity.
+- Do test: those credentials may inspect what the deployment must read.
+- Do test: nothing the deployment would create already exists untracked.
+- Do NOT test: what this deployment is about to create. It does not
+  exist yet, and asserting on it belongs to the post-deployment tier.
 
 ## The Four-Layer Model
 
-Every stack passes through four layers, in order.
+Every deployable unit passes through four layers, in order.
 
-| Layer | Question |
+| Layer | The question it answers |
 | --- | --- |
-| 1. Contracts | Do the local files agree? |
-| 2. Authentication | Are the credentials valid? |
-| 3. Authorization | May they inspect what is needed? |
-| 4. State | Does declared state match AWS? |
+| 1. Contracts | Do the local files agree |
+| 2. Authentication | Are the credentials valid |
+| 3. Authorization | May they inspect what is needed |
+| 4. State | Does declared state match the world |
 
 Each layer isolates a different failure.
 
 - Layer 1 fails: two files disagree, and no deployment would fix it.
 - Layer 2 fails: credentials are missing or expired.
-- Layer 3 fails: credentials are valid but lack permission to look.
-- Layer 4 fails: a resource exists in AWS outside of state, so the apply
-  would collide with it.
+- Layer 3 fails: credentials are valid but may not look.
+- Layer 4 fails: something exists outside tracked state, so the
+  deployment would collide with it.
 
-Existence, configuration and wiring are deliberately absent here. In this
-repository each workflow owns exactly one stack, so the resources those
-layers would inspect are the ones this reconciliation creates. They are
-covered in [POST_DEPLOYMENT_INTEGRATION_TESTS.md](POST_DEPLOYMENT_INTEGRATION_TESTS.md),
-and a dependency on another stack is asserted against that stack's
-declared outputs in layer 1 rather than by calling AWS.
+The order is the diagnostic. Each layer presumes its predecessors
+passed, so the first failure names the stage, and a layer never
+re-establishes what an earlier one settled.
 
-## Test File Organization
+Existence, configuration and wiring are deliberately absent here.
+Whatever this deployment creates cannot be inspected before it runs, so
+those questions belong to
+[POST_DEPLOYMENT_INTEGRATION_TESTS.md](POST_DEPLOYMENT_INTEGRATION_TESTS.md).
+A dependency another unit owns is asserted against that unit's
+declaration in layer 1, not by asking the platform at run time.
 
-Layer tests are organised into exactly four files, one per layer.
+## One File Per Layer
 
-```text
-test/api/endpoints/<endpoint>/pre_deployment/integration/
-├── conftest.py                # Re-exports the boto3 fixtures used
-├── test_01_contracts.py       # Layer 1
-├── test_02_authentication.py  # Layer 2
-├── test_03_authorization.py   # Layer 3
-└── test_04_state.py           # Layer 4
-```
+The layers are separated into one file each, ordered so that the layer
+is visible in the name and the files run in layer order.
 
-Do not organise by resource. A `test_s3.py` makes it impossible to see
-which layer broke, which is the whole point of the numbering.
+Do not organise by resource. A file per service makes it impossible to
+see which layer broke, which is the entire point of the ordering.
 
 ## Layer 1, Contracts
 
 Cross-file consistency, asserted against the declaration rather than a
-copied literal. This is the only layer most stacks write by hand, and the
-only one that grows when a stack gains a coupling.
+copied literal.
 
-```python
-from test_terraform_config import COMMON_OUTPUTS_FILE, output_values
+This is the only layer most units write by hand, and the only one that
+grows when a unit gains a coupling. Read the value from the same place
+the code reads it: a test that copies the literal passes while the two
+files drift apart, which is the failure this layer exists to catch.
 
-
-def test_locals_reference_only_declared_common_outputs() -> None:
-    """Every ``module.common.*`` reference resolves to a declared output."""
-    refs = set(re.findall(r"module\.common\.(\w+)", _stack_text()))
-    declared = set(output_values(COMMON_OUTPUTS_FILE))
-    assert refs <= declared
-
-
-def test_lambda_arn_output_references_the_declared_handler() -> None:
-    """The ``lambda_function_arn`` output is wired to the declared handler."""
-    outputs = output_values(TENANTS_DIR / "outputs.tf")
-    assert "aws_lambda_function.handler" in str(outputs["lambda_function_arn"])
-```
-
-A single-file assertion is not a contract test:
-
-```python
-def test_openapi_has_paths_section() -> None:
-    """The spec declares a paths object."""
-    assert "paths" in json.load(open("openapi.json"))
-```
-
-That reads one file, so it belongs in `pre_deployment/unit/`.
+An assertion that reads one file is not a contract test, whatever it
+asserts. It belongs in the unit tier.
 
 ## Layer 2, Authentication
 
-Credentials only. Nothing about permissions and nothing about resources.
+Credentials only. Nothing about permissions and nothing about
+resources.
 
-Every stack's authentication layer is identical, so no stack writes it.
-Instantiate the shared class instead, which keeps `jscpd` quiet and keeps
-the coverage the same everywhere.
+Every unit's authentication layer is identical, so no unit writes its
+own. Instantiate the shared suite instead, which keeps the copy-paste
+gate quiet and keeps the coverage the same everywhere.
 
-```python
-"""Layer 2 (authentication): valid AWS credentials before reconciling."""
-from __future__ import annotations
-
-from test_fixtures.integration import create_simple_layer1_authentication_tests
-
-TestAWSAuthentication = create_simple_layer1_authentication_tests()
-```
-
-The factory names in `test_fixtures.integration` carry an older
-numbering, one lower than the file numbering. The file names are the
-authoritative layer numbers.
-
-Calling `s3:ListBuckets` here would be an authorization test, not an
+Asking whether a call is permitted is an authorization test, not an
 authentication one, and belongs one layer down.
 
 ## Layer 3, Authorization
 
 Permission to inspect, not the existence of what is inspected.
 
-```python
-"""Layer 3 (authorization): permission to inspect the shared state bucket."""
-from __future__ import annotations
-
-from test_fixtures.integration import create_layer2_s3_authorization_tests
-
-TestS3Authorization = create_layer2_s3_authorization_tests()
-```
-
-The distinction the shared helper encodes is worth restating: a 403 fails
-the test because permission is missing, while a 404 passes it because the
-call was allowed and the resource simply is not there. Absence is layer
-5's business, and layer 5 lives in the post-deployment tier.
+The distinction is worth stating precisely, because the two outcomes
+look alike from a distance. A permission denial fails the layer, because
+the credentials may not look. A not-found passes it, because the call
+was allowed and the thing simply is not there yet. Absence is the
+post-deployment tier's business.
 
 ## Layer 4, State
 
-Run `tofu plan` and confirm nothing it would create already exists in AWS
-outside of state.
+Confirm that nothing the deployment would create already exists outside
+the state it tracks.
 
-```python
-from repo_utils import REPO_ROOT
-from test_terraform_drift import find_orphaned_resources, get_state_resources
+Derive the answer from the deployment tool's own dry run rather than
+from a hand-written list of resources, so the check cannot fall behind
+the declaration. Then ask the platform about each thing the dry run
+would create, and fail naming the ones that are already there.
 
-TENANTS_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "tenants"
+A skip for cold state is required, not optional. A unit that has never
+been deployed has no tracked state to compare against, and without the
+skip its first run fails on a condition that cannot yet be true.
 
+This layer inspects and computes. It never deploys.
 
-def _has_existing_state() -> bool:
-    """Report whether the stack already has resources tracked in state."""
-    return bool(get_state_resources(TENANTS_DIR))
+## Behavioural Integration Tests
 
+Where the code is pure logic, the tier has a second kind of test:
+several units exercised against each other, with nothing remote and no
+declaration involved.
 
-@pytest.mark.skipif(
-    not _has_existing_state(),
-    reason="Cold state - no prior OpenTofu state to validate against",
-)
-def test_no_orphaned_resources() -> None:
-    """No resource the stack would create already exists unmanaged in AWS."""
-    assert not find_orphaned_resources(TENANTS_DIR)
-```
-
-The cold-state skip is required, not optional. A stack that has never
-been reconciled has no state to compare against, and without the skip its
-first run fails on a condition that cannot be true yet.
-
-This layer needs `tofu init` to have run in the workflow, and nothing
-more. It never applies.
-
-## Behavioural Integration Modules
-
-A stack whose code is pure Python has a second kind of local integration
-test: several modules exercised against each other, with no AWS and no
-Terraform. The synthesizer stack has one.
-
-```text
-test/api/endpoints/tenants/wan/post/pre_deployment/integration/
-├── test_01_contracts.py
-└── test_synthesize_two_tier.py
-```
-
-These are named for the behaviour they exercise rather than a layer
-number, because they are not part of the ordered chain. Keep the
-distinction from a unit test sharp: if the test would still pass with
-every collaborating module replaced by a literal, it is a unit test and
-belongs in `pre_deployment/unit/`.
+Name these for the behaviour they exercise, not for a layer number, and
+keep them out of the numbered chain — they are not a stage every unit
+passes through. Keep the boundary with the unit tier sharp: if the test
+would still pass with every collaborating unit replaced by a literal, it
+is a unit test.
 
 ## Read Only, Never Write
 
-Pre-deployment tests inspect. They never create, mutate or delete an AWS
-resource, and they never leave an artifact behind.
+Pre-deployment tests inspect. They never create, mutate or delete
+anything remote, and they leave no artifact behind.
 
 A write here would defeat layer 4, which exists precisely to prove that
-nothing unmanaged is sitting where the apply is about to land. The tier
-therefore has no cleanup rules, because it has nothing to clean up.
+nothing untracked is sitting where the deployment is about to land. The
+tier therefore has no cleanup rules, because it has nothing to clean up.
 
 ## Fail Fast with Granular Diagnostics
 
-An error reading `AccessDenied: Access Denied` is not acceptable
+A failure reading `access denied` and nothing else is not acceptable
 diagnostics.
 
-- One assert per test, enforced by `assert-one-assert-per-pytest`.
-- Layers run in numeric order, so the first failure names the stage.
-- A failure message carries the resource name and the expected value.
-- A helper that fails deliberately, such as the 403 branch of the
-  `s3:HeadBucket` check, calls `pytest.fail` with the bucket name in the
-  message rather than letting a bare exception surface.
+- One assertion per test, enforced by a gate.
+- Layers run in order, so the first failure names the stage.
+- A failure message carries the name of the thing and the expected
+  value.
+- A check that fails deliberately inside a helper reports the name it
+  was checking, rather than letting a bare exception surface.
 
-## Fixture Usage
+## Shared Setup Is Declared, Not Rebuilt
 
-The tier's `conftest.py` re-exports only the boto3 fixtures the tier
-uses. It does not construct them.
+A tier's shared setup exposes what the tier needs and constructs
+nothing that a wider scope already constructs.
 
-```python
-"""Boto3 fixtures for the tenants pre-deployment integration tier."""
-from __future__ import annotations
+Names derived from the declaration are derived once, at the scope every
+tier of that unit can see, and each tier takes them from there. Deriving
+them a second time inside a tier is the copy this tier is meant to
+prevent.
 
-from test_fixtures.aws import s3_client, state_bucket_name, sts_client
+## Why a Dry Run Is Not a Gate
 
-__all__ = ["s3_client", "state_bucket_name", "sts_client"]
-```
+Layer 4 replaces a bare dry-run step in the pipeline.
 
-Names derived from the stack's declared configuration, such as
-`function_name` and `role_name`, come from the stack's own `conftest.py`
-one level up and are shared with every other tier.
-
-## Why There Is No Plan Step
-
-Layer 4 replaces a separate `tofu plan` workflow step.
-
-- It runs the plan internally, through `test_terraform_drift`.
-- It then checks AWS for each resource the plan would create.
-- It fails naming the specific resources that already exist.
-
-A bare plan step would print a diff nobody gates on. Layer 4 gates, and
-it reports the drift in the same place as every other test failure. If
-layer 4 passes, the apply will not collide with an unmanaged resource.
-
-## Position in the Workflow
-
-```text
-static-analysis
-  └── unit-tests
-        └── pre-deployment-integration-tests
-              └── reconciliation
-                    └── post-deployment-integration-tests
-```
-
-The job itself does three things before pytest: it assumes the OIDC role,
-sets up OpenTofu, and initialises the stack.
-
-```yaml
-- name: Initialize the stack for state inspection
-  run: tofu -chdir=src/api/endpoints/tenants init -input=false
-- name: Run pre-deployment integration tests
-  run: >-
-    PYTHONPATH=.:lib/python
-    python3 -m pytest
-    test/api/endpoints/tenants/pre_deployment/integration/
-    --import-mode=importlib --confcutdir=test
-    --verbose
-```
-
-The job is gated on `github.ref == 'refs/heads/main'`, because it needs
-AWS credentials. Static analysis and unit tests are not.
+A dry run prints a diff. Nobody gates on a diff: it is read if someone
+is watching and ignored otherwise. Layer 4 consumes the same dry run,
+asserts on it, and reports drift in the same place as every other test
+failure. If layer 4 passes, the deployment will not collide with
+something untracked.
 
 ## Quick Reference
 
-| To test | Layer | File |
-| --- | --- | --- |
-| Cross-file agreement | 1 | `test_01_contracts.py` |
-| Outputs wired to a resource | 1 | `test_01_contracts.py` |
-| Remote state references | 1 | `test_01_contracts.py` |
-| Credentials resolve | 2 | `test_02_authentication.py` |
-| Permission to inspect | 3 | `test_03_authorization.py` |
-| No unmanaged resources | 4 | `test_04_state.py` |
-| A live resource's settings | — | Post-deployment |
-| A module against a module | — | Behavioural module |
-
-## Stack Reference
-
-Every endpoint stack reads the common `storage` and `routing` state, so
-each one's layer 1 asserts that coupling. What follows is what each stack
-may treat as a prerequisite, and what it must leave to its own
-post-deployment tier.
-
-| Stack | Prerequisites |
+| To test | Layer |
 | --- | --- |
-| `api/common/storage` | The shared state bucket |
-| `api/common/routing` | The shared common module |
-| `api/endpoints/carriers` | Storage and routing state |
-| `api/endpoints/data-centers` | Storage and routing state |
-| `api/endpoints/providers` | Storage and routing state |
-| `api/endpoints/tenants` | Storage and routing state |
-| `api/endpoints/tenants/wan` | The tenants stack |
-| `api/endpoints/tenants/wan/post` | The common module |
-
-The `tenants/wan` dispatcher invokes the synthesizer by a name derived
-from the common module rather than by a shared resource reference, so
-neither stack is a prerequisite of the other's apply. Their coupling is
-asserted in layer 1 on both sides. `.github/workflows/SEQUENCE.md` holds
-the full picture.
+| Cross-file agreement | 1 |
+| A published value wired to its source | 1 |
+| A reference to another unit's state | 1 |
+| Credentials resolve | 2 |
+| Permission to inspect | 3 |
+| Nothing untracked in the way | 4 |
+| A live resource's settings | Post-deployment |
+| Several units against each other | Behavioural |

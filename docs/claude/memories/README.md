@@ -27,6 +27,8 @@ session tool's local memory only what is true of one machine alone.
 - [read-test-tenets-first](read-test-tenets-first.md) — read
   `docs/tenets/tests/` before implementing, and cover every tier the
   change touches
+- [tenets-are-generic](tenets-are-generic.md) — the tenets name no tool,
+  language or directory; the repository follows them, not the reverse
 
 ## CI workflows
 

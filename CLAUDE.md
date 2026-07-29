@@ -41,8 +41,15 @@ strict hierarchy — `pre_deployment/{unit,integration}` and
 `post_deployment/integration` — and unit tests alone are not sufficient.
 Add coverage at every tier the change touches, one assert per pytest.
 
+Those docs are tenets, not a description of the suite. They name no
+language, tool, directory or resource, because the repository already
+states all of that and a second copy drifts. When a tenet and the
+repository disagree, the repository is what changes. Editing a tenet to
+match the code is backwards.
+
 Longer: [tdd-workflow](docs/claude/memories/tdd-workflow.md),
-[read-test-tenets-first](docs/claude/memories/read-test-tenets-first.md).
+[read-test-tenets-first](docs/claude/memories/read-test-tenets-first.md),
+[tenets-are-generic](docs/claude/memories/tenets-are-generic.md).
 
 ## CI workflows
 

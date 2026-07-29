@@ -1,372 +1,147 @@
-# Test Architecture Overview
+# Test Tenets Overview
 
-This document explains the test infrastructure of this repository: the
-tiers a change must cover, where common code goes, and which reusable
-utilities already exist.
+These are the tenets the tests are held to. They say which tiers a
+change must cover, where a test is placed relative to the code it
+covers, and how the rules are enforced.
 
-The repository is Python on AWS Lambda, with the infrastructure declared
-in OpenTofu and reconciled by GitHub Actions. Every test is pytest.
-There is no JavaScript test suite and no test runner other than pytest.
+No tenet here names a language, a tool, a directory or a resource. The
+repository is the source of truth for all of those, and a tenet that
+restated them would be a copy that drifts. A tenet holds after the
+stack is rewritten; if a sentence would not, it does not belong here.
 
 ## Table of Contents
 
 - [Test Tiers](#test-tiers)
-- [Directory Layout](#directory-layout)
-- [Where Shared Code Goes](#where-shared-code-goes)
-- [Reusable Utilities](#reusable-utilities)
+- [Cover Every Tier the Change Touches](#cover-every-tier-the-change-touches)
+- [Tests Mirror the Code They Cover](#tests-mirror-the-code-they-cover)
+- [Shared Code Sits as High as It Applies](#shared-code-sits-as-high-as-it-applies)
 - [Check Before You Create](#check-before-you-create)
-- [Static Analysis in Workflows](#static-analysis-in-workflows)
-- [Workflow Job Order](#workflow-job-order)
+- [Enforcement Is Mechanical](#enforcement-is-mechanical)
+- [The Order of the Gates](#the-order-of-the-gates)
 
 ## Test Tiers
 
-A stack's tests live under `test/` in a directory mirroring its path
-under `src/`, split into tiers by when they can run.
+There are four tiers, separated by what a test may touch and by when it
+becomes possible to run.
 
-| Tier | Directory under the stack's test root |
+| Tier | The question it answers |
 | --- | --- |
-| Unit | `pre_deployment/unit/` |
-| Pre-deployment integration | `pre_deployment/integration/` |
-| Post-deployment integration | `post_deployment/integration/` |
+| Unit | Is this unit correct on its own |
+| Pre-deployment integration | Can this change be deployed |
+| Post-deployment integration | Did the deployment succeed |
+| End to end | Does the whole entrypoint behave |
 
-Each tier answers a different question.
+- Unit tests exercise one unit of code with nothing external in reach.
+- Pre-deployment integration tests prove the change is deployable: the
+  files that must agree do agree, the credentials work, and the
+  declared state matches the world the deployment will land in.
+- Post-deployment integration tests inspect what was just deployed: it
+  exists, it is configured as declared, and it is wired to its
+  neighbours.
+- End-to-end tests drive a real entrypoint the way its caller does.
 
-- Unit: is this module correct on its own? Nothing external is touched.
-- Pre-deployment integration: can this stack be reconciled? Local files
-  agree with each other, credentials work, and declared state matches
-  AWS reality.
-- Post-deployment integration: did reconciliation succeed? The live
-  resources exist, are configured as declared, and are wired together.
+Each tier has its own tenets.
 
-The end-to-end tier is separate. It exists only for the seed script, at
-`test/scripts/seed/e2e/`, and runs the real entrypoint as a subprocess
-against a localhost stub API. See
-[E2E_TESTS.md](E2E_TESTS.md).
+- [UNIT_TESTS.md](UNIT_TESTS.md)
+- [PRE_DEPLOYMENT_INTEGRATION_TESTS.md](PRE_DEPLOYMENT_INTEGRATION_TESTS.md)
+- [POST_DEPLOYMENT_INTEGRATION_TESTS.md](POST_DEPLOYMENT_INTEGRATION_TESTS.md)
+- [E2E_TESTS.md](E2E_TESTS.md)
 
-Unit tests alone are never sufficient. Add coverage at every tier the
-change touches.
+## Cover Every Tier the Change Touches
 
-## Directory Layout
+Unit tests alone are never sufficient.
 
-Tests follow a cascading `conftest.py` pattern. Each level inherits from
-its parents and adds what only it needs.
+The tiers are cumulative, not alternatives. A change that adds a
+coupling between two files owes a contract test. A change that adds a
+deployed resource owes existence, configuration and wiring. A change to
+an entrypoint's own plumbing owes a journey. Passing one tier says
+nothing about the question another tier asks.
 
-```text
-test/
-├── conftest.py                     # Import paths: repo, lib, src, test
-├── fixtures.py                     # Synthesizer graph fixtures
-├── api/
-│   ├── common/
-│   │   ├── routing/
-│   │   │   ├── conftest.py         # Parsed routing stack config
-│   │   │   ├── pre_deployment/
-│   │   │   │   ├── unit/
-│   │   │   │   └── integration/
-│   │   │   └── post_deployment/
-│   │   │       └── integration/
-│   │   └── storage/
-│   └── endpoints/
-│       ├── carriers/
-│       ├── data-centers/
-│       ├── providers/
-│       └── tenants/
-│           ├── conftest.py         # Lambda and role names for the stack
-│           ├── pre_deployment/
-│           ├── post_deployment/
-│           └── wan/
-│               └── post/           # The synthesizer stack
-└── scripts/
-    └── seed/
-        ├── unit/
-        ├── integration/
-        └── e2e/
-```
+The converse is equally binding: do not answer a cheap question in an
+expensive tier. If a test would pass with every collaborator replaced by
+a literal, it is a unit test wherever it currently sits.
 
-There is no `test/api/conftest.py` and no `test/api/endpoints/`
-`conftest.py`. Shared setup lives either at `test/conftest.py` or in
-`lib/python/`, and stack-specific fixtures live in the stack's own
-`conftest.py`.
+## Tests Mirror the Code They Cover
 
-`test/conftest.py` does one job: it puts the repository root,
-`lib/python/`, `src/` and `test/` on `sys.path`. Workflows set
-`PYTHONPATH` to the same directories, so a test module imports
-`synthesizer.backbone` or `test_terraform_config` directly.
+A test's location is derived, never invented. It follows the structure
+of the code under test, and the tier is the last thing its path names.
 
-## Where Shared Code Goes
+Two things depend on this. A reader who knows where the code lives
+knows where its tests live, without searching. And any pipeline that
+selects work by path can tell which tests a change implicates, which is
+what makes it possible to gate a change on exactly the checks it
+affects.
 
-Put a fixture at the highest level where it applies, and no higher.
+Do not group tests by behaviour. A file collecting the happy paths and
+another collecting the error cases hide which unit broke, and the unit
+is the diagnostic.
 
-| Scope | Location |
-| --- | --- |
-| Every test in the repository | `test/conftest.py` |
-| Every codebase user | `lib/python/` |
-| Synthesizer inputs | `test/fixtures.py` |
-| One stack, every tier | `test/.../<stack>/conftest.py` |
-| One stack, one tier | `test/.../<tier>/conftest.py` |
+## Shared Code Sits as High as It Applies
 
-A stack's `conftest.py` parses that stack's declared OpenTofu config and
-exposes the derived names (`function_name`, `role_name`) that every tier
-needs. A tier's `conftest.py` re-exports the boto3 client fixtures the
-tier uses and derives anything fetched once per module, such as the live
-Lambda configuration block shared by the three post-deployment layers.
+Put shared setup at the highest scope where it applies, and no higher.
 
-Do not put stack-specific code in `lib/python/`, and do not put
-codebase-wide code in a stack's test directory.
+What every test needs is declared once for the whole suite. What one
+subsystem needs is declared with that subsystem. What one tier needs is
+declared with that tier. Setup local to a single file stays in that
+file.
 
-## Reusable Utilities
+Both errors cost. Lifting a fixture above its real audience gives it
+consumers nobody can enumerate, so it can no longer be changed safely.
+Leaving it below its real audience guarantees a copy.
 
-Before writing a fixture, check whether `lib/python/` already has it.
-Every module there is importable from tests because `test/conftest.py`
-and the workflows both put `lib/python/` on the path.
-
-### repo_utils
-
-Locate the repository root without relative-path arithmetic.
-
-```python
-from repo_utils import REPO_ROOT
-
-TENANTS_DIR = REPO_ROOT / "src" / "api" / "endpoints" / "tenants"
-```
-
-### test_fixtures.aws
-
-Session-scoped boto3 clients and the shared configuration they need.
-
-```python
-from test_fixtures.aws import (
-    config,                # Parsed shared common outputs
-    state_bucket_name,     # Shared OpenTofu state bucket
-    sts_client,
-    iam_client,
-    s3_client,
-    lambda_client,
-    apigateway_client,
-    logs_client,
-    dynamodb_client,
-    sqs_client,
-    sns_client,
-    events_client,
-    ecr_client,
-    iam_role_exists,       # Helper: does a role exist?
-    get_log_group_info,    # Helper: existence and retention
-)
-```
-
-A tier `conftest.py` re-exports only the clients that tier uses:
-
-```python
-from test_fixtures.aws import iam_client, lambda_client, logs_client
-
-__all__ = ["iam_client", "lambda_client", "logs_client"]
-```
-
-### test_fixtures.integration
-
-Generated test classes for the pre-deployment layers that are identical
-across every stack, so no stack hand-writes them.
-
-```python
-from test_fixtures.integration import (
-    check_s3_head_bucket_permission,
-    create_simple_layer1_authentication_tests,
-    create_layer2_s3_authorization_tests,
-)
-
-TestAWSAuthentication = create_simple_layer1_authentication_tests()
-```
-
-### test_terraform_config
-
-Parse declared OpenTofu configuration as the single source of truth, so
-a test asserts against the declaration rather than a copied literal.
-
-```python
-from test_terraform_config import (
-    COMMON_OUTPUTS_FILE,
-    load_tf,               # Parse one .tf file
-    find_resource,         # Locate a resource block
-    output_values,         # Parse an outputs.tf
-    common_outputs,        # Parsed shared common outputs
-    lambda_handler_names,  # Derived Lambda function names
-)
-```
-
-### test_terraform_drift
-
-Detect resources that exist in AWS but not in state.
-
-```python
-from test_terraform_drift import (
-    check_resource_exists,
-    get_planned_creates,
-    get_state_resources,
-    is_resource_in_state,
-    find_orphaned_resources,
-)
-```
-
-### test_naming_conventions
-
-Validate AWS resource names and API path segments.
-
-```python
-from test_naming_conventions import (
-    is_pascalcase,
-    validate_name,
-    find_violations,
-    is_kebabcase,
-    validate_kebab_name,
-)
-```
-
-### test_s3_store_mock
-
-In-memory doubles for the AWS services a handler calls, for unit tests.
-
-```python
-from test_s3_store_mock import (
-    NoSuchKey,
-    fake_s3,
-    fake_ecs,
-    fake_scheduler,
-    fake_lambda,
-)
-```
-
-### test_http_doubles
-
-HTTP doubles for code that speaks to an API rather than to boto3.
-
-```python
-from test_http_doubles import (
-    EMPTY_LISTING,
-    FakeResponse,
-    UrlopenRecorder,
-    CallRecorder,
-    StubApi,          # A real localhost server recording requests
-)
-```
-
-### test_handler_contracts
-
-Shared contract suites for the endpoint handlers, which are the same
-reader and writer shape repeated per collection.
-
-```python
-from test_handler_contracts import (
-    load_handler,
-    write_clients,
-    write_event,
-    ReaderContract,
-    WriterContract,
-    RegionsContract,
-)
-```
-
-### test_module_utils
-
-Load a Lambda handler module by path, since handlers are not packages.
-
-```python
-from test_module_utils import create_lambda_loader, load_module_from_path
-```
+The same rule decides ownership. A helper any consumer of the codebase
+could use belongs with the shared code. A helper that only one
+subsystem's tests could use never does, however tempting the shelf.
 
 ## Check Before You Create
 
-Before writing a new fixture or helper:
+Before writing a fixture, helper or double, look for the one that
+already exists: first in the enclosing scopes, then among the shared
+helpers.
 
-1. Check the parent `conftest.py` files. The fixture may already exist
-   at a higher level.
-2. Check `lib/python/`. A utility may already solve the problem.
-3. Check `test/fixtures.py` if the input is a graph, vertex or design.
+Duplication is not merely discouraged, it fails the build. A
+copy-paste gate runs at a zero-tolerance threshold over source and
+tests alike, so a copied fixture is a red run rather than a review
+comment.
 
-Duplication is not merely discouraged here, it fails the build: every
-workflow runs `jscpd` at a zero-tolerance threshold over both source and
-tests. A copied fixture is a red run, not a review comment.
+## Enforcement Is Mechanical
 
-## Static Analysis in Workflows
+Every tenet that a machine can check is checked by one, and the check
+runs before the tests do. A rule enforced by review is a rule that
+holds until the reviewer is busy.
 
-Linting and type checking run separately for source and for tests,
-because the two need different import paths and because a failure should
-name which side broke.
+Suppression is not available. A per-line directive that silences a
+finding fails a gate of its own, and so does a configuration file that
+would relax a rule across the tree. There is no tolerance band on the
+static analysis and no partial credit on coverage. When a gate objects,
+the answer is to change the code.
 
-| Step name | Target |
-| --- | --- |
-| `Run pylint on source` | Lambda sources and `lib/python/` |
-| `Run mypy on source` | Lambda sources and `lib/python/` |
-| `Detect copy-paste in source` | The same source set |
-| `Run pylint on tests` | The stack's conftest and tiers |
-| `Run mypy on tests` | The same test set |
-| `Detect copy-paste in tests` | The stack's test directory |
+## The Order of the Gates
 
-Four gates run before those, and they are the reason no local linter
-configuration exists anywhere in the tree.
-
-| Step name | What it forbids |
-| --- | --- |
-| `Lint YAML` | yamllint findings in the workflow |
-| `Assert no inline directives` | Per-line linter suppressions |
-| `Assert no linter config files` | Repository-level rule overrides |
-| `Assert one assert per pytest` | More than one assert per test |
-
-The last of those makes the atomicity rule in
-[UNIT_TESTS.md](UNIT_TESTS.md) mechanical rather than advisory.
-
-An example, from `api_endpoint_tenants.yml`:
-
-```yaml
-- name: Run pylint on source
-  run: >-
-    PYTHONPATH=lib/python:src/api/endpoints/tenants/lambdas
-    python3 -m pylint
-    src/api/endpoints/tenants/lambdas/handler.py
-    lib/python/test_terraform_config
-    lib/python/test_terraform_drift
-    lib/python/test_fixtures
-    --fail-on=C,R,W --fail-under=10.0
-- name: Run mypy on source
-  run: >-
-    MYPYPATH=lib/python:src/api/endpoints/tenants/lambdas
-    python3 -m mypy --strict --explicit-package-bases
-    --ignore-missing-imports
-    src/api/endpoints/tenants/lambdas/handler.py
-    lib/python/test_terraform_config
-    lib/python/test_terraform_drift
-    lib/python/test_fixtures
-```
-
-Note `--fail-on=C,R,W` and `--fail-under=10.0` for pylint, and `--strict`
-for mypy. There is no tolerance band: a convention warning fails the run.
-
-## Workflow Job Order
-
-Each stack has one workflow, path-filtered to that stack. Its jobs run in
-a fixed order, and each needs the one before it.
+Stages run cheapest and most local first, and each presumes the one
+before it passed.
 
 ```text
-static-analysis
-  └── unit-tests
-        └── pre-deployment-integration-tests
-              └── reconciliation
-                    └── post-deployment-integration-tests
+static analysis
+  └── unit tests
+        └── pre-deployment integration tests
+              └── deployment
+                    └── post-deployment integration tests
 ```
 
-The reasoning behind the order:
+- Static analysis depends on nothing, so it gives the fastest feedback.
+- Unit tests run behind it, because there is no point testing code that
+  does not lint. They carry the coverage gate.
+- Pre-deployment integration runs immediately before the deployment and
+  changes nothing itself.
+- The deployment runs only once everything knowable without it is
+  known.
+- Post-deployment integration runs last, because there is nothing live
+  to inspect until then.
 
-- `static-analysis` needs nothing, so it gives the fastest feedback.
-- `unit-tests` runs behind it, because there is no point testing code
-  that does not lint. It carries the coverage gate.
-- `pre-deployment-integration-tests` runs `tofu init` first, because the
-  state layer inspects state. It does not apply anything.
-- `reconciliation` runs `tofu apply`, and only after the pre-deployment
-  tier has confirmed nothing it would create already exists.
-- `post-deployment-integration-tests` runs last, because there are no
-  live resources to inspect until reconciliation has finished.
+A tier that needs credentials or a deployed environment cannot run on
+every push. The tiers that need neither must, so the checks a
+contributor gets for free arrive first.
 
-Reconciliation and the two integration tiers are gated on
-`github.ref == 'refs/heads/main'`. Static analysis and unit tests are
-not, so they run on every push.
-
-A push can trigger several path-filtered workflows at once. The change is
-done when each workflow that fired is green, not when the first one is.
+One change may fire several pipelines. It is done when every pipeline
+that fired is green, not when the first one is.

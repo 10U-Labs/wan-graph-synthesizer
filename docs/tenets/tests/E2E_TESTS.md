@@ -1,12 +1,12 @@
 # E2E Test Tenets
 
-These are the non-negotiable rules for end-to-end tests.
+These are the non-negotiable rules for end-to-end tests: the tier that
+drives a real entrypoint the way its caller does.
 
-This repository has exactly one end-to-end tier, at
-`test/scripts/seed/e2e/`. It covers the seed CLI, which is the only
-entrypoint a person runs directly. Everything else is a Lambda behind API
-Gateway, and the deployed side of those is covered by
-[POST_DEPLOYMENT_INTEGRATION_TESTS.md](POST_DEPLOYMENT_INTEGRATION_TESTS.md).
+An entrypoint is something a person or another system invokes directly.
+Anything reached only through deployed infrastructure is covered by
+[POST_DEPLOYMENT_INTEGRATION_TESTS.md](POST_DEPLOYMENT_INTEGRATION_TESTS.md)
+instead.
 
 ## Table of Contents
 
@@ -16,240 +16,143 @@ Gateway, and the deployed side of those is covered by
 - [Assert on Observable Outcomes](#assert-on-observable-outcomes)
 - [Last Line of Defense, Not First](#last-line-of-defense-not-first)
 - [Cover the Failure Path](#cover-the-failure-path)
-- [Fail Fast](#fail-fast)
+- [Never Wait](#never-wait)
 - [Document the Journey](#document-the-journey)
-- [Test File Organization](#test-file-organization)
-- [Fixture Requirements](#fixture-requirements)
-- [Position in the Workflow](#position-in-the-workflow)
-- [Boundary with the Other Tiers](#boundary-with-the-other-tiers)
+- [One File Per Entrypoint](#one-file-per-entrypoint)
+- [A Fresh Double Per Test](#a-fresh-double-per-test)
+- [Where the Tier Runs](#where-the-tier-runs)
+- [Boundary with the Deployed Tiers](#boundary-with-the-deployed-tiers)
 - [Quick Reference](#quick-reference)
 
 ## Top of the Pyramid
 
-End-to-end tests are few. There are four today, and that is the right
-order of magnitude.
+End-to-end tests are few, and each one stands for a journey that makes
+the entrypoint unusable when it breaks: it runs, it does what it is for,
+it reports when the far end fails.
 
-```text
-        /\
-       /  \     End to end (one entrypoint)
-      /----\
-     /      \   Integration (some)
-    /--------\
-   /          \
-  /            \ Unit (many)
- /______________\
-```
-
-Each one stands for a journey that, if broken, makes the tool unusable:
-the CLI runs, the CLI writes what it is supposed to write, the CLI fails
-when the far end fails. An edge case in a parser is not a journey, and it
-is cheaper and clearer as a unit test.
-
-```python
-def test_seed_cli_exits_zero_against_the_stub(stub_api: StubApi) -> None:
-    """The seed CLI exits 0 when the API accepts every write."""
-    assert _run_seed(stub_api.url).returncode == 0
-```
+An edge case in a parser is not a journey. It is cheaper, clearer and
+faster to diagnose as a unit test, and putting it here buys nothing but
+runtime.
 
 ## Hermetic by Construction
 
 An end-to-end test touches no live resource, sends nothing off the
 machine, and costs nothing to run.
 
-The far end is replaced at the boundary the entrypoint speaks to. For the
-seed CLI that is HTTP, so `StubApi` from `lib/python/test_http_doubles`
-serves a real localhost server and records every request. Everything on
-this side of that boundary is the real thing: the real module, the real
-argument parsing, the real inputs under `etc/`.
+Replace the far end at the boundary the entrypoint itself speaks to, and
+keep everything on this side of that boundary real: the real code, the
+real argument handling, the real committed inputs. A double placed
+anywhere further in stops the test from covering the wiring this tier
+exists for.
 
-There is no staging environment and there is no end-to-end test against
-production. If a journey can only be exercised against live AWS, it is
-not an end-to-end test here. Either it becomes an inspection in the
-post-deployment tier, or it does not exist.
+There is no test against a staging environment and none against
+production. If a journey can only be exercised against live
+infrastructure, it is not an end-to-end test: either it becomes an
+inspection in the post-deployment tier, or it does not exist.
 
-That rule is what makes this tier free to run on every push, including
-pushes that never touch AWS credentials.
+That rule is what makes the tier free to run on every change, including
+changes that never touch credentials.
 
 ## Run the Real Entrypoint
 
-Invoke the entrypoint the way a person does, as its own process.
+Invoke the entrypoint the way its caller does, through the same boundary,
+in its own process where the caller would use one.
 
-```python
-def _run_seed(url: str) -> subprocess.CompletedProcess[str]:
-    """Invoke ``python -m seed <url>`` as a subprocess against a stub API."""
-    env = {
-        **os.environ,
-        "PYTHONPATH": os.pathsep.join([
-            str(REPO_ROOT / "scripts"),
-            str(REPO_ROOT / "lib" / "python"),
-            str(REPO_ROOT),
-        ]),
-    }
-    return subprocess.run(
-        [sys.executable, "-m", "seed", url],
-        cwd=str(REPO_ROOT), env=env,
-        capture_output=True, text=True, check=False,
-    )
-```
-
-Importing the module and calling a function inside it skips the argument
-parsing, the module entrypoint and the exit code, which are three of the
-things this tier exists to cover. Use `check=False` and assert on the
-result, so a non-zero exit is a readable assertion rather than an
-exception from the harness.
+Calling a function inside the entrypoint instead skips the argument
+handling, the entrypoint resolution and the exit status — three of the
+things this tier exists to cover. Let a failure surface as an assertion
+on the result rather than as an exception from the harness, so the report
+names the journey.
 
 ## Assert on Observable Outcomes
 
-Assert what the outside world sees: the exit code, and the requests that
-reached the far end.
-
-```python
-def test_seed_cli_writes_carrier_vertices(stub_api: StubApi) -> None:
-    """The seed CLI writes carrier vertices to the API."""
-    _run_seed(stub_api.url)
-    paths = [path for _method, path, _body in stub_api.records]
-    assert any("/carriers/" in path and path.endswith("/vertices")
-               for path in paths)
-```
+Assert what the outside world sees: the status the entrypoint reports,
+and what reached the far end.
 
 Do not reach inside the process for internal state. If an internal value
-needs asserting, that is a unit test over the module that owns it.
+needs asserting, that is a unit test over the code that owns it.
 
 ## Last Line of Defense, Not First
 
 If an end-to-end test catches something a unit test could have caught,
-the unit tests have a gap and the gap is the bug to fix.
+the unit tests have a gap, and the gap is the bug to fix.
 
 | Issue | Should be caught by |
 | --- | --- |
-| A parsing error in one module | Unit |
-| A mis-built request body | Unit |
-| Two modules disagreeing | Integration |
+| A parsing error in one unit | Unit |
+| A malformed request body | Unit |
+| Two units disagreeing | Integration |
 | A wrong entrypoint name | End to end |
-| An unhandled non-zero exit | End to end |
-| A missing PYTHONPATH entry | End to end |
+| An unhandled failure status | End to end |
+| A missing runtime path or dependency | End to end |
 
-The tier's value is the wiring nothing else sees: module resolution,
-argument handling, process exit codes, and the fact that the real inputs
-in the repository are still readable by the real code.
+The tier's value is the wiring nothing else sees: resolution, argument
+handling, exit status, and the fact that the real inputs in the
+repository are still readable by the real code.
 
 ## Cover the Failure Path
 
-A tier that only covers success proves the entrypoint runs, not that it
+A tier that covers only success proves the entrypoint runs, not that it
 reports.
 
-```python
-def test_seed_cli_fails_when_the_api_rejects_writes() -> None:
-    """The seed CLI exits non-zero when the API returns an error status."""
-    with StubApi(status=500) as api:
-        result = _run_seed(api.url)
-    assert result.returncode != 0
-```
+Drive the far end to fail and assert that the entrypoint says so. An
+entrypoint that reports success after every write failed is worse than
+one that crashes, because a pipeline gating on it goes green.
 
-An entrypoint that exits 0 after every write failed is worse than one
-that crashes, because a workflow gating on it goes green.
+## Never Wait
 
-## Fail Fast
+The far end is a local double, so a correct run is immediate.
 
-The stub is on localhost, so a correct run is immediate.
-
-No retry loops, no polling, no sleeps. A test that waits is waiting for
-something this tier does not have: there is no eventual consistency
-behind a localhost socket. If a wait seems necessary, the double is
-wrong, not the timeout.
+No retry loops, no polling, no sleeps. There is no eventual consistency
+behind a double, so a test that waits is waiting for something this tier
+does not have. If a wait seems necessary, the double is wrong, not the
+timeout.
 
 ## Document the Journey
 
-Each test's docstring states the journey and the failure it stands for,
-in one sentence. The tier is small enough that every test earns its
-description.
+Each test's description states the journey and the failure it stands
+for, in one sentence. The tier is small enough that every test earns
+one.
 
-```python
-def test_seed_cli_writes_a_tenant_label(stub_api: StubApi) -> None:
-    """The seed CLI writes a tenant label to the API."""
-```
+## One File Per Entrypoint
 
-## Test File Organization
+One test file per entrypoint, named for the entrypoint.
 
-The seed script's tests carry all three tiers.
+Do not split by journey type. The entrypoint is the subject, and a tier
+with a handful of tests per entrypoint has nothing to gain from further
+division.
 
-```text
-test/scripts/seed/
-├── conftest.py            # Shared seed fixtures
-├── unit/
-│   ├── test_seed.py
-│   └── test_zayo_pops.py
-├── integration/
-│   └── test_contracts.py
-└── e2e/
-    ├── conftest.py        # The stub API fixture
-    └── test_cli.py
-```
+## A Fresh Double Per Test
 
-The end-to-end directory holds one module per entrypoint, named for the
-entrypoint. There is no split by journey type, because there is one
-entrypoint and four tests.
+The double is created per test, not shared across the file.
 
-## Fixture Requirements
+Each test gets a double with an empty record of what reached it, so one
+test's traffic cannot satisfy another's assertion. A test that needs
+different far-end behaviour builds its own rather than adding a
+parameter to the shared one.
 
-An end-to-end fixture stands up the double, yields it, and tears it down
-on the way out.
+Whatever creates the double tears it down on the way out, on the failing
+path as well as the passing one.
 
-```python
-@pytest.fixture
-def stub_api() -> Iterator[StubApi]:
-    """Run a localhost stub API recording PUTs for the duration of a test."""
-    with StubApi() as api:
-        yield api
-```
+## Where the Tier Runs
 
-Function scope, not module scope: each test gets a stub with an empty
-record list, so one test's requests cannot satisfy another's assertion.
+The tier runs after the cheaper tiers and before anything that writes to
+a live environment.
 
-A test needing different far-end behaviour, such as an error status,
-constructs its own `StubApi` in a `with` block rather than adding a
-parameter to the shared fixture.
+That order is the whole reason it is worth its cost: whatever is about
+to write to production has just been run start to finish against a
+double. Because the tier is hermetic it needs no credentials, so unlike
+the deployment tiers it can gate every change rather than only the ones
+that reach a real environment.
 
-## Position in the Workflow
-
-`seed.yml` runs the tiers in order, and only the last job talks to the
-real API.
-
-```text
-static-analysis
-  └── unit-tests
-        └── integration-tests
-              └── e2e-tests
-                    └── seeding
-```
-
-```yaml
-- name: Run end-to-end tests against a stub API
-  run: >-
-    PYTHONPATH=.:lib/python:scripts
-    python3 -m pytest test/scripts/seed/e2e/
-    --import-mode=importlib --confcutdir=test
-    --verbose
-```
-
-`seeding` is the job that pushes the git-authored inputs to the live API.
-It runs after the end-to-end tests pass, which is the whole reason the
-tier is worth its cost: the CLI that is about to write to production has
-just been run start to finish against a stub.
-
-Note that a first `seeding` run can fail with `HTTP 403` on a resource
-whose route was added in the same push, because `seed` and
-`api_common_routing` are independent workflows racing on one push. Wait
-for routing, then re-run the failed jobs.
-
-## Boundary with the Other Tiers
+## Boundary with the Deployed Tiers
 
 | Post-deployment integration | End to end |
 | --- | --- |
-| The Lambda exists | The CLI runs |
-| Its settings are right | Its exit code is right |
-| Its role is attached | Its requests arrive |
-| AWS reports it correct | The process behaves |
+| The resource exists | The entrypoint runs |
+| Its settings are right | Its status is right |
+| Its permissions are attached | Its requests arrive |
+| The platform reports it correct | The process behaves |
 
 ## Quick Reference
 
@@ -257,7 +160,7 @@ for routing, then re-run the failed jobs.
 | --- | --- |
 | A function's return value | Unit |
 | A request body's shape | Unit |
-| Two modules agreeing | Integration |
-| The CLI's exit code | End to end |
-| The CLI's requests | End to end |
+| Two units agreeing | Integration |
+| The status an entrypoint reports | End to end |
+| What an entrypoint sends | End to end |
 | A live resource's settings | Post-deployment |
