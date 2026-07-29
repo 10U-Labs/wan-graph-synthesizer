@@ -303,6 +303,19 @@ def test_rejects_a_compass_sector_count_that_is_not_a_positive_integer(
         _config({"settings": {"compass_octants": value}})
 
 
+@pytest.mark.parametrize("value", [1.5, 0, 0.0, -0.1, True, "half"])
+def test_rejects_a_memory_share_outside_zero_to_one(value: object) -> None:
+    """A memory share not above 0 and at most 1 is refused when the config parses."""
+    with pytest.raises(ValueError, match="enum_memory_fraction"):
+        _config({"settings": {"enum_memory_fraction": value}})
+
+
+def test_accepts_a_memory_share_of_exactly_one() -> None:
+    """A memory share of exactly 1 -- all the memory the function has -- is accepted."""
+    budget = _config({"settings": {"enum_memory_fraction": 1}}).params.tuning.enum_budget
+    assert budget.memory_fraction == 1.0
+
+
 def test_a_dial_left_in_the_tuning_section_is_not_read() -> None:
     """A dial left in the tuning section is ignored, so the built-in default stands."""
     assert _config({"tuning": {"compass_octants": 6}}).params.tuning.compass_octants == 8

@@ -196,8 +196,28 @@ def _sector_count(settings: dict[str, Any], default: int) -> int:
     """
     value = settings.get("compass_octants", default)
     if not isinstance(value, int) or isinstance(value, bool) or value < 1:
-        raise ValueError("config key 'compass_octants' must be an integer of at least 1")
+        raise ValueError("settings key 'compass_octants' must be an integer of at least 1")
     return value
+
+
+def _memory_share(settings: dict[str, Any], default: float) -> float:
+    """Return the share of memory the backbone search may use, rejecting a bad value.
+
+    Above 1 the limit authorises more memory than the function has, so a large job is
+    killed by the runtime instead of refused cleanly -- the exact failure the setting
+    exists to prevent, reached by changing the setting meant to prevent it. At 0 every
+    backbone size is refused with an error that talks about a RAM budget and never
+    mentions configuration. Parse time is the only point either can be refused before a
+    design run starts; failing inside ``enumeration_limit`` would waste the graph load.
+    """
+    value = settings.get("enum_memory_fraction", default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("settings key 'enum_memory_fraction' must be a number")
+    if not 0.0 < value <= 1.0:
+        raise ValueError(
+            "settings key 'enum_memory_fraction' must be above 0 and at most 1"
+        )
+    return float(value)
 
 
 def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
@@ -218,9 +238,7 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
         ),
         access_backbone_links=_required_int(tuning, "access_backbone_links"),
         enum_budget=EnumBudget(
-            memory_fraction=settings.get(
-                "enum_memory_fraction", base.enum_budget.memory_fraction
-            ),
+            memory_fraction=_memory_share(settings, base.enum_budget.memory_fraction),
             set_peak_bytes=settings.get(
                 "backbone_set_peak_bytes", base.enum_budget.set_peak_bytes
             ),
