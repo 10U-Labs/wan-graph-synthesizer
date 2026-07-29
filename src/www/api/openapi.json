@@ -583,6 +583,20 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
+    "/wan-graph-synthesizer/tenants/{tenant}/settings": {
+      "get": {
+        "summary": "A tenant's implementation settings (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The settings." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a tenant's implementation settings (stores only).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The settings were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
     "/wan-graph-synthesizer/tenants/{tenant}/label": {
       "get": {
         "summary": "A tenant's display label (input).",

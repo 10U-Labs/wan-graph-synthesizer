@@ -410,6 +410,24 @@ def _parts(**overrides: Any) -> dict[str, Any]:
     return parts
 
 
+def test_app_config_from_parts_folds_settings_into_tuning() -> None:
+    """A settings document supplies tuning values alongside the knobs document."""
+    parts = _parts(settings={"enum_memory_fraction": 0.25})
+    budget = app_config_from_parts(parts).params.tuning.enum_budget
+    assert budget.memory_fraction == 0.25
+
+
+def test_app_config_from_parts_prefers_settings_over_knobs() -> None:
+    """A key carried by both documents resolves to the settings value."""
+    parts = _parts(settings={"compass_octants": 4})
+    assert app_config_from_parts(parts).params.tuning.compass_octants == 4
+
+
+def test_app_config_from_parts_without_settings_is_unchanged() -> None:
+    """A tenant carrying no settings document parses exactly as it did before."""
+    assert app_config_from_parts(_parts()) == app_config_from_parts(_parts(settings={}))
+
+
 def test_app_config_from_parts_assembles_the_two_degrees() -> None:
     """The assembler reads both redundancy degrees from their documents."""
     tuning = app_config_from_parts(_parts()).params.tuning

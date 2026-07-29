@@ -39,7 +39,8 @@ logger = logging.getLogger(__name__)
 
 # The tenant config resources, each its own stored document, assembled back into a
 # single AppConfig. The two degrees and the ``knobs`` coverage target are required;
-# the rest default when empty.
+# the rest default when empty. ``settings`` holds the implementation dials, and takes
+# precedence over ``knobs`` where a key appears in both.
 CONFIG_RESOURCES = (
     "forced-backbone-nodes",
     "forced-connections",
@@ -51,6 +52,7 @@ CONFIG_RESOURCES = (
     "backbone-placement",
     "convergence-promotion",
     "knobs",
+    "settings",
     "label",
 )
 

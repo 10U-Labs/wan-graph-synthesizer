@@ -46,13 +46,14 @@ _INPUTS = frozenset({
     "backbone-placement",
     "convergence-promotion",
     "knobs",
+    "settings",
     "label",
 })
 # Tenants are enumerated by this marker document (every tenant has a label).
 _TENANT_MARKER = "label.json"
 # The vertex-list inputs are geographic rows with a known set of required fields; the
-# remaining config resources (forced-*, degrees, knobs, label) are validated only by the
-# schema their consumers expect, so they pass through unchecked here. A row may carry
+# remaining config resources (forced-*, degrees, knobs, settings, label) are validated
+# only by the schema their consumers expect, so they pass through unchecked here. A row may carry
 # extra fields beyond the required set -- only tenant locations must additionally carry
 # the ``exemptfromdistanceconstraint`` column (cloud regions and off-net do not).
 _SITE_FIELDS = {"name", "municipality", "state", "country", "latitude", "longitude"}

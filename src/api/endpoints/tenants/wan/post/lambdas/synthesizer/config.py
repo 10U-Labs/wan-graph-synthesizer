@@ -261,6 +261,12 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     reshapes those documents into the canonical mapping :func:`config_from_data`
     expects and delegates to it, so all parsing and validation stays in one place. The
     two redundancy degrees are required -- a missing one raises in :func:`_degree`.
+
+    ``knobs`` and ``settings`` both carry tuning values and are merged in that order,
+    so a key held by both resolves to the ``settings`` one. That precedence is what
+    lets the implementation dials move out of ``knobs`` a tenant at a time instead of
+    in one flag day across the API, the seed script and every tenant file; it comes
+    out again once nothing reads the old location.
     ``paths`` is left at its defaults: the deployed synthesizer reads its substrate
     from the merged carriers, not from these documents.
     """
@@ -283,6 +289,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
         design["max_backbone_count"] = count["max"]
     tuning = {
         **_mapping(parts, "knobs"),
+        **_mapping(parts, "settings"),
         "backbone_mesh_degree": _degree(parts, "backbone-mesh-degree"),
         "access_backbone_links": _degree(parts, "access-homing-degree"),
     }
