@@ -205,6 +205,9 @@ on:
       - src/api/endpoints/tenants/wan/post/**
       - test/api/endpoints/tenants/wan/conftest.py
       - test/api/endpoints/tenants/wan/post/**
+      # The shared test support this endpoint's tests are the only importers of; a change
+      # to it can break them, so it has to be able to trigger them.
+      - test/fixtures.py
       - lib/python/**
       - lib/opentofu/common/**
       - .github/workflows/api_endpoint_tenants_wan_post.yml
