@@ -5,7 +5,7 @@
 access_homing_degree: 2
 backbone_mesh_degree: 3
 backbone_node_count:
-  max: 7
+  max: 6
   min: 3
 forced_backbone_nodes:
   - Ashburn, VA
@@ -14,7 +14,6 @@ forced_backbone_nodes:
   - McLean, VA
   - Minot, ND
   - Salt Lake City, UT
-  - San Luis Obispo, CA
 forced_connections: []
 inputs:
   locations:
