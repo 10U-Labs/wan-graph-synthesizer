@@ -163,13 +163,16 @@ def test_backbone_wires_what_it_can_when_a_node_is_unreachable() -> None:
 
 # Two tight triangles -- {a1,a2,a3} and {b1,b2,b3} -- joined only by long but finite
 # cross links. A nearest-neighbour mesh of degree two keeps every node wired inside its
-# own triangle, so without a connectivity step the two clusters never link.
+# own triangle, so without a connectivity step the two clusters never link. Every cross
+# distance is its endpoints' distance to a1/b1 plus the 100-mile crossing, so the table
+# is a metric a real carrier graph could produce: the join is genuinely a chokepoint
+# rather than a table that lets one node cross more cheaply than its neighbour can.
 _TWO_CLUSTER_DISTANCES = _symmetric_distances({
     ("a1", "a2"): 1.0, ("a1", "a3"): 2.0, ("a2", "a3"): 3.0,
     ("b1", "b2"): 1.0, ("b1", "b3"): 2.0, ("b2", "b3"): 3.0,
     ("a1", "b1"): 100.0, ("a1", "b2"): 101.0, ("a1", "b3"): 102.0,
-    ("a2", "b1"): 103.0, ("a2", "b2"): 104.0, ("a2", "b3"): 105.0,
-    ("a3", "b1"): 106.0, ("a3", "b2"): 107.0, ("a3", "b3"): 108.0,
+    ("a2", "b1"): 101.0, ("a2", "b2"): 102.0, ("a2", "b3"): 103.0,
+    ("a3", "b1"): 102.0, ("a3", "b2"): 103.0, ("a3", "b3"): 104.0,
 })
 _TWO_CLUSTER_NODES = ("a1", "a2", "a3", "b1", "b2", "b3")
 
@@ -210,6 +213,60 @@ def test_the_cluster_join_falls_back_to_the_next_shortest_cross_pair() -> None:
     """With the shortest cross pair pruned, the next shortest stitches the clusters."""
     removed = frozenset({edge_key("a1", "b1")})
     assert edge_key("a1", "b2") in _two_cluster_mesh(removed)
+
+
+# A backbone whose peers are not all diverse. d hangs off a and e off b, so h reaches
+# either one only by transiting a peer it has already picked; f sits on a span of its
+# own, two and a half miles out, and shares transit with nobody. h's third-nearest peer
+# is therefore d at two miles, reachable only through a, while the diverse f is farther.
+_TRANSIT_EDGES = physical({
+    ("h", "a"): 1.0, ("h", "b"): 1.0, ("a", "b"): 1.0,
+    ("a", "d"): 1.0, ("b", "e"): 1.0, ("d", "e"): 1.0,
+    ("h", "f"): 2.5,
+})
+_TRANSIT_NODES = ("h", "a", "b", "d", "e", "f")
+_TRANSIT_DISTANCES = all_pairs_shortest(
+    [pop(node) for node in _TRANSIT_NODES], build_adjacency(_TRANSIT_EDGES)
+)[0]
+
+
+def _transit_mesh(
+    forced: frozenset[tuple[str, str]] = frozenset(),
+) -> list[tuple[str, str]]:
+    """The transit backbone wired at mesh degree three."""
+    return select_backbone_mesh_pairs(
+        _TRANSIT_NODES, _TRANSIT_DISTANCES, frozenset(), 3, forced
+    )
+
+
+def _peers(pairs: list[tuple[str, str]], node: str) -> set[str]:
+    """Every node ``node`` shares a mesh link with."""
+    return {other for pair in pairs if node in pair for other in pair if other != node}
+
+
+def test_a_peer_reachable_only_through_a_nearer_peer_is_skipped() -> None:
+    """h skips d, whose shortest path transits a, the peer h picked first."""
+    assert edge_key("h", "d") not in _transit_mesh()
+
+
+def test_the_skipped_slot_goes_to_a_diverse_peer() -> None:
+    """h spends the freed slot on the farther f, which shares no transit."""
+    assert _peers(_transit_mesh(), "h") == {"a", "b", "f"}
+
+
+def test_a_node_with_no_diverse_peer_left_still_meets_its_degree() -> None:
+    """f leaves the backbone only through h, yet still wires its three links."""
+    assert len(_peers(_transit_mesh(), "f")) == 3
+
+
+def test_a_pinned_peer_counts_when_judging_diversity() -> None:
+    """A pinned a still makes d a transit of a peer h holds, so d is skipped."""
+    assert edge_key("h", "d") not in _transit_mesh(frozenset({edge_key("h", "a")}))
+
+
+def test_a_forced_pair_is_wired_even_when_it_shares_transit() -> None:
+    """An operator's pin is wired even though its path transits another peer."""
+    assert edge_key("h", "d") in _transit_mesh(frozenset({edge_key("h", "d")}))
 
 
 _UNIT_MESH_EDGES = physical({

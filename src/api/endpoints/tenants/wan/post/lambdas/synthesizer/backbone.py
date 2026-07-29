@@ -1,7 +1,9 @@
 """Select and route the backbone-to-backbone mesh.
 
-Every backbone node links to its ``mesh_degree`` nearest reachable backbone nodes,
-minus any backbone-backbone pairs the operator pruned in ``etc/*.yml``. The mesh is
+Every backbone node links to its ``mesh_degree`` nearest reachable backbone nodes that
+do not route through one another, minus any backbone-backbone pairs the operator pruned
+in ``etc/*.yml``. Counting links that share a transit city would let a node report its
+full degree and still fall to one link when that city goes. The mesh is
 then augmented so the backbone is a single connected network and, wherever the carrier
 graph allows, 2-vertex-connected -- the physical fiber survives the loss of any single
 city, which also implies it survives any single cable cut. These helpers are split from
@@ -98,6 +100,33 @@ def augment_for_resilience(
     return edges
 
 
+def shares_transit(
+    node: str,
+    candidate: str,
+    chosen: set[str],
+    all_distances: dict[str, dict[str, float]],
+) -> bool:
+    """Whether the shortest path to ``candidate`` runs through a peer already chosen.
+
+    A peer sits on a shortest ``node``-to-``candidate`` path exactly when the two legs
+    sum to the direct distance, since every subpath of a shortest path is itself
+    shortest. Such a candidate buys no redundancy: one city's loss takes both links at
+    once. Where the graph offers two equally short routes and only one of them transits
+    the peer, this still reports a share -- the router is free to pick either, so the
+    diversity cannot be relied on.
+    """
+    direct = all_distances[node].get(candidate, math.inf)
+    return any(
+        math.isclose(
+            all_distances[node].get(peer, math.inf)
+            + all_distances.get(peer, {}).get(candidate, math.inf),
+            direct,
+            rel_tol=1e-9,
+        )
+        for peer in chosen
+    )
+
+
 def select_backbone_mesh_pairs(
     backbone_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
@@ -125,6 +154,21 @@ def select_backbone_mesh_pairs(
     (see :func:`augment_for_resilience`) into a single connected, 2-edge-connected
     network wherever the carrier graph allows, never re-adding a pruned pair.
 
+    Nearest is not the same as diverse. A candidate whose shortest path transits a peer
+    the node has already picked shares that peer's city, so one city's loss takes both
+    links and the node's nominal degree overstates what it survives. Such a candidate is
+    passed over for the next nearest one that is diverse (see :func:`shares_transit`),
+    which is what makes the degree a count of independent links rather than of lines on
+    a diagram. A node's pins count as picks here too, so a candidate reachable only
+    through a pinned peer is passed over just the same. The pins themselves are wired
+    however they route: an operator instruction is honoured, not second-guessed.
+
+    Where no diverse candidate is left, the node falls back to the nearest of the ones
+    passed over rather than leaving the slot empty. Some cities are genuine carrier
+    chokepoints with no alternate fiber, and a node behind one would otherwise drop to a
+    single link; the link is worth having even though it is not independent. Reporting
+    that shortfall is validation's job, not selection's.
+
     A node left with fewer reachable, non-removed peers than the target -- because the
     operator pruned its links or the carrier graph cannot reach them -- wires to every
     peer it can and no more. Thinning one node below the target therefore costs only
@@ -143,10 +187,20 @@ def select_backbone_mesh_pairs(
             and edge_key(node, other) not in forced_pairs
             and math.isfinite(distances.get(other, math.inf))
         )
-        pinned = sum(1 for pair in forced_pairs if node in pair)
-        selected.update(
-            edge_key(node, other) for _distance, other in nearest[: max(target - pinned, 0)]
-        )
+        chosen = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
+        slots = max(target - len(chosen), 0)
+        picks: list[str] = []
+        passed_over: list[str] = []
+        for _distance, other in nearest:
+            if len(picks) == slots:
+                break
+            if shares_transit(node, other, chosen, all_distances):
+                passed_over.append(other)
+                continue
+            picks.append(other)
+            chosen.add(other)
+        picks.extend(passed_over[: slots - len(picks)])
+        selected.update(edge_key(node, other) for other in picks)
     return sorted(augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs))
 
 
