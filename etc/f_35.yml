@@ -3,7 +3,8 @@
 # Keys are kept alphabetical within each block to satisfy yamllint key-ordering.
 access:
   homing_degree: 2
-backbone_mesh_degree: 3
+backbone:
+  mesh_degree: 3
 backbone_node_count:
   max: 16
   min: 3

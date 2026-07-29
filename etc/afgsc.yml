@@ -1,7 +1,8 @@
 ---
 access:
   homing_degree: 2
-backbone_mesh_degree: 4
+backbone:
+  mesh_degree: 4
 backbone_node_count:
   max: 99
   min: 3
