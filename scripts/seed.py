@@ -167,7 +167,8 @@ def push_tenants(api: str) -> list[str]:
              config.get("prohibited_backbone_nodes", []))
         _put(api, f"tenants/{tid}/prohibited-connections",
              config.get("prohibited_connections", []))
-        _put(api, f"tenants/{tid}/backbone-node-count", config.get("backbone_node_count", {}))
+        _put(api, f"tenants/{tid}/backbone-node-count",
+             config["backbone"].get("node_count", {}))
         _put(api, f"tenants/{tid}/backbone-mesh-degree",
              _degree_doc(config["backbone"]["mesh_degree"]))
         _put(api, f"tenants/{tid}/access-homing-degree",
