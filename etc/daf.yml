@@ -28,7 +28,7 @@ backbone:
       - Seattle, WA
       - Tallahassee, FL
       - Tulsa, OK
-  mesh_degree: 2
+  mesh_degree: 3
   node_count:
     max: 99
     min: 3
