@@ -19,7 +19,7 @@ from repo_utils import REPO_ROOT
 from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
 from synthesizer.input_graph import Vertex
-from synthesizer.model import DesignParams, OperatorLinks
+from synthesizer.model import DesignParams, OperatorLinks, RoleOverrides
 
 _PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/post/lambdas/synthesizer/handler.py"
 
@@ -60,7 +60,9 @@ def _stub_pipeline(
     monkeypatch.setattr(module, "load_off_net", lambda _p: [])
     monkeypatch.setattr(module, "app_config_from_parts", lambda _p: config)
     monkeypatch.setattr(module, "dual_home", lambda *_a: (graph, {}))
-    monkeypatch.setattr(module, "apply_role_overrides", lambda *_a: (graph, {}, object()))
+    monkeypatch.setattr(
+        module, "apply_role_overrides", lambda *_a: (graph, {}, RoleOverrides())
+    )
     monkeypatch.setattr(module, "synthesize_two_tier_design", lambda *_a: object())
     monkeypatch.setattr(module, "finalize", lambda *_a: (graph, {}, object(), {}))
     monkeypatch.setattr(module, "design_payload", lambda *_a: payload)
