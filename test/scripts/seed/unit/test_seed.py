@@ -45,6 +45,8 @@ access:
   homing_degree: 1
 backbone:
   coverage_target_miles: 500
+  degree_exempt:
+    - Nellis, NV
   forced:
     connections:
       - source: Luke, AZ
@@ -553,6 +555,24 @@ def test_push_tenants_refuses_an_off_net_seat_a_carrier_already_serves(
     _write_csv(tmp_path / "offnet" / "off.csv", "Municipality,State", "Reston,VA")
     with pytest.raises(ValueError, match="Reston, VA"):
         push_tenants("http://api")
+
+
+def test_push_tenants_puts_the_degree_exempt_backbone_nodes_resource(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants reads the exempt nodes from the backbone block's degree_exempt key."""
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/degree-exempt-backbone-nodes"] == ["Nellis, NV"]
+
+
+def test_push_tenants_puts_an_empty_degree_exempt_document_when_absent(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """A config naming no exempt node still gets the resource, holding an empty list."""
+    bodies = _pushed_bodies(
+        tmp_path, monkeypatch, put_recorder,
+        _TENANT_YML.replace("  degree_exempt:\n    - Nellis, NV\n", ""))
+    assert bodies["tenants/f-35/degree-exempt-backbone-nodes"] == []
 
 
 def test_push_tenants_uses_empty_off_net_when_absent(
