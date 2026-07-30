@@ -195,12 +195,15 @@ class RoleOverrides:
     """Operator role pins resolved from PoP names to concrete vertex ids.
 
     ``forced_backbone_ids`` are the ids fixed into the backbone tier;
-    ``prohibited_backbone_ids`` are barred from it. ``forced_links`` carries the
-    operator's pinned edges resolved to ids.
+    ``prohibited_backbone_ids`` are barred from it. ``degree_exempt_backbone_ids`` are
+    held to no mesh degree: the mesh stops filling their slots and validation stops
+    reporting their shortfall, while they stay peers any other node may link to.
+    ``forced_links`` carries the operator's pinned edges resolved to ids.
     """
 
     forced_backbone_ids: frozenset[str] = frozenset()
     prohibited_backbone_ids: frozenset[str] = frozenset()
+    degree_exempt_backbone_ids: frozenset[str] = frozenset()
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
 
 @dataclass(frozen=True)

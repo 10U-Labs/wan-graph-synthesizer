@@ -81,12 +81,14 @@ def _reject_non_datacenter_pins(
 def _resolve_operator_pins(
     vertices: list[Vertex],
     params: DesignParams,
-) -> tuple[set[str], set[str]]:
+) -> tuple[set[str], set[str], set[str]]:
     """Resolve operator backbone pins, gated by the data-center cities.
 
-    Returns the forced-backbone and prohibited-backbone id sets. A forced pin at a
-    city no colocation provider serves is rejected -- the data-center gate applies to
-    operator forces too.
+    Returns the forced-backbone, prohibited-backbone and degree-exempt id sets. A forced
+    pin at a city no colocation provider serves is rejected -- the data-center gate
+    applies to operator forces too. An exemption is not a pin and is not gated: it says
+    only that the mesh degree is not asked of that node, which decides nothing about
+    where the node may sit.
     """
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     name_to_id = pop_id_by_name(carrier_pops)
@@ -96,10 +98,13 @@ def _resolve_operator_pins(
     prohibited_backbone = resolve_pinned_ids(
         params.exclusions.prohibited_backbone_names, name_to_id, "prohibited_backbone"
     )
+    degree_exempt = resolve_pinned_ids(
+        params.degree_exempt_backbone_names, name_to_id, "degree_exempt_backbone"
+    )
     reject_override_conflicts(forced_backbone, prohibited_backbone)
     if params.datacenter_cities is not None:
         _reject_non_datacenter_pins(forced_backbone, carrier_pops, params.datacenter_cities)
-    return forced_backbone, prohibited_backbone
+    return forced_backbone, prohibited_backbone, degree_exempt
 
 
 def _forced_backbone_endpoint(
@@ -218,13 +223,18 @@ def apply_role_overrides(
     ``params.exclusions.prohibited_backbone_names`` are barred from the backbone tier
     and land in ``RoleOverrides.prohibited_backbone_ids``. Forced backbone pins are
     gated by ``params.datacenter_cities``: a pin at a city no colocation provider
-    serves is rejected. The graph is returned unchanged (operator pins resolve to
+    serves is rejected. ``params.degree_exempt_backbone_names`` resolve the same way
+    into ``RoleOverrides.degree_exempt_backbone_ids``, the nodes the mesh degree is not
+    asked of. The graph is returned unchanged (operator pins resolve to
     existing carrier-PoP ids; demand attachment is the caller's earlier stage).
     """
-    forced_backbone, prohibited_backbone = _resolve_operator_pins(vertices, params)
+    forced_backbone, prohibited_backbone, degree_exempt = _resolve_operator_pins(
+        vertices, params
+    )
     overrides = RoleOverrides(
         forced_backbone_ids=frozenset(forced_backbone),
         prohibited_backbone_ids=frozenset(prohibited_backbone),
+        degree_exempt_backbone_ids=frozenset(degree_exempt),
         forced_links=resolve_forced_links(links, vertices, forced_backbone),
     )
     return vertices, physical_edges, overrides
