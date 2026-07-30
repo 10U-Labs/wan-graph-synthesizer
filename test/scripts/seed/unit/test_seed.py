@@ -38,6 +38,10 @@ from seed import (
 
 _TENANT_YML = """\
 access:
+  forced:
+    connections:
+      - source: Luke, AZ
+        target: Nellis, NV
   homing_degree: 1
 backbone:
   coverage_target_miles: 500.0
@@ -470,6 +474,20 @@ def test_push_tenants_puts_the_forced_connections_resource(
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/forced-connections"] == [
         {"source": "Luke, AZ", "target": "Nellis, NV", "type": "backbone-backbone"}]
+
+
+def test_push_tenants_puts_the_forced_homes_resource(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants reads the pinned homes from the access block's forced pair.
+
+    Every config ships this list empty, so the fixture populates it: an access link the
+    operator pins onto a named backbone node is a working path, and an empty list in all
+    five configs is what would let it rot with nothing going red.
+    """
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/forced-homes"] == [
+        {"source": "Luke, AZ", "target": "Nellis, NV"}]
 
 
 def test_push_tenants_puts_the_prohibited_backbone_nodes_resource(

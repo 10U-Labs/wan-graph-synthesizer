@@ -163,10 +163,25 @@ def test_no_declared_off_net_seat_is_a_city_a_carrier_already_serves() -> None:
     assert overlapping == []
 
 
+def _tenants_written(paths: list[str], resource: str) -> int:
+    """How many tenants seed wrote *resource* for, over the paths it requested."""
+    return sum(1 for path in paths if re.fullmatch(rf"tenants/[^/]+/{resource}", path))
+
+
 def test_pipeline_writes_a_label_for_every_tenant(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
     """Seeding writes a label resource for every tenant config file."""
     paths = _seed(urlopen_recorder, monkeypatch)
-    tenants = len(list(seed.ETC.glob("*.yml")))
-    labels = sum(1 for path in paths if re.fullmatch(r"tenants/[^/]+/label", path))
-    assert labels == tenants
+    assert _tenants_written(paths, "label") == len(list(seed.ETC.glob("*.yml")))
+
+
+def test_pipeline_writes_a_forced_homes_document_for_every_tenant(
+        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Seeding writes a forced-homes resource for every tenant config file.
+
+    The list is empty in every config, which is exactly the state that would hide a
+    tenant seeded without the document at all -- and the synthesizer reads its config
+    resources unconditionally, so a tenant missing one gets no WAN rather than a default.
+    """
+    paths = _seed(urlopen_recorder, monkeypatch)
+    assert _tenants_written(paths, "forced-homes") == len(list(seed.ETC.glob("*.yml")))

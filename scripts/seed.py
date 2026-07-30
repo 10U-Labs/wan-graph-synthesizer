@@ -197,9 +197,11 @@ def push_tenants(api: str) -> list[str]:
         tid = _slug(path.stem)
         tenant_ids.append(tid)
         inputs = config.get("inputs", {})
+        access = config["access"]
         backbone = config["backbone"]
         forced = backbone.get("forced", {})
         prohibited = backbone.get("prohibited", {})
+        homes = access.get("forced", {}).get("connections", [])
         locations = _mapping_rows(inputs.get("locations", {}))
         regions = _rows(REPO_ROOT / inputs["providers"])
         forced_path = inputs.get("forced")
@@ -211,13 +213,14 @@ def push_tenants(api: str) -> list[str]:
         _put(api, f"tenants/{tid}/off-net", off_net)
         _put(api, f"tenants/{tid}/forced-backbone-nodes", forced.get("nodes", []))
         _put(api, f"tenants/{tid}/forced-connections", forced.get("connections", []))
+        _put(api, f"tenants/{tid}/forced-homes", homes)
         _put(api, f"tenants/{tid}/prohibited-backbone-nodes", prohibited.get("nodes", []))
         _put(api, f"tenants/{tid}/prohibited-connections", prohibited.get("connections", []))
         _put(api, f"tenants/{tid}/backbone-node-count", backbone.get("node_count", {}))
         _put(api, f"tenants/{tid}/backbone-mesh-degree",
              _degree_doc(backbone["mesh_degree"]))
         _put(api, f"tenants/{tid}/access-homing-degree",
-             _degree_doc(config["access"]["homing_degree"]))
+             _degree_doc(access["homing_degree"]))
         _put(api, f"tenants/{tid}/backbone-placement",
              {"restrict": backbone["restrict_to_data_centers"]})
         _put(api, f"tenants/{tid}/convergence-promotion",

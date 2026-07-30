@@ -1,5 +1,7 @@
 ---
 access:
+  forced:
+    connections: []
   homing_degree: 2
 backbone:
   coverage_target_miles: 300.0
