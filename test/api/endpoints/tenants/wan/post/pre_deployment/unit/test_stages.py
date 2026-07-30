@@ -96,6 +96,27 @@ def test_finalize_refuses_a_design_short_of_the_configured_mesh_degree() -> None
         finalize(list(fixtures.carrier_pops_by_id("abcx").values()), {}, design, params)
 
 
+def test_finalize_holds_a_node_to_the_ceiling_of_the_substrate_it_is_given() -> None:
+    """The same shortfall is no refusal once the fiber shows one link is all a can hold.
+
+    Node a reaches b and c only through the transit city x, so its ceiling on this
+    substrate is one -- and one is what it holds. finalize builds the ceilings from the
+    fiber it is handed, so the design it refuses on a bare substrate finalizes on the real
+    one.
+    """
+    design = fixtures.meshed_backbone_design(
+        fixtures.SHARED_TRANSIT_ROUTES, fixtures.SHARED_TRANSIT_BACKBONE
+    )
+    params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_mesh_degree=2))
+    edges = fixtures.physical_edges_from({
+        ("a", "x"): 1.0, ("x", "b"): 1.0, ("x", "c"): 1.0, ("b", "c"): 1.0,
+    })
+    _vertices, _edges, _design, validation = finalize(
+        list(fixtures.carrier_pops_by_id("abcx").values()), edges, design, params
+    )
+    assert validation["backbone_meets_independent_mesh_link_target"] is True
+
+
 def _finalize_shared_transit(degree_exempt: frozenset[str]) -> ValidationReport:
     """Finalize the shared-transit mesh, whose node a holds one independent link."""
     design = fixtures.meshed_backbone_design(

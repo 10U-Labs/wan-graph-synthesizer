@@ -14,8 +14,10 @@ bounded.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 
+from synthesizer.ceiling import mesh_degree_ceilings
 from synthesizer.input_graph import PhysicalEdge, edge_key
 from synthesizer.graphs import (
     articulation_points,
@@ -131,28 +133,38 @@ def _diverse_picks(
     node: str,
     nearest: list[tuple[float, str]],
     pinned: set[str],
-    slots: int,
+    slots: tuple[int, int],
     all_distances: dict[str, dict[str, float]],
 ) -> list[str]:
     """Fill ``node``'s free slots from ``nearest``, preferring peers it shares no transit with.
 
     Candidates are walked nearest first; one that routes through a peer already held --
-    a pin or an earlier pick -- is passed over rather than taken. Slots left over once
-    the diverse candidates run out are filled from the passed-over ones, nearest first,
-    since a link through a chokepoint still beats no link at all.
+    a pin or an earlier pick -- is passed over rather than taken.
+
+    ``slots`` is ``(diverse, floor)``: how many independent links the node is reaching for,
+    and how many links it must end with either way. Diverse picks fill up to the first
+    number, which is what the node's own fiber can carry. Anything still short of the
+    second is filled from the passed-over candidates, nearest first, since a link through
+    a chokepoint still beats no link at all.
+
+    The two differ because a chokepoint link is worth having up to the operator's minimum
+    and worthless above it. Backfilling past the floor would spend cable on a link that
+    must re-cross a city the node already depends on, which buys none of the independence
+    the reach above the floor was for.
     """
+    diverse, floor = slots
     chosen = set(pinned)
     picks: list[str] = []
     passed_over: list[str] = []
     for _distance, other in nearest:
-        if len(picks) == slots:
+        if len(picks) == diverse:
             break
         if _shares_transit(node, other, chosen, all_distances):
             passed_over.append(other)
             continue
         picks.append(other)
         chosen.add(other)
-    return picks + passed_over[: slots - len(picks)]
+    return picks + passed_over[: max(floor - len(picks), 0)]
 
 
 @dataclass(frozen=True)
@@ -162,7 +174,9 @@ class BackboneConstraints:
     removed_pairs: frozenset[tuple[str, str]] = frozenset()
     mesh_degree: int = 3
     forced_pairs: frozenset[tuple[str, str]] = frozenset()
-    degree_exempt: frozenset[str] = frozenset()  # nodes the degree is not asked of
+    # each node's computed ceiling (see :mod:`synthesizer.ceiling`); a node absent from
+    # the mapping reaches only for the tenant's degree, which is what an empty one means
+    ceilings: Mapping[str, int] = field(default_factory=dict)
 
 
 def select_backbone_mesh_pairs(
@@ -172,12 +186,20 @@ def select_backbone_mesh_pairs(
 ) -> list[tuple[str, str]]:
     """Choose which backbone pairs get a logical mesh link.
 
-    Every backbone node links to its ``mesh_degree`` nearest reachable backbone nodes
-    (fewer when the backbone itself is smaller), measured over the carrier graph in
-    ``all_distances``. Any pair in ``removed_pairs`` -- an operator-pruned
-    backbone-backbone link from ``etc/*.yml`` -- is skipped, so the node fills that
-    slot with its next nearest peer. The per-node picks are unioned, so a node chosen
-    by a farther peer can end with one more link than the target.
+    Every backbone node reaches for as many independent links as its own fiber can carry
+    -- its ceiling in ``constraints.ceilings`` (see :mod:`synthesizer.ceiling`) -- and never
+    for fewer than ``mesh_degree``, which stays the floor it has always been (fewer when
+    the backbone itself is smaller). The tenant's degree is a minimum every node owes, not
+    a quota that stops a node the ground has been generous to: where the fiber offers more
+    independently failing routes than the degree asks for, taking them is nearly free and
+    is exactly the redundancy the degree exists to buy. A node absent from the mapping
+    reaches for the floor alone, so an empty mapping is the old behaviour exactly.
+
+    Peers are measured over the carrier graph in ``all_distances``. Any pair in
+    ``removed_pairs`` -- an operator-pruned backbone-backbone link from ``etc/*.yml`` -- is
+    skipped, so the node fills that slot with its next nearest peer. The per-node picks are
+    unioned, so a node chosen by a farther peer can end with one more link than it reached
+    for itself.
 
     Any pair in ``forced_pairs`` -- an operator-forced backbone-backbone link from
     ``etc/*.yml`` -- is wired however far apart its endpoints are, and counts against
@@ -200,30 +222,33 @@ def select_backbone_mesh_pairs(
     however they route: an operator instruction is honoured, not second-guessed.
 
     Where no diverse candidate is left, the node falls back to the nearest of the ones
-    passed over rather than leaving the slot empty. Some cities are genuine carrier
-    chokepoints with no alternate fiber, and a node behind one would otherwise drop to a
-    single link; the link is worth having even though it is not independent. Reporting
+    passed over rather than leaving a slot below the floor empty. Some cities are genuine
+    carrier chokepoints with no alternate fiber, and a node behind one would otherwise drop
+    to a single link; the link is worth having even though it is not independent. Reporting
     that shortfall is validation's job, not selection's.
 
-    A node left with fewer reachable, non-removed peers than the target -- because the
+    That fallback stops at the floor. Above it the node is reaching for independence it can
+    actually have, and a chokepoint link there is cable spent on a route that must re-cross
+    a city the node already depends on -- so the reach above the floor is filled with
+    diverse peers or not at all.
+
+    A node left with fewer reachable, non-removed peers than the floor -- because the
     operator pruned its links or the carrier graph cannot reach them -- wires to every
-    peer it can and no more. Thinning one node below the target therefore costs only
+    peer it can and no more. Thinning one node below the floor therefore costs only
     that node's missing links, never the rest of the backbone, so an operator may
     deliberately isolate a node without blanking the whole mesh.
 
-    A node in ``degree_exempt`` picks no peers of its own: the operator has said the
-    degree is not asked of it, and filling slots at a spur only spends links on a target
-    it was never going to make. It keeps whatever the operator pinned onto it, stays a
-    peer any other node may pick, and is still wired in by the resilience augmentation,
-    so exempting a node thins it rather than cutting it out of the mesh.
+    Nothing here knows which nodes the operator holds to no degree. An exemption relieves
+    a node of a requirement; it is not an instruction to leave fiber unused, and a node
+    that can hold a link takes it whether or not anyone will ask for it later. So the
+    exemption acts in validation alone, and this pass treats every node the same.
     """
     forced_pairs = constraints.forced_pairs
     removed_pairs = constraints.removed_pairs
-    target = min(constraints.mesh_degree, len(backbone_ids) - 1)
+    floor = min(constraints.mesh_degree, len(backbone_ids) - 1)
     selected: set[tuple[str, str]] = set(forced_pairs)
     for node in backbone_ids:
-        if node in constraints.degree_exempt:
-            continue
+        reach = max(constraints.ceilings.get(node, floor), floor)
         distances = all_distances[node]
         nearest = sorted(
             (distances[other], other)
@@ -234,9 +259,8 @@ def select_backbone_mesh_pairs(
             and math.isfinite(distances.get(other, math.inf))
         )
         pinned = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
-        picks = _diverse_picks(
-            node, nearest, pinned, max(target - len(pinned), 0), all_distances
-        )
+        slots = (max(reach - len(pinned), 0), max(floor - len(pinned), 0))
+        picks = _diverse_picks(node, nearest, pinned, slots, all_distances)
         selected.update(edge_key(node, other) for other in picks)
     return sorted(augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs))
 
@@ -459,15 +483,23 @@ def backbone_mesh_paths(
 ) -> list[PathUse]:
     """Route each backbone-to-backbone mesh link, diversely where the fiber allows.
 
-    The mesh wires each backbone node to its ``constraints.mesh_degree`` nearest nodes,
-    plus ``constraints.forced_pairs`` and minus ``constraints.removed_pairs`` (see
-    :func:`select_backbone_mesh_pairs`), and asks the degree of nobody in
-    ``constraints.degree_exempt``. Routing is not per-link shortest path: a node's
+    The mesh wires each backbone node to its nearest nodes, plus
+    ``constraints.forced_pairs`` and minus ``constraints.removed_pairs`` (see
+    :func:`select_backbone_mesh_pairs`). Routing is not per-link shortest path: a node's
     links are routed clear of one another's cities so the degree counts links that fail
     independently (see :func:`diverse_mesh_routes`).
+
+    How many links each node reaches for is computed here rather than asked of the caller:
+    the ceilings come off the same substrate ``physical_edges`` describes (see
+    :func:`synthesizer.ceiling.mesh_degree_ceilings`), so no caller can thread a number
+    that disagrees with the fiber the links are then routed over. Any ceilings already on
+    ``constraints`` are replaced for the same reason.
     """
-    pairs = select_backbone_mesh_pairs(backbone_ids, all_distances, constraints)
     adjacency = build_adjacency(physical_edges)
+    constraints = replace(
+        constraints, ceilings=mesh_degree_ceilings(backbone_ids, adjacency)
+    )
+    pairs = select_backbone_mesh_pairs(backbone_ids, all_distances, constraints)
     uses = [
         PathUse("backbone_mesh", left, right, path, path_geometry_miles(path, physical_edges))
         for left, right, path in diverse_mesh_routes(pairs, all_predecessors, adjacency)

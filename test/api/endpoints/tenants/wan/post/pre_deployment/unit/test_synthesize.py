@@ -551,15 +551,6 @@ def test_build_search_plan_fixes_promoted_nodes_into_required() -> None:
     assert plan.required_backbone == frozenset({"a", "b"})
 
 
-def test_build_search_plan_carries_the_degree_exempt_nodes() -> None:
-    """The operator's exempt nodes ride along on the plan for the mesh-selection stage."""
-    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-    inputs = _inputs_from_edges(["a", "b", "c"], edges, {"a", "b", "c"})
-    overrides = RoleOverrides(degree_exempt_backbone_ids=frozenset({"a"}))
-    plan = build_search_plan(inputs, {"a", "b", "c"}, overrides, DesignParams())
-    assert plan.degree_exempt == frozenset({"a"})
-
-
 def test_demand_haul_miles_reports_worst_and_total_to_nearest_node() -> None:
     """The haul metric sums, and takes the worst of, each demand's nearest-node miles."""
     pops = {

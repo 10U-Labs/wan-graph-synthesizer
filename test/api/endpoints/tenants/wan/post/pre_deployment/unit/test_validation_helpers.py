@@ -6,7 +6,7 @@ import fixtures
 import pytest
 
 from synthesizer.input_graph import edge_key
-from synthesizer.model import AccessEdge, Design, DesignMetrics
+from synthesizer.model import AccessEdge, Design, DesignMetrics, MeshTargets
 from synthesizer.validation import (
     backbone_mesh_deficient,
     backbone_mesh_independence_deficient,
@@ -145,7 +145,7 @@ _MESH_NODES = ("a", "b", "c", "d")
 def test_mesh_deficient_names_the_node_below_the_degree() -> None:
     """A node under the mesh degree is reported with the count it holds."""
     vertices = fixtures.carrier_pops_by_id("abcd")
-    assert backbone_mesh_deficient(_MESH_NODES, _MESH_DEGREES, vertices, 2) == [
+    assert backbone_mesh_deficient(_MESH_NODES, _MESH_DEGREES, vertices, MeshTargets(2)) == [
         {"id": "a", "name": "a", "degree": 1}
     ]
 
@@ -154,7 +154,7 @@ def test_mesh_deficient_leaves_out_an_exempt_node() -> None:
     """The node the degree is not asked of is no longer reported as short of it."""
     vertices = fixtures.carrier_pops_by_id("abcd")
     assert backbone_mesh_deficient(
-        _MESH_NODES, _MESH_DEGREES, vertices, 2, frozenset({"a"})
+        _MESH_NODES, _MESH_DEGREES, vertices, MeshTargets(2, frozenset({"a"}))
     ) == []
 
 
@@ -162,13 +162,21 @@ def test_mesh_deficient_still_names_a_node_that_is_not_exempt() -> None:
     """Exempting one node says nothing about another node's shortfall."""
     vertices = fixtures.carrier_pops_by_id("abcd")
     assert backbone_mesh_deficient(
-        _MESH_NODES, _MESH_DEGREES, vertices, 2, frozenset({"b"})
+        _MESH_NODES, _MESH_DEGREES, vertices, MeshTargets(2, frozenset({"b"}))
     ) == [{"id": "a", "name": "a", "degree": 1}]
+
+
+def test_mesh_deficient_holds_a_capped_node_to_its_ceiling() -> None:
+    """The nominal count uses the same per-node target, so the two cannot disagree."""
+    vertices = fixtures.carrier_pops_by_id("abcd")
+    assert backbone_mesh_deficient(
+        _MESH_NODES, _MESH_DEGREES, vertices, MeshTargets(2, ceilings={"a": 1})
+    ) == []
 
 
 def test_independence_deficient_names_the_node_below_the_degree() -> None:
     """A node short of independently failing links is reported with the count it holds."""
-    assert backbone_mesh_independence_deficient(_SHARED_EGRESS, _MESH_VERTICES, 2) == [
+    assert backbone_mesh_independence_deficient(_SHARED_EGRESS, _MESH_VERTICES, MeshTargets(2)) == [
         {"id": "a", "name": "a", "independent_degree": 1}
     ]
 
@@ -176,20 +184,36 @@ def test_independence_deficient_names_the_node_below_the_degree() -> None:
 def test_independence_deficient_leaves_out_an_exempt_node() -> None:
     """The chokepoint node the degree is not asked of is no longer reported."""
     assert backbone_mesh_independence_deficient(
-        _SHARED_EGRESS, _MESH_VERTICES, 2, frozenset({"a"})
+        _SHARED_EGRESS, _MESH_VERTICES, MeshTargets(2, frozenset({"a"}))
     ) == []
 
 
 def test_independence_deficient_still_names_a_node_that_is_not_exempt() -> None:
     """Exempting another node leaves the chokepoint node reported as it was."""
     assert backbone_mesh_independence_deficient(
-        _SHARED_EGRESS, _MESH_VERTICES, 2, frozenset({"b"})
+        _SHARED_EGRESS, _MESH_VERTICES, MeshTargets(2, frozenset({"b"}))
     ) == [{"id": "a", "name": "a", "independent_degree": 1}]
 
 
 def test_independence_deficient_passes_a_diversely_routed_mesh() -> None:
     """A mesh whose every node holds the configured independent links reports nothing."""
-    assert backbone_mesh_independence_deficient(_DIVERSE_EGRESS, _MESH_VERTICES, 2) == []
+    assert backbone_mesh_independence_deficient(
+        _DIVERSE_EGRESS, _MESH_VERTICES, MeshTargets(2)
+    ) == []
+
+
+def test_independence_deficient_holds_a_capped_node_to_its_ceiling() -> None:
+    """One link is all a's fiber allows, so the one it holds is not a shortfall."""
+    assert backbone_mesh_independence_deficient(
+        _SHARED_EGRESS, _MESH_VERTICES, MeshTargets(2, ceilings={"a": 1})
+    ) == []
+
+
+def test_independence_deficient_still_names_a_node_under_its_own_ceiling() -> None:
+    """a's fiber allows the two asked of it, so holding one is the tool's defect to report."""
+    assert backbone_mesh_independence_deficient(
+        _SHARED_EGRESS, _MESH_VERTICES, MeshTargets(2, ceilings={"a": 2})
+    ) == [{"id": "a", "name": "a", "independent_degree": 1}]
 
 
 @pytest.mark.parametrize("degree", [2, 3, 4])
@@ -200,4 +224,4 @@ def test_independence_deficient_is_empty_when_the_backbone_is_too_small(
     backbone = "abcd"[:degree]
     design = meshed_design([], tuple(backbone))
     vertices = fixtures.carrier_pops_by_id(backbone)
-    assert backbone_mesh_independence_deficient(design, vertices, degree) == []
+    assert backbone_mesh_independence_deficient(design, vertices, MeshTargets(degree)) == []

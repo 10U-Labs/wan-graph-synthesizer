@@ -9,7 +9,14 @@ from __future__ import annotations
 
 import fixtures
 from synthesizer.validation import demand_without_backbone_redundancy, validate_design
-from synthesizer.model import AccessEdge, Design, DesignMetrics, PathUse, ValidationReport
+from synthesizer.model import (
+    AccessEdge,
+    Design,
+    DesignMetrics,
+    MeshTargets,
+    PathUse,
+    ValidationReport,
+)
 from synthesizer.input_graph import Vertex, edge_key
 
 
@@ -125,13 +132,13 @@ def _mesh_design(backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]]) ->
 def _mesh_report(
     backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]], backbone_mesh_degree: int = 3,
     degree_exempt: frozenset[str] = frozenset(),
+    ceilings: dict[str, int] | None = None,
 ) -> ValidationReport:
     """Validate a backbone-only design defined by its mesh links."""
     return validate_design(
         [make_pop(name) for name in backbone_ids],
         _mesh_design(backbone_ids, pairs),
-        backbone_mesh_degree=backbone_mesh_degree,
-        degree_exempt=degree_exempt,
+        targets=MeshTargets(backbone_mesh_degree, degree_exempt, ceilings),
     )
 
 
@@ -196,6 +203,27 @@ def test_the_report_names_no_exempt_node_by_default() -> None:
     assert _mesh_report(*_HEALTHY)["backbone_degree_exempt"] == []
 
 
+def test_the_report_names_a_node_whose_target_the_tool_lowered() -> None:
+    """A target the tool lowered on its own is read in the report, not inferred from counts."""
+    report = _mesh_report(*_DEFICIENT, ceilings={"C3": 2})
+    assert report["backbone_mesh_degree_ceiling_limited"] == [
+        {"id": "C3", "name": "C3", "ceiling": 2}
+    ]
+
+
+def test_the_report_lowers_nobody_when_the_fiber_meets_the_degree() -> None:
+    """With no target lowered the field is empty, so a reduction is what it distinguishes."""
+    assert _mesh_report(*_HEALTHY)["backbone_mesh_degree_ceiling_limited"] == []
+
+
+def test_the_report_names_a_node_aimed_above_the_tenant_degree() -> None:
+    """Reaching past the degree is the tool's decision, so the report says where it did."""
+    report = _mesh_report(*_HEALTHY, backbone_mesh_degree=2, ceilings={"C1": 3})
+    assert report["backbone_mesh_degree_above_floor"] == [
+        {"id": "C1", "name": "C1", "ceiling": 3, "independent_degree": 3}
+    ]
+
+
 def test_small_backbone_is_exempt_from_the_mesh_rule() -> None:
     """With only three nodes the three-link target cannot apply, so it passes."""
     assert _mesh_report(*_SMALL)["backbone_meets_mesh_link_target"] is True
@@ -206,7 +234,7 @@ def _independence_report(routes: list[tuple[str, ...]]) -> ValidationReport:
     return validate_design(
         [make_pop(name) for name in (*fixtures.SHARED_TRANSIT_BACKBONE, "x", "y")],
         fixtures.meshed_backbone_design(routes, fixtures.SHARED_TRANSIT_BACKBONE),
-        backbone_mesh_degree=2,
+        targets=MeshTargets(2),
     )
 
 

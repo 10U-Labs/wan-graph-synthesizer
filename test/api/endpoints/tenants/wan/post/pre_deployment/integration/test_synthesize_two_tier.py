@@ -11,7 +11,6 @@ from __future__ import annotations
 from dataclasses import replace
 
 import fixtures
-import pytest
 from fixtures import run_design
 from synthesizer.input_graph import edge_key
 from synthesizer.model import (
@@ -23,7 +22,7 @@ from synthesizer.model import (
     is_carrier_pop,
 )
 from synthesizer.synthesize import convergence_promotion_ids
-from synthesizer.validation import backbone_mesh_pairs
+from synthesizer.validation import backbone_mesh_pairs, independent_mesh_degree
 
 ARTIFACTS = fixtures.ring_artifacts()
 FORCED = fixtures.forced_backbone_artifacts("P3")
@@ -66,6 +65,17 @@ def _homes_of(artifacts: DesignArtifacts, access_id: str) -> set[str]:
     """The backbone nodes a demand vertex homes to in a finished design."""
     return {
         edge.target for edge in artifacts.design.access_edges if edge.source == access_id
+    }
+
+
+def _peers_of(artifacts: DesignArtifacts, node: str) -> set[str]:
+    """Every backbone node sharing a finished mesh link with ``node``."""
+    return {
+        end
+        for pair in backbone_mesh_pairs(artifacts.design)
+        if node in pair
+        for end in pair
+        if end != node
     }
 
 
@@ -138,15 +148,25 @@ def test_every_meshed_ring_node_holds_its_links_independently() -> None:
     assert UNFORCED_RING.validation["backbone_meets_independent_mesh_link_target"] is True
 
 
-def test_the_ring_cannot_meet_a_degree_its_fiber_cannot_carry() -> None:
-    """Asking three independent links of two-direction fiber is refused, naming the node.
+_RING_AT_THREE = fixtures.forced_link_artifacts(
+    replace(_MESHED_RING, tuning=Tuning(backbone_mesh_degree=3)), OperatorLinks()
+)
 
-    The configured degree is a count of links that fail independently, so a graph that
-    cannot carry it is refused rather than reported: no PoP on a ring has a third way out.
+
+def test_a_degree_the_ring_cannot_carry_is_lowered_rather_than_refused() -> None:
+    """Every ring PoP has two ways out, so three is a number no exemption need excuse.
+
+    A ring node's ceiling is two, so two is what it is asked for and the design the
+    operator wanted is built. The degree the tool cannot honour is the ground's answer,
+    not a defect: refusing here used to make the operator name each node by hand.
     """
-    params = replace(_MESHED_RING, tuning=Tuning(backbone_mesh_degree=3))
-    with pytest.raises(ValueError, match="independently failing backbone mesh links at"):
-        fixtures.forced_link_artifacts(params, OperatorLinks())
+    assert _RING_AT_THREE.validation["backbone_meets_independent_mesh_link_target"] is True
+
+
+def test_the_ring_reports_every_node_whose_target_it_lowered() -> None:
+    """All six ring PoPs are held to two, and the report says so of each one."""
+    lowered = _RING_AT_THREE.validation["backbone_mesh_degree_ceiling_limited"]
+    assert [entry["id"] for entry in lowered] == list(_RING_BACKBONE)
 
 
 # The ring with four chords, so P0 through P4 each have a third fiber direction and P5
@@ -177,12 +197,34 @@ def _chorded_design(exempt: tuple[str, ...] = ()) -> DesignArtifacts:
 
 
 EXEMPT_SPUR = _chorded_design(("P5",))
+CHORDED = _chorded_design()
 
 
-def test_the_chorded_ring_is_refused_at_its_one_spur() -> None:
-    """Without the exemption the same design is refused, naming the two-direction node."""
-    with pytest.raises(ValueError, match="independently failing backbone mesh links at: P5"):
-        _chorded_design()
+def test_the_chorded_ring_is_no_longer_refused_at_its_one_spur() -> None:
+    """P5's ceiling is two, so nobody has to exempt it for the design to be built.
+
+    This is the case the exemption list existed for and no longer has to cover: the
+    shortfall was the ground's all along, and the tool can see that for itself.
+    """
+    assert CHORDED.validation["backbone_meets_independent_mesh_link_target"] is True
+
+
+def test_the_chorded_ring_names_the_spur_whose_target_it_lowered() -> None:
+    """The published report says P5 was held to two, so the reduction is read not inferred."""
+    assert CHORDED.validation["backbone_mesh_degree_ceiling_limited"] == [
+        {"id": "P5", "name": "P5", "ceiling": 2}
+    ]
+
+
+def test_a_chorded_node_with_headroom_beats_the_tenant_degree() -> None:
+    """P0 has four independent ways out, so it holds four links where three were asked."""
+    assert independent_mesh_degree(CHORDED.design, "P0") > 3
+
+
+def test_the_chorded_ring_names_the_nodes_it_aimed_above_the_degree() -> None:
+    """Reaching past three is the tool's own decision, so the report names where it did."""
+    aimed = CHORDED.validation["backbone_mesh_degree_above_floor"]
+    assert [entry["id"] for entry in aimed] == ["P0", "P2", "P3"]
 
 
 def test_exempting_the_spur_lets_the_design_finalize() -> None:
@@ -195,10 +237,13 @@ def test_the_exempt_spur_is_named_in_the_finished_report() -> None:
     assert EXEMPT_SPUR.validation["backbone_degree_exempt"] == [{"id": "P5", "name": "P5"}]
 
 
-def test_the_exempt_spur_is_still_meshed_into_the_backbone() -> None:
-    """Exempting P5 thins it to the two links its fiber allows rather than stranding it."""
-    pairs = backbone_mesh_pairs(EXEMPT_SPUR.design)
-    assert len([pair for pair in pairs if "P5" in pair]) == 2
+def test_the_exempt_spur_picks_its_own_two_fiber_directions() -> None:
+    """Exempting P5 relieves it of the degree without stopping it choosing peers.
+
+    P0 and P4 are the two cities P5 has fiber to, and both are links P5 chose itself
+    rather than links some farther node or the resilience pass handed it.
+    """
+    assert {"P0", "P4"} <= _peers_of(EXEMPT_SPUR, "P5")
 
 
 def _forced_off_net_artifacts() -> DesignArtifacts:

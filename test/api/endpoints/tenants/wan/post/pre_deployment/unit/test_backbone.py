@@ -59,13 +59,13 @@ def _backbone(
     removed: frozenset[tuple[str, str]] = frozenset(),
     mesh_degree: int = 3,
     forced: frozenset[tuple[str, str]] = frozenset(),
-    exempt: frozenset[str] = frozenset(),
+    ceilings: dict[str, int] | None = None,
 ) -> list[tuple[str, str]]:
     """The five-node backbone wiring each node to its nearest peers."""
     return select_backbone_mesh_pairs(
         _FIVE_NODES,
         _FIVE_NODE_DISTANCES,
-        BackboneConstraints(removed, mesh_degree, forced, exempt),
+        BackboneConstraints(removed, mesh_degree, forced, ceilings or {}),
     )
 
 
@@ -103,6 +103,14 @@ def test_a_node_picked_by_a_farther_peer_gains_an_extra_link() -> None:
     assert _node_degrees(_backbone())["c2"] == 4
 
 
+# c5 is the farthest node from everything, so at a degree of two nobody picks it and its
+# own picks are the whole of its wiring -- two without a ceiling, which is what makes a
+# third link visible as the ceiling's doing and nothing else's.
+def test_a_node_with_headroom_takes_more_than_the_tenant_degree() -> None:
+    """c5's ceiling of three buys a third link the tenant degree of two would stop at."""
+    assert _node_degrees(_backbone(mesh_degree=2, ceilings={"c5": 3}))["c5"] == 3
+
+
 def test_a_removed_pair_gets_no_link() -> None:
     """An operator-pruned backbone-backbone pair gets no mesh link."""
     assert edge_key("c1", "c2") not in _backbone(frozenset({edge_key("c1", "c2")}))
@@ -131,33 +139,6 @@ def test_a_forced_link_counts_towards_the_mesh_degree() -> None:
 def test_a_forced_link_displaces_the_farthest_pick() -> None:
     """c5 spends a slot on the forced c1, so it drops c4, the farthest it would have picked."""
     assert edge_key("c4", "c5") not in _backbone(forced=_FORCED)
-
-
-# c5 is the farthest node from everything, so at a degree of three nobody picks it and
-# its own three picks are the whole of its wiring: exempting it shows the exemption at
-# work with nothing else moving.
-_EXEMPT = frozenset({"c5"})
-
-
-def test_an_exempt_node_keeps_only_what_resilience_gives_it() -> None:
-    """The exempt node stops picking peers, keeping the two links the augmentation adds."""
-    assert _node_degrees(_backbone(exempt=_EXEMPT))["c5"] == 2
-
-
-def test_exempting_one_node_leaves_the_others_at_their_degree() -> None:
-    """Exempting c5 costs c5 its picks and nobody else theirs."""
-    degrees = _node_degrees(_backbone(exempt=_EXEMPT))
-    assert min(degree for node, degree in degrees.items() if node != "c5") == 3
-
-
-def test_an_exempt_node_is_still_a_peer_others_may_pick() -> None:
-    """At a degree of four every other node picks c5, and its exemption does not refuse."""
-    assert _node_degrees(_backbone(mesh_degree=4, exempt=_EXEMPT))["c5"] == 4
-
-
-def test_an_exempt_node_keeps_its_pinned_link() -> None:
-    """An operator's pin onto an exempt node is wired: the exemption drops picks, not pins."""
-    assert edge_key("c1", "c5") in _backbone(forced=_FORCED, exempt=_EXEMPT)
 
 
 # Removing three of c1's four peers leaves it only c5, one link below the target of
@@ -263,10 +244,13 @@ _TRANSIT_DISTANCES = all_pairs_shortest(
 
 def _transit_mesh(
     forced: frozenset[tuple[str, str]] = frozenset(),
+    ceilings: dict[str, int] | None = None,
 ) -> list[tuple[str, str]]:
     """The transit backbone wired at mesh degree three."""
     return select_backbone_mesh_pairs(
-        _TRANSIT_NODES, _TRANSIT_DISTANCES, BackboneConstraints(frozenset(), 3, forced)
+        _TRANSIT_NODES,
+        _TRANSIT_DISTANCES,
+        BackboneConstraints(frozenset(), 3, forced, ceilings or {}),
     )
 
 
@@ -300,6 +284,16 @@ def test_a_forced_pair_is_wired_even_when_it_shares_transit() -> None:
     assert edge_key("h", "d") in _transit_mesh(frozenset({edge_key("h", "d")}))
 
 
+def test_a_ceiling_above_what_the_fiber_supports_changes_nothing() -> None:
+    """h has three diverse peers, so aiming at five buys no fourth chokepoint cable."""
+    assert _transit_mesh(ceilings={"h": 5}) == _transit_mesh()
+
+
+def test_a_node_below_its_ceiling_still_backfills_to_the_tenant_floor() -> None:
+    """d reaches only a and e diversely, and still spends its third slot on h."""
+    assert edge_key("d", "h") in _transit_mesh(ceilings={"d": 2})
+
+
 _UNIT_MESH_EDGES = physical({
     ("c1", "c2"): 1.0, ("c1", "c3"): 1.0, ("c1", "c4"): 1.0, ("c1", "c5"): 1.0,
     ("c2", "c3"): 1.0, ("c2", "c4"): 1.0, ("c2", "c5"): 1.0,
@@ -317,8 +311,8 @@ def _five_node_mesh_paths(removed: frozenset[tuple[str, str]] = frozenset()) -> 
 
 
 def test_backbone_mesh_paths_route_each_mesh_link() -> None:
-    """The backbone routes one path per selected mesh link: nine over five nodes."""
-    assert len(_five_node_mesh_paths()) == 9
+    """Every node's ceiling on a clique is four, so all ten pairs get a routed link."""
+    assert len(_five_node_mesh_paths()) == 10
 
 
 def test_backbone_mesh_paths_are_labelled_backbone_mesh() -> None:

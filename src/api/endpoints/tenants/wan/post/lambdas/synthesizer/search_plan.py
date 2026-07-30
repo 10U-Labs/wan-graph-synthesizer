@@ -19,15 +19,16 @@ class _SearchPlan:
 
     ``backbone_candidates`` are the eligible PoPs ranked by strength.
     ``forced_links`` carries the operator's resolved pins for routing.
-    ``degree_exempt`` are the nodes the mesh degree is not asked of, so the mesh does
-    not fill their slots.
+
+    The nodes the mesh degree is not asked of are not here: the exemption acts in
+    validation, which the handler reaches directly, and selection treats every node
+    alike.
     """
 
     backbone_candidates: list[str]
     strength_by_id: dict[str, float]
     tuning: Tuning = field(default_factory=Tuning)  # the dials this plan was built from
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
-    degree_exempt: frozenset[str] = frozenset()
 
     @property
     def required_backbone(self) -> frozenset[str]:

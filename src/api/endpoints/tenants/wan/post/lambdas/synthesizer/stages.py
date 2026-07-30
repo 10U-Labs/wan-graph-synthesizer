@@ -7,11 +7,13 @@ The synthesizer composes these over the JSON-loaded graph:
 
 from __future__ import annotations
 
+from synthesizer.ceiling import mesh_degree_ceilings
+from synthesizer.graphs import build_adjacency
 from synthesizer.input_graph import PhysicalEdge, Vertex
-from synthesizer.model import Design, DesignParams, ValidationReport
+from synthesizer.model import Design, DesignParams, MeshTargets, ValidationReport
 from synthesizer.on_net_fabrication import fabricate_missing_on_net_nodes
 from synthesizer.offnet import realize_off_net_sites
-from synthesizer.validation import validate_design
+from synthesizer.validation import node_mesh_target, validate_design
 
 
 def dual_home(
@@ -60,32 +62,40 @@ def finalize(
     augmentation.
 
     ``backbone_mesh_degree`` is a count of links that fail independently, so a design
-    where some backbone node cannot reach that many is not a design that meets the
-    configuration and is refused by name. The fiber sometimes cannot support the
-    configured degree at a city the operator pinned; that is the operator's to resolve,
-    by pinning elsewhere or lowering the degree, and it is not something a synthesizer
-    can route around silently.
+    where some backbone node cannot reach its target is not a design that meets the
+    configuration and is refused by name.
+
+    What each node's target is, though, is not the configured degree flat. The ceilings are
+    computed here from the fiber this stage is already handed (see
+    :mod:`synthesizer.ceiling`), and a node is asked for the smaller of the degree and what
+    its own fiber can independently carry. So a refusal now means a shortfall the ground
+    does not explain -- the routing left a node under what its fiber supports, which is a
+    defect somebody can fix -- rather than an operator pinning a city whose fiber was never
+    going to make the number. The message names both counts for that reason.
 
     ``degree_exempt`` are the backbone nodes the operator has held to no degree, already
     resolved to ids. Their shortfall is neither reported nor refused: saying in advance
     that a node is a spur is the third answer -- alongside pinning elsewhere and
     lowering the degree -- and the only one that leaves the rest of the backbone at the
-    degree it was configured with.
+    degree it was configured with. It silences the check and nothing else; the node still
+    took every link its fiber could carry.
     """
+    targets = MeshTargets(
+        mesh_degree=params.tuning.backbone_mesh_degree,
+        degree_exempt=degree_exempt,
+        ceilings=mesh_degree_ceilings(design.backbone_ids, build_adjacency(physical_edges)),
+    )
     validation = validate_design(
-        vertices,
-        design,
-        params.tuning.access_backbone_links,
-        params.tuning.backbone_mesh_degree,
-        degree_exempt,
+        vertices, design, params.tuning.access_backbone_links, targets
     )
     deficient = validation["backbone_mesh_independence_deficient"]
     if deficient:
         shortfalls = ", ".join(
-            f"{entry['name']} ({entry['independent_degree']})" for entry in deficient
+            f"{entry['name']} ({entry['independent_degree']} of "
+            f"{node_mesh_target(str(entry['id']), targets)})"
+            for entry in deficient
         )
         raise ValueError(
-            f"No {params.tuning.backbone_mesh_degree} independently failing backbone mesh "
-            f"links at: {shortfalls}"
+            f"Too few independently failing backbone mesh links at: {shortfalls}"
         )
     return vertices, physical_edges, design, validation

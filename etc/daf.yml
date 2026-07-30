@@ -6,31 +6,21 @@ access:
 backbone:
   coverage_target_miles: 400
   degree_exempt:
-    - Boston, MA
     - San Jose, CA
   forced:
     connections: []
     nodes:
-      - Albuquerque, NM
       - Ashburn, VA
-      - Atlanta, GA
       - Boston, MA
       - Cheyenne, WY
-      - Colorado Springs, CO
-      - Dallas, TX
       - Great Falls, MT
       - Hillsboro, OR
-      - Houston, TX
       - Los Angeles, CA
       - McLean, VA
       - Minot, ND
       - New York, NY
-      - Omaha, NE
       - Salt Lake City, UT
       - San Jose, CA
-      - Seattle, WA
-      - Tallahassee, FL
-      - Tulsa, OK
   mesh_degree: 3
   node_count:
     max: 99

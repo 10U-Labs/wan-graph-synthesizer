@@ -11,6 +11,7 @@ data-center city) and the demand that homes into it. Demand is labelled ``tenant
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
@@ -136,11 +137,17 @@ class DesignParams:
     hub stays a transit node. It is required (no default) at the config layer; the field
     default here is a construction fallback only.
 
-    ``degree_exempt_backbone_names`` are PoPs the mesh degree is not asked of. A spur an
-    operator pinned in for reach can never make the target however the mesh is drawn, so
-    the mesh stops filling its slots and validation stops reporting the shortfall. Every
-    other node is held to the degree exactly as before, and an exempt node is still a
-    peer any of them may link to.
+    ``degree_exempt_backbone_names`` are PoPs the mesh degree is not asked of: validation
+    neither reports nor refuses their shortfall. It relieves a node of a requirement and
+    nothing more -- selection never sees the list, so an exempt node reaches for every
+    link its fiber can carry exactly like any other node. Every other node is held to the
+    degree as before.
+
+    Where a node's shortfall is the ground's rather than a decision, the list is no longer
+    the tool for it: the computed ceiling (see :mod:`synthesizer.ceiling`) lowers such a
+    node's target on its own. What is left for the list is the shortfall an operator
+    chooses -- cost, a temporary site, traffic they do not want -- which no substrate can
+    reveal.
     """
 
     min_backbone_count: int = 3  # minimum backbone nodes; the search adds more only if needed
@@ -196,8 +203,8 @@ class RoleOverrides:
 
     ``forced_backbone_ids`` are the ids fixed into the backbone tier;
     ``prohibited_backbone_ids`` are barred from it. ``degree_exempt_backbone_ids`` are
-    held to no mesh degree: the mesh stops filling their slots and validation stops
-    reporting their shortfall, while they stay peers any other node may link to.
+    held to no mesh degree: validation stops reporting their shortfall, while they pick
+    peers and are picked as peers like any other node.
     ``forced_links`` carries the operator's pinned edges resolved to ids.
     """
 
@@ -222,6 +229,26 @@ class DesignInputs:
     # one common block. Subsumes the older 2-edge-component oracle (biconnected ⟹ bridgeless).
     carrier_blocks: dict[str, frozenset[int]]
 
+@dataclass(frozen=True)
+class MeshTargets:
+    """What each backbone node owes on the mesh: the degree, the exemptions, the ceilings.
+
+    The three always decide one question together -- how many independently failing links
+    this particular node is held to -- so they travel as one value rather than as three
+    parameters threaded through every check that asks it.
+
+    ``mesh_degree`` is the operator's configured minimum, asked of every node.
+    ``degree_exempt`` are the nodes it is not asked of at all. ``ceilings`` are the computed
+    per-node ceilings (see :mod:`synthesizer.ceiling`), which cap the degree where the fiber
+    cannot carry it; ``None`` means no substrate was at hand, and every node is then held to
+    the flat degree.
+    """
+
+    mesh_degree: int = 3
+    degree_exempt: frozenset[str] = frozenset()
+    ceilings: Mapping[str, int] | None = None
+
+
 class ValidationReport(TypedDict):
     """Structured results of validating a design against the hard requirements."""
 
@@ -238,6 +265,8 @@ class ValidationReport(TypedDict):
     backbone_meets_independent_mesh_link_target: bool
     backbone_mesh_independence_deficient: list[dict[str, object]]
     backbone_degree_exempt: list[dict[str, str]]
+    backbone_mesh_degree_ceiling_limited: list[dict[str, object]]
+    backbone_mesh_degree_above_floor: list[dict[str, object]]
     backbone_mesh_two_edge_connected: bool
     backbone_mesh_two_vertex_connected: bool
 
