@@ -4,7 +4,7 @@ access:
     connections: []
   homing_degree: 2
 backbone:
-  coverage_target_miles: 300.0
+  coverage_target_miles: 300
   forced:
     connections: []
     nodes:

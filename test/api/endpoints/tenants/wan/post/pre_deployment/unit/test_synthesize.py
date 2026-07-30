@@ -643,7 +643,7 @@ def test_search_holds_at_the_floor_under_a_permissive_target() -> None:
     inputs, plan = _far_demand_inputs_plan()
     params = DesignParams(
         min_backbone_count=2, datacenter_cities=frozenset(),
-        tuning=Tuning(backbone_coverage_target_miles=100_000.0),
+        tuning=Tuning(backbone_coverage_target_miles=100_000),
     )
     assert search_best_design(inputs, params, plan).backbone_ids == ("cc1", "cc2")
 
@@ -653,7 +653,7 @@ def test_search_grows_past_the_floor_to_cover_far_demand() -> None:
     inputs, plan = _far_demand_inputs_plan()
     params = DesignParams(
         min_backbone_count=2, datacenter_cities=frozenset(),
-        tuning=Tuning(backbone_coverage_target_miles=300.0),
+        tuning=Tuning(backbone_coverage_target_miles=300),
     )
     assert set(search_best_design(inputs, params, plan).backbone_ids) == {"cc1", "cc2", "cw", "ce"}
 
@@ -667,7 +667,7 @@ def test_exempt_demand_does_not_drive_coverage_growth() -> None:
     inputs, plan = _far_demand_inputs_plan(exempt=True)
     params = DesignParams(
         min_backbone_count=2, datacenter_cities=frozenset(),
-        tuning=Tuning(backbone_coverage_target_miles=300.0),
+        tuning=Tuning(backbone_coverage_target_miles=300),
     )
     assert search_best_design(inputs, params, plan).backbone_ids == ("cc1", "cc2")
 
@@ -681,7 +681,7 @@ def test_search_exhausts_its_candidates_under_an_unreachable_target() -> None:
     inputs, plan = _far_demand_inputs_plan()
     params = DesignParams(
         min_backbone_count=2, datacenter_cities=frozenset(),
-        tuning=Tuning(backbone_coverage_target_miles=1.0),
+        tuning=Tuning(backbone_coverage_target_miles=1),
     )
     assert set(search_best_design(inputs, params, plan).backbone_ids) == {"cc1", "cc2", "cw", "ce"}
 
@@ -695,7 +695,7 @@ def test_max_backbone_count_caps_coverage_growth() -> None:
     inputs, plan = _far_demand_inputs_plan()
     params = DesignParams(
         min_backbone_count=2, max_backbone_count=3, datacenter_cities=frozenset(),
-        tuning=Tuning(backbone_coverage_target_miles=300.0),
+        tuning=Tuning(backbone_coverage_target_miles=300),
     )
     assert len(search_best_design(inputs, params, plan).backbone_ids) == 3
 
@@ -721,7 +721,7 @@ def test_search_holds_at_the_floor_when_the_only_candidate_is_infeasible() -> No
     plan = _plan(["c1", "c2", "p"], strength={"c1": 3.0, "c2": 3.0, "p": 1.0})
     params = DesignParams(
         min_backbone_count=2, datacenter_cities=frozenset(),
-        tuning=Tuning(backbone_coverage_target_miles=300.0),
+        tuning=Tuning(backbone_coverage_target_miles=300),
     )
     assert search_best_design(inputs, params, plan).backbone_ids == ("c1", "c2")
 

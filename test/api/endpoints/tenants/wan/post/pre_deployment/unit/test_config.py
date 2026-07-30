@@ -16,7 +16,7 @@ from synthesizer.model import NamedLink, OperatorLinks
 _REQUIRED_TUNING = {
     "backbone_mesh_degree": 3,
     "access_backbone_links": 2,
-    "backbone_coverage_target_miles": 600.0,
+    "backbone_coverage_target_miles": 600,
 }
 
 
@@ -309,8 +309,8 @@ def test_reads_settings_compass_sector_count() -> None:
 def test_reads_tuning_coverage_target() -> None:
     """A tuning backbone_coverage_target_miles value is read into the design params."""
     assert _config(
-        {"tuning": {"backbone_coverage_target_miles": 250.0}}
-    ).params.tuning.backbone_coverage_target_miles == 250.0
+        {"tuning": {"backbone_coverage_target_miles": 250}}
+    ).params.tuning.backbone_coverage_target_miles == 250
 
 
 def test_reads_settings_backbone_search_memory_share() -> None:
@@ -413,7 +413,7 @@ def test_missing_required_degree_is_rejected() -> None:
     """A config whose tuning omits a required redundancy degree is rejected."""
     with pytest.raises(ValueError):
         config_from_data(
-            {"tuning": {"backbone_mesh_degree": 3, "backbone_coverage_target_miles": 600.0}}
+            {"tuning": {"backbone_mesh_degree": 3, "backbone_coverage_target_miles": 600}}
         )
 
 
@@ -450,6 +450,17 @@ def test_non_number_coverage_target_is_rejected() -> None:
         _config({"tuning": {"backbone_coverage_target_miles": "far"}})
 
 
+def test_fractional_coverage_target_is_rejected() -> None:
+    """A coverage target carrying a fraction of a mile is rejected.
+
+    The target is compared against a great-circle haul standing in for a last-mile
+    build, so the design has no sub-mile resolution for a fraction to mean anything
+    in; a decimal point states a precision that is not there.
+    """
+    with pytest.raises(ValueError):
+        _config({"tuning": {"backbone_coverage_target_miles": 400.5}})
+
+
 def test_section_must_be_a_mapping() -> None:
     """A non-mapping section is rejected."""
     with pytest.raises(ValueError):
@@ -475,7 +486,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "access-homing-degree": {"degree": 2},
         "backbone-placement": {"restrict": True},
         "convergence-promotion": {"promote": True},
-        "knobs": {"backbone_coverage_target_miles": 600.0},
+        "knobs": {"backbone_coverage_target_miles": 600},
         "label": {"label": "Minuteman"},
     }
     parts.update(overrides)
@@ -501,7 +512,7 @@ def test_app_config_from_parts_reads_every_dial_from_settings() -> None:
 
 def test_app_config_from_parts_ignores_a_dial_left_in_knobs() -> None:
     """A dial an operator left behind under knobs no longer steers the search."""
-    parts = _parts(knobs={"backbone_coverage_target_miles": 600.0, "compass_octants": 4})
+    parts = _parts(knobs={"backbone_coverage_target_miles": 600, "compass_octants": 4})
     assert app_config_from_parts(parts).params.tuning.compass_sector_count == 8
 
 

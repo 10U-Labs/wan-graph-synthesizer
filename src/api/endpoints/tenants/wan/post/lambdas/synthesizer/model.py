@@ -84,7 +84,9 @@ class Tuning:
 
     compass_sector_count: int = 8  # compass sectors used to score a backbone node's link spread
     backbone_mesh_degree: int = 3  # other backbone nodes each one wires to (backbone-mesh-degree)
-    backbone_coverage_target_miles: float = 600.0  # grow backbone until every demand is this near
+    # grow backbone until every demand is this near; whole miles, since the great-circle
+    # haul it is compared against stands in for an unmeasured last-mile build
+    backbone_coverage_target_miles: int = 600
     access_backbone_links: int = 2  # backbone nodes each demand vertex homes to
     # how much memory the backbone enumeration may spend
     search_memory_budget: SearchMemoryBudget = field(default_factory=SearchMemoryBudget)

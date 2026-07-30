@@ -44,7 +44,7 @@ access:
         target: Nellis, NV
   homing_degree: 1
 backbone:
-  coverage_target_miles: 500.0
+  coverage_target_miles: 500
   forced:
     connections:
       - source: Luke, AZ
@@ -518,7 +518,7 @@ def test_push_tenants_builds_the_knobs_document_from_the_coverage_target(
         put_recorder: CallRecorder) -> None:
     """push_tenants spells the stored knobs key out from the block's coverage target."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/knobs"] == {"backbone_coverage_target_miles": 500.0}
+    assert bodies["tenants/f-35/knobs"] == {"backbone_coverage_target_miles": 500}
 
 
 def test_push_tenants_puts_the_settings_document(

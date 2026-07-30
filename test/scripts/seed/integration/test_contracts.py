@@ -95,7 +95,7 @@ def test_yamllint_names_every_tenant_config() -> None:
     assert _linted_configs() == declared
 
 
-def _declared_coverage_targets() -> dict[str, float]:
+def _declared_coverage_targets() -> dict[str, int]:
     """Each tenant's coverage target, read from the backbone block of its own config."""
     return {
         _slug(path.stem): yaml.safe_load(
