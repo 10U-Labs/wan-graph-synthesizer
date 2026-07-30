@@ -49,6 +49,7 @@ def finalize(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     design: Design,
     params: DesignParams,
+    degree_exempt: frozenset[str] = frozenset(),
 ) -> tuple[
     list[Vertex], dict[tuple[str, str], PhysicalEdge], Design, ValidationReport
 ]:
@@ -64,12 +65,19 @@ def finalize(
     configured degree at a city the operator pinned; that is the operator's to resolve,
     by pinning elsewhere or lowering the degree, and it is not something a synthesizer
     can route around silently.
+
+    ``degree_exempt`` are the backbone nodes the operator has held to no degree, already
+    resolved to ids. Their shortfall is neither reported nor refused: saying in advance
+    that a node is a spur is the third answer -- alongside pinning elsewhere and
+    lowering the degree -- and the only one that leaves the rest of the backbone at the
+    degree it was configured with.
     """
     validation = validate_design(
         vertices,
         design,
         params.tuning.access_backbone_links,
         params.tuning.backbone_mesh_degree,
+        degree_exempt,
     )
     deficient = validation["backbone_mesh_independence_deficient"]
     if deficient:

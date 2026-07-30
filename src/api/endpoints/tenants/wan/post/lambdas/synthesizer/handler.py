@@ -119,7 +119,7 @@ def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
     design = synthesize_two_tier_design(graph, physical_edges, params, overrides)
     logger.info("Finalizing and validating the design")
     graph, physical_edges, design, validation = finalize(
-        graph, physical_edges, design, params
+        graph, physical_edges, design, params, overrides.degree_exempt_backbone_ids
     )
     payload = design_payload(
         SourceFiles((), Path("store")),

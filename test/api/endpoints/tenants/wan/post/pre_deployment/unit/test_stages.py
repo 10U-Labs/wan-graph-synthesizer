@@ -5,7 +5,7 @@ from __future__ import annotations
 import fixtures
 import pytest
 from synthesizer.stages import dual_home, finalize
-from synthesizer.model import DesignParams, Tuning
+from synthesizer.model import DesignParams, Tuning, ValidationReport
 
 
 def test_dual_home_returns_a_graph_without_off_net() -> None:
@@ -94,3 +94,29 @@ def test_finalize_refuses_a_design_short_of_the_configured_mesh_degree() -> None
     params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_mesh_degree=2))
     with pytest.raises(ValueError, match="independently failing backbone mesh links at"):
         finalize(list(fixtures.carrier_pops_by_id("abcx").values()), {}, design, params)
+
+
+def _finalize_shared_transit(degree_exempt: frozenset[str]) -> ValidationReport:
+    """Finalize the shared-transit mesh, whose node a holds one independent link."""
+    design = fixtures.meshed_backbone_design(
+        fixtures.SHARED_TRANSIT_ROUTES, fixtures.SHARED_TRANSIT_BACKBONE
+    )
+    params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_mesh_degree=2))
+    _vertices, _edges, _design, validation = finalize(
+        list(fixtures.carrier_pops_by_id("abcx").values()), {}, design, params, degree_exempt
+    )
+    return validation
+
+
+def test_finalize_accepts_a_design_whose_only_shortfall_is_exempt() -> None:
+    """Exempting the spur lets the same design finalize instead of being refused."""
+    assert _finalize_shared_transit(frozenset({"a"}))[
+        "backbone_meets_independent_mesh_link_target"
+    ] is True
+
+
+def test_finalize_reports_the_exempt_node_it_accepted() -> None:
+    """The report finalize returns names the node whose shortfall was allowed."""
+    assert _finalize_shared_transit(frozenset({"a"}))["backbone_degree_exempt"] == [
+        {"id": "a", "name": "a"}
+    ]
