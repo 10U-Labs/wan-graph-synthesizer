@@ -8,6 +8,7 @@ import pytest
 from synthesizer.input_graph import edge_key
 from synthesizer.model import AccessEdge, Design, DesignMetrics
 from synthesizer.validation import (
+    backbone_mesh_deficient,
     backbone_mesh_independence_deficient,
     demand_backbone_homes,
     design_edge_set,
@@ -133,6 +134,36 @@ def test_independent_mesh_degree_counts_a_detour_to_one_peer_once() -> None:
     """Two routes to the same peer are one link: losing the peer city takes both."""
     design = meshed_design([("a", "x", "b"), ("a", "y", "b")], ("a", "b"))
     assert independent_mesh_degree(design, "a") == 1
+
+
+# Four nodes where "a" holds one mesh link and the rest hold two, against a target of
+# two: the shortfall is one node's, so an exemption either silences it or does nothing.
+_MESH_DEGREES = {"a": 1, "b": 2, "c": 2, "d": 2}
+_MESH_NODES = ("a", "b", "c", "d")
+
+
+def test_mesh_deficient_names_the_node_below_the_degree() -> None:
+    """A node under the mesh degree is reported with the count it holds."""
+    vertices = fixtures.carrier_pops_by_id("abcd")
+    assert backbone_mesh_deficient(_MESH_NODES, _MESH_DEGREES, vertices, 2) == [
+        {"id": "a", "name": "a", "degree": 1}
+    ]
+
+
+def test_mesh_deficient_leaves_out_an_exempt_node() -> None:
+    """The node the degree is not asked of is no longer reported as short of it."""
+    vertices = fixtures.carrier_pops_by_id("abcd")
+    assert backbone_mesh_deficient(
+        _MESH_NODES, _MESH_DEGREES, vertices, 2, frozenset({"a"})
+    ) == []
+
+
+def test_mesh_deficient_still_names_a_node_that_is_not_exempt() -> None:
+    """Exempting one node says nothing about another node's shortfall."""
+    vertices = fixtures.carrier_pops_by_id("abcd")
+    assert backbone_mesh_deficient(
+        _MESH_NODES, _MESH_DEGREES, vertices, 2, frozenset({"b"})
+    ) == [{"id": "a", "name": "a", "degree": 1}]
 
 
 def test_independence_deficient_names_the_node_below_the_degree() -> None:

@@ -26,18 +26,23 @@ def backbone_mesh_deficient(
     backbone_degrees: dict[str, int],
     vertices_by_id: dict[str, Vertex],
     mesh_degree: int,
+    degree_exempt: frozenset[str] = frozenset(),
 ) -> list[dict[str, object]]:
     """Backbone nodes with fewer than ``mesh_degree`` mesh links.
 
     With ``mesh_degree`` or fewer backbone nodes the target cannot be met (a node has
     only that many peers), so the list is empty.
+
+    A node in ``degree_exempt`` is left out: the operator has said the degree is not
+    asked of it, and reporting a shortfall nobody intends to act on buries the ones
+    that matter.
     """
     if len(backbone_ids) <= mesh_degree:
         return []
     return [
         {"id": backbone_id, "name": vertices_by_id[backbone_id].name, "degree": degree}
         for backbone_id, degree in sorted(backbone_degrees.items())
-        if degree < mesh_degree
+        if degree < mesh_degree and backbone_id not in degree_exempt
     ]
 
 
