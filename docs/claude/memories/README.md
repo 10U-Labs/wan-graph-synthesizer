@@ -40,6 +40,4 @@ session tool's local memory only what is true of one machine alone.
 - [seed-skip-cascade-needs-guards](seed-skip-cascade-needs-guards.md) —
   a skipped gate silently skips every descendant without a status-check
   `if`
-- [config-only-commits-skip-the-tests](config-only-commits-skip-the-tests.md)
-  — a push touching only `data/` or `etc/` skips every test tier; force
-  them with `workflow_dispatch`
+- [only-raw-map-commits-skip-the-tests](only-raw-map-commits-skip-the-tests.md) — a push touching only `data/raw/` skips every test tier; a config-only push no longer does

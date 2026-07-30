@@ -6,6 +6,10 @@ assert the cross-file contract that every resource seed touches is declared in
 the OpenAPI spec the API is built from. The roster in ``etc/`` is also checked
 against the seed workflow's explicit yamllint file list, which names each config
 one by one and so goes stale whenever a tenant is added or dropped.
+
+One contract here reads no request at all. A tenant's backbone knobs and the
+carrier files are two inputs that have to agree about what the fiber can do, and
+this is the only tier that holds both, so it is where that agreement is asserted.
 """
 
 from __future__ import annotations
@@ -21,6 +25,9 @@ import yaml
 import seed
 from repo_utils import REPO_ROOT
 from seed import _carrier_cities, _city_key, _rows, _slug
+from synthesizer.ceiling import independent_route_ceiling
+from synthesizer.codec import load_substrate
+from synthesizer.graphs import build_adjacency
 from test_http_doubles import UrlopenRecorder
 
 _API = "http://stub"
@@ -95,12 +102,23 @@ def test_yamllint_names_every_tenant_config() -> None:
     assert _linted_configs() == declared
 
 
+def _backbone_blocks() -> dict[str, dict[str, Any]]:
+    """Each tenant's whole ``backbone`` block, keyed by the tenant id seed derives.
+
+    Every backbone knob a contract here asserts on is read through this one place, so a
+    test names the key it means and nothing re-opens the config files to find it.
+    """
+    return {
+        _slug(path.stem): yaml.safe_load(path.read_text(encoding="utf-8"))["backbone"]
+        for path in seed.ETC.glob("*.yml")
+    }
+
+
 def _declared_coverage_targets() -> dict[str, int]:
     """Each tenant's coverage target, read from the backbone block of its own config."""
     return {
-        _slug(path.stem): yaml.safe_load(
-            path.read_text(encoding="utf-8"))["backbone"]["coverage_target_miles"]
-        for path in seed.ETC.glob("*.yml")
+        tenant: backbone["coverage_target_miles"]
+        for tenant, backbone in _backbone_blocks().items()
     }
 
 
@@ -185,3 +203,82 @@ def test_pipeline_writes_a_forced_homes_document_for_every_tenant(
     """
     paths = _seed(urlopen_recorder, monkeypatch)
     assert _tenants_written(paths, "forced-homes") == len(list(seed.ETC.glob("*.yml")))
+
+
+def _substrate() -> tuple[dict[str, str], dict[str, list[tuple[str, float]]]]:
+    """The merged carrier substrate: its cities by display name, and its fiber adjacency.
+
+    Every carrier's points and every carrier's spans, read with seed's own reader and
+    merged by the same loader the API uses, so the graph measured here is the graph the
+    synthesizer starts from. The files are taken in sorted order because a generated id
+    depends on what claimed the name first, and the mapping back from a config's
+    ``City, ST`` spelling to that id is what the caller needs.
+    """
+    points = [
+        row
+        for path in sorted((seed.DATA / "vertices" / "carriers").glob("*.csv"))
+        for row in _rows(path)
+    ]
+    spans = [
+        row for path in sorted((seed.DATA / "edges").glob("*.csv")) for row in _rows(path)
+    ]
+    vertices, edges = load_substrate(points, spans)
+    return {vertex.name: vertex.id for vertex in vertices}, build_adjacency(edges)
+
+
+def _pinned_ids(backbone: dict[str, Any], by_name: dict[str, str]) -> tuple[str, ...]:
+    """The tenant's pinned backbone cities as substrate ids, skipping any it has no point for.
+
+    A pin the carrier files do not serve is seated by fabricating a point for it, which this
+    graph does not have. Leaving it out costs the count a place a route could have ended,
+    which can only make the bound below smaller.
+    """
+    names = (backbone.get("forced") or {}).get("nodes") or []
+    return tuple(by_name[name] for name in names if name in by_name)
+
+
+def _exemption_ceiling_bounds() -> list[tuple[str, str, int, int]]:
+    """Every exempt city's ceiling lower bound beside the degree its tenant asks for.
+
+    The bound counts routes from the city to the tenant's pinned backbone cities that share
+    no city on the way, over the merged carrier substrate. It is a floor rather than the
+    real ceiling for two reasons, and both point the same way: the real run seats backbone
+    nodes beyond the pins, which gives routes more distinct places to end, and it fabricates
+    on-net points and seats off-net ones, which adds spans. Neither can lower a maximum
+    flow, so the real ceiling is at least what this returns.
+
+    An exempt city the carrier files hold no point for is left out, since there is no graph
+    to measure it on and a silent zero would read as a proven limit.
+    """
+    by_name, adjacency = _substrate()
+    bounds: list[tuple[str, str, int, int]] = []
+    for tenant, backbone in sorted(_backbone_blocks().items()):
+        pinned = _pinned_ids(backbone, by_name)
+        for city in backbone.get("degree_exempt") or []:
+            if city in by_name:
+                bound = independent_route_ceiling(by_name[city], pinned, adjacency)
+                bounds.append((tenant, city, bound, backbone["mesh_degree"]))
+    return bounds
+
+
+def test_no_tenant_exempts_a_city_its_own_fiber_already_accounts_for() -> None:
+    """No exempt city is one whose ceiling would have lowered its target anyway.
+
+    Neither file settles this alone: the config says which cities are excused the degree,
+    and only the carrier files say which of them could have met it. A city that cannot is
+    held to what its fiber carries and passes on that, so excusing it changes no outcome
+    and costs the report the line that would have explained the design. A city that can is
+    a different matter, and the exemption is then the only reason a real shortfall goes
+    unmentioned -- so an exemption is worth keeping only where the fiber does not already
+    account for the gap.
+
+    Boston was a city of the first kind: every route out of it passes through Albany or
+    Stamford, so it could never hold three independent links, and it came off the list once
+    the ceiling said so. San Jose is a city of the second kind, with three routes to three
+    different pinned cities that share no city between them.
+    """
+    assert [
+        (tenant, city, bound, degree)
+        for tenant, city, bound, degree in _exemption_ceiling_bounds()
+        if bound < degree
+    ] == []

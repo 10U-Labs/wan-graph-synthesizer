@@ -49,6 +49,13 @@ jobs:
         with:
           fetch-depth: 0
       - id: decide
+        # The exclusion is data/raw/ and nothing wider. It once covered all of data/ and
+        # etc/, on the reasoning that no test read either, and that reasoning expired: the
+        # integration tier now asserts a tenant's backbone knobs against what the carrier
+        # files say its fiber can carry, so a push editing only etc/ is the likeliest way
+        # to break that contract and was exactly the push that skipped it. data/raw/ is
+        # still sound to exclude, holding the carriers' published maps that the cleaned
+        # vertices and edges were transcribed from, which no code opens.
         name: Decide whether static analysis and tests are necessary
         run: |
           base='${{ github.event.before }}'
@@ -58,7 +65,7 @@ jobs:
               || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
             necessary=true
           elif git diff --name-only "$base" "$head" \
-              | grep -qvE '^(data|etc)/'; then
+              | grep -qvE '^data/raw/'; then
             necessary=true
           else
             necessary=false
@@ -116,7 +123,7 @@ jobs:
         run: pip install pytest pyyaml
       - name: Run integration tests against a mocked API
         run: >-
-          PYTHONPATH=.:lib/python:scripts:test
+          PYTHONPATH=.:lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pytest
           test/scripts/seed/integration/
           --import-mode=importlib --confcutdir=test
@@ -195,13 +202,13 @@ jobs:
           scripts/seed.py lib/python/test_http_doubles/
       - name: Run pylint on tests
         run: >-
-          PYTHONPATH=.:lib/python:scripts:test
+          PYTHONPATH=.:lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint --recursive=y
           test/scripts/seed/
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on tests
         run: >-
-          MYPYPATH=lib/python:scripts:test
+          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m mypy --strict
           --explicit-package-bases test/scripts/seed/
       - name: Detect copy-paste in tests
