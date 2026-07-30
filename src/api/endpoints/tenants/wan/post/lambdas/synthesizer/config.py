@@ -325,6 +325,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     count = _mapping(parts, "backbone-node-count")
     design: dict[str, Any] = {
         "forced_backbone": parts.get("forced-backbone-nodes", []),
+        "degree_exempt_backbone": parts.get("degree-exempt-backbone-nodes", []),
         "prohibited_backbone": parts.get("prohibited-backbone-nodes", []),
         "forced_connections": parts.get("forced-connections", []),
         "forced_homes": parts.get("forced-homes", []),

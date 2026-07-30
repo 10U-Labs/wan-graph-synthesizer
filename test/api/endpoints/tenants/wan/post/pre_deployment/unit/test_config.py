@@ -567,6 +567,19 @@ def test_app_config_from_parts_reads_forced_backbone() -> None:
     assert app_config_from_parts(parts).params.forced_backbone_names == ("Denver, CO",)
 
 
+def test_app_config_from_parts_reads_the_degree_exempt_nodes() -> None:
+    """The assembler reads the degree-exempt-backbone-nodes document into the params."""
+    parts = _parts(**{"degree-exempt-backbone-nodes": ["San Jose, CA"]})
+    exempt = app_config_from_parts(parts).params.degree_exempt_backbone_names
+    assert exempt == ("San Jose, CA",)
+
+
+def test_app_config_from_parts_exempts_nobody_without_the_document() -> None:
+    """A tenant carrying no exemption document holds every node to the mesh degree."""
+    params = app_config_from_parts(_parts()).params
+    assert len(params.degree_exempt_backbone_names) == 0
+
+
 def test_app_config_from_parts_requires_each_degree() -> None:
     """A missing degree document is rejected by the assembler."""
     parts = _parts()
