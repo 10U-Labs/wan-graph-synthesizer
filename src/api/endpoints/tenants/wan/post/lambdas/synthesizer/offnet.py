@@ -58,8 +58,10 @@ def realize_off_net_sites(
     """Seat a local-fiber twin for every off-net site the operator has force-pinned.
 
     ``forced_names`` is the operator's forced backbone names. A site whose name is not
-    forced is ignored. A forced site whose name is also a carrier PoP is already
-    on-net -- the pin seats there, so no off-net twin is built. A forced site whose city
+    forced is ignored. A forced site whose name is also a carrier PoP raises
+    ``ValueError``: the roster exists to offer seats where no carrier point is, so such
+    a row is a place the seat cannot be built, and the pin it names resolves onto two
+    vertices. A forced site whose city
     is not in ``datacenter_cities`` raises ``ValueError`` (the backbone gate is
     absolute); when ``datacenter_cities`` is ``None`` (free-for-all) the gate is lifted.
     A forced site that cannot reach
@@ -76,8 +78,9 @@ def realize_off_net_sites(
         if site.name not in forced_names:
             continue
         if site.name in carrier_names:
-            # Already an on-net carrier PoP; the forced pin seats there, no twin needed.
-            continue
+            raise ValueError(
+                f"forced off-net site is already a carrier PoP: {site.name}"
+            )
         if not backbone_city_allowed(site.info, datacenter_cities):
             raise ValueError(
                 f"forced off-net site is not at a data-center city: {site.name}"

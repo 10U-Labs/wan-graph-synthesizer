@@ -89,7 +89,11 @@ def test_forced_site_is_seated_anywhere_when_gate_is_open() -> None:
     assert len(result.seat_ids) == 1
 
 
-def test_a_forced_site_already_on_net_seats_without_a_twin() -> None:
-    """A forced off-net name that is also a carrier PoP seats on-net; no twin is built."""
-    result = _realize(fixtures.off_net_site("P0", 0.0, 0.5), forced=frozenset({"P0"}))
-    assert result.seat_ids == frozenset()
+def test_a_forced_site_that_is_already_a_carrier_pop_is_rejected() -> None:
+    """A forced off-net name that is also a carrier PoP fails loudly rather than seating.
+
+    The roster offers seats where no carrier point is, so naming one that exists is a
+    seat that cannot be built, and the pin it names would resolve onto two vertices.
+    """
+    with pytest.raises(ValueError, match="already a carrier PoP: P0"):
+        _realize(fixtures.off_net_site("P0", 0.0, 0.5), forced=frozenset({"P0"}))
