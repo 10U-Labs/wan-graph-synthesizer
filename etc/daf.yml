@@ -5,6 +5,8 @@ access:
   homing_degree: 2
 backbone:
   coverage_target_miles: 400
+  degree_exempt:
+    - San Jose, CA
   forced:
     connections: []
     nodes:
