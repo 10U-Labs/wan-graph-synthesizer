@@ -53,12 +53,7 @@ Longer: [tdd-workflow](docs/claude/memories/tdd-workflow.md),
 
 ## CI workflows
 
-Adding a new per-tenant store resource can fail the first `seed` run with
-`HTTP 403` on the new PUT: `seed` and `api_common_routing` are independent
-workflows on the same push, so seeding can beat the route into existence.
-Wait for `api_common_routing`, then `gh run rerun <run-id> --failed`. A
-later commit that misses `etc/`, `openapi.json` and `seed.py` will not
-re-trigger `seed` at all.
+Adding a new per-tenant store resource can fail the first `seed` run on the new PUT: `seed`, `api_common_routing` and `api_endpoint_tenants` are independent workflows on the same push, so seeding can beat both the route and the handler that stores it. The code says which is behind — `HTTP 403` is a route API Gateway does not define yet, `HTTP 404` is the old handler not knowing the collection. Wait for both, then `gh run rerun <run-id> --failed`. A later commit that misses `etc/`, `openapi.json` and `seed.py` will not re-trigger `seed` at all.
 
 In `seed.yml`, a skipped `concluding-*` gate skip-cascades transitively to
 every descendant. An ordinary expression `if` does not break the cascade;
