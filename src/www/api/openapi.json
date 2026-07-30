@@ -499,6 +499,20 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
+    "/wan-graph-synthesizer/tenants/{tenant}/degree-exempt-backbone-nodes": {
+      "get": {
+        "summary": "A tenant's degree-exempt backbone nodes (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The degree-exempt backbone nodes." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a tenant's degree-exempt backbone nodes (stores only).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The degree-exempt backbone nodes were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
     "/wan-graph-synthesizer/tenants/{tenant}/prohibited-connections": {
       "get": {
         "summary": "A tenant's prohibited connections (input).",
