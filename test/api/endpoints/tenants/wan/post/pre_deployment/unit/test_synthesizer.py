@@ -95,6 +95,11 @@ def _run(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) -> di
     return objects
 
 
+def test_reads_the_degree_exempt_backbone_nodes(synthesizer: Any) -> None:
+    """The build reads the exemption list among the tenant's config resources."""
+    assert "degree-exempt-backbone-nodes" in synthesizer.CONFIG_RESOURCES
+
+
 def test_publishes_the_wan_on_success(synthesizer: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """A successful build writes the tenant's WAN JSON to the store."""
     objects = _run(synthesizer, monkeypatch)

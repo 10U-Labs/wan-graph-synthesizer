@@ -47,6 +47,7 @@ CONFIG_RESOURCES = (
     "forced-homes",
     "prohibited-backbone-nodes",
     "prohibited-connections",
+    "degree-exempt-backbone-nodes",
     "backbone-node-count",
     "backbone-mesh-degree",
     "access-homing-degree",
