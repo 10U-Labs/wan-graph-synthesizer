@@ -52,7 +52,9 @@ def _mapping_rows(mapping: dict[str, Any]) -> list[dict[str, Any]]:
     """Flatten a ``{label: csv-or-list}`` inputs mapping into one list of rows.
 
     The labels group the source files but are not the owner -- the tenant is -- so they
-    are dropped and every file's rows are concatenated.
+    are dropped and every file's rows are concatenated. ``inputs.locations`` is the one
+    block shaped this way, because a tenant may legitimately draw its sites from several
+    files; ``inputs.providers`` names its single file directly and is read as a path.
     """
     rows: list[dict[str, Any]] = []
     for value in mapping.values():
@@ -199,7 +201,7 @@ def push_tenants(api: str) -> list[str]:
         forced = backbone.get("forced", {})
         prohibited = backbone.get("prohibited", {})
         locations = _mapping_rows(inputs.get("locations", {}))
-        regions = _mapping_rows(inputs.get("providers", {}))
+        regions = _rows(REPO_ROOT / inputs["providers"])
         forced_path = inputs.get("forced")
         off_net = _off_net_rows(forced_path) if forced_path else []
         print(f"tenant {tid}: {len(locations)} sites, {len(regions)} regions, "

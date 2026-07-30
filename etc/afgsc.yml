@@ -34,8 +34,7 @@ inputs:
   forced: data/vertices/forced/inexistent.csv
   locations:
     AFGSC: data/vertices/tenants/afgsc.csv
-  providers:
-    regions: data/vertices/providers/providers.csv
+  providers: data/vertices/providers/providers.csv
 label: AFGSC
 settings:
   backbone_search_memory_share: 0.6

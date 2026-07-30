@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import re
 import sys
-from typing import cast
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -62,6 +62,15 @@ def _seed(recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> list[st
     return recorder.paths(_API)
 
 
+def _written_by_tenant(recorder: UrlopenRecorder, resource: str) -> dict[str, Any]:
+    """Each tenant's *resource* document as seed sent it, keyed by tenant id."""
+    return {
+        request.full_url.split("/")[-2]: json.loads(cast("bytes", request.data))
+        for request in recorder.requests
+        if request.full_url.endswith(f"/{resource}")
+    }
+
+
 def test_every_requested_path_is_declared_in_openapi(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
     """Every path seed requests (input, build, listing or removal) is declared in the spec."""
@@ -105,15 +114,25 @@ def test_pipeline_writes_each_tenant_the_coverage_target_its_config_declares(
     tenant, which neither file can establish alone.
     """
     _seed(urlopen_recorder, monkeypatch)
-    written = {
-        request.full_url.split("/")[-2]: json.loads(cast("bytes", request.data))
-        for request in urlopen_recorder.requests
-        if request.full_url.endswith("/knobs")
-    }
-    assert written == {
+    assert _written_by_tenant(urlopen_recorder, "knobs") == {
         tenant: {"backbone_coverage_target_miles": target}
         for tenant, target in _declared_coverage_targets().items()
     }
+
+
+def test_pipeline_writes_every_tenant_the_regions_of_the_file_its_config_names(
+        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every tenant is seeded regions from the bare path its ``inputs.providers`` names.
+
+    The config names the file and only the file holds the rows, so neither side says
+    alone that a tenant ends up with any regions at all. A shape the reader mishandles
+    is the failure this catches: it delivers an empty document rather than an error, and
+    a tenant seeded no regions has no cloud demand to home.
+    """
+    _seed(urlopen_recorder, monkeypatch)
+    written = _written_by_tenant(urlopen_recorder, "provider-regions")
+    seeded = sum(1 for regions in written.values() if regions)
+    assert seeded == len(list(seed.ETC.glob("*.yml")))
 
 
 def _declared_off_net_paths() -> set[str]:

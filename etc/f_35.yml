@@ -32,8 +32,7 @@ inputs:
   forced: data/vertices/forced/inexistent.csv
   locations:
     F-35: data/vertices/tenants/f_35.csv
-  providers:
-    regions: data/vertices/providers/providers.csv
+  providers: data/vertices/providers/providers.csv
 label: F-35
 settings:
   backbone_search_memory_share: 0.6

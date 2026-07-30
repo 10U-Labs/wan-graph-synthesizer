@@ -41,8 +41,7 @@ inputs:
   forced: data/vertices/forced/inexistent.csv
   locations:
     DoW: data/vertices/tenants/dow.csv
-  providers:
-    regions: data/vertices/providers/providers.csv
+  providers: data/vertices/providers/providers.csv
 label: DoW
 settings:
   backbone_search_memory_share: 0.6

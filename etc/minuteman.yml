@@ -25,8 +25,7 @@ inputs:
   forced: data/vertices/forced/inexistent.csv
   locations:
     Minuteman: data/vertices/tenants/minuteman.csv
-  providers:
-    regions: data/vertices/providers/providers.csv
+  providers: data/vertices/providers/providers.csv
 label: Minuteman
 settings:
   backbone_search_memory_share: 0.6

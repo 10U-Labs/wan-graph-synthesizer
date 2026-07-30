@@ -48,8 +48,7 @@ inputs:
   forced: data/vertices/forced/inexistent.csv
   locations:
     DAF: data/vertices/tenants/daf.csv
-  providers:
-    regions: data/vertices/providers/providers.csv
+  providers: data/vertices/providers/providers.csv
 label: DAF
 settings:
   backbone_search_memory_share: 0.6

@@ -65,8 +65,7 @@ inputs:
   forced: offnet/off.csv
   locations:
     F-35: locations/f35.csv
-  providers:
-    regions: regions/providers.csv
+  providers: regions/providers.csv
 label: F-35
 settings:
   compass_sector_count: 4
@@ -512,6 +511,14 @@ def test_push_tenants_puts_the_settings_document(
     """push_tenants sends the tenant's settings block as its own document."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/settings"] == {"compass_sector_count": 4}
+
+
+def test_push_tenants_puts_the_provider_regions_its_config_names(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """push_tenants reads the provider regions from the bare path the config names."""
+    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
+    assert bodies["tenants/f-35/provider-regions"] == [{"city": "Reston", "state": "VA"}]
 
 
 def test_push_tenants_reads_off_net_when_present(
