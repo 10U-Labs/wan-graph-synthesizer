@@ -117,13 +117,13 @@ def test_pipeline_writes_each_tenant_the_coverage_target_its_config_declares(
 
 
 def _declared_off_net_paths() -> set[str]:
-    """Every off-net file the roster's configs name, as repository-relative paths."""
+    """Every seat file the roster's configs name under ``inputs.forced``."""
     paths: set[str] = set()
     for config in seed.ETC.glob("*.yml"):
         declared = yaml.safe_load(config.read_text(encoding="utf-8"))
-        off_net = declared.get("inputs", {}).get("off_net")
-        if off_net:
-            paths.add(off_net)
+        forced = declared.get("inputs", {}).get("forced")
+        if forced:
+            paths.add(forced)
     return paths
 
 

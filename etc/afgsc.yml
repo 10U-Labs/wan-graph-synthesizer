@@ -31,9 +31,9 @@ backbone:
   promote_high_degree_convergences: false
   restrict_to_data_centers: false
 inputs:
+  forced: data/vertices/forced/inexistent.csv
   locations:
     AFGSC: data/vertices/tenants/afgsc.csv
-  off_net: data/vertices/forced/inexistent.csv
   providers:
     regions: data/vertices/providers/providers.csv
 label: AFGSC

@@ -38,9 +38,9 @@ backbone:
   promote_high_degree_convergences: true
   restrict_to_data_centers: false
 inputs:
+  forced: data/vertices/forced/inexistent.csv
   locations:
     DoW: data/vertices/tenants/dow.csv
-  off_net: data/vertices/forced/inexistent.csv
   providers:
     regions: data/vertices/providers/providers.csv
 label: DoW

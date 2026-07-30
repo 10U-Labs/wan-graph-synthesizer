@@ -81,10 +81,12 @@ def _carrier_cities() -> set[tuple[str, str]]:
 
 
 def _off_net_rows(path: str) -> list[dict[str, Any]]:
-    """Read the off-net seats, refusing any city a carrier already serves.
+    """Read the seats a config's ``inputs.forced`` names, refusing any carrier city.
 
     An off-net seat is a location with no carrier point of its own, offered to the
-    operator as somewhere a backbone node may be built out of local fiber. A row naming
+    operator as somewhere a backbone node may be built out of local fiber -- which is
+    why the config names the file under ``forced``: nothing in it is read unless the
+    operator forces that seat into the backbone. A row naming
     a city a carrier already serves is therefore a contradiction, and a silent one: the
     synthesizer seats the operator's pin on the real point and skips the row, so the
     file claims a seat it never provides. This is the only reader of the file that also
@@ -198,8 +200,8 @@ def push_tenants(api: str) -> list[str]:
         prohibited = backbone.get("prohibited", {})
         locations = _mapping_rows(inputs.get("locations", {}))
         regions = _mapping_rows(inputs.get("providers", {}))
-        off_net_path = inputs.get("off_net")
-        off_net = _off_net_rows(off_net_path) if off_net_path else []
+        forced_path = inputs.get("forced")
+        off_net = _off_net_rows(forced_path) if forced_path else []
         print(f"tenant {tid}: {len(locations)} sites, {len(regions)} regions, "
               f"{len(off_net)} off-net", flush=True)
         _put(api, f"tenants/{tid}/locations", locations)

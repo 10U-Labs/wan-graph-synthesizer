@@ -62,9 +62,9 @@ backbone:
   promote_high_degree_convergences: false
   restrict_to_data_centers: true
 inputs:
+  forced: offnet/off.csv
   locations:
     F-35: locations/f35.csv
-  off_net: offnet/off.csv
   providers:
     regions: regions/providers.csv
 label: F-35
@@ -535,10 +535,10 @@ def test_push_tenants_refuses_an_off_net_seat_a_carrier_already_serves(
 def test_push_tenants_uses_empty_off_net_when_absent(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
-    """push_tenants sends an empty off-net list when no off_net is given."""
+    """push_tenants sends an empty off-net list when no forced file is given."""
     bodies = _pushed_bodies(
         tmp_path, monkeypatch, put_recorder,
-        _TENANT_YML.replace("  off_net: offnet/off.csv\n", ""))
+        _TENANT_YML.replace("  forced: offnet/off.csv\n", ""))
     assert bodies["tenants/f-35/off-net"] == []
 
 
