@@ -28,7 +28,7 @@ backbone:
       - Seattle, WA
       - Tucson, AZ
       - Umatilla, OR
-  mesh_degree: 3
+  mesh_degree: 2
   node_count:
     max: 1000
     min: 3

@@ -12,7 +12,7 @@ backbone:
       - McLean, VA
       - Minot, ND
       - Salt Lake City, UT
-  mesh_degree: 3
+  mesh_degree: 2
   node_count:
     max: 6
     min: 3

@@ -21,7 +21,7 @@ backbone:
       - San Francisco, CA
       - Seattle, WA
       - Tacoma, WA
-  mesh_degree: 4
+  mesh_degree: 2
   node_count:
     max: 99
     min: 3
