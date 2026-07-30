@@ -217,6 +217,7 @@ def validate_design(
     design: Design,
     access_backbone_links: int = 2,
     backbone_mesh_degree: int = 3,
+    degree_exempt: frozenset[str] = frozenset(),
 ) -> ValidationReport:
     """Check a design against every hard structural requirement.
 
@@ -224,6 +225,11 @@ def validate_design(
     must home to; ``backbone_mesh_degree`` is the number of other backbone nodes
     each backbone node must link to on the mesh. Both are the operator's configured
     redundancy levels.
+
+    ``degree_exempt`` are the backbone nodes the mesh degree is not asked of. Neither
+    mesh count reports them, and the report names them so the exemption is as visible
+    as the shortfall it stands in for -- a silenced check nobody can see is worse than
+    the noise it removed.
     """
     vertices_by_id = {vertex.id: vertex for vertex in vertices}
     ids = included_vertex_ids(design)
@@ -234,10 +240,11 @@ def validate_design(
     missing_redundancy = demand_without_backbone_redundancy(design, access_backbone_links)
     backbone_degrees = neighbor_degrees(set(design.backbone_ids), backbone_mesh_pairs(design))
     mesh_deficient = backbone_mesh_deficient(
-        design.backbone_ids, backbone_degrees, vertices_by_id, backbone_mesh_degree
+        design.backbone_ids, backbone_degrees, vertices_by_id, backbone_mesh_degree,
+        degree_exempt,
     )
     independence_deficient = backbone_mesh_independence_deficient(
-        design, vertices_by_id, backbone_mesh_degree
+        design, vertices_by_id, backbone_mesh_degree, degree_exempt
     )
 
     return {
@@ -263,6 +270,10 @@ def validate_design(
         "backbone_mesh_degree_deficient": mesh_deficient,
         "backbone_meets_independent_mesh_link_target": not independence_deficient,
         "backbone_mesh_independence_deficient": independence_deficient,
+        "backbone_degree_exempt": [
+            {"id": backbone_id, "name": vertices_by_id[backbone_id].name}
+            for backbone_id in sorted(set(design.backbone_ids) & degree_exempt)
+        ],
         "backbone_mesh_two_edge_connected": backbone_mesh_two_edge_connected(design),
         "backbone_mesh_two_vertex_connected": backbone_mesh_two_vertex_connected(design),
     }

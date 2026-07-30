@@ -237,6 +237,7 @@ class ValidationReport(TypedDict):
     backbone_mesh_degree_deficient: list[dict[str, object]]
     backbone_meets_independent_mesh_link_target: bool
     backbone_mesh_independence_deficient: list[dict[str, object]]
+    backbone_degree_exempt: list[dict[str, str]]
     backbone_mesh_two_edge_connected: bool
     backbone_mesh_two_vertex_connected: bool
 

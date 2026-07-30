@@ -123,13 +123,15 @@ def _mesh_design(backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]]) ->
 
 
 def _mesh_report(
-    backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]], backbone_mesh_degree: int = 3
+    backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]], backbone_mesh_degree: int = 3,
+    degree_exempt: frozenset[str] = frozenset(),
 ) -> ValidationReport:
     """Validate a backbone-only design defined by its mesh links."""
     return validate_design(
         [make_pop(name) for name in backbone_ids],
         _mesh_design(backbone_ids, pairs),
         backbone_mesh_degree=backbone_mesh_degree,
+        degree_exempt=degree_exempt,
     )
 
 
@@ -169,6 +171,29 @@ def test_backbone_below_the_target_names_the_deficient_nodes() -> None:
     """The deficient list names every node left under the three-link target."""
     report = _mesh_report(*_DEFICIENT)
     assert {item["id"] for item in report["backbone_mesh_degree_deficient"]} == {"C3", "C4", "C5"}
+
+
+def test_exempting_every_short_node_satisfies_the_mesh_rule() -> None:
+    """A mesh whose only shortfalls are at exempt nodes meets the target."""
+    report = _mesh_report(*_DEFICIENT, degree_exempt=frozenset({"C3", "C4", "C5"}))
+    assert report["backbone_meets_mesh_link_target"] is True
+
+
+def test_exempting_one_short_node_leaves_the_others_reported() -> None:
+    """Exempting C3 says nothing about C4 and C5, which stay under the target."""
+    report = _mesh_report(*_DEFICIENT, degree_exempt=frozenset({"C3"}))
+    assert {item["id"] for item in report["backbone_mesh_degree_deficient"]} == {"C4", "C5"}
+
+
+def test_the_report_names_the_exempt_nodes() -> None:
+    """The report names the nodes the degree was not asked of, so the exemption is visible."""
+    report = _mesh_report(*_DEFICIENT, degree_exempt=frozenset({"C3"}))
+    assert report["backbone_degree_exempt"] == [{"id": "C3", "name": "C3"}]
+
+
+def test_the_report_names_no_exempt_node_by_default() -> None:
+    """A design exempting nobody says so, rather than leaving the reader to infer it."""
+    assert _mesh_report(*_HEALTHY)["backbone_degree_exempt"] == []
 
 
 def test_small_backbone_is_exempt_from_the_mesh_rule() -> None:
