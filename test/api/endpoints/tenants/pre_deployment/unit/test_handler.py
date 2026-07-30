@@ -233,6 +233,17 @@ def test_tenant_put_persists_the_forced_homes_document(monkeypatch: pytest.Monke
     assert _stored_put(monkeypatch, "forced-homes", homes) == homes
 
 
+def test_tenant_put_persists_the_degree_exempt_backbone_nodes_document(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT to the degree-exempt-backbone-nodes resource is stored verbatim.
+
+    The nodes an operator holds to no mesh degree are their own resource, so the
+    endpoint has to accept one before the synthesizer can read it.
+    """
+    exempt = ["San Jose, CA"]
+    assert _stored_put(monkeypatch, "degree-exempt-backbone-nodes", exempt) == exempt
+
+
 def test_tenant_rejects_a_malformed_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
     """A locations PUT whose rows lack the required fields is rejected."""
     module = _tenant(monkeypatch)
