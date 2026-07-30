@@ -6,27 +6,7 @@ access:
 backbone:
   coverage_target_miles: 400
   forced:
-    connections:
-      - source: Minot, ND
-        target: Omaha, NE
-      - source: Atlanta, GA
-        target: Dallas, TX
-      - source: Atlanta, GA
-        target: Omaha, NE
-      - source: Salt Lake City, UT
-        target: Hillsboro, OR
-      - source: Los Angeles, CA
-        target: Albuquerque, NM
-      - source: Albuquerque, NM
-        target: Dallas, TX
-      - source: Omaha, NE
-        target: Ashburn, VA
-      - source: Atlanta, GA
-        target: Tulsa, OK
-      - source: Salt Lake City, UT
-        target: Great Falls, MT
-      - source: Minot, ND
-        target: Salt Lake City, UT
+    connections: []
     nodes:
       - Albuquerque, NM
       - Ashburn, VA
