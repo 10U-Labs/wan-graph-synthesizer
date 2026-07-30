@@ -471,6 +471,20 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
+    "/wan-graph-synthesizer/tenants/{tenant}/forced-homes": {
+      "get": {
+        "summary": "A tenant's forced homes (input).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The forced homes." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      },
+      "put": {
+        "summary": "Replace a tenant's forced homes (stores only).",
+        "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "The forced homes were replaced." } },
+        "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
+      }
+    },
     "/wan-graph-synthesizer/tenants/{tenant}/prohibited-backbone-nodes": {
       "get": {
         "summary": "A tenant's prohibited backbone nodes (input).",

@@ -38,6 +38,7 @@ _INPUTS = frozenset({
     "off-net",
     "forced-backbone-nodes",
     "forced-connections",
+    "forced-homes",
     "prohibited-backbone-nodes",
     "prohibited-connections",
     "backbone-node-count",

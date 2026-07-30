@@ -208,13 +208,29 @@ def test_tenant_put_persists_an_input(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "tenants/f-35/provider-regions.json" in objects
 
 
-def test_tenant_put_persists_a_settings_document(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A PUT to the settings resource is stored verbatim, where it was a 404 before."""
+def _stored_put(monkeypatch: pytest.MonkeyPatch, collection: str, body: Any) -> Any:
+    """PUT *body* to a tenant *collection* and return the document it stored."""
     module = _tenant(monkeypatch)
     stored: dict[str, bytes] = {}
     with patch("boto3.client", side_effect=write_clients(stored, [])):
-        module.lambda_handler(_tenant_put("settings", {"compass_sector_count": 4}), None)
-    assert json.loads(stored["tenants/f-35/settings.json"]) == {"compass_sector_count": 4}
+        module.lambda_handler(_tenant_put(collection, body), None)
+    return json.loads(stored[f"tenants/f-35/{collection}.json"])
+
+
+def test_tenant_put_persists_a_settings_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT to the settings resource is stored verbatim, where it was a 404 before."""
+    settings = {"compass_sector_count": 4}
+    assert _stored_put(monkeypatch, "settings", settings) == settings
+
+
+def test_tenant_put_persists_the_forced_homes_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PUT to the forced-homes resource is stored verbatim, where it was a 404 before.
+
+    The access tier's forced links are their own resource, so the endpoint has to accept
+    one before anything writes it -- the config path they arrive on is empty today.
+    """
+    homes = [{"source": "Luke, AZ", "target": "Nellis, NV"}]
+    assert _stored_put(monkeypatch, "forced-homes", homes) == homes
 
 
 def test_tenant_rejects_a_malformed_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
