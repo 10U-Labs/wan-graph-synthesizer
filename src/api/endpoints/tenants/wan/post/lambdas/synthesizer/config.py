@@ -263,6 +263,7 @@ def _params(
         min_backbone_count=design.get("min_backbone_count", base.min_backbone_count),
         max_backbone_count=design.get("max_backbone_count", base.max_backbone_count),
         forced_backbone_names=_str_list(design, "forced_backbone", []),
+        degree_exempt_backbone_names=_str_list(design, "degree_exempt_backbone", []),
         exclusions=RoleExclusions(
             prohibited_backbone_names=_str_list(design, "prohibited_backbone", []),
         ),

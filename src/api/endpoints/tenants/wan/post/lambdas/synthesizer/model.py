@@ -135,11 +135,18 @@ class DesignParams:
     the backbone and the design is redrawn; when ``False`` the pass is skipped and such a
     hub stays a transit node. It is required (no default) at the config layer; the field
     default here is a construction fallback only.
+
+    ``degree_exempt_backbone_names`` are PoPs the mesh degree is not asked of. A spur an
+    operator pinned in for reach can never make the target however the mesh is drawn, so
+    the mesh stops filling its slots and validation stops reporting the shortfall. Every
+    other node is held to the degree exactly as before, and an exempt node is still a
+    peer any of them may link to.
     """
 
     min_backbone_count: int = 3  # minimum backbone nodes; the search adds more only if needed
     max_backbone_count: int | None = None  # ceiling on backbone nodes; None leaves it uncapped
     forced_backbone_names: tuple[str, ...] = ()  # PoPs pinned as backbone by the operator
+    degree_exempt_backbone_names: tuple[str, ...] = ()  # PoPs held to no mesh degree
     exclusions: RoleExclusions = field(default_factory=RoleExclusions)  # role bars
     # cities a provider has a cage in; None lifts the gate (free-for-all)
     datacenter_cities: frozenset[tuple[str, str]] | None = frozenset()

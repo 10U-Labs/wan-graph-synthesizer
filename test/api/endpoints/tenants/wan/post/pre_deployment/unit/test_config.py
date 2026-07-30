@@ -135,6 +135,24 @@ def test_reads_forced_backbone() -> None:
     ).params.forced_backbone_names == ("Atlanta, GA",)
 
 
+def test_reads_degree_exempt_backbone() -> None:
+    """A degree_exempt_backbone list is read into the design params."""
+    assert _config(
+        {"design": {"degree_exempt_backbone": ["San Jose, CA"]}}
+    ).params.degree_exempt_backbone_names == ("San Jose, CA",)
+
+
+def test_default_exempts_no_backbone_node_from_the_degree() -> None:
+    """The default config holds every backbone node to the mesh degree."""
+    assert len(default_config().params.degree_exempt_backbone_names) == 0
+
+
+def test_degree_exempt_backbone_must_be_a_list() -> None:
+    """A non-list degree_exempt_backbone value is rejected."""
+    with pytest.raises(ValueError):
+        _config({"design": {"degree_exempt_backbone": "San Jose, CA"}})
+
+
 def test_default_has_no_forced_connections() -> None:
     """The default config pins no mesh pairs."""
     assert len(default_config().links.backbone) == 0
