@@ -40,7 +40,7 @@ _TENANT_YML = """\
 access:
   forced:
     connections:
-      - source: Luke, AZ
+      - source: Kirtland, NM
         target: Nellis, NV
   homing_degree: 1
 backbone:
@@ -49,7 +49,6 @@ backbone:
     connections:
       - source: Luke, AZ
         target: Nellis, NV
-        type: backbone-backbone
     nodes:
       - Luke, AZ
   mesh_degree: 2
@@ -60,7 +59,6 @@ backbone:
     connections:
       - source: Luke, AZ
         target: Edge, TX
-        type: backbone-backbone
     nodes:
       - Edge, TX
   promote_high_degree_convergences: false
@@ -473,7 +471,7 @@ def test_push_tenants_puts_the_forced_connections_resource(
     """push_tenants reads the pinned links from the backbone block's forced pair."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/forced-connections"] == [
-        {"source": "Luke, AZ", "target": "Nellis, NV", "type": "backbone-backbone"}]
+        {"source": "Luke, AZ", "target": "Nellis, NV"}]
 
 
 def test_push_tenants_puts_the_forced_homes_resource(
@@ -487,7 +485,7 @@ def test_push_tenants_puts_the_forced_homes_resource(
     """
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/forced-homes"] == [
-        {"source": "Luke, AZ", "target": "Nellis, NV"}]
+        {"source": "Kirtland, NM", "target": "Nellis, NV"}]
 
 
 def test_push_tenants_puts_the_prohibited_backbone_nodes_resource(
@@ -504,7 +502,7 @@ def test_push_tenants_puts_the_prohibited_connections_resource(
     """push_tenants reads the pruned links from the backbone block's prohibited pair."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/prohibited-connections"] == [
-        {"source": "Luke, AZ", "target": "Edge, TX", "type": "backbone-backbone"}]
+        {"source": "Luke, AZ", "target": "Edge, TX"}]
 
 
 def test_push_tenants_puts_the_backbone_placement_resource(

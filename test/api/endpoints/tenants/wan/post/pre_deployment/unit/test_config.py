@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from synthesizer.config import AppConfig, app_config_from_parts, config_from_data
-from synthesizer.model import ForcedConnection
+from synthesizer.model import ForcedConnection, OperatorLinks
 
 
 # The two redundancy degrees and the coverage target are required (no default); inject
@@ -136,15 +136,15 @@ def test_reads_forced_backbone() -> None:
 
 
 def test_default_has_no_forced_connections() -> None:
-    """The default config pins no connections."""
-    assert len(default_config().forced_connections) == 0
+    """The default config pins no mesh pairs."""
+    assert len(default_config().links.backbone) == 0
 
 
 def test_reads_forced_connections() -> None:
-    """A forced_connections list is parsed into ForcedConnection entries."""
-    connection = {"source": "Dallas, TX", "target": "Denver, CO", "type": "backbone-backbone"}
-    assert _config({"design": {"forced_connections": [connection]}}).forced_connections == (
-        ForcedConnection("backbone-backbone", "Dallas, TX", "Denver, CO"),
+    """A forced_connections list is parsed into the backbone list of written links."""
+    connection = {"source": "Dallas, TX", "target": "Denver, CO"}
+    assert _config({"design": {"forced_connections": [connection]}}).links.backbone == (
+        ForcedConnection("Dallas, TX", "Denver, CO"),
     )
 
 
@@ -160,36 +160,67 @@ def test_forced_connection_must_be_a_mapping() -> None:
         _config({"design": {"forced_connections": ["Dallas, TX"]}})
 
 
-def test_forced_connection_requires_a_type() -> None:
-    """A forced_connections entry missing its required type is rejected."""
+def test_forced_connection_requires_a_source_and_target() -> None:
+    """A forced_connections entry missing an endpoint is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"forced_connections": [{"source": "A", "target": "B"}]}})
+        _config({"design": {"forced_connections": [{"source": "A"}]}})
 
 
-def test_forced_connection_rejects_unknown_type() -> None:
-    """A forced_connections entry with an unsupported type is rejected."""
-    with pytest.raises(ValueError):
-        _config({"design": {"forced_connections": [{"source": "A", "target": "B", "type": "x"}]}})
+def test_forced_connection_ignores_a_leftover_type() -> None:
+    """A `type` still present on a stored entry is read past rather than refused.
 
-
-def test_default_has_no_excluded_connections() -> None:
-    """The default config prunes no backbone-backbone mesh links."""
-    assert len(default_config().excluded_connections) == 0
-
-
-def test_reads_excluded_connections() -> None:
-    """An excluded_connections entry defaults to a pruned backbone-backbone pair."""
-    design = {"excluded_connections": [{"source": "Seattle, WA", "target": "Boise, ID"}]}
-    assert _config({"design": design}).excluded_connections == (
-        ForcedConnection("backbone-backbone", "Seattle, WA", "Boise, ID"),
+    Tolerating it is what makes the split deployable. The stored documents and the Lambda
+    that reads them are updated by two independent workflows, so between the new Lambda
+    deploying and the next seed run the store still holds entries a previous run wrote
+    with a `type`. Refusing the key -- as the settings resource refuses one it does not
+    define -- would fail every WAN build in that window.
+    """
+    connection = {"source": "A", "target": "B", "type": "access-backbone"}
+    assert _config({"design": {"forced_connections": [connection]}}).links.backbone == (
+        ForcedConnection("A", "B"),
     )
 
 
-def test_excluded_connection_rejects_a_non_backbone_type() -> None:
-    """An excluded_connections entry of a non-backbone-backbone type is rejected."""
-    bad = {"source": "A", "target": "B", "type": "access-backbone"}
+def test_default_has_no_forced_homes() -> None:
+    """The default config pins no homes."""
+    assert len(default_config().links.access) == 0
+
+
+def test_reads_forced_homes() -> None:
+    """A forced_homes list is parsed into the access list of written links.
+
+    No tenant writes one today, so this is the only thing holding the path up: an access
+    site pinned onto a named backbone node has to parse before it can reach the design.
+    """
+    home = {"source": "Kirtland, NM", "target": "Denver, CO"}
+    assert _config({"design": {"forced_homes": [home]}}).links.access == (
+        ForcedConnection("Kirtland, NM", "Denver, CO"),
+    )
+
+
+def test_forced_homes_must_be_a_list() -> None:
+    """A non-list forced_homes value is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"excluded_connections": [bad]}})
+        _config({"design": {"forced_homes": {"source": "A"}}})
+
+
+def test_a_forced_home_is_not_read_as_a_mesh_pair() -> None:
+    """A forced_homes entry never lands among the pinned mesh pairs."""
+    home = {"source": "Kirtland, NM", "target": "Denver, CO"}
+    assert _config({"design": {"forced_homes": [home]}}).links.backbone == ()
+
+
+def test_default_has_no_excluded_connections() -> None:
+    """The default config prunes no mesh pairs."""
+    assert len(default_config().links.removed_backbone) == 0
+
+
+def test_reads_excluded_connections() -> None:
+    """An excluded_connections entry is parsed into the pruned list of written links."""
+    design = {"excluded_connections": [{"source": "Seattle, WA", "target": "Boise, ID"}]}
+    assert _config({"design": design}).links.removed_backbone == (
+        ForcedConnection("Seattle, WA", "Boise, ID"),
+    )
 
 
 def test_default_has_no_prohibited_backbone() -> None:
@@ -436,6 +467,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
     parts: dict[str, Any] = {
         "forced-backbone-nodes": [],
         "forced-connections": [],
+        "forced-homes": [],
         "prohibited-backbone-nodes": [],
         "prohibited-connections": [],
         "backbone-node-count": {"min": 3, "max": 5},
@@ -582,15 +614,21 @@ def test_app_config_from_parts_requires_convergence_promotion() -> None:
 
 
 def test_app_config_from_parts_parses_connections() -> None:
-    """Forced and prohibited connection documents are parsed into the config."""
+    """The three link documents are parsed into the three lists of written links.
+
+    Each stored document lands in its own list and only its own, which is the whole point
+    of the split: the tier is the document a link was written in, and `forced-homes` is
+    carried here end to end even though no tenant populates it.
+    """
     parts = _parts(
         **{
-            "forced-connections": [{"source": "A", "target": "B", "type": "backbone-backbone"}],
+            "forced-connections": [{"source": "A", "target": "B"}],
+            "forced-homes": [{"source": "S", "target": "B"}],
             "prohibited-connections": [{"source": "C", "target": "D"}],
         }
     )
-    config = app_config_from_parts(parts)
-    assert (config.forced_connections, config.excluded_connections) == (
-        (ForcedConnection("backbone-backbone", "A", "B"),),
-        (ForcedConnection("backbone-backbone", "C", "D"),),
+    assert app_config_from_parts(parts).links == OperatorLinks(
+        backbone=(ForcedConnection("A", "B"),),
+        access=(ForcedConnection("S", "B"),),
+        removed_backbone=(ForcedConnection("C", "D"),),
     )

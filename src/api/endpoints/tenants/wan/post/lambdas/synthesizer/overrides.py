@@ -17,6 +17,7 @@ from synthesizer.model import (
     DesignParams,
     ForcedConnection,
     ForcedLinks,
+    OperatorLinks,
     RoleOverrides,
     is_carrier_pop,
 )
@@ -122,6 +123,25 @@ def _backbone_backbone_pair(
     return edge_key(left, right)
 
 
+def _forced_home_pair(
+    connection: ForcedConnection,
+    access_name_to_id: dict[str, str],
+    name_to_id: dict[str, str],
+    forced_backbone: set[str],
+) -> tuple[str, str]:
+    """Resolve a forced home to an ordered ``(access id, backbone id)`` pair.
+
+    The source must be a demand vertex -- something that is not a carrier PoP -- and the
+    target a PoP the operator also forced onto the backbone, since a home can only lead to
+    a node the design is guaranteed to seat. The pair is ordered because its two ends are
+    not interchangeable, unlike a mesh pair's ``edge_key``.
+    """
+    if connection.source not in access_name_to_id:
+        raise ValueError(f"forced-home access node not found: {connection.source}")
+    backbone = _forced_backbone_endpoint(connection.target, name_to_id, forced_backbone)
+    return access_name_to_id[connection.source], backbone
+
+
 def _excluded_backbone_endpoint(name: str, name_to_id: dict[str, str]) -> str:
     """Resolve an excluded backbone-backbone endpoint, requiring only a carrier PoP."""
     if name not in name_to_id:
@@ -154,41 +174,33 @@ def _removed_backbone_links(
 
 
 def resolve_forced_links(
-    connections: tuple[ForcedConnection, ...],
+    links: OperatorLinks,
     vertices: list[Vertex],
     forced_backbone: set[str],
-    excluded_connections: tuple[ForcedConnection, ...] = (),
 ) -> ForcedLinks:
-    """Resolve operator forced/pruned connections to id-typed link sets, validating tiers.
+    """Resolve the operator's written links to id-typed link sets, validating each tier.
 
-    Returns a :class:`ForcedLinks` of the backbone-backbone and access-backbone links,
-    plus the ``removed_backbone`` pairs the operator pruned from the mesh. Each forced
-    endpoint must already be seated in the tier its edge type requires, or a
-    ``ValueError`` names the offending connection; a pruned ``removed_backbone``
-    endpoint need only be a carrier PoP.
+    Returns the :class:`ForcedLinks` twin of ``links``, field for field. Nothing here has
+    to work out which tier an entry belongs to: the three lists arrive already separated,
+    so each is simply resolved by the rule its own tier has. A forced endpoint must
+    already be seated in the tier that rule requires, or a ``ValueError`` names the
+    offending connection; a pruned ``removed_backbone`` endpoint need only be a carrier
+    PoP.
     """
     name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
     access_name_to_id = {
         vertex.name: vertex.id for vertex in vertices if not is_carrier_pop(vertex)
     }
-    backbone_links: set[tuple[str, str]] = set()
-    access_links: set[tuple[str, str]] = set()
-    for connection in connections:
-        if connection.edge_type == "backbone-backbone":
-            backbone_links.add(
-                _backbone_backbone_pair(connection, name_to_id, forced_backbone)
-            )
-        else:  # access-backbone
-            if connection.source not in access_name_to_id:
-                raise ValueError(f"forced-connection access node not found: {connection.source}")
-            backbone = _forced_backbone_endpoint(
-                connection.target, name_to_id, forced_backbone
-            )
-            access_links.add((access_name_to_id[connection.source], backbone))
     return ForcedLinks(
-        backbone=frozenset(backbone_links),
-        access=frozenset(access_links),
-        removed_backbone=_removed_backbone_links(excluded_connections, name_to_id),
+        backbone=frozenset(
+            _backbone_backbone_pair(connection, name_to_id, forced_backbone)
+            for connection in links.backbone
+        ),
+        access=frozenset(
+            _forced_home_pair(connection, access_name_to_id, name_to_id, forced_backbone)
+            for connection in links.access
+        ),
+        removed_backbone=_removed_backbone_links(links.removed_backbone, name_to_id),
     )
 
 
@@ -196,14 +208,13 @@ def apply_role_overrides(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     params: DesignParams,
-    forced_connections: tuple[ForcedConnection, ...] = (),
-    excluded_connections: tuple[ForcedConnection, ...] = (),
+    links: OperatorLinks = OperatorLinks(),
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
     """Resolve operator pins into the search's role overrides.
 
-    Operator forced backbone nodes stay required; ``forced_connections`` are resolved
-    to id-typed link sets against the seated backbone, and ``excluded_connections`` to
-    the backbone-backbone pairs pruned from the mesh.
+    Operator forced backbone nodes stay required; ``links`` are resolved to id-typed link
+    sets against the seated backbone -- mesh pairs pinned in, homes pinned onto a named
+    node, and mesh pairs pruned out.
     ``params.exclusions.prohibited_backbone_names`` are barred from the backbone tier
     and land in ``RoleOverrides.prohibited_backbone_ids``. Forced backbone pins are
     gated by ``params.datacenter_cities``: a pin at a city no colocation provider
@@ -214,8 +225,6 @@ def apply_role_overrides(
     overrides = RoleOverrides(
         forced_backbone_ids=frozenset(forced_backbone),
         prohibited_backbone_ids=frozenset(prohibited_backbone),
-        forced_links=resolve_forced_links(
-            forced_connections, vertices, forced_backbone, excluded_connections
-        ),
+        forced_links=resolve_forced_links(links, vertices, forced_backbone),
     )
     return vertices, physical_edges, overrides

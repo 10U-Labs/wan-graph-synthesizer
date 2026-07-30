@@ -1,7 +1,9 @@
 """Unit tests for operator-forced connections: resolution and routing wiring.
 
 These pin the mechanism -- names resolve to id-typed links against the seated tiers,
-and the synthesizer honors them -- rather than any particular city pin.
+and the synthesizer honors them -- rather than any particular city pin. Which tier a
+written link acts on is the list it sits in, so each case names the list rather than a
+type on the entry.
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from synthesizer.forced import (
     removed_backbone_pairs,
 )
 from synthesizer.overrides import resolve_forced_links
-from synthesizer.model import ForcedConnection, ForcedLinks
+from synthesizer.model import ForcedConnection, ForcedLinks, OperatorLinks
 from synthesizer.input_graph import edge_key
 
 pop = fixtures.carrier_pop
@@ -26,42 +28,42 @@ VERTICES = [pop("P0"), pop("P1"), access("A1")]
 
 
 def test_backbone_link_resolves_to_an_edge_key() -> None:
-    """A backbone-backbone connection between two forced nodes resolves to their edge key."""
+    """A pinned mesh pair between two forced nodes resolves to their edge key."""
     links = resolve_forced_links(
-        (ForcedConnection("backbone-backbone", "P0", "P1"),), VERTICES, {"P0", "P1"}, ()
+        OperatorLinks(backbone=(ForcedConnection("P0", "P1"),)), VERTICES, {"P0", "P1"}
     )
     assert links.backbone == frozenset({edge_key("P0", "P1")})
 
 
-def test_access_backbone_link_resolves_to_a_pair() -> None:
-    """An access-backbone connection resolves to an (access, backbone) id pair."""
+def test_forced_home_resolves_to_an_ordered_pair() -> None:
+    """A forced home resolves to an (access, backbone) id pair, in that order."""
     links = resolve_forced_links(
-        (ForcedConnection("access-backbone", "A1", "P1"),), VERTICES, {"P1"}, ()
+        OperatorLinks(access=(ForcedConnection("A1", "P1"),)), VERTICES, {"P1"}
     )
     assert links.access == frozenset({("A1", "P1")})
 
 
 def test_excluded_backbone_resolves_to_a_removed_pair() -> None:
-    """An excluded backbone-backbone connection resolves to a pruned mesh pair."""
+    """A pruned mesh pair resolves to a removed edge key."""
     links = resolve_forced_links(
-        (), VERTICES, {"P0", "P1"}, (ForcedConnection("backbone-backbone", "P0", "P1"),)
+        OperatorLinks(removed_backbone=(ForcedConnection("P0", "P1"),)), VERTICES, {"P0", "P1"}
     )
     assert links.removed_backbone == frozenset({edge_key("P0", "P1")})
 
 
 def test_excluded_backbone_endpoint_need_not_be_forced() -> None:
-    """An excluded backbone-backbone pair resolves even when neither endpoint is forced."""
+    """A pruned mesh pair resolves even when neither endpoint is forced."""
     links = resolve_forced_links(
-        (), VERTICES, set(), (ForcedConnection("backbone-backbone", "P0", "P1"),)
+        OperatorLinks(removed_backbone=(ForcedConnection("P0", "P1"),)), VERTICES, set()
     )
     assert links.removed_backbone == frozenset({edge_key("P0", "P1")})
 
 
 def test_excluded_backbone_unknown_endpoint_is_rejected() -> None:
-    """An excluded backbone-backbone endpoint absent from the Carrier graph is rejected."""
+    """A pruned mesh endpoint absent from the Carrier graph is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            (), VERTICES, set(), (ForcedConnection("backbone-backbone", "Nowhere", "P1"),)
+            OperatorLinks(removed_backbone=(ForcedConnection("Nowhere", "P1"),)), VERTICES, set()
         )
 
 
@@ -78,35 +80,47 @@ def test_forced_backbone_pairs_keeps_only_in_set_pairs() -> None:
 
 
 def test_unknown_backbone_endpoint_is_rejected() -> None:
-    """A backbone endpoint absent from the Carrier graph is rejected."""
+    """A pinned mesh endpoint absent from the Carrier graph is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            (ForcedConnection("backbone-backbone", "Nowhere", "P1"),), VERTICES, {"P1"}, ()
+            OperatorLinks(backbone=(ForcedConnection("Nowhere", "P1"),)), VERTICES, {"P1"}
         )
 
 
 def test_backbone_endpoint_not_forced_is_rejected() -> None:
-    """A backbone-backbone endpoint that is not a forced backbone node is rejected."""
+    """A pinned mesh endpoint that is not a forced backbone node is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            (ForcedConnection("backbone-backbone", "P0", "P1"),), VERTICES, {"P0"}, ()
+            OperatorLinks(backbone=(ForcedConnection("P0", "P1"),)), VERTICES, {"P0"}
         )
 
 
-def test_access_backbone_backbone_endpoint_not_forced_is_rejected() -> None:
-    """An access-backbone target that is not a forced backbone node is rejected."""
+def test_forced_home_target_not_forced_is_rejected() -> None:
+    """A forced home's target that is not a forced backbone node is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            (ForcedConnection("access-backbone", "A1", "P1"),), VERTICES, set(), ()
+            OperatorLinks(access=(ForcedConnection("A1", "P1"),)), VERTICES, set()
         )
 
 
-def test_unknown_access_endpoint_is_rejected() -> None:
-    """An access-backbone source that is not a demand vertex is rejected."""
+def test_forced_home_source_that_is_not_demand_is_rejected() -> None:
+    """A forced home's source that is not a demand vertex is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            (ForcedConnection("access-backbone", "Nope", "P1"),), VERTICES, {"P1"}, ()
+            OperatorLinks(access=(ForcedConnection("Nope", "P1"),)), VERTICES, {"P1"}
         )
+
+
+def test_a_mesh_pair_is_not_read_as_a_home() -> None:
+    """A pair written in the backbone list never lands among the homes.
+
+    The tier comes from the list alone now, so nothing on the entry could redirect it --
+    this is the check that the two lists stay apart rather than both feeding one set.
+    """
+    links = resolve_forced_links(
+        OperatorLinks(backbone=(ForcedConnection("P0", "P1"),)), VERTICES, {"P0", "P1"}
+    )
+    assert links.access == frozenset()
 
 
 def test_no_forced_link_returns_homes_unchanged() -> None:

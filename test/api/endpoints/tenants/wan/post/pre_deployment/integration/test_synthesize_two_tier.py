@@ -18,6 +18,7 @@ from synthesizer.model import (
     DesignArtifacts,
     DesignParams,
     ForcedConnection,
+    OperatorLinks,
     Tuning,
     is_carrier_pop,
 )
@@ -45,10 +46,27 @@ _MESHED_RING = DesignParams(
     datacenter_cities=fixtures.ring_datacenter_cities(),
     tuning=Tuning(backbone_mesh_degree=2),
 )
-FORCED_BACKBONE_LINK = fixtures.forced_connection_artifacts(
-    _MESHED_RING, (ForcedConnection("backbone-backbone", "P0", "P3"),)
+FORCED_BACKBONE_LINK = fixtures.forced_link_artifacts(
+    _MESHED_RING, OperatorLinks(backbone=(ForcedConnection("P0", "P3"),))
 )
-UNFORCED_RING = fixtures.forced_connection_artifacts(_MESHED_RING, ())
+UNFORCED_RING = fixtures.forced_link_artifacts(_MESHED_RING, OperatorLinks())
+
+# The same ring plus one demand vertex sitting on P0, so P0 is its nearest node and the
+# opposite P3 is its farthest. With two homes per site, distance alone never reaches P3,
+# so a home there can only be the operator's pin -- carried from the `forced-homes` list
+# through `apply_role_overrides` and into the design's access edges.
+_DEMAND_RING = fixtures.ring_inputs_with_demand("S1", "P0")
+FORCED_HOME = fixtures.forced_link_artifacts(
+    _MESHED_RING, OperatorLinks(access=(ForcedConnection("S1", "P3"),)), _DEMAND_RING
+)
+UNFORCED_HOME = fixtures.forced_link_artifacts(_MESHED_RING, OperatorLinks(), _DEMAND_RING)
+
+
+def _homes_of(artifacts: DesignArtifacts, access_id: str) -> set[str]:
+    """The backbone nodes a demand vertex homes to in a finished design."""
+    return {
+        edge.target for edge in artifacts.design.access_edges if edge.source == access_id
+    }
 
 
 def test_the_opposite_pair_is_never_meshed_on_its_own() -> None:
@@ -59,6 +77,16 @@ def test_the_opposite_pair_is_never_meshed_on_its_own() -> None:
 def test_forced_backbone_connection_appears_in_the_mesh() -> None:
     """A forced backbone-backbone connection is present in the routed backbone mesh."""
     assert edge_key("P0", "P3") in backbone_mesh_pairs(FORCED_BACKBONE_LINK.design)
+
+
+def test_the_opposite_backbone_is_never_a_home_on_its_own() -> None:
+    """Without the pin the farthest node is no home, so the forced case cannot pass by luck."""
+    assert "P3" not in _homes_of(UNFORCED_HOME, "S1")
+
+
+def test_a_forced_home_is_honored_in_the_finished_design() -> None:
+    """A forced home reaches the design's access edges, over the PoP the site sits on."""
+    assert "P3" in _homes_of(FORCED_HOME, "S1")
 
 
 def test_forced_pop_is_placed_in_the_backbone() -> None:
@@ -118,7 +146,7 @@ def test_the_ring_cannot_meet_a_degree_its_fiber_cannot_carry() -> None:
     """
     params = replace(_MESHED_RING, tuning=Tuning(backbone_mesh_degree=3))
     with pytest.raises(ValueError, match="independently failing backbone mesh links at"):
-        fixtures.forced_connection_artifacts(params, ())
+        fixtures.forced_link_artifacts(params, OperatorLinks())
 
 
 def _forced_off_net_artifacts() -> DesignArtifacts:

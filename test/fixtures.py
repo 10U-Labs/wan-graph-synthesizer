@@ -24,7 +24,7 @@ from synthesizer.model import (
     DesignArtifacts,
     DesignMetrics,
     DesignParams,
-    ForcedConnection,
+    OperatorLinks,
     PathUse,
     RoleExclusions,
     SourceFiles,
@@ -205,13 +205,11 @@ def run_design(
 
     Mirrors the steps the Fargate entrypoint runs inline (dual-home -> overrides ->
     synthesize -> finalize); kept in test support because no shipped code drives a
-    design from raw objects. Operator pins arrive through ``params``; the standalone
-    forced-connection path is exercised separately via :func:`forced_connection_artifacts`.
+    design from raw objects. Operator pins arrive through ``params``; the written-link
+    path is exercised separately via :func:`forced_link_artifacts`.
     """
     vertices, physical_edges = dual_home(vertices, physical_edges, params, off_net_sites or [])
-    vertices, physical_edges, overrides = apply_role_overrides(
-        vertices, physical_edges, params, (), ()
-    )
+    vertices, physical_edges, overrides = apply_role_overrides(vertices, physical_edges, params)
     design = synthesize_two_tier_design(vertices, physical_edges, params, overrides)
     vertices, physical_edges, design, validation = finalize(
         vertices, physical_edges, design, params
@@ -239,7 +237,7 @@ def ring_inputs_with_roadm(roadm_id: str) -> RingInputs:
 def _forced_artifacts(
     params: DesignParams,
     inputs: RingInputs | None = None,
-    forced_connections: tuple[ForcedConnection, ...] = (),
+    links: OperatorLinks = OperatorLinks(),
 ) -> DesignArtifacts:
     """Run the ring synthesizer with operator pins resolved through the CLI's path.
 
@@ -249,9 +247,7 @@ def _forced_artifacts(
     report then answers to the degrees ``params`` configures, not to the defaults.
     """
     vertices, edges = inputs if inputs is not None else _ring_inputs()
-    vertices, edges, overrides = apply_role_overrides(
-        vertices, edges, params, forced_connections, ()
-    )
+    vertices, edges, overrides = apply_role_overrides(vertices, edges, params, links)
     design = synthesize_two_tier_design(vertices, edges, params, overrides)
     vertices, edges, design, validation = finalize(vertices, edges, design, params)
     return DesignArtifacts(vertices, edges, design, validation)
@@ -293,11 +289,23 @@ def prohibited_backbone_artifacts(name: str) -> DesignArtifacts:
     )
 
 
-def forced_connection_artifacts(
-    params: DesignParams, forced_connections: tuple[ForcedConnection, ...]
+def ring_inputs_with_demand(access_id: str, at_pop: str) -> RingInputs:
+    """Ring inputs plus one demand vertex sitting on a named ring PoP's coordinates.
+
+    The ring carries carrier PoPs only, so a case about where demand homes has to supply
+    its own. Placing the site on top of ``at_pop`` makes that PoP its nearest node by
+    construction, which is what lets a forced home elsewhere be told apart from the
+    distance-ranked choice.
+    """
+    vertices, edges = _ring_inputs()
+    return [*vertices, access_vertex(access_id, *RING_COORDS[at_pop])], edges
+
+
+def forced_link_artifacts(
+    params: DesignParams, links: OperatorLinks, inputs: RingInputs | None = None
 ) -> DesignArtifacts:
-    """Ring artifacts for operator pins plus forced connections, resolved via overrides."""
-    return _forced_artifacts(params, forced_connections=forced_connections)
+    """Ring artifacts for operator pins plus written links, resolved via overrides."""
+    return _forced_artifacts(params, inputs, links)
 
 
 # A four-PoP square around one central PoP. Short spokes to the centre and longer ring
@@ -355,7 +363,7 @@ def convergence_hub_artifacts(
         datacenter_cities=datacenter_cities,
         promote_high_degree_convergences=promote_convergences,
     )
-    vertices, edges, overrides = apply_role_overrides(vertices, edges, params, (), ())
+    vertices, edges, overrides = apply_role_overrides(vertices, edges, params)
     design = synthesize_two_tier_design(vertices, edges, params, overrides)
     return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
 

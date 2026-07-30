@@ -19,7 +19,7 @@ from repo_utils import REPO_ROOT
 from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
 from synthesizer.input_graph import Vertex
-from synthesizer.model import DesignParams
+from synthesizer.model import DesignParams, OperatorLinks
 
 _PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/post/lambdas/synthesizer/handler.py"
 
@@ -46,8 +46,7 @@ def _stub_pipeline(
     config = SimpleNamespace(
         params=DesignParams(),
         restrict_backbone_to_datacenters=restrict,
-        forced_connections=(),
-        excluded_connections=(),
+        links=OperatorLinks(),
     )
     payload = {
         "vertices": [{"id": "P", "tier_role": "backbone"}],

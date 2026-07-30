@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 CONFIG_RESOURCES = (
     "forced-backbone-nodes",
     "forced-connections",
+    "forced-homes",
     "prohibited-backbone-nodes",
     "prohibited-connections",
     "backbone-node-count",
@@ -111,11 +112,7 @@ def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
     )
     graph, physical_edges = dual_home(graph, physical_edges, params, off_net)
     graph, physical_edges, overrides = apply_role_overrides(
-        graph,
-        physical_edges,
-        params,
-        config.forced_connections,
-        config.excluded_connections,
+        graph, physical_edges, params, config.links
     )
     logger.info("Synthesizing two-tier design (this is the long step)")
     design = synthesize_two_tier_design(graph, physical_edges, params, overrides)

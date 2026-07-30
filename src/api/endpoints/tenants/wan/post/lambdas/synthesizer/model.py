@@ -89,20 +89,16 @@ class Tuning:
     # how much memory the backbone enumeration may spend
     search_memory_budget: SearchMemoryBudget = field(default_factory=SearchMemoryBudget)
 
-# The two edge types a forced connection may pin, named as in ``README.md``.
-FORCED_CONNECTION_TYPES = frozenset({"backbone-backbone", "access-backbone"})
-
 @dataclass(frozen=True)
 class ForcedConnection:
-    """An operator-pinned edge between two named PoPs of a given edge type.
+    """An operator-written link between two PoPs, held as the operator names them.
 
-    ``edge_type`` is one of :data:`FORCED_CONNECTION_TYPES`; ``source`` and
-    ``target`` are PoP display names (resolved to vertex ids by the overrides
-    layer, like ``forced_backbone_names``). The endpoints must already be seated in
-    the tiers the edge type requires (e.g. both backbone for ``backbone-backbone``).
+    ``source`` and ``target`` are PoP display names, resolved to vertex ids by the
+    overrides layer like ``forced_backbone_names``. The link says nothing about which
+    tier it belongs to: that comes from which list of :class:`OperatorLinks` it was
+    written in, and each list carries its own seating rule.
     """
 
-    edge_type: str
     source: str
     target: str
 
@@ -148,13 +144,33 @@ class DesignParams:
     tuning: Tuning = field(default_factory=Tuning)
 
 @dataclass(frozen=True)
+class OperatorLinks:
+    """The links an operator wrote by name, one list per tier they act on.
+
+    ``backbone`` are backbone-backbone pairs pinned into the mesh, ``access`` are demand
+    vertices pinned onto a named backbone node as one of their homes (the ``forced-homes``
+    resource), and ``removed_backbone`` are backbone-backbone pairs pruned from the mesh.
+    Which list an entry sits in is what says its tier, so no entry names its own, and the
+    three are validated by different rules: a backbone pair looks both names up among the
+    carrier PoPs and requires both to be forced backbone nodes, an access link looks its
+    source up among everything that is not a carrier PoP, and a pruned pair need only name
+    carrier PoPs. :class:`ForcedLinks` is this same information resolved -- names in, ids
+    out.
+    """
+
+    backbone: tuple[ForcedConnection, ...] = ()
+    access: tuple[ForcedConnection, ...] = ()
+    removed_backbone: tuple[ForcedConnection, ...] = ()
+
+@dataclass(frozen=True)
 class ForcedLinks:
     """Operator-forced edges (and backbone pins) resolved to vertex ids.
 
-    ``backbone`` holds each ``backbone-backbone`` link as an order-independent
-    ``edge_key`` pair; ``access`` holds each ``access-backbone`` link as
-    ``(access_id, backbone_id)``. ``removed_backbone`` holds the ``backbone-backbone``
-    pairs the operator pruned from the mesh, also as ``edge_key`` pairs.
+    The resolved form of :class:`OperatorLinks`, field for field. ``backbone`` holds each
+    backbone-backbone link as an order-independent ``edge_key`` pair; ``access`` holds each
+    forced home as ``(access_id, backbone_id)``, ordered because the two ends are not
+    interchangeable. ``removed_backbone`` holds the pairs the operator pruned from the
+    mesh, again as ``edge_key`` pairs.
     ``required_backbone`` are the operator-forced backbone ids restricted to the
     eligible set; it is empty until the search plan refines it.
     """

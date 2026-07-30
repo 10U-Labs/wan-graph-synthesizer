@@ -9,16 +9,16 @@ configuration.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from synthesizer.model import (
-    FORCED_CONNECTION_TYPES,
     DesignPaths,
     DesignParams,
     SearchMemoryBudget,
     ForcedConnection,
+    OperatorLinks,
     RoleExclusions,
     Tuning,
 )
@@ -38,14 +38,18 @@ DEFAULT_REGIONAL_EDGES = ["data/edges/dcn.csv", "data/edges/vision_net.csv"]
 
 @dataclass(frozen=True)
 class AppConfig:
-    """A fully resolved configuration: file paths, design params, pinned edges."""
+    """A fully resolved configuration: file paths, design params, pinned edges.
+
+    ``links`` carries the three lists of operator-written links -- pinned mesh pairs,
+    forced homes, and pruned mesh pairs -- each still named rather than resolved to ids,
+    since resolution needs the graph the overrides layer holds and this one does not.
+    """
 
     paths: DesignPaths
     params: DesignParams
     restrict_backbone_to_datacenters: bool  # required; the handler maps it to a gate or None
     label: str = ""
-    forced_connections: tuple[ForcedConnection, ...] = ()
-    excluded_connections: tuple[ForcedConnection, ...] = ()
+    links: OperatorLinks = field(default_factory=OperatorLinks)
 
 
 def _mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
@@ -110,17 +114,12 @@ def _required_float(data: dict[str, Any], key: str) -> float:
     return float(value)
 
 
-def _connection_list(
-    design: dict[str, Any],
-    key: str,
-    allowed_types: frozenset[str],
-    default_type: str | None,
-) -> tuple[ForcedConnection, ...]:
-    """Parse a list of operator connection mappings, rejecting bad shapes.
+def _connection_list(design: dict[str, Any], key: str) -> tuple[ForcedConnection, ...]:
+    """Parse one list of operator connection mappings, rejecting bad shapes.
 
-    Each entry maps string ``source``/``target`` plus a ``type`` in
-    ``allowed_types``. ``default_type`` fills an absent ``type`` (use ``None`` to
-    require it); an absent ``key`` defaults to an empty list (no connections).
+    Each entry maps string ``source``/``target`` and nothing else: the key it is written
+    under says which tier it acts on, so there is nothing left for the entry to declare.
+    An absent ``key`` defaults to an empty list (no connections).
     """
     value = design.get(key, [])
     if not isinstance(value, list):
@@ -128,29 +127,25 @@ def _connection_list(
     connections: list[ForcedConnection] = []
     for item in value:
         if not isinstance(item, dict) or not all(
-            isinstance(item.get(field), str) for field in ("source", "target")
+            isinstance(item.get(name), str) for name in ("source", "target")
         ):
             raise ValueError(f"each {key} entry must map source and target to strings")
-        edge_type = item.get("type", default_type)
-        if edge_type not in allowed_types:
-            raise ValueError(f"{key} type must be one of {sorted(allowed_types)}")
-        connections.append(ForcedConnection(edge_type, item["source"], item["target"]))
+        connections.append(ForcedConnection(item["source"], item["target"]))
     return tuple(connections)
 
 
-def _forced_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
-    """Parse the operator-pinned ``forced_connections`` edges (``type`` required)."""
-    return _connection_list(design, "forced_connections", FORCED_CONNECTION_TYPES, None)
+def _operator_links(design: dict[str, Any]) -> OperatorLinks:
+    """Parse the three lists of operator-written links, one per tier they act on.
 
-
-def _excluded_connections(design: dict[str, Any]) -> tuple[ForcedConnection, ...]:
-    """Parse the operator-pruned ``excluded_connections`` (``backbone-backbone`` only).
-
-    The only mesh link an operator may remove is a ``backbone-backbone`` pair, so
-    ``type`` defaults to and must be ``backbone-backbone``.
+    ``forced_connections`` pins mesh pairs, ``forced_homes`` pins a demand vertex onto a
+    named backbone node, and ``excluded_connections`` prunes mesh pairs. Each is read the
+    same way, because after the split there is nothing tier-specific left to parse -- the
+    tiers differ in how the names are resolved, which is the overrides layer's job.
     """
-    return _connection_list(
-        design, "excluded_connections", frozenset({"backbone-backbone"}), "backbone-backbone"
+    return OperatorLinks(
+        backbone=_connection_list(design, "forced_connections"),
+        access=_connection_list(design, "forced_homes"),
+        removed_backbone=_connection_list(design, "excluded_connections"),
     )
 
 
@@ -304,8 +299,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
             design, "restrict_backbone_to_data_centers"
         ),
         label=str(data.get("label", "")),
-        forced_connections=_forced_connections(design),
-        excluded_connections=_excluded_connections(design),
+        links=_operator_links(design),
     )
 
 
@@ -326,10 +320,11 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     """Assemble an :class:`AppConfig` from the per-resource tenant documents.
 
     Each operator concern is its own stored document (``forced-backbone-nodes``,
-    ``prohibited-connections``, ``backbone-mesh-degree``, ``knobs``, ...). This
-    reshapes those documents into the canonical mapping :func:`config_from_data`
-    expects and delegates to it, so all parsing and validation stays in one place. The
-    two redundancy degrees are required -- a missing one raises in :func:`_degree`.
+    ``forced-homes``, ``prohibited-connections``, ``backbone-mesh-degree``, ``knobs``,
+    ...). This reshapes those documents into the canonical mapping
+    :func:`config_from_data` expects and delegates to it, so all parsing and validation
+    stays in one place. The two redundancy degrees are required -- a missing one raises
+    in :func:`_degree`.
 
     ``knobs`` carries the operator's coverage target and ``settings`` the
     implementation dials, and the two are passed on separately: nothing merges them, so
@@ -342,6 +337,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
         "forced_backbone": parts.get("forced-backbone-nodes", []),
         "prohibited_backbone": parts.get("prohibited-backbone-nodes", []),
         "forced_connections": parts.get("forced-connections", []),
+        "forced_homes": parts.get("forced-homes", []),
         "excluded_connections": parts.get("prohibited-connections", []),
     }
     placement = _mapping(parts, "backbone-placement")

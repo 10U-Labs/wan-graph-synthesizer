@@ -9,13 +9,10 @@ backbone:
     connections:
       - source: Minot, ND
         target: Omaha, NE
-        type: backbone-backbone
       - source: Atlanta, GA
         target: Dallas, TX
-        type: backbone-backbone
       - source: Atlanta, GA
         target: Omaha, NE
-        type: backbone-backbone
     nodes:
       - Albuquerque, NM
       - Ashburn, VA
