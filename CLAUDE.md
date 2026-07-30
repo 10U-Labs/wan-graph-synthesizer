@@ -79,6 +79,13 @@ Longer:
 [seed-skip-cascade-needs-guards](docs/claude/memories/seed-skip-cascade-needs-guards.md),
 [config-only-commits-skip-the-tests](docs/claude/memories/config-only-commits-skip-the-tests.md).
 
+## Markdown
+
+Markdown is not hard-wrapped. There is no column limit on `.md` files here, and none on the bodies of GitHub issues and pull requests: write each paragraph as one line and let the reader wrap it. `markdownlint` runs with MD013 disabled and the YAML linters with `line-length: disable`, so no width is enforced anywhere. Most of the markdown already on disk was written wrapped before the restriction was lifted, so match this rule rather than the file next to you.
+
+Longer:
+[markdown-is-not-hard-wrapped](docs/claude/memories/markdown-is-not-hard-wrapped.md).
+
 ## Notes
 
 A convention learned in a session belongs in this repository: a paragraph

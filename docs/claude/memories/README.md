@@ -19,6 +19,8 @@ session tool's local memory only what is true of one machine alone.
   locally; push and read the run
 - [commit-straight-to-main](commit-straight-to-main.md) — direct commits,
   no branches and no pull requests
+- [markdown-is-not-hard-wrapped](markdown-is-not-hard-wrapped.md) — no
+  column limit on `.md` files or on issue and pull-request bodies
 
 ## Tests
 
