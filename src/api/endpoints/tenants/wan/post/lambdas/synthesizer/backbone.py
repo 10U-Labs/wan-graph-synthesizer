@@ -161,6 +161,7 @@ def select_backbone_mesh_pairs(
     removed_pairs: frozenset[tuple[str, str]] = frozenset(),
     mesh_degree: int = 3,
     forced_pairs: frozenset[tuple[str, str]] = frozenset(),
+    degree_exempt: frozenset[str] = frozenset(),
 ) -> list[tuple[str, str]]:
     """Choose which backbone pairs get a logical mesh link.
 
@@ -202,10 +203,18 @@ def select_backbone_mesh_pairs(
     peer it can and no more. Thinning one node below the target therefore costs only
     that node's missing links, never the rest of the backbone, so an operator may
     deliberately isolate a node without blanking the whole mesh.
+
+    A node in ``degree_exempt`` picks no peers of its own: the operator has said the
+    degree is not asked of it, and filling slots at a spur only spends links on a target
+    it was never going to make. It keeps whatever the operator pinned onto it, stays a
+    peer any other node may pick, and is still wired in by the resilience augmentation,
+    so exempting a node thins it rather than cutting it out of the mesh.
     """
     target = min(mesh_degree, len(backbone_ids) - 1)
     selected: set[tuple[str, str]] = set(forced_pairs)
     for node in backbone_ids:
+        if node in degree_exempt:
+            continue
         distances = all_distances[node]
         nearest = sorted(
             (distances[other], other)
@@ -385,6 +394,7 @@ class BackboneConstraints:
     removed_pairs: frozenset[tuple[str, str]] = frozenset()
     mesh_degree: int = 3
     forced_pairs: frozenset[tuple[str, str]] = frozenset()
+    degree_exempt: frozenset[str] = frozenset()  # nodes the degree is not asked of
 
 
 def backbone_mesh_paths(
@@ -398,7 +408,8 @@ def backbone_mesh_paths(
 
     The mesh wires each backbone node to its ``constraints.mesh_degree`` nearest nodes,
     plus ``constraints.forced_pairs`` and minus ``constraints.removed_pairs`` (see
-    :func:`select_backbone_mesh_pairs`). Routing is not per-link shortest path: a node's
+    :func:`select_backbone_mesh_pairs`), and asks the degree of nobody in
+    ``constraints.degree_exempt``. Routing is not per-link shortest path: a node's
     links are routed clear of one another's cities so the degree counts links that fail
     independently (see :func:`diverse_mesh_routes`).
     """
@@ -408,6 +419,7 @@ def backbone_mesh_paths(
         constraints.removed_pairs,
         constraints.mesh_degree,
         constraints.forced_pairs,
+        constraints.degree_exempt,
     )
     adjacency = build_adjacency(physical_edges)
     uses = [

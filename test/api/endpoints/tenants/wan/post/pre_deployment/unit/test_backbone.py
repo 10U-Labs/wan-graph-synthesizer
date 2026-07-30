@@ -59,10 +59,11 @@ def _backbone(
     removed: frozenset[tuple[str, str]] = frozenset(),
     mesh_degree: int = 3,
     forced: frozenset[tuple[str, str]] = frozenset(),
+    exempt: frozenset[str] = frozenset(),
 ) -> list[tuple[str, str]]:
     """The five-node backbone wiring each node to its nearest peers."""
     return select_backbone_mesh_pairs(
-        _FIVE_NODES, _FIVE_NODE_DISTANCES, removed, mesh_degree, forced
+        _FIVE_NODES, _FIVE_NODE_DISTANCES, removed, mesh_degree, forced, exempt
     )
 
 
@@ -128,6 +129,33 @@ def test_a_forced_link_counts_towards_the_mesh_degree() -> None:
 def test_a_forced_link_displaces_the_farthest_pick() -> None:
     """c5 spends a slot on the forced c1, so it drops c4, the farthest it would have picked."""
     assert edge_key("c4", "c5") not in _backbone(forced=_FORCED)
+
+
+# c5 is the farthest node from everything, so at a degree of three nobody picks it and
+# its own three picks are the whole of its wiring: exempting it shows the exemption at
+# work with nothing else moving.
+_EXEMPT = frozenset({"c5"})
+
+
+def test_an_exempt_node_keeps_only_what_resilience_gives_it() -> None:
+    """The exempt node stops picking peers, keeping the two links the augmentation adds."""
+    assert _node_degrees(_backbone(exempt=_EXEMPT))["c5"] == 2
+
+
+def test_exempting_one_node_leaves_the_others_at_their_degree() -> None:
+    """Exempting c5 costs c5 its picks and nobody else theirs."""
+    degrees = _node_degrees(_backbone(exempt=_EXEMPT))
+    assert min(degree for node, degree in degrees.items() if node != "c5") == 3
+
+
+def test_an_exempt_node_is_still_a_peer_others_may_pick() -> None:
+    """At a degree of four every other node picks c5, and its exemption does not refuse."""
+    assert _node_degrees(_backbone(mesh_degree=4, exempt=_EXEMPT))["c5"] == 4
+
+
+def test_an_exempt_node_keeps_its_pinned_link() -> None:
+    """An operator's pin onto an exempt node is wired: the exemption drops picks, not pins."""
+    assert edge_key("c1", "c5") in _backbone(forced=_FORCED, exempt=_EXEMPT)
 
 
 # Removing three of c1's four peers leaves it only c5, one link below the target of
