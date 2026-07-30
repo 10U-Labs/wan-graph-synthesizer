@@ -1,9 +1,4 @@
 ---
-# Minuteman WAN design: demand is the ICBM/strategic access nodes (Minot,
-# Malmstrom, F.E. Warren, Hill, Vandenberg), modeled after the DAF tenant.
-# Two blocks describe the design -- the meshed `backbone` and the `access` that
-# homes into it. Keys are kept alphabetical within each block, nested ones
-# included, to satisfy yamllint key-ordering.
 access:
   homing_degree: 2
 backbone:
@@ -29,7 +24,7 @@ backbone:
 inputs:
   locations:
     Minuteman: data/vertices/tenants/minuteman.csv
-  off_net: data/vertices/utilities/off_net.csv
+  off_net: data/vertices/forced/inexistent.csv
   providers:
     regions: data/vertices/providers/providers.csv
 label: Minuteman
