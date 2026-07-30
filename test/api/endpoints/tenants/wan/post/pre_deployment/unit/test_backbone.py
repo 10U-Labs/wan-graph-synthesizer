@@ -290,8 +290,8 @@ def test_a_ceiling_above_what_the_fiber_supports_changes_nothing() -> None:
 
 
 def test_a_node_below_its_ceiling_still_backfills_to_the_tenant_floor() -> None:
-    """d reaches only a and e diversely, and still spends its third slot on h."""
-    assert edge_key("d", "h") in _transit_mesh(ceilings={"d": 2})
+    """d reaches only a and e diversely, and still spends its third slot on b."""
+    assert edge_key("d", "b") in _transit_mesh(ceilings={"d": 2})
 
 
 _UNIT_MESH_EDGES = physical({
