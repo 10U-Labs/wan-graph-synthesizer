@@ -173,6 +173,20 @@ def test_independence_deficient_names_the_node_below_the_degree() -> None:
     ]
 
 
+def test_independence_deficient_leaves_out_an_exempt_node() -> None:
+    """The chokepoint node the degree is not asked of is no longer reported."""
+    assert backbone_mesh_independence_deficient(
+        _SHARED_EGRESS, _MESH_VERTICES, 2, frozenset({"a"})
+    ) == []
+
+
+def test_independence_deficient_still_names_a_node_that_is_not_exempt() -> None:
+    """Exempting another node leaves the chokepoint node reported as it was."""
+    assert backbone_mesh_independence_deficient(
+        _SHARED_EGRESS, _MESH_VERTICES, 2, frozenset({"b"})
+    ) == [{"id": "a", "name": "a", "independent_degree": 1}]
+
+
 def test_independence_deficient_passes_a_diversely_routed_mesh() -> None:
     """A mesh whose every node holds the configured independent links reports nothing."""
     assert backbone_mesh_independence_deficient(_DIVERSE_EGRESS, _MESH_VERTICES, 2) == []

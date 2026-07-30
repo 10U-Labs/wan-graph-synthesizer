@@ -172,6 +172,7 @@ def backbone_mesh_independence_deficient(
     design: Design,
     vertices_by_id: dict[str, Vertex],
     mesh_degree: int,
+    degree_exempt: frozenset[str] = frozenset(),
 ) -> list[dict[str, object]]:
     """Backbone nodes without ``mesh_degree`` independently failing mesh links.
 
@@ -179,6 +180,11 @@ def backbone_mesh_independence_deficient(
     full nominal degree and still fall below it when one transit city goes, because two of
     its links cross that city. With ``mesh_degree`` or fewer backbone nodes the target
     cannot be met at all, so the list is empty.
+
+    A node in ``degree_exempt`` is left out here too. A spur behind a carrier chokepoint
+    is exactly the node that fails both counts, so an exemption that silenced only the
+    nominal one would leave the operator with the same report they asked to be rid of --
+    and this is the count the build refuses on.
     """
     if len(design.backbone_ids) <= mesh_degree:
         return []
@@ -191,7 +197,7 @@ def backbone_mesh_independence_deficient(
         for backbone_id, degree in sorted(
             (node, independent_mesh_degree(design, node)) for node in design.backbone_ids
         )
-        if degree < mesh_degree
+        if degree < mesh_degree and backbone_id not in degree_exempt
     ]
 
 
