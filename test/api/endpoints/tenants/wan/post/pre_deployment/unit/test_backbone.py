@@ -425,6 +425,36 @@ def test_a_link_with_no_clear_route_falls_back_to_its_shortest_path() -> None:
     assert routes[("h", "q")] == ("h", "g", "q")
 
 
+# m reaches a through c and r, and t reaches a directly, so the m-t link can clear
+# neither end at once: every route to m crosses r, and the cheap route to t crosses a.
+# Going by way of j gives up on m's cities and keeps t's two links independent.
+_ONE_SIDED_EDGES = physical({
+    ("t", "a"): 1.0, ("a", "c"): 1.0, ("c", "r"): 1.0, ("r", "m"): 1.0,
+    ("t", "j"): 1.0, ("j", "c"): 1.0,
+})
+
+
+def test_a_link_clears_one_end_when_it_cannot_clear_both() -> None:
+    """Unable to clear m's cities, the link still clears t's rather than crossing them."""
+    routes = _routes([("a", "t"), ("a", "m"), ("m", "t")], _ONE_SIDED_EDGES)
+    assert routes[("m", "t")] == ("m", "r", "c", "j", "t")
+
+
+# x reaches u only through p and y reaches v only through q, so the x-y link can clear
+# one end or the other but never both: the route through q clears x's cities, the route
+# through p clears y's, and the first is five times cheaper.
+_TWO_WAY_EDGES = physical({
+    ("x", "p"): 5.0, ("p", "u"): 1.0, ("p", "y"): 5.0,
+    ("y", "q"): 1.0, ("q", "v"): 1.0, ("q", "x"): 1.0,
+})
+
+
+def test_the_cheaper_of_two_one_sided_routes_wins() -> None:
+    """With one end clearable either way, the link takes the shorter of the two routes."""
+    routes = _routes([("u", "x"), ("v", "y"), ("x", "y")], _TWO_WAY_EDGES)
+    assert routes[("x", "y")] == ("x", "q", "y")
+
+
 def test_links_of_unrelated_nodes_do_not_constrain_each_other() -> None:
     """A city another node's link crosses is no reason to route this one around it."""
     routes = _routes([("g", "p"), ("h", "q")], _SHARED_EGRESS_EDGES)

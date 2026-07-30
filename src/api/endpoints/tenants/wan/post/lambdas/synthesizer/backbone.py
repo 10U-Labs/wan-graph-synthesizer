@@ -365,6 +365,56 @@ def _route_avoiding(
     return reconstruct_path(left, right, predecessors)
 
 
+def _route_miles(
+    route: tuple[str, ...], adjacency: dict[str, list[tuple[str, float]]]
+) -> float:
+    """The distance a route covers over the carrier graph."""
+    hops = zip(route, route[1:])
+    return sum(
+        next(weight for neighbor, weight in adjacency[city] if neighbor == nxt)
+        for city, nxt in hops
+    )
+
+
+def _clearest_route(
+    left: str,
+    right: str,
+    carried: dict[str, set[str]],
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> tuple[str, ...]:
+    """The route clearing as many of the endpoints' carried cities as the fiber allows.
+
+    Clearing both endpoints' cities is what the link is worth most, so it is tried first.
+    Where the fiber has no such route, clearing one endpoint's cities is still worth
+    having: independence is counted per node, so a route that shares a city with the far
+    end's other links costs this end nothing, and one of the two nodes keeps a link that
+    fails on its own. The cheaper of the two one-sided routes wins, and an endpoint
+    carrying nothing yet is not tried again under its own name -- its set is the whole
+    set, which has just failed.
+
+    Returns empty when the fiber offers no route clear of either end's cities. Falling
+    back to the shortest path is the caller's business, since it is the caller that knows
+    a link must be routed somehow.
+    """
+    left_cities = carried.get(left, set()) - {left, right}
+    right_cities = carried.get(right, set()) - {left, right}
+    both = left_cities | right_cities
+    if not both:
+        return ()
+    route = _route_avoiding(left, right, both, adjacency)
+    if route:
+        return route
+    one_sided = [
+        _route_avoiding(left, right, cities, adjacency)
+        for cities in (left_cities, right_cities)
+        if cities and cities != both
+    ]
+    clear = [route for route in one_sided if route]
+    if not clear:
+        return ()
+    return min(clear, key=lambda route: (_route_miles(route, adjacency), route))
+
+
 def diverse_mesh_routes(
     pairs: list[tuple[str, str]],
     all_predecessors: dict[str, dict[str, str]],
@@ -379,6 +429,11 @@ def diverse_mesh_routes(
     independence -- selection can only choose which peers a node links to, and no choice
     of peer helps when the shortest routes to all of them leave through one city.
 
+    Clearing both ends at once is not always possible, and where it is not the link still
+    clears one of them (see :func:`_clearest_route`): independence is counted per node, so
+    a route that gives up on the far end's cities still buys this end a link that fails on
+    its own. Only when neither end can be cleared is the shortest path taken.
+
     The endpoints themselves are never avoided, since a link cannot route around its own
     ends. A link with no clear route falls back to its shortest path: the fiber genuinely
     offers no alternative there, and validation is what reports the shortfall.
@@ -386,8 +441,7 @@ def diverse_mesh_routes(
     carried: dict[str, set[str]] = {}
     routes: list[tuple[str, str, tuple[str, ...]]] = []
     for left, right in pairs:
-        avoid = (carried.get(left, set()) | carried.get(right, set())) - {left, right}
-        path = _route_avoiding(left, right, avoid, adjacency) if avoid else ()
+        path = _clearest_route(left, right, carried, adjacency)
         if not path:
             path = reconstruct_path(left, right, all_predecessors[left])
         routes.append((left, right, path))
