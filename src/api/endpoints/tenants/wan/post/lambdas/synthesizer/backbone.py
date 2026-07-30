@@ -155,13 +155,20 @@ def _diverse_picks(
     return picks + passed_over[: slots - len(picks)]
 
 
+@dataclass(frozen=True)
+class BackboneConstraints:
+    """The backbone-mesh selection knobs: the operator's pins, prunes, and link count."""
+
+    removed_pairs: frozenset[tuple[str, str]] = frozenset()
+    mesh_degree: int = 3
+    forced_pairs: frozenset[tuple[str, str]] = frozenset()
+    degree_exempt: frozenset[str] = frozenset()  # nodes the degree is not asked of
+
+
 def select_backbone_mesh_pairs(
     backbone_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
-    removed_pairs: frozenset[tuple[str, str]] = frozenset(),
-    mesh_degree: int = 3,
-    forced_pairs: frozenset[tuple[str, str]] = frozenset(),
-    degree_exempt: frozenset[str] = frozenset(),
+    constraints: BackboneConstraints = BackboneConstraints(),
 ) -> list[tuple[str, str]]:
     """Choose which backbone pairs get a logical mesh link.
 
@@ -210,10 +217,12 @@ def select_backbone_mesh_pairs(
     peer any other node may pick, and is still wired in by the resilience augmentation,
     so exempting a node thins it rather than cutting it out of the mesh.
     """
-    target = min(mesh_degree, len(backbone_ids) - 1)
+    forced_pairs = constraints.forced_pairs
+    removed_pairs = constraints.removed_pairs
+    target = min(constraints.mesh_degree, len(backbone_ids) - 1)
     selected: set[tuple[str, str]] = set(forced_pairs)
     for node in backbone_ids:
-        if node in degree_exempt:
+        if node in constraints.degree_exempt:
             continue
         distances = all_distances[node]
         nearest = sorted(
@@ -387,16 +396,6 @@ def diverse_mesh_routes(
     return routes
 
 
-@dataclass(frozen=True)
-class BackboneConstraints:
-    """The backbone-mesh selection knobs: the operator's pins, prunes, and link count."""
-
-    removed_pairs: frozenset[tuple[str, str]] = frozenset()
-    mesh_degree: int = 3
-    forced_pairs: frozenset[tuple[str, str]] = frozenset()
-    degree_exempt: frozenset[str] = frozenset()  # nodes the degree is not asked of
-
-
 def backbone_mesh_paths(
     backbone_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
@@ -413,14 +412,7 @@ def backbone_mesh_paths(
     links are routed clear of one another's cities so the degree counts links that fail
     independently (see :func:`diverse_mesh_routes`).
     """
-    pairs = select_backbone_mesh_pairs(
-        backbone_ids,
-        all_distances,
-        constraints.removed_pairs,
-        constraints.mesh_degree,
-        constraints.forced_pairs,
-        constraints.degree_exempt,
-    )
+    pairs = select_backbone_mesh_pairs(backbone_ids, all_distances, constraints)
     adjacency = build_adjacency(physical_edges)
     uses = [
         PathUse("backbone_mesh", left, right, path, path_geometry_miles(path, physical_edges))

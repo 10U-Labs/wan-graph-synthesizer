@@ -63,7 +63,9 @@ def _backbone(
 ) -> list[tuple[str, str]]:
     """The five-node backbone wiring each node to its nearest peers."""
     return select_backbone_mesh_pairs(
-        _FIVE_NODES, _FIVE_NODE_DISTANCES, removed, mesh_degree, forced, exempt
+        _FIVE_NODES,
+        _FIVE_NODE_DISTANCES,
+        BackboneConstraints(removed, mesh_degree, forced, exempt),
     )
 
 
@@ -211,7 +213,7 @@ def _two_cluster_mesh(
 ) -> list[tuple[str, str]]:
     """The two-cluster backbone wired at mesh degree two."""
     return select_backbone_mesh_pairs(
-        _TWO_CLUSTER_NODES, _TWO_CLUSTER_DISTANCES, removed, mesh_degree=2
+        _TWO_CLUSTER_NODES, _TWO_CLUSTER_DISTANCES, BackboneConstraints(removed, mesh_degree=2)
     )
 
 
@@ -264,7 +266,7 @@ def _transit_mesh(
 ) -> list[tuple[str, str]]:
     """The transit backbone wired at mesh degree three."""
     return select_backbone_mesh_pairs(
-        _TRANSIT_NODES, _TRANSIT_DISTANCES, frozenset(), 3, forced
+        _TRANSIT_NODES, _TRANSIT_DISTANCES, BackboneConstraints(frozenset(), 3, forced)
     )
 
 
