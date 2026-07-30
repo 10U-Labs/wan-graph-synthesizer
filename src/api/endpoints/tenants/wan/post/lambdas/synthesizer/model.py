@@ -90,13 +90,14 @@ class Tuning:
     search_memory_budget: SearchMemoryBudget = field(default_factory=SearchMemoryBudget)
 
 @dataclass(frozen=True)
-class ForcedConnection:
-    """An operator-written link between two PoPs, held as the operator names them.
+class NamedLink:
+    """A link between two PoPs held by name rather than by id.
 
-    ``source`` and ``target`` are PoP display names, resolved to vertex ids by the
-    overrides layer like ``forced_backbone_names``. The link says nothing about which
-    tier it belongs to: that comes from which list of :class:`OperatorLinks` it was
-    written in, and each list carries its own seating rule.
+    Names are what distinguishes it: ``source`` and ``target`` are PoP display names, as
+    the operator wrote them, and the overrides layer resolves them to vertex ids the way
+    it resolves ``forced_backbone_names``. It carries the pruned links as well as the
+    forced ones, and says nothing about which tier it acts on -- that comes from which
+    list of :class:`OperatorLinks` it was written in, and each list has its own rule.
     """
 
     source: str
@@ -158,9 +159,9 @@ class OperatorLinks:
     out.
     """
 
-    backbone: tuple[ForcedConnection, ...] = ()
-    access: tuple[ForcedConnection, ...] = ()
-    removed_backbone: tuple[ForcedConnection, ...] = ()
+    backbone: tuple[NamedLink, ...] = ()
+    access: tuple[NamedLink, ...] = ()
+    removed_backbone: tuple[NamedLink, ...] = ()
 
 @dataclass(frozen=True)
 class ForcedLinks:

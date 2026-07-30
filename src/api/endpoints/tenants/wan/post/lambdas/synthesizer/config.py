@@ -17,7 +17,7 @@ from synthesizer.model import (
     DesignPaths,
     DesignParams,
     SearchMemoryBudget,
-    ForcedConnection,
+    NamedLink,
     OperatorLinks,
     RoleExclusions,
     Tuning,
@@ -114,7 +114,7 @@ def _required_float(data: dict[str, Any], key: str) -> float:
     return float(value)
 
 
-def _connection_list(design: dict[str, Any], key: str) -> tuple[ForcedConnection, ...]:
+def _connection_list(design: dict[str, Any], key: str) -> tuple[NamedLink, ...]:
     """Parse one list of operator connection mappings, rejecting bad shapes.
 
     Each entry maps string ``source``/``target`` and nothing else: the key it is written
@@ -124,13 +124,13 @@ def _connection_list(design: dict[str, Any], key: str) -> tuple[ForcedConnection
     value = design.get(key, [])
     if not isinstance(value, list):
         raise ValueError(f"config key '{key}' must be a list")
-    connections: list[ForcedConnection] = []
+    connections: list[NamedLink] = []
     for item in value:
         if not isinstance(item, dict) or not all(
             isinstance(item.get(name), str) for name in ("source", "target")
         ):
             raise ValueError(f"each {key} entry must map source and target to strings")
-        connections.append(ForcedConnection(item["source"], item["target"]))
+        connections.append(NamedLink(item["source"], item["target"]))
     return tuple(connections)
 
 

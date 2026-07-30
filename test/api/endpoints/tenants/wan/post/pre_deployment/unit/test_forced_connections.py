@@ -17,7 +17,7 @@ from synthesizer.forced import (
     removed_backbone_pairs,
 )
 from synthesizer.overrides import resolve_forced_links
-from synthesizer.model import ForcedConnection, ForcedLinks, OperatorLinks
+from synthesizer.model import ForcedLinks, NamedLink, OperatorLinks
 from synthesizer.input_graph import edge_key
 
 pop = fixtures.carrier_pop
@@ -30,7 +30,7 @@ VERTICES = [pop("P0"), pop("P1"), access("A1")]
 def test_backbone_link_resolves_to_an_edge_key() -> None:
     """A pinned mesh pair between two forced nodes resolves to their edge key."""
     links = resolve_forced_links(
-        OperatorLinks(backbone=(ForcedConnection("P0", "P1"),)), VERTICES, {"P0", "P1"}
+        OperatorLinks(backbone=(NamedLink("P0", "P1"),)), VERTICES, {"P0", "P1"}
     )
     assert links.backbone == frozenset({edge_key("P0", "P1")})
 
@@ -38,7 +38,7 @@ def test_backbone_link_resolves_to_an_edge_key() -> None:
 def test_forced_home_resolves_to_an_ordered_pair() -> None:
     """A forced home resolves to an (access, backbone) id pair, in that order."""
     links = resolve_forced_links(
-        OperatorLinks(access=(ForcedConnection("A1", "P1"),)), VERTICES, {"P1"}
+        OperatorLinks(access=(NamedLink("A1", "P1"),)), VERTICES, {"P1"}
     )
     assert links.access == frozenset({("A1", "P1")})
 
@@ -46,7 +46,7 @@ def test_forced_home_resolves_to_an_ordered_pair() -> None:
 def test_excluded_backbone_resolves_to_a_removed_pair() -> None:
     """A pruned mesh pair resolves to a removed edge key."""
     links = resolve_forced_links(
-        OperatorLinks(removed_backbone=(ForcedConnection("P0", "P1"),)), VERTICES, {"P0", "P1"}
+        OperatorLinks(removed_backbone=(NamedLink("P0", "P1"),)), VERTICES, {"P0", "P1"}
     )
     assert links.removed_backbone == frozenset({edge_key("P0", "P1")})
 
@@ -54,7 +54,7 @@ def test_excluded_backbone_resolves_to_a_removed_pair() -> None:
 def test_excluded_backbone_endpoint_need_not_be_forced() -> None:
     """A pruned mesh pair resolves even when neither endpoint is forced."""
     links = resolve_forced_links(
-        OperatorLinks(removed_backbone=(ForcedConnection("P0", "P1"),)), VERTICES, set()
+        OperatorLinks(removed_backbone=(NamedLink("P0", "P1"),)), VERTICES, set()
     )
     assert links.removed_backbone == frozenset({edge_key("P0", "P1")})
 
@@ -63,7 +63,7 @@ def test_excluded_backbone_unknown_endpoint_is_rejected() -> None:
     """A pruned mesh endpoint absent from the Carrier graph is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            OperatorLinks(removed_backbone=(ForcedConnection("Nowhere", "P1"),)), VERTICES, set()
+            OperatorLinks(removed_backbone=(NamedLink("Nowhere", "P1"),)), VERTICES, set()
         )
 
 
@@ -83,7 +83,7 @@ def test_unknown_backbone_endpoint_is_rejected() -> None:
     """A pinned mesh endpoint absent from the Carrier graph is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            OperatorLinks(backbone=(ForcedConnection("Nowhere", "P1"),)), VERTICES, {"P1"}
+            OperatorLinks(backbone=(NamedLink("Nowhere", "P1"),)), VERTICES, {"P1"}
         )
 
 
@@ -91,7 +91,7 @@ def test_backbone_endpoint_not_forced_is_rejected() -> None:
     """A pinned mesh endpoint that is not a forced backbone node is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            OperatorLinks(backbone=(ForcedConnection("P0", "P1"),)), VERTICES, {"P0"}
+            OperatorLinks(backbone=(NamedLink("P0", "P1"),)), VERTICES, {"P0"}
         )
 
 
@@ -99,7 +99,7 @@ def test_forced_home_target_not_forced_is_rejected() -> None:
     """A forced home's target that is not a forced backbone node is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            OperatorLinks(access=(ForcedConnection("A1", "P1"),)), VERTICES, set()
+            OperatorLinks(access=(NamedLink("A1", "P1"),)), VERTICES, set()
         )
 
 
@@ -107,7 +107,7 @@ def test_forced_home_source_that_is_not_demand_is_rejected() -> None:
     """A forced home's source that is not a demand vertex is rejected."""
     with pytest.raises(ValueError):
         resolve_forced_links(
-            OperatorLinks(access=(ForcedConnection("Nope", "P1"),)), VERTICES, {"P1"}
+            OperatorLinks(access=(NamedLink("Nope", "P1"),)), VERTICES, {"P1"}
         )
 
 
@@ -118,7 +118,7 @@ def test_a_mesh_pair_is_not_read_as_a_home() -> None:
     this is the check that the two lists stay apart rather than both feeding one set.
     """
     links = resolve_forced_links(
-        OperatorLinks(backbone=(ForcedConnection("P0", "P1"),)), VERTICES, {"P0", "P1"}
+        OperatorLinks(backbone=(NamedLink("P0", "P1"),)), VERTICES, {"P0", "P1"}
     )
     assert links.access == frozenset()
 

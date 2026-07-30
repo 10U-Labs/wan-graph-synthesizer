@@ -17,7 +17,7 @@ from synthesizer.input_graph import edge_key
 from synthesizer.model import (
     DesignArtifacts,
     DesignParams,
-    ForcedConnection,
+    NamedLink,
     OperatorLinks,
     Tuning,
     is_carrier_pop,
@@ -47,7 +47,7 @@ _MESHED_RING = DesignParams(
     tuning=Tuning(backbone_mesh_degree=2),
 )
 FORCED_BACKBONE_LINK = fixtures.forced_link_artifacts(
-    _MESHED_RING, OperatorLinks(backbone=(ForcedConnection("P0", "P3"),))
+    _MESHED_RING, OperatorLinks(backbone=(NamedLink("P0", "P3"),))
 )
 UNFORCED_RING = fixtures.forced_link_artifacts(_MESHED_RING, OperatorLinks())
 
@@ -57,7 +57,7 @@ UNFORCED_RING = fixtures.forced_link_artifacts(_MESHED_RING, OperatorLinks())
 # through `apply_role_overrides` and into the design's access edges.
 _DEMAND_RING = fixtures.ring_inputs_with_demand("S1", "P0")
 FORCED_HOME = fixtures.forced_link_artifacts(
-    _MESHED_RING, OperatorLinks(access=(ForcedConnection("S1", "P3"),)), _DEMAND_RING
+    _MESHED_RING, OperatorLinks(access=(NamedLink("S1", "P3"),)), _DEMAND_RING
 )
 UNFORCED_HOME = fixtures.forced_link_artifacts(_MESHED_RING, OperatorLinks(), _DEMAND_RING)
 

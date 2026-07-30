@@ -15,8 +15,8 @@ from collections.abc import Set as AbstractSet
 from synthesizer.input_graph import PhysicalEdge, Vertex, edge_key
 from synthesizer.model import (
     DesignParams,
-    ForcedConnection,
     ForcedLinks,
+    NamedLink,
     OperatorLinks,
     RoleOverrides,
     is_carrier_pop,
@@ -115,7 +115,7 @@ def _forced_backbone_endpoint(
 
 
 def _backbone_backbone_pair(
-    connection: ForcedConnection, name_to_id: dict[str, str], forced_backbone: set[str]
+    connection: NamedLink, name_to_id: dict[str, str], forced_backbone: set[str]
 ) -> tuple[str, str]:
     """Resolve a backbone-backbone connection's endpoints to a forced-backbone edge key."""
     left = _forced_backbone_endpoint(connection.source, name_to_id, forced_backbone)
@@ -124,7 +124,7 @@ def _backbone_backbone_pair(
 
 
 def _forced_home_pair(
-    connection: ForcedConnection,
+    connection: NamedLink,
     access_name_to_id: dict[str, str],
     name_to_id: dict[str, str],
     forced_backbone: set[str],
@@ -150,7 +150,7 @@ def _excluded_backbone_endpoint(name: str, name_to_id: dict[str, str]) -> str:
 
 
 def _removed_backbone_pair(
-    connection: ForcedConnection, name_to_id: dict[str, str]
+    connection: NamedLink, name_to_id: dict[str, str]
 ) -> tuple[str, str]:
     """Resolve an excluded backbone-backbone connection's endpoints to an edge key."""
     left = _excluded_backbone_endpoint(connection.source, name_to_id)
@@ -159,7 +159,7 @@ def _removed_backbone_pair(
 
 
 def _removed_backbone_links(
-    connections: tuple[ForcedConnection, ...],
+    connections: tuple[NamedLink, ...],
     name_to_id: dict[str, str],
 ) -> frozenset[tuple[str, str]]:
     """Resolve operator-pruned backbone-backbone pairs to edge keys.

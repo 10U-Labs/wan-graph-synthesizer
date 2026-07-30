@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from synthesizer.config import AppConfig, app_config_from_parts, config_from_data
-from synthesizer.model import ForcedConnection, OperatorLinks
+from synthesizer.model import NamedLink, OperatorLinks
 
 
 # The two redundancy degrees and the coverage target are required (no default); inject
@@ -144,7 +144,7 @@ def test_reads_forced_connections() -> None:
     """A forced_connections list is parsed into the backbone list of written links."""
     connection = {"source": "Dallas, TX", "target": "Denver, CO"}
     assert _config({"design": {"forced_connections": [connection]}}).links.backbone == (
-        ForcedConnection("Dallas, TX", "Denver, CO"),
+        NamedLink("Dallas, TX", "Denver, CO"),
     )
 
 
@@ -177,7 +177,7 @@ def test_forced_connection_ignores_a_leftover_type() -> None:
     """
     connection = {"source": "A", "target": "B", "type": "access-backbone"}
     assert _config({"design": {"forced_connections": [connection]}}).links.backbone == (
-        ForcedConnection("A", "B"),
+        NamedLink("A", "B"),
     )
 
 
@@ -194,7 +194,7 @@ def test_reads_forced_homes() -> None:
     """
     home = {"source": "Kirtland, NM", "target": "Denver, CO"}
     assert _config({"design": {"forced_homes": [home]}}).links.access == (
-        ForcedConnection("Kirtland, NM", "Denver, CO"),
+        NamedLink("Kirtland, NM", "Denver, CO"),
     )
 
 
@@ -219,7 +219,7 @@ def test_reads_excluded_connections() -> None:
     """An excluded_connections entry is parsed into the pruned list of written links."""
     design = {"excluded_connections": [{"source": "Seattle, WA", "target": "Boise, ID"}]}
     assert _config({"design": design}).links.removed_backbone == (
-        ForcedConnection("Seattle, WA", "Boise, ID"),
+        NamedLink("Seattle, WA", "Boise, ID"),
     )
 
 
@@ -628,7 +628,7 @@ def test_app_config_from_parts_parses_connections() -> None:
         }
     )
     assert app_config_from_parts(parts).links == OperatorLinks(
-        backbone=(ForcedConnection("A", "B"),),
-        access=(ForcedConnection("S", "B"),),
-        removed_backbone=(ForcedConnection("C", "D"),),
+        backbone=(NamedLink("A", "B"),),
+        access=(NamedLink("S", "B"),),
+        removed_backbone=(NamedLink("C", "D"),),
     )
