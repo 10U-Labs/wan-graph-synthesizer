@@ -149,6 +149,58 @@ def test_the_ring_cannot_meet_a_degree_its_fiber_cannot_carry() -> None:
         fixtures.forced_link_artifacts(params, OperatorLinks())
 
 
+# The ring with four chords, so P0 through P4 each have a third fiber direction and P5
+# keeps only its two ring neighbours. At a mesh degree of three P5 is the one node the
+# fiber cannot carry: the spur an operator exempts, with every other node meeting the
+# degree, which is what makes the exemption's effect legible here.
+_CHORDED_PAIRS = {
+    ("P0", "P1"): 100.0, ("P1", "P2"): 100.0, ("P2", "P3"): 100.0,
+    ("P3", "P4"): 100.0, ("P4", "P5"): 100.0, ("P5", "P0"): 100.0,
+    ("P0", "P2"): 100.0, ("P0", "P3"): 100.0, ("P1", "P3"): 100.0, ("P2", "P4"): 100.0,
+}
+_CHORDED_BACKBONE = ("P0", "P1", "P2", "P3", "P4", "P5")
+
+
+def _chorded_design(exempt: tuple[str, ...] = ()) -> DesignArtifacts:
+    """Synthesize the chorded ring at a mesh degree of three, exempting the named nodes."""
+    vertices = [
+        fixtures.carrier_pop(name, *fixtures.RING_COORDS[name]) for name in _CHORDED_BACKBONE
+    ]
+    params = DesignParams(
+        min_backbone_count=2,
+        forced_backbone_names=_CHORDED_BACKBONE,
+        degree_exempt_backbone_names=exempt,
+        datacenter_cities=fixtures.ring_datacenter_cities(),
+        tuning=Tuning(backbone_mesh_degree=3),
+    )
+    return run_design(vertices, fixtures.physical_edges_from(_CHORDED_PAIRS), params)
+
+
+EXEMPT_SPUR = _chorded_design(("P5",))
+
+
+def test_the_chorded_ring_is_refused_at_its_one_spur() -> None:
+    """Without the exemption the same design is refused, naming the two-direction node."""
+    with pytest.raises(ValueError, match="independently failing backbone mesh links at: P5"):
+        _chorded_design()
+
+
+def test_exempting_the_spur_lets_the_design_finalize() -> None:
+    """With P5 exempt the mesh target is met, so the design the operator wanted is built."""
+    assert EXEMPT_SPUR.validation["backbone_meets_independent_mesh_link_target"] is True
+
+
+def test_the_exempt_spur_is_named_in_the_finished_report() -> None:
+    """The published report says which node the degree was not asked of."""
+    assert EXEMPT_SPUR.validation["backbone_degree_exempt"] == [{"id": "P5", "name": "P5"}]
+
+
+def test_the_exempt_spur_is_still_meshed_into_the_backbone() -> None:
+    """Exempting P5 thins it to the two links its fiber allows rather than stranding it."""
+    pairs = backbone_mesh_pairs(EXEMPT_SPUR.design)
+    assert len([pair for pair in pairs if "P5" in pair]) == 2
+
+
 def _forced_off_net_artifacts() -> DesignArtifacts:
     """Synthesize over the ring with an off-net site forced as a backbone node."""
     site, params = fixtures.forced_off_net_case()

@@ -212,7 +212,7 @@ def run_design(
     vertices, physical_edges, overrides = apply_role_overrides(vertices, physical_edges, params)
     design = synthesize_two_tier_design(vertices, physical_edges, params, overrides)
     vertices, physical_edges, design, validation = finalize(
-        vertices, physical_edges, design, params
+        vertices, physical_edges, design, params, overrides.degree_exempt_backbone_ids
     )
     return DesignArtifacts(vertices, physical_edges, design, validation)
 
@@ -249,7 +249,9 @@ def _forced_artifacts(
     vertices, edges = inputs if inputs is not None else _ring_inputs()
     vertices, edges, overrides = apply_role_overrides(vertices, edges, params, links)
     design = synthesize_two_tier_design(vertices, edges, params, overrides)
-    vertices, edges, design, validation = finalize(vertices, edges, design, params)
+    vertices, edges, design, validation = finalize(
+        vertices, edges, design, params, overrides.degree_exempt_backbone_ids
+    )
     return DesignArtifacts(vertices, edges, design, validation)
 
 
