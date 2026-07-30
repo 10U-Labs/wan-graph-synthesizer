@@ -207,7 +207,7 @@ def test_forced_homes_must_be_a_list() -> None:
 def test_a_forced_home_is_not_read_as_a_mesh_pair() -> None:
     """A forced_homes entry never lands among the pinned mesh pairs."""
     home = {"source": "Kirtland, NM", "target": "Denver, CO"}
-    assert _config({"design": {"forced_homes": [home]}}).links.backbone == ()
+    assert len(_config({"design": {"forced_homes": [home]}}).links.backbone) == 0
 
 
 def test_default_has_no_excluded_connections() -> None:
