@@ -12,12 +12,15 @@ import pytest
 import seed
 from test_http_doubles import CallRecorder, UrlopenRecorder
 from seed import (
+    _carrier_cities,
     _carrier_names,
+    _city_key,
     _data_center_providers,
     _degree_doc,
     _delete,
     _get,
     _mapping_rows,
+    _off_net_rows,
     _post,
     _put,
     _rows,
@@ -81,7 +84,16 @@ def _one_carrier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(seed, "DATA", tmp_path)
     _write_csv(tmp_path / "edges" / "lumen.csv", "a_city,z_city", "Reston,Denver")
     _write_csv(
-        tmp_path / "vertices" / "carriers" / "lumen.csv", "city,state", "Reston,VA")
+        tmp_path / "vertices" / "carriers" / "lumen.csv",
+        "Municipality,State", "Reston,VA", "Denver,CO")
+
+
+def _off_net_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *seats: str) -> str:
+    """Lay down an off-net file of *seats* beside one carrier's points; return its path."""
+    _one_carrier(tmp_path / "data", monkeypatch)
+    monkeypatch.setattr(seed, "REPO_ROOT", tmp_path)
+    _write_csv(tmp_path / "offnet" / "off.csv", "Municipality,State", *seats)
+    return "offnet/off.csv"
 
 
 def _one_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -100,11 +112,10 @@ def _one_data_center(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _one_tenant(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
     """Lay down one tenant config *body* and its input files under temp roots."""
-    monkeypatch.setattr(seed, "REPO_ROOT", tmp_path)
+    _off_net_file(tmp_path, monkeypatch, "Edge,TX")
     monkeypatch.setattr(seed, "ETC", tmp_path / "etc")
     _write_csv(tmp_path / "regions" / "providers.csv", "city,state", "Reston,VA")
     _write_csv(tmp_path / "locations" / "f35.csv", "city,state", "Luke,AZ")
-    _write_csv(tmp_path / "offnet" / "off.csv", "city,state", "Edge,TX")
     (tmp_path / "etc").mkdir(parents=True, exist_ok=True)
     (tmp_path / "etc" / "f_35.yml").write_text(body, encoding="utf-8")
 
@@ -215,6 +226,67 @@ def test_carrier_names_ignores_non_csv_files(
     _write_csv(tmp_path / "edges" / "lumen.csv", "a_city,z_city", "X,Y")
     (tmp_path / "edges" / "notes.txt").write_text("x", encoding="utf-8")
     assert _carrier_names() == ["lumen"]
+
+
+def test_city_key_casefolds_the_municipality_and_state() -> None:
+    """_city_key folds case, so two spellings of one city compare equal."""
+    assert _city_key({"municipality": "Dulles", "state": "VA"}) == ("dulles", "va")
+
+
+def test_carrier_cities_collects_every_point_a_carrier_file_lists(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_carrier_cities keys every row of every carrier points file by city and state."""
+    _one_carrier(tmp_path, monkeypatch)
+    assert _carrier_cities() == {("reston", "va"), ("denver", "co")}
+
+
+def test_carrier_cities_is_empty_without_any_carrier_file(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_carrier_cities is empty when no carrier points file exists."""
+    monkeypatch.setattr(seed, "DATA", tmp_path)
+    assert _carrier_cities() == set()
+
+
+def test_off_net_rows_returns_every_seat_no_carrier_serves(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_off_net_rows returns the file's rows when no seat is a carrier's city."""
+    path = _off_net_file(tmp_path, monkeypatch, "Dulles,VA", "Laurel,MT")
+    assert len(_off_net_rows(path)) == 2
+
+
+def test_off_net_rows_refuses_a_seat_a_carrier_already_serves(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_off_net_rows raises for a seat in a city a carrier already has a point in.
+
+    Such a seat is one the file cannot deliver: the synthesizer seats the operator's
+    pin on the real point and skips the row, so the promise is silently unkept.
+    """
+    path = _off_net_file(tmp_path, monkeypatch, "Reston,VA")
+    with pytest.raises(ValueError, match="Reston, VA"):
+        _off_net_rows(path)
+
+
+def test_off_net_rows_names_every_on_net_seat_it_refuses(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The refusal names every offending seat, so fixing one does not reveal the next."""
+    path = _off_net_file(tmp_path, monkeypatch, "Reston,VA", "Denver,CO")
+    with pytest.raises(ValueError, match="Denver, CO; Reston, VA"):
+        _off_net_rows(path)
+
+
+def test_off_net_rows_refuses_a_seat_spelled_in_another_case(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A seat differing from the carrier's city only in case is the same place."""
+    path = _off_net_file(tmp_path, monkeypatch, "reston,va")
+    with pytest.raises(ValueError, match="reston, va"):
+        _off_net_rows(path)
+
+
+def test_off_net_rows_keeps_a_seat_whose_state_differs(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A city name a carrier serves in another state is a different place, so it stays."""
+    path = _off_net_file(tmp_path, monkeypatch, "Reston,TX")
+    assert _off_net_rows(path) == [{"municipality": "Reston", "state": "TX"}]
 
 
 def test_put_uses_the_put_method(urlopen_recorder: UrlopenRecorder) -> None:
@@ -447,7 +519,17 @@ def test_push_tenants_reads_off_net_when_present(
         put_recorder: CallRecorder) -> None:
     """push_tenants sends the off-net rows when an off_net file is given."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/off-net"] == [{"city": "Edge", "state": "TX"}]
+    assert bodies["tenants/f-35/off-net"] == [{"municipality": "Edge", "state": "TX"}]
+
+
+@pytest.mark.usefixtures("put_recorder")
+def test_push_tenants_refuses_an_off_net_seat_a_carrier_already_serves(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """push_tenants stops rather than storing an off-net file naming an on-net city."""
+    _one_tenant(tmp_path, monkeypatch, _TENANT_YML)
+    _write_csv(tmp_path / "offnet" / "off.csv", "Municipality,State", "Reston,VA")
+    with pytest.raises(ValueError, match="Reston, VA"):
+        push_tenants("http://api")
 
 
 def test_push_tenants_uses_empty_off_net_when_absent(

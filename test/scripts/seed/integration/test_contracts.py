@@ -20,7 +20,7 @@ import yaml
 
 import seed
 from repo_utils import REPO_ROOT
-from seed import _slug
+from seed import _carrier_cities, _city_key, _rows, _slug
 from test_http_doubles import UrlopenRecorder
 
 _API = "http://stub"
@@ -114,6 +114,34 @@ def test_pipeline_writes_each_tenant_the_coverage_target_its_config_declares(
         tenant: {"backbone_coverage_target_miles": target}
         for tenant, target in _declared_coverage_targets().items()
     }
+
+
+def _declared_off_net_paths() -> set[str]:
+    """Every off-net file the roster's configs name, as repository-relative paths."""
+    paths: set[str] = set()
+    for config in seed.ETC.glob("*.yml"):
+        declared = yaml.safe_load(config.read_text(encoding="utf-8"))
+        off_net = declared.get("inputs", {}).get("off_net")
+        if off_net:
+            paths.add(off_net)
+    return paths
+
+
+def test_no_declared_off_net_seat_is_a_city_a_carrier_already_serves() -> None:
+    """No off-net file the roster names lists a city the carrier points files cover.
+
+    Neither side can establish this alone: an off-net seat exists to offer a city no
+    carrier reaches, and only the carrier points say which cities those are. An overlap
+    would leave the file promising a seat the synthesizer never builds, since it seats
+    the operator's pin on the real point instead.
+    """
+    carriers = _carrier_cities()
+    overlapping = sorted(
+        city
+        for path in _declared_off_net_paths()
+        for city in {_city_key(row) for row in _rows(REPO_ROOT / path)} & carriers
+    )
+    assert overlapping == []
 
 
 def test_pipeline_writes_a_label_for_every_tenant(

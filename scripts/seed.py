@@ -61,6 +61,48 @@ def _mapping_rows(mapping: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def _city_key(row: dict[str, Any]) -> tuple[str, str]:
+    """A geographic row's ``(municipality, state)`` identity, case-folded.
+
+    The synthesizer keys carrier points by that pair verbatim, so two spellings that
+    differ only in case become two separate cities there. Folding here means such a
+    pair is caught rather than waved through as a distinct place.
+    """
+    return str(row["municipality"]).casefold(), str(row["state"]).casefold()
+
+
+def _carrier_cities() -> set[tuple[str, str]]:
+    """Every city a carrier has a point in, across all the carrier points files."""
+    return {
+        _city_key(row)
+        for path in (DATA / "vertices" / "carriers").glob("*.csv")
+        for row in _rows(path)
+    }
+
+
+def _off_net_rows(path: str) -> list[dict[str, Any]]:
+    """Read the off-net seats, refusing any city a carrier already serves.
+
+    An off-net seat is a location with no carrier point of its own, offered to the
+    operator as somewhere a backbone node may be built out of local fiber. A row naming
+    a city a carrier already serves is therefore a contradiction, and a silent one: the
+    synthesizer seats the operator's pin on the real point and skips the row, so the
+    file claims a seat it never provides. This is the only reader of the file that also
+    holds the carrier points, so it is the only place the pair can be checked.
+    """
+    rows = _rows(REPO_ROOT / path)
+    carriers = _carrier_cities()
+    on_net = sorted(
+        f"{row['municipality']}, {row['state']}"
+        for row in rows if _city_key(row) in carriers
+    )
+    if on_net:
+        raise ValueError(
+            f"off-net file {path} names cities a carrier already serves: "
+            f"{'; '.join(on_net)}")
+    return rows
+
+
 def _slug(stem: str) -> str:
     """A url-safe resource id from a file stem (underscores become hyphens)."""
     return stem.replace("_", "-")
@@ -157,7 +199,7 @@ def push_tenants(api: str) -> list[str]:
         locations = _mapping_rows(inputs.get("locations", {}))
         regions = _mapping_rows(inputs.get("providers", {}))
         off_net_path = inputs.get("off_net")
-        off_net = _rows(REPO_ROOT / off_net_path) if off_net_path else []
+        off_net = _off_net_rows(off_net_path) if off_net_path else []
         print(f"tenant {tid}: {len(locations)} sites, {len(regions)} regions, "
               f"{len(off_net)} off-net", flush=True)
         _put(api, f"tenants/{tid}/locations", locations)
