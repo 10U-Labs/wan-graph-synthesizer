@@ -17,8 +17,11 @@ every gate at once.
 A push can trigger several path-filtered workflows. The change is done
 when each workflow that fired is green, not when the first one is.
 
+Find the run by the full forty-character hash, from `git rev-parse HEAD`. `gh run list --commit` silently returns an empty list for the short hash `git log --oneline` prints, which is indistinguishable from a run that has not started, so anything that polls should instead list recent runs and match `headSha` by prefix locally.
+
 Longer:
-[verification-in-ci-only](docs/claude/memories/verification-in-ci-only.md).
+[verification-in-ci-only](docs/claude/memories/verification-in-ci-only.md),
+[find-a-run-by-the-full-hash](docs/claude/memories/find-a-run-by-the-full-hash.md).
 
 ## Commits
 

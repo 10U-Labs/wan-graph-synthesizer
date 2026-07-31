@@ -17,6 +17,7 @@ session tool's local memory only what is true of one machine alone.
 
 - [verification-in-ci-only](verification-in-ci-only.md) — nothing runs
   locally; push and read the run
+- [find-a-run-by-the-full-hash](find-a-run-by-the-full-hash.md) — `gh run list --commit` returns nothing for a short hash, and says nothing about why
 - [commit-straight-to-main](commit-straight-to-main.md) — direct commits,
   no branches and no pull requests
 - [markdown-is-not-hard-wrapped](markdown-is-not-hard-wrapped.md) — no
