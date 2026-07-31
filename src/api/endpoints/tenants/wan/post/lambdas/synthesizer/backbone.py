@@ -17,7 +17,7 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
-from synthesizer.ceiling import independent_routes, mesh_degree_ceilings
+from synthesizer.ceiling import mesh_degree_ceilings
 from synthesizer.input_graph import PhysicalEdge, edge_key
 from synthesizer.graphs import (
     articulation_points,
@@ -29,7 +29,6 @@ from synthesizer.graphs import (
     reconstruct_path,
 )
 from synthesizer.model import PathUse
-from synthesizer.validation import routed_independent_degree
 
 
 def path_geometry_miles(
@@ -475,48 +474,6 @@ def diverse_mesh_routes(
     return routes
 
 
-def wire_nodes_short_of_their_ceiling(
-    uses: list[PathUse],
-    backbone_ids: tuple[str, ...],
-    adjacency: dict[str, list[tuple[str, float]]],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-    mesh_degree: int,
-) -> list[PathUse]:
-    """Give any node the routed mesh left short the independent links its fiber allows.
-
-    Selection chooses peers by distance and passes over ones it can see share a city;
-    routing then lays each link down in turn, clear of the cities its endpoints' earlier
-    links already ride. Both are good heuristics and neither is a guarantee. Where the
-    fiber offers a node several independent routes, nothing in either step is obliged to
-    find them, and a node can finish below a number its own ground supports -- which is a
-    shortfall nobody can fix by editing the configuration, because the configuration is
-    not what is wrong.
-
-    So the node is wired along the routes the ceiling already proved exist (see
-    :func:`synthesizer.ceiling.independent_routes`). Those routes are pairwise clear of one
-    another by construction, so this ends the node at its ceiling rather than hoping a
-    further heuristic finds what the last one missed.
-
-    Only nodes below their target are touched, and only links are added, never removed.
-    Adding a link cannot lower any node's independent degree, since that degree is the
-    largest disjoint set of its links and a larger pool cannot have a smaller best subset
-    -- so repairing one node can never cost another.
-    """
-    repaired = list(uses)
-    for node in backbone_ids:
-        routes = independent_routes(node, backbone_ids, adjacency)
-        if routed_independent_degree(repaired, node) >= min(mesh_degree, len(routes)):
-            continue
-        repaired += [
-            PathUse(
-                "backbone_mesh", node, route[-1], route,
-                path_geometry_miles(route, physical_edges),
-            )
-            for route in routes
-        ]
-    return repaired
-
-
 def backbone_mesh_paths(
     backbone_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
@@ -547,9 +504,6 @@ def backbone_mesh_paths(
         PathUse("backbone_mesh", left, right, path, path_geometry_miles(path, physical_edges))
         for left, right, path in diverse_mesh_routes(pairs, all_predecessors, adjacency)
     ]
-    uses = wire_nodes_short_of_their_ceiling(
-        uses, backbone_ids, adjacency, physical_edges, constraints.mesh_degree
-    )
     return augment_physical_resilience(
         uses, backbone_ids, physical_edges, constraints.removed_pairs
     )

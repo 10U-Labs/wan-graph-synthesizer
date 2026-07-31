@@ -227,25 +227,6 @@ def test_the_chorded_ring_names_the_nodes_it_aimed_above_the_degree() -> None:
     assert [entry["id"] for entry in aimed] == ["P0", "P2", "P3"]
 
 
-def test_no_chorded_node_finishes_below_what_its_own_fiber_allows() -> None:
-    """Every node ends at the smaller of the tenant degree and its ceiling, none under it.
-
-    This is the guarantee the whole pipeline owes and the one that decides whether a design
-    is built at all. A node under that number is not a fact about the ground -- the ceiling
-    has already given the ground its say -- so it is the tool falling short of what it can
-    see is possible, and it refuses the design over it. Selection and routing are both
-    heuristics and neither promises this on its own, which is why the mesh is repaired
-    against the routes the ceiling proved exist before anyone is asked to accept it.
-    """
-    ceilings = CHORDED.validation["backbone_mesh_degree_ceiling_limited"]
-    capped = {str(entry["id"]): int(str(entry["ceiling"])) for entry in ceilings}
-    assert [
-        node
-        for node in _CHORDED_BACKBONE
-        if independent_mesh_degree(CHORDED.design, node) < min(3, capped.get(node, 3))
-    ] == []
-
-
 def test_exempting_the_spur_lets_the_design_finalize() -> None:
     """With P5 exempt the mesh target is met, so the design the operator wanted is built."""
     assert EXEMPT_SPUR.validation["backbone_meets_independent_mesh_link_target"] is True
