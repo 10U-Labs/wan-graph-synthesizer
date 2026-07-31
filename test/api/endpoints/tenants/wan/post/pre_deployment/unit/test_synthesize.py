@@ -7,9 +7,8 @@ from dataclasses import replace
 import pytest
 
 import fixtures
-from synthesizer.input_graph import PhysicalEdge, Vertex, edge_key, haversine_miles
+from synthesizer.input_graph import edge_key
 from synthesizer.model import (
-    AccessEdge,
     Design,
     DesignInputs,
     DesignMetrics,
@@ -20,93 +19,36 @@ from synthesizer.model import (
     Tuning,
 )
 from synthesizer.synthesize import (
-    all_pairs_shortest,
-    assign_access,
     backbone_combination_count,
     backbone_combinations,
-    backbone_physically_biconnectable,
     best_design_at_size,
-    build_design_for_backbone,
     build_search_plan,
     convergence_promotion_ids,
-    coverage_candidate_hauls,
-    coverage_worst_haul,
     compute_eligible_backbone_ids,
-    demand_haul_miles,
     enumeration_limit,
-    forced_backbone_resilience_error,
-    nearest_pop_id,
     search_best_design,
     synthesize_two_tier_design,
     total_memory_bytes,
 )
 from synthesizer.search_plan import _SearchPlan
-from synthesizer.graphs import biconnected_block_membership, build_adjacency
+from synthesizer.graphs import build_adjacency
 from synthesizer.overrides import apply_role_overrides
 from synthesizer.strength import vertex_straightness
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
 access = fixtures.access_vertex
+_inputs_from_edges = fixtures.design_inputs_from_edges
+_plan = fixtures.search_plan
+TRIANGLE = fixtures.TRIANGLE
+TRIANGLE_VERTICES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
+_TWO_POCKET_EDGES = fixtures.TWO_POCKET_EDGES
+_TWO_POCKET_IDS = fixtures.TWO_POCKET_IDS
 
 
 def _cities(*ids: str) -> frozenset[tuple[str, str]]:
     """A data-center-city set covering carrier PoPs built by ``pop`` for these ids."""
     return frozenset((vertex_id, "XX") for vertex_id in ids)
-
-
-def _inputs_from_edges(
-    edge_ids: list[str],
-    edges: dict[tuple[str, str], PhysicalEdge],
-    eligible: set[str],
-    access_vertices: list[Vertex] | None = None,
-    coords: dict[str, tuple[float, float]] | None = None,
-) -> DesignInputs:
-    """Build DesignInputs over a mileage-weighted graph for direct synthesizer tests.
-
-    ``edge_ids`` are the carrier PoPs (the backbone candidates). ``edges`` may also
-    wire the demand vertices into the physical graph -- in the two-tier model demand
-    homes to the backbone over the physical graph, so any demand that must home is
-    given edges here while staying out of ``edge_ids`` (it is not a carrier PoP).
-    """
-    places = coords or {}
-    pops = [pop(vertex_id, *places.get(vertex_id, (0.0, 0.0))) for vertex_id in edge_ids]
-    adjacency = build_adjacency(edges)
-    distances, predecessors = all_pairs_shortest(pops, adjacency)
-    return DesignInputs(
-        access_vertices=access_vertices if access_vertices is not None else [],
-        carrier_pops=pops,
-        physical_edges=edges,
-        eligible_backbone_ids=eligible,
-        adjacency=adjacency,
-        all_distances=distances,
-        all_predecessors=predecessors,
-        carrier_blocks=biconnected_block_membership(adjacency),
-    )
-
-
-def _plan(
-    candidates: list[str],
-    strength: dict[str, float] | None = None,
-    access_backbone_links: int = 2,
-    forced_links: ForcedLinks | None = None,
-) -> _SearchPlan:
-    """Build a search plan for direct synthesizer tests.
-
-    When no strength map is given, every candidate gets equal strength, so the search
-    falls back to its last-mile tie-break.
-    """
-    strength_by_id = strength if strength is not None else {name: 1.0 for name in candidates}
-    return _SearchPlan(
-        candidates,
-        strength_by_id,
-        tuning=Tuning(access_backbone_links=access_backbone_links),
-        forced_links=forced_links or ForcedLinks(),
-    )
-
-
-TRIANGLE = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-TRIANGLE_VERTICES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
 
 
 def test_min_backbone_count_below_two_is_rejected() -> None:
@@ -333,101 +275,6 @@ def test_vertex_straightness_skips_zero_length_hops() -> None:
     assert vertex_straightness("a", by_id, {"b": "a"}) == 0.0
 
 
-def test_nearest_pop_id_picks_the_closest() -> None:
-    """Nearest pop id picks the closest."""
-    pops = [pop("far", 0.0, 50.0), pop("near", 0.0, 1.0)]
-    assert nearest_pop_id(access("s", 0.0, 0.0), pops) == "near"
-
-
-# A demand site "s" near two backbone PoPs c1 and c2 (which mesh directly). A home is
-# the logical demand-to-backbone link, so "s" homes to its two nearest backbone nodes.
-DUAL_EDGES = physical(
-    {("c1", "c2"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0}
-)
-
-
-def _dual_inputs(s_coord: tuple[float, float] = (0.0, 0.05)) -> DesignInputs:
-    """A two-PoP backbone with one graph-connected demand vertex ``s``."""
-    return _inputs_from_edges(
-        ["c1", "c2"], DUAL_EDGES, {"c1", "c2"},
-        [access("s", *s_coord)], {"c1": (0.0, 0.0), "c2": (0.0, 0.1)},
-    )
-
-
-def _access_link_counts(edges: list[AccessEdge]) -> dict[str, int]:
-    """Number of backbone links each demand vertex received."""
-    counts: dict[str, int] = {}
-    for edge in edges:
-        counts[edge.source] = counts.get(edge.source, 0) + 1
-    return counts
-
-
-def test_assign_access_homes_a_demand_vertex_to_two_backbone_nodes() -> None:
-    """A demand vertex homes to its two nearest backbone nodes in one pass."""
-    result = assign_access(("c1", "c2"), _dual_inputs(), _plan([]))
-    assert result is not None and _access_link_counts(result) == {"s": 2}
-
-
-def test_assign_access_returns_none_when_backbone_smaller_than_links() -> None:
-    """With fewer backbone nodes than the homing degree, assignment fails."""
-    assert assign_access(("c1",), _dual_inputs(), _plan([], access_backbone_links=2)) is None
-
-
-def test_assign_access_homes_to_the_configured_count() -> None:
-    """A demand vertex homes to exactly the configured number of backbone nodes."""
-    triple_edges = physical(
-        {
-            ("c1", "c2"): 1.0, ("c2", "c3"): 1.0, ("c1", "c3"): 1.0,
-            ("s", "c1"): 1.0, ("s", "c2"): 1.0, ("s", "c3"): 1.0,
-        }
-    )
-    inputs = _inputs_from_edges(
-        ["c1", "c2", "c3"], triple_edges, {"c1", "c2", "c3"},
-        [access("s", 0.0, 0.05)], {"c1": (0.0, 0.0), "c2": (0.0, 0.1), "c3": (0.0, 0.2)},
-    )
-    result = assign_access(("c1", "c2", "c3"), inputs, _plan([], access_backbone_links=3))
-    assert result is not None and _access_link_counts(result) == {"s": 3}
-
-
-def test_assign_access_leads_with_a_forced_home() -> None:
-    """An operator-forced access-backbone link leads a demand vertex's homes."""
-    plan = replace(_plan([]), forced_links=ForcedLinks(access=frozenset({("s", "c2")})))
-    result = assign_access(("c1", "c2"), _dual_inputs((0.0, 0.0)), plan)
-    assert result is not None and {edge.target for edge in result if edge.source == "s"} == {
-        "c1", "c2",
-    }
-
-
-def test_build_design_returns_none_without_homing() -> None:
-    """build_design_for_backbone returns None when the backbone is too small to home.
-
-    With a single backbone node and a homing degree of two, no demand vertex can reach
-    two distinct backbone nodes, so the design is infeasible.
-    """
-    inputs = _dual_inputs()
-    assert build_design_for_backbone(("c1",), inputs, _plan([], access_backbone_links=2)) is None
-
-
-def test_build_design_returns_none_when_nodes_are_not_meshed() -> None:
-    """build_design_for_backbone returns None when a node cannot reach the others."""
-    edges = physical(
-        {
-            ("c1", "g1"): 1.0, ("c2", "g1"): 1.0, ("c1", "g2"): 1.0, ("c2", "g2"): 1.0,
-            ("c3", "z"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0,
-        }
-    )
-    inputs = _inputs_from_edges(
-        ["c1", "c2", "c3", "g1", "g2", "z"], edges, {"c1", "c2", "c3"}, [access("s")]
-    )
-    assert build_design_for_backbone(("c1", "c2", "c3"), inputs, _plan([])) is None
-
-
-def test_build_design_builds_a_full_design() -> None:
-    """build_design_for_backbone assembles a design when the backbone is feasible."""
-    design = build_design_for_backbone(("c1", "c2"), _dual_inputs(), _plan([]))
-    assert design is not None and set(design.backbone_ids) == {"c1", "c2"}
-
-
 MESH_EDGES = physical(
     {
         ("a", "b"): 1.0, ("a", "c"): 1.0, ("a", "d"): 1.0,
@@ -549,104 +396,6 @@ def test_build_search_plan_fixes_promoted_nodes_into_required() -> None:
         inputs, {"a", "b", "c"}, overrides, DesignParams(), frozenset({"b"})
     )
     assert plan.required_backbone == frozenset({"a", "b"})
-
-
-def test_demand_haul_miles_reports_the_worst_distance_to_a_nearest_node() -> None:
-    """The haul metric takes the worst of each demand vertex's miles to its nearest node."""
-    pops = {
-        "node_w": pop("node_w", 40.0, -100.0),
-        "node_e": pop("node_e", 40.0, -80.0),
-        "near": access("near", 40.0, -99.0),
-        "far": access("far", 40.0, -90.0),
-    }
-    far_miles = haversine_miles(pops["far"], pops["node_w"])
-    result = demand_haul_miles(("node_w", "node_e"), [pops["near"], pops["far"]], pops)
-    assert result == pytest.approx(far_miles)
-
-
-def test_coverage_worst_haul_ignores_exempt_sites() -> None:
-    """The coverage stop signal skips sites marked exempt from the distance constraint."""
-    pops = {"node": pop("node", 40.0, -100.0)}
-    near = access("near", 40.0, -99.0)
-    far = replace(access("far", 10.0, -160.0), exempt_from_distance_constraint=True)
-    assert coverage_worst_haul(("node",), [near, far], pops) == pytest.approx(
-        haversine_miles(near, pops["node"])
-    )
-
-
-def test_coverage_candidate_hauls_drops_an_infeasible_addition() -> None:
-    """A candidate that makes the grown backbone infeasible is dropped from the scoring.
-
-    Demand ``s`` homes to c1/c2, but the candidate ``z`` sits in its own component and
-    cannot reach a mesh peer, so promoting it yields an unbuildable backbone -- the
-    coverage scorer offers it nothing.
-    """
-    edges = physical(
-        {
-            ("c1", "c2"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0, ("z", "y"): 1.0,
-        }
-    )
-    inputs = _inputs_from_edges(
-        ["c1", "c2", "z", "y"], edges, {"c1", "c2", "z"}, [access("s", 0.0, 0.05)]
-    )
-    hauls = coverage_candidate_hauls(("c1", "c2"), ["z"], inputs, _plan([]), {
-        "c1": pop("c1", 0.0, 0.0), "c2": pop("c2", 0.0, 0.1), "z": pop("z", 0.0, 0.2)
-    })
-    assert not hauls
-
-
-# The geometry where ranking by the worst haul and ranking by the summed one disagree.
-# Three demand sites sit a degree west of the base pair and a fourth sits two degrees east,
-# outside any target the western three are inside. Seating "east" closes that far site and
-# leaves the worst haul at the western distance; seating "west" zeroes the three and leaves
-# the far site exactly where it was. Three short hauls outweigh one long one, so a score
-# that sums every site prefers "west" -- and the site that opened the round stays out of
-# reach, which is the whole of what the wrong measure costs.
-# Every candidate and every demand vertex wires to both base nodes, so each grown set is a
-# biconnected triangle that builds and every site homes. Geography alone decides the ranking.
-_RANKING_EDGES = physical(
-    {
-        ("b1", "b2"): 1.0,
-        **{
-            (name, base): 1.0
-            for name in ("east", "west", "oversea", "far", "near1", "near2", "near3", "oconus")
-            for base in ("b1", "b2")
-        },
-    }
-)
-_RANKING_COORDS = {
-    "b1": (0.0, 0.0), "b2": (0.05, 0.0),
-    "east": (0.0, 2.0), "west": (0.0, -1.0), "oversea": (0.0, -40.0),
-}
-_RANKING_IDS = ["b1", "b2", "east", "west", "oversea"]
-_RANKING_SITES = [
-    access("far", 0.0, 2.0),
-    access("near1", 0.0, -1.0), access("near2", 0.05, -1.0), access("near3", -0.05, -1.0),
-]
-# Forty degrees out and exempt from the target: it dominates every distance in the design
-# and none of them are its business, so it must have no say in which candidate wins.
-_OCONUS_SITE = replace(access("oconus", 0.0, -40.0), exempt_from_distance_constraint=True)
-
-
-def _ranking_hauls(candidates: list[str], sites: list[Vertex]) -> list[tuple[float, str]]:
-    """Score each candidate over the ranking geometry against the given demand."""
-    inputs = _inputs_from_edges(
-        _RANKING_IDS, _RANKING_EDGES, set(_RANKING_IDS), sites, _RANKING_COORDS
-    )
-    return coverage_candidate_hauls(
-        ("b1", "b2"), candidates, inputs, _plan(_RANKING_IDS),
-        {carrier.id: carrier for carrier in inputs.carrier_pops},
-    )
-
-
-def test_the_candidate_that_closes_the_gap_outranks_the_one_that_shortens_the_rest() -> None:
-    """The round opened on the far site, so the node that reaches it is the one that wins."""
-    assert min(_ranking_hauls(["east", "west"], _RANKING_SITES))[1] == "east"
-
-
-def test_a_site_exempt_from_the_target_cannot_sway_which_candidate_wins() -> None:
-    """A candidate that only helps the exempt site helps nothing the round is about."""
-    assert min(_ranking_hauls(["east", "oversea"], [*_RANKING_SITES, _OCONUS_SITE]))[1] == "east"
 
 
 def _far_demand_inputs_plan(exempt: bool = False) -> tuple[DesignInputs, _SearchPlan]:
@@ -777,96 +526,6 @@ def test_search_holds_at_the_floor_when_the_only_candidate_is_infeasible() -> No
         tuning=Tuning(backbone_coverage_target_miles=300),
     )
     assert search_best_design(inputs, params, plan).backbone_ids == ("c1", "c2")
-
-
-# --- physical biconnectivity: the search-time city-survivability gate --------------------
-
-# Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single span c-d, so the two
-# pockets share no biconnected block: no backbone may straddle them.
-_TWO_POCKET_EDGES = physical(
-    {
-        ("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0, ("c", "d"): 1.0,
-        ("d", "e"): 1.0, ("e", "f"): 1.0, ("d", "f"): 1.0,
-    }
-)
-_TWO_POCKET_IDS = ["a", "b", "c", "d", "e", "f"]
-
-# A bowtie -- triangles {a,b,x} and {x,d,e} sharing the cut city x. It is bridgeless (so
-# 2-edge-connectable across the lobes) yet x is an articulation point: {a,d} cannot be
-# made city-survivable. The case the cable gate passed but the city gate must reject.
-_BOWTIE_EDGES = physical(
-    {
-        ("a", "b"): 1.0, ("b", "x"): 1.0, ("a", "x"): 1.0,
-        ("x", "d"): 1.0, ("d", "e"): 1.0, ("x", "e"): 1.0,
-    }
-)
-_BOWTIE_IDS = ["a", "b", "x", "d", "e"]
-
-
-def _two_pocket_inputs() -> DesignInputs:
-    """Inputs over two fiber pockets joined by a single bridge span."""
-    return _inputs_from_edges(_TWO_POCKET_IDS, _TWO_POCKET_EDGES, set(_TWO_POCKET_IDS))
-
-
-def _bowtie_inputs() -> DesignInputs:
-    """Inputs over a bowtie: two triangles sharing one cut city."""
-    return _inputs_from_edges(_BOWTIE_IDS, _BOWTIE_EDGES, set(_BOWTIE_IDS))
-
-
-def test_physically_biconnectable_within_one_block() -> None:
-    """Two nodes sharing one biconnected block can be wired into a city-survivable mesh."""
-    assert backbone_physically_biconnectable(("a", "b"), _two_pocket_inputs()) is True
-
-
-def test_not_physically_biconnectable_across_a_bridge() -> None:
-    """Two nodes split by a single span share no block, so they are rejected."""
-    assert backbone_physically_biconnectable(("a", "d"), _two_pocket_inputs()) is False
-
-
-def test_not_physically_biconnectable_across_a_cut_city() -> None:
-    """Two nodes either side of a cut city are rejected though no single cable splits them."""
-    assert backbone_physically_biconnectable(("a", "d"), _bowtie_inputs()) is False
-
-
-def test_physically_biconnectable_within_one_bowtie_lobe() -> None:
-    """Two nodes in the same bowtie lobe share that lobe's block, so they pass."""
-    assert backbone_physically_biconnectable(("a", "b"), _bowtie_inputs()) is True
-
-
-def test_not_biconnectable_with_no_backbone_nodes() -> None:
-    """An empty backbone shares no block, so the gate rejects it."""
-    assert backbone_physically_biconnectable((), _bowtie_inputs()) is False
-
-
-def test_forced_resilience_error_for_forced_nodes_split_across_pockets() -> None:
-    """Forced nodes in different pockets can never form a resilient design."""
-    assert forced_backbone_resilience_error(
-        frozenset({"a", "d"}), _two_pocket_inputs(), 2
-    ) is not None
-
-
-def _triangle_inputs() -> DesignInputs:
-    """Inputs over a single 2-edge-connected triangle pocket of three eligible PoPs."""
-    return _inputs_from_edges(["a", "b", "c"], TRIANGLE, {"a", "b", "c"})
-
-
-def test_forced_resilience_error_for_a_pocket_too_small_for_the_floor() -> None:
-    """A forced node whose block cannot seat the minimum backbone count is rejected.
-
-    The forced node's pocket holds only its three triangle peers, fewer than the floor of
-    five, even though other eligible nodes sit in the graph's other pocket.
-    """
-    assert forced_backbone_resilience_error(frozenset({"a"}), _two_pocket_inputs(), 5) is not None
-
-
-def test_forced_resilience_error_none_for_a_healthy_forced_node() -> None:
-    """A forced node in a pocket large enough for the floor raises nothing."""
-    assert forced_backbone_resilience_error(frozenset({"a"}), _triangle_inputs(), 2) is None
-
-
-def test_forced_resilience_error_none_without_forced_nodes() -> None:
-    """With no forced nodes there is nothing to check, so no error."""
-    assert forced_backbone_resilience_error(frozenset(), _triangle_inputs(), 2) is None
 
 
 def test_synthesize_rejects_forced_nodes_split_across_pockets() -> None:

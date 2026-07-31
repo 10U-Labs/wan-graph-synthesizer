@@ -22,14 +22,19 @@ from synthesizer.model import (
     KIND_ROADM,
     Design,
     DesignArtifacts,
+    DesignInputs,
     DesignMetrics,
     DesignParams,
+    ForcedLinks,
     OperatorLinks,
     PathUse,
     RoleExclusions,
     SourceFiles,
+    Tuning,
 )
-from synthesizer.synthesize import synthesize_two_tier_design
+from synthesizer.graphs import biconnected_block_membership, build_adjacency
+from synthesizer.search_plan import _SearchPlan
+from synthesizer.synthesize import all_pairs_shortest, synthesize_two_tier_design
 from synthesizer.overrides import apply_role_overrides
 from synthesizer.stages import dual_home, finalize
 from synthesizer.validation import validate_design
@@ -373,3 +378,80 @@ def convergence_hub_artifacts(
 def sample_sources() -> SourceFiles:
     """Provenance paths for output rendering tests."""
     return SourceFiles((Path("vertices/lumen.csv"),), Path("edges.csv"))
+
+
+def design_inputs_from_edges(
+    edge_ids: list[str],
+    edges: dict[tuple[str, str], PhysicalEdge],
+    eligible: set[str],
+    access_vertices: list[Vertex] | None = None,
+    coords: dict[str, tuple[float, float]] | None = None,
+) -> DesignInputs:
+    """Build DesignInputs over a mileage-weighted graph for direct synthesizer tests.
+
+    ``edge_ids`` are the carrier PoPs (the backbone candidates). ``edges`` may also
+    wire the demand vertices into the physical graph -- in the two-tier model demand
+    homes to the backbone over the physical graph, so any demand that must home is
+    given edges here while staying out of ``edge_ids`` (it is not a carrier PoP).
+    """
+    places = coords or {}
+    pops = [carrier_pop(vertex_id, *places.get(vertex_id, (0.0, 0.0))) for vertex_id in edge_ids]
+    adjacency = build_adjacency(edges)
+    distances, predecessors = all_pairs_shortest(pops, adjacency)
+    return DesignInputs(
+        access_vertices=access_vertices if access_vertices is not None else [],
+        carrier_pops=pops,
+        physical_edges=edges,
+        eligible_backbone_ids=eligible,
+        adjacency=adjacency,
+        all_distances=distances,
+        all_predecessors=predecessors,
+        carrier_blocks=biconnected_block_membership(adjacency),
+    )
+
+
+def search_plan(
+    candidates: list[str],
+    strength: dict[str, float] | None = None,
+    access_backbone_links: int = 2,
+    forced_links: ForcedLinks | None = None,
+) -> _SearchPlan:
+    """Build a search plan for direct synthesizer tests.
+
+    When no strength map is given, every candidate gets equal strength, so the search
+    falls back to its last-mile tie-break.
+    """
+    strength_by_id = strength if strength is not None else {name: 1.0 for name in candidates}
+    return _SearchPlan(
+        candidates,
+        strength_by_id,
+        tuning=Tuning(access_backbone_links=access_backbone_links),
+        forced_links=forced_links or ForcedLinks(),
+    )
+
+
+TRIANGLE = physical_edges_from({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
+
+
+# --- physical biconnectivity: the search-time city-survivability gate --------------------
+
+# Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single span c-d, so the two
+# pockets share no biconnected block: no backbone may straddle them.
+TWO_POCKET_EDGES = physical_edges_from(
+    {
+        ("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0, ("c", "d"): 1.0,
+        ("d", "e"): 1.0, ("e", "f"): 1.0, ("d", "f"): 1.0,
+    }
+)
+TWO_POCKET_IDS = ["a", "b", "c", "d", "e", "f"]
+
+# A bowtie -- triangles {a,b,x} and {x,d,e} sharing the cut city x. It is bridgeless (so
+# 2-edge-connectable across the lobes) yet x is an articulation point: {a,d} cannot be
+# made city-survivable. The case the cable gate passed but the city gate must reject.
+_BOWTIE_EDGES = physical_edges_from(
+    {
+        ("a", "b"): 1.0, ("b", "x"): 1.0, ("a", "x"): 1.0,
+        ("x", "d"): 1.0, ("d", "e"): 1.0, ("x", "e"): 1.0,
+    }
+)
+_BOWTIE_IDS = ["a", "b", "x", "d", "e"]
