@@ -29,7 +29,7 @@ from synthesizer.synthesize import (
     build_design_for_backbone,
     build_search_plan,
     convergence_promotion_ids,
-    coverage_candidate_totals,
+    coverage_candidate_hauls,
     coverage_worst_haul,
     compute_eligible_backbone_ids,
     demand_haul_miles,
@@ -551,18 +551,17 @@ def test_build_search_plan_fixes_promoted_nodes_into_required() -> None:
     assert plan.required_backbone == frozenset({"a", "b"})
 
 
-def test_demand_haul_miles_reports_worst_and_total_to_nearest_node() -> None:
-    """The haul metric sums, and takes the worst of, each demand's nearest-node miles."""
+def test_demand_haul_miles_reports_the_worst_distance_to_a_nearest_node() -> None:
+    """The haul metric takes the worst of each demand vertex's miles to its nearest node."""
     pops = {
         "node_w": pop("node_w", 40.0, -100.0),
         "node_e": pop("node_e", 40.0, -80.0),
         "near": access("near", 40.0, -99.0),
         "far": access("far", 40.0, -90.0),
     }
-    near_miles = haversine_miles(pops["near"], pops["node_w"])
     far_miles = haversine_miles(pops["far"], pops["node_w"])
     result = demand_haul_miles(("node_w", "node_e"), [pops["near"], pops["far"]], pops)
-    assert result == pytest.approx((far_miles, near_miles + far_miles))
+    assert result == pytest.approx(far_miles)
 
 
 def test_coverage_worst_haul_ignores_exempt_sites() -> None:
@@ -575,8 +574,8 @@ def test_coverage_worst_haul_ignores_exempt_sites() -> None:
     )
 
 
-def test_coverage_candidate_totals_drops_an_infeasible_addition() -> None:
-    """A candidate that makes the grown backbone infeasible is dropped from the totals.
+def test_coverage_candidate_hauls_drops_an_infeasible_addition() -> None:
+    """A candidate that makes the grown backbone infeasible is dropped from the scoring.
 
     Demand ``s`` homes to c1/c2, but the candidate ``z`` sits in its own component and
     cannot reach a mesh peer, so promoting it yields an unbuildable backbone -- the
@@ -590,10 +589,64 @@ def test_coverage_candidate_totals_drops_an_infeasible_addition() -> None:
     inputs = _inputs_from_edges(
         ["c1", "c2", "z", "y"], edges, {"c1", "c2", "z"}, [access("s", 0.0, 0.05)]
     )
-    totals = coverage_candidate_totals(("c1", "c2"), ["z"], inputs, _plan([]), {
+    hauls = coverage_candidate_hauls(("c1", "c2"), ["z"], inputs, _plan([]), {
         "c1": pop("c1", 0.0, 0.0), "c2": pop("c2", 0.0, 0.1), "z": pop("z", 0.0, 0.2)
     })
-    assert not totals
+    assert not hauls
+
+
+# The geometry where ranking by the worst haul and ranking by the summed one disagree.
+# Three demand sites sit a degree west of the base pair and a fourth sits two degrees east,
+# outside any target the western three are inside. Seating "east" closes that far site and
+# leaves the worst haul at the western distance; seating "west" zeroes the three and leaves
+# the far site exactly where it was. Three short hauls outweigh one long one, so a score
+# that sums every site prefers "west" -- and the site that opened the round stays out of
+# reach, which is the whole of what the wrong measure costs.
+# Every candidate and every demand vertex wires to both base nodes, so each grown set is a
+# biconnected triangle that builds and every site homes. Geography alone decides the ranking.
+_RANKING_EDGES = physical(
+    {
+        ("b1", "b2"): 1.0,
+        **{
+            (name, base): 1.0
+            for name in ("east", "west", "oversea", "far", "near1", "near2", "near3", "oconus")
+            for base in ("b1", "b2")
+        },
+    }
+)
+_RANKING_COORDS = {
+    "b1": (0.0, 0.0), "b2": (0.05, 0.0),
+    "east": (0.0, 2.0), "west": (0.0, -1.0), "oversea": (0.0, -40.0),
+}
+_RANKING_IDS = ["b1", "b2", "east", "west", "oversea"]
+_RANKING_SITES = [
+    access("far", 0.0, 2.0),
+    access("near1", 0.0, -1.0), access("near2", 0.05, -1.0), access("near3", -0.05, -1.0),
+]
+# Forty degrees out and exempt from the target: it dominates every distance in the design
+# and none of them are its business, so it must have no say in which candidate wins.
+_OCONUS_SITE = replace(access("oconus", 0.0, -40.0), exempt_from_distance_constraint=True)
+
+
+def _ranking_hauls(candidates: list[str], sites: list[Vertex]) -> list[tuple[float, str]]:
+    """Score each candidate over the ranking geometry against the given demand."""
+    inputs = _inputs_from_edges(
+        _RANKING_IDS, _RANKING_EDGES, set(_RANKING_IDS), sites, _RANKING_COORDS
+    )
+    return coverage_candidate_hauls(
+        ("b1", "b2"), candidates, inputs, _plan(_RANKING_IDS),
+        {carrier.id: carrier for carrier in inputs.carrier_pops},
+    )
+
+
+def test_the_candidate_that_closes_the_gap_outranks_the_one_that_shortens_the_rest() -> None:
+    """The round opened on the far site, so the node that reaches it is the one that wins."""
+    assert min(_ranking_hauls(["east", "west"], _RANKING_SITES))[1] == "east"
+
+
+def test_a_site_exempt_from_the_target_cannot_sway_which_candidate_wins() -> None:
+    """A candidate that only helps the exempt site helps nothing the round is about."""
+    assert min(_ranking_hauls(["east", "oversea"], [*_RANKING_SITES, _OCONUS_SITE]))[1] == "east"
 
 
 def _far_demand_inputs_plan(exempt: bool = False) -> tuple[DesignInputs, _SearchPlan]:
