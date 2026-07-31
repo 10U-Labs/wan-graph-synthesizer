@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from itertools import combinations
 
 from synthesizer.input_graph import Vertex, edge_key
-from synthesizer.model import Design, MeshTargets, ValidationReport
+from synthesizer.model import Design, MeshTargets, PathUse, ValidationReport
 from synthesizer.graphs import (
     articulation_points,
     connected_components,
@@ -158,18 +158,26 @@ def backbone_mesh_two_vertex_connected(design: Design) -> bool:
     """
     return _backbone_mesh_survives(design, is_two_vertex_connected)
 
-def mesh_link_failure_cities(design: Design, node: str) -> list[frozenset[str]]:
-    """Per mesh link at ``node``, the cities whose loss would take that link down.
+def routed_failure_cities(path_uses: list[PathUse], node: str) -> list[frozenset[str]]:
+    """Per mesh link at ``node`` in ``path_uses``, the cities whose loss would take it down.
 
     Every city the link's routed path visits except ``node`` itself: a transit city, and
     the peer at the far end, which is a city too. Two routes for the same pair both carry
     that pair's peer, so a detour never reads as a second independent link to it.
+
+    Taking the routes rather than a whole design is what lets the mesh be measured while it
+    is still being built, before there is a design to hand.
     """
     return [
         frozenset(use.path) - {node}
-        for use in design.path_uses
+        for use in path_uses
         if use.purpose == "backbone_mesh" and node in (use.source, use.target)
     ]
+
+
+def mesh_link_failure_cities(design: Design, node: str) -> list[frozenset[str]]:
+    """Per mesh link at ``node``, the cities whose loss would take that link down."""
+    return routed_failure_cities(design.path_uses, node)
 
 
 def _all_disjoint(failure_cities: tuple[frozenset[str], ...]) -> bool:
@@ -182,19 +190,24 @@ def _all_disjoint(failure_cities: tuple[frozenset[str], ...]) -> bool:
     return True
 
 
-def independent_mesh_degree(design: Design, node: str) -> int:
-    """How many of ``node``'s mesh links no single city's loss can take two of.
+def routed_independent_degree(path_uses: list[PathUse], node: str) -> int:
+    """How many of ``node``'s mesh links in ``path_uses`` no single city's loss takes two of.
 
     A node's nominal degree counts lines on a diagram. This counts links that fail
     independently, which is the number the configured degree is asking for: the largest
     set of the node's links whose failure cities are pairwise disjoint. Searched largest
     first over a handful of links, so the exhaustive walk stays cheap.
     """
-    links = mesh_link_failure_cities(design, node)
+    links = routed_failure_cities(path_uses, node)
     for size in range(len(links), 0, -1):
         if any(_all_disjoint(combo) for combo in combinations(links, size)):
             return size
     return 0
+
+
+def independent_mesh_degree(design: Design, node: str) -> int:
+    """How many of ``node``'s mesh links no single city's loss can take two of."""
+    return routed_independent_degree(design.path_uses, node)
 
 
 def backbone_mesh_independence_deficient(

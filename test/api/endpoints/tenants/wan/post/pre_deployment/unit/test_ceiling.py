@@ -8,7 +8,11 @@ reaches for and how many it is asked for. A wrong ceiling would move both at onc
 from __future__ import annotations
 
 import fixtures
-from synthesizer.ceiling import independent_route_ceiling, mesh_degree_ceilings
+from synthesizer.ceiling import (
+    independent_route_ceiling,
+    independent_routes,
+    mesh_degree_ceilings,
+)
 from synthesizer.graphs import build_adjacency
 
 physical = fixtures.physical_edges_from
@@ -65,3 +69,22 @@ def test_an_unreachable_node_has_no_ceiling_at_all() -> None:
 def test_the_ceilings_are_computed_for_every_backbone_node() -> None:
     """The per-node pass answers for each backbone node, not just the one asked about."""
     assert mesh_degree_ceilings(_TWO_CUT_BACKBONE, _TWO_CUTS) == {"bos": 2, "n1": 2, "n2": 2}
+
+
+# The count is only ever as good as the routes behind it, and something has to be able to
+# wire them: a node the mesh leaves short is repaired by taking the very routes counted
+# here, so these check the count can be shown its working rather than only asserted.
+_BOS_ROUTES = independent_routes("bos", _TWO_CUT_BACKBONE, _TWO_CUTS)
+
+
+def test_the_counted_routes_run_from_the_node_to_distinct_peers() -> None:
+    """Each counted route is one link, so they leave bos and land on a peer apiece."""
+    assert sorted((route[0], route[-1]) for route in _BOS_ROUTES) == [
+        ("bos", "n1"), ("bos", "n2")
+    ]
+
+
+def test_the_counted_routes_share_no_intermediate_city() -> None:
+    """No city carries two of them, which is the whole of what independence means."""
+    inner = [city for route in _BOS_ROUTES for city in route[1:-1]]
+    assert sorted(inner) == sorted(set(inner))

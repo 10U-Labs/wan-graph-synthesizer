@@ -7,6 +7,11 @@ without sharing a city", and that is a fact about the substrate rather than a nu
 anyone chooses. This module computes it, once per backbone node, and calls it the node's
 ceiling.
 
+The routes behind the number are worth as much as the number. A count says a node is
+short; the routes say what it is short of, and can be wired. So the flow is read back as
+paths (:func:`independent_routes`) and the ceiling is their number, rather than the paths
+being thrown away once they have been counted.
+
 The ceiling is the exact point where the thing the mesh degree buys runs out. Below it a
 node is leaving built fiber unused; above it every further link must, by the max-flow
 min-cut theorem, re-cross a city the node already depends on -- a real cable with real
@@ -31,6 +36,7 @@ from collections import deque
 # single unit of capacity, which is what makes a city usable by one route only.
 _Node = tuple[str, str]
 _Residual = dict[_Node, dict[_Node, int]]
+_Arc = tuple[_Node, _Node]
 
 _SINK: _Node = ("sink", "")
 
@@ -46,7 +52,7 @@ def _unit_vertex_network(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-) -> _Residual:
+) -> tuple[_Residual, list[_Arc]]:
     """The residual network whose max flow out of ``node`` is that node's ceiling.
 
     Every city but ``node`` is split into an in and an out side joined by one unit, so a
@@ -54,18 +60,28 @@ def _unit_vertex_network(
     available to it. Each substrate span becomes an arc in both directions, and every
     other backbone node's out side feeds the sink -- so a unit of flow is one route from
     ``node`` to a distinct peer, and units cannot share a city.
+
+    The arcs are returned alongside the network. Every one of them carries a single unit,
+    so an arc with none of its capacity left is an arc the flow used, which is what lets
+    the finished flow be read back as routes rather than only as a count.
     """
+    arcs: list[_Arc] = [
+        (("in", city), ("out", city)) for city in adjacency if city != node
+    ]
+    arcs += [
+        (("out", city), ("in", neighbor))
+        for city, neighbors in adjacency.items()
+        for neighbor, _weight in neighbors
+    ]
+    arcs += [
+        (("out", peer), _SINK)
+        for peer in backbone_ids
+        if peer != node and peer in adjacency
+    ]
     residual: _Residual = {}
-    for city in adjacency:
-        if city != node:
-            _add_capacity(residual, ("in", city), ("out", city), 1)
-    for city, neighbors in adjacency.items():
-        for neighbor, _weight in neighbors:
-            _add_capacity(residual, ("out", city), ("in", neighbor), 1)
-    for peer in backbone_ids:
-        if peer != node and peer in adjacency:
-            _add_capacity(residual, ("out", peer), _SINK, 1)
-    return residual
+    for tail, head in arcs:
+        _add_capacity(residual, tail, head, 1)
+    return residual, arcs
 
 
 def _augmenting_path(residual: _Residual, source: _Node) -> list[_Node] | None:
@@ -93,6 +109,69 @@ def _augmenting_path(residual: _Residual, source: _Node) -> list[_Node] | None:
     return None
 
 
+def _spent_arcs(residual: _Residual, arcs: list[_Arc]) -> dict[_Node, list[_Node]]:
+    """Where the flow went: the heads each tail sent its unit to, keyed by tail.
+
+    Every arc was given a single unit, so one with nothing left is one the flow used.
+    """
+    spent: dict[_Node, list[_Node]] = {}
+    for tail, head in arcs:
+        if residual[tail][head] == 0:
+            spent.setdefault(tail, []).append(head)
+    return spent
+
+
+def _routes_through(spent: dict[_Node, list[_Node]], source: _Node) -> list[tuple[str, ...]]:
+    """Split the finished flow into one city route per unit that left ``source``.
+
+    The walk cannot branch or double back, which is what makes this a plain traversal
+    rather than a search. Every city but the source is split around a single unit, so a
+    city the flow enters has exactly one way out of it, and no city can appear on two
+    routes or twice on one. Each unit leaving the source therefore runs to the sink, and
+    there are as many of them as the flow is worth.
+    """
+    routes: list[tuple[str, ...]] = []
+    for first in spent.get(source, []):
+        cities = [source[1]]
+        cursor = first
+        while cursor != _SINK:
+            side, city = cursor
+            if side == "in":
+                cities.append(city)
+            cursor = spent[cursor][0]
+        routes.append(tuple(cities))
+    return routes
+
+
+def independent_routes(
+    node: str,
+    backbone_ids: tuple[str, ...],
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> list[tuple[str, ...]]:
+    """The most routes from ``node`` that no single city's loss takes two of.
+
+    Each runs from ``node`` to a distinct peer, and no city carries two of them -- a max
+    flow with unit vertex capacities (see :func:`_unit_vertex_network`), pushed one route
+    at a time until no unused capacity reaches the sink, then read back off the arcs it
+    spent. Every unit of capacity is one, so each augmenting path carries exactly one
+    route.
+
+    These are the links the node could hold, not the links it has. Where the mesh has left
+    a node short of what its fiber allows, they are what it is short of, and wiring them is
+    what closes the gap -- which is the reason this returns the routes rather than only
+    counting them.
+    """
+    residual, arcs = _unit_vertex_network(node, backbone_ids, adjacency)
+    source: _Node = ("out", node)
+    while True:
+        path = _augmenting_path(residual, source)
+        if path is None:
+            return _routes_through(_spent_arcs(residual, arcs), source)
+        for head, tail in zip(path, path[1:]):
+            residual[tail][head] -= 1
+            residual[head][tail] += 1
+
+
 def independent_route_ceiling(
     node: str,
     backbone_ids: tuple[str, ...],
@@ -100,27 +179,15 @@ def independent_route_ceiling(
 ) -> int:
     """The most links ``node`` could hold that no single city's loss takes two of.
 
-    The largest number of routes from ``node`` to the rest of the backbone that share no
-    intermediate city and end at distinct peers -- a max flow with unit vertex capacities
-    (see :func:`_unit_vertex_network`), pushed one route at a time until no unused capacity
-    reaches the sink. Every unit of capacity is one, so each augmenting path carries
-    exactly one route and the flow is the number of rounds.
+    The number of routes :func:`independent_routes` finds, which is the max flow of the
+    unit-capacity network and so the size of the smallest set of cities whose loss would
+    cut ``node`` off from the rest of the backbone.
 
     A node the substrate does not carry, or one whose peers it cannot reach, scores zero:
     it can hold no independent link, which is the truth about it. The count never exceeds
     the number of other backbone nodes, since that is how many arcs feed the sink.
     """
-    residual = _unit_vertex_network(node, backbone_ids, adjacency)
-    source: _Node = ("out", node)
-    routes = 0
-    while True:
-        path = _augmenting_path(residual, source)
-        if path is None:
-            return routes
-        for head, tail in zip(path, path[1:]):
-            residual[tail][head] -= 1
-            residual[head][tail] += 1
-        routes += 1
+    return len(independent_routes(node, backbone_ids, adjacency))
 
 
 def mesh_degree_ceilings(

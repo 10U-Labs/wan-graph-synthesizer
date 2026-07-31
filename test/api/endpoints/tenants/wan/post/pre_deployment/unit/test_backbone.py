@@ -11,7 +11,9 @@ from synthesizer.backbone import (
     backbone_mesh_paths,
     diverse_mesh_routes,
     select_backbone_mesh_pairs,
+    wire_nodes_short_of_their_ceiling,
 )
+from synthesizer.validation import routed_independent_degree
 from synthesizer.synthesize import all_pairs_shortest
 from synthesizer.graphs import (
     build_adjacency,
@@ -33,6 +35,56 @@ def test_backbone_mesh_paths_empty_when_nodes_disconnected() -> None:
         [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
     )
     assert not backbone_mesh_paths(("a", "c"), distances, predecessors, edges)
+
+
+# Boston in miniature, the shape the repair exists for: three spans leave bos but every
+# route out crosses alb or stm, so its ceiling is two. Selection and routing are free to
+# spend both of its links through one of those cities, which is a shortfall the fiber does
+# not explain and no configuration change could fix.
+_SHORT_SUBSTRATE = physical({
+    ("bos", "alb"): 1.0, ("bos", "stm"): 1.0, ("bos", "x"): 1.0, ("x", "alb"): 1.0,
+    ("alb", "n1"): 1.0, ("stm", "n2"): 1.0, ("n1", "n2"): 1.0,
+})
+_SHORT_ADJACENCY = build_adjacency(_SHORT_SUBSTRATE)
+_SHORT_BACKBONE = ("bos", "n1", "n2")
+
+
+def _mesh_use(source: str, target: str, path: tuple[str, ...]) -> PathUse:
+    """One routed mesh link, the distance left at zero since nothing here reads it."""
+    return PathUse("backbone_mesh", source, target, path, 0.0)
+
+
+def _repaired(uses: list[PathUse], mesh_degree: int) -> list[PathUse]:
+    """Run the repair over the miniature substrate at a given degree."""
+    return wire_nodes_short_of_their_ceiling(
+        uses, _SHORT_BACKBONE, _SHORT_ADJACENCY, _SHORT_SUBSTRATE, mesh_degree
+    )
+
+
+# Both of bos's links leave through alb, so one city's loss takes the pair and bos holds
+# one independent link where its own fiber allows two.
+_CROWDED = [
+    _mesh_use("bos", "n1", ("bos", "alb", "n1")),
+    _mesh_use("bos", "n2", ("bos", "alb", "n1", "n2")),
+]
+
+
+def test_a_node_short_of_its_ceiling_is_wired_up_to_it() -> None:
+    """bos holds one independent link and its fiber allows two, so it ends holding two."""
+    assert routed_independent_degree(_repaired(_CROWDED, 2), "bos") == 2
+
+
+# The same three nodes with bos's links spent on separate cities, against a degree of one
+# that every node already meets -- so the repair has nothing it is owed.
+_SATISFIED = [
+    _mesh_use("bos", "n1", ("bos", "alb", "n1")),
+    _mesh_use("bos", "n2", ("bos", "stm", "n2")),
+]
+
+
+def test_a_mesh_that_already_meets_its_targets_is_returned_unchanged() -> None:
+    """Nothing is owed, so nothing is added and the routes come back as they went in."""
+    assert _repaired(_SATISFIED, 1) == _SATISFIED
 
 
 def _symmetric_distances(weights: dict[tuple[str, str], float]) -> dict[str, dict[str, float]]:
