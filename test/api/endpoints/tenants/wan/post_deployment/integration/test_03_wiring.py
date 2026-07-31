@@ -32,3 +32,16 @@ def test_dispatch_role_targets_the_synthesizer(iam_client: Any, role_name: str) 
     """The dispatch invoke permission targets the synthesizer's derived function name."""
     policy = iam_client.get_role_policy(RoleName=role_name, PolicyName="Dispatch")
     assert "-synthesizer" in str(policy["PolicyDocument"])
+
+
+def test_dispatch_role_grants_listing_the_bucket(iam_client: Any, role_name: str) -> None:
+    """The live dispatch role may list the store, which is what makes an absent WAN a 404.
+
+    The unit tier cannot answer this. It stands the store up as a double that raises
+    ``NoSuchKey`` for a key it does not hold, which is what the real store does only for a
+    caller allowed to list it; without that grant the real answer is ``AccessDenied``, the
+    handler's branch never runs, and the caller gets a crash where a plain not-found was
+    owed. Only the deployed policy says which of the two the caller will meet.
+    """
+    policy = iam_client.get_role_policy(RoleName=role_name, PolicyName="Dispatch")
+    assert "s3:ListBucket" in str(policy["PolicyDocument"])

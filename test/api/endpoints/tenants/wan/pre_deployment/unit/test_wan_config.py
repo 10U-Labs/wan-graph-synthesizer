@@ -83,6 +83,17 @@ def test_dispatch_policy_grants_invoke(wan_iam: dict[str, object]) -> None:
     assert "lambda:InvokeFunction" in str(dispatch["policy"])
 
 
+def test_dispatch_policy_grants_listing_the_bucket(wan_iam: dict[str, object]) -> None:
+    """The dispatch policy grants ``s3:ListBucket``, which is what makes an absent WAN a 404.
+
+    Reading an object a caller has no listing permission for is answered ``AccessDenied``
+    rather than ``NoSuchKey``, so without this the handler's ``NoSuchKey`` branch never
+    runs and asking for a tenant that does not exist raises instead of answering.
+    """
+    dispatch = _resource(wan_iam, "aws_iam_role_policy", "dispatch")
+    assert "s3:ListBucket" in str(dispatch["policy"])
+
+
 def test_api_gateway_invoke_permission_is_declared(wan_lambda: dict[str, object]) -> None:
     """API Gateway is granted permission to invoke the dispatcher."""
     assert find_resource(wan_lambda, "aws_lambda_permission", "api_gateway") is not None

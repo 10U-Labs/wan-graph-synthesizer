@@ -31,6 +31,17 @@ resource "aws_iam_role_policy" "dispatch" {
         Action   = ["s3:GetObject", "s3:PutObject"]
         Resource = ["${data.terraform_remote_state.storage.outputs.bucket_arn}/*"]
       },
+      # Listing is what makes a missing status marker a not-found rather than a crash. S3
+      # answers a read of an absent key with AccessDenied unless the caller may also list
+      # the bucket, and only then with NoSuchKey -- so without this the handler's NoSuchKey
+      # branch never runs and a GET for a tenant that has never been built raises instead
+      # of returning 404. The grant is on the bucket itself, since that is what a listing
+      # names; the read and write above are on its contents.
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = [data.terraform_remote_state.storage.outputs.bucket_arn]
+      },
       {
         Effect = "Allow"
         Action = ["lambda:InvokeFunction"]
