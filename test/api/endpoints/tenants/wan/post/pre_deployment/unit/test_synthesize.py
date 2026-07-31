@@ -25,7 +25,9 @@ from synthesizer.synthesize import (
     backbone_combination_count,
     backbone_combinations,
     backbone_physically_biconnectable,
+    best_coverage_candidate,
     best_design_at_size,
+    candidate_mesh_ceiling,
     build_design_for_backbone,
     build_search_plan,
     convergence_promotion_ids,
@@ -647,6 +649,50 @@ def test_the_candidate_that_closes_the_gap_outranks_the_one_that_shortens_the_re
 def test_a_site_exempt_from_the_target_cannot_sway_which_candidate_wins() -> None:
     """A candidate that only helps the exempt site helps nothing the round is about."""
     assert min(_ranking_hauls(["east", "oversea"], [*_RANKING_SITES, _OCONUS_SITE]))[1] == "east"
+
+
+# Fiber for the choice between candidates that all satisfy coverage. Three base nodes sit in
+# a triangle. "rich" and "rich_far" reach all three directly, so each can hold three links
+# that fail independently. "poor" and "poor_far" reach two directly and take their third span
+# to a stub that rejoins at b1 -- three spans apiece, but the third can only re-cross a city
+# they already depend on, so each can hold two. That gap between spans and independent routes
+# is the thing a raw span count gets wrong.
+_FIBER_EDGES = physical(
+    {
+        ("b1", "b2"): 1.0, ("b2", "b3"): 1.0, ("b1", "b3"): 1.0,
+        ("poor", "x"): 1.0, ("x", "b1"): 1.0,
+        ("poor_far", "x2"): 1.0, ("x2", "b1"): 1.0,
+        **{(name, base): 1.0 for name in ("rich", "rich_far") for base in ("b1", "b2", "b3")},
+        **{(name, base): 1.0 for name in ("poor", "poor_far") for base in ("b1", "b2")},
+    }
+)
+_FIBER_ADJACENCY = build_adjacency(_FIBER_EDGES)
+_FIBER_BACKBONE = ("b1", "b2", "b3")
+_FIBER_TARGET_MILES = 50.0
+# Both bring the worst haul inside the fifty-mile target, and the worse-connected one is
+# nearer, so distance and fiber name different winners.
+_BOTH_COVER = [(0.0, "poor"), (6.9, "rich")]
+# Neither reaches the target, and again the worse-connected one is nearer.
+_NEITHER_COVERS = [(103.6, "poor_far"), (138.2, "rich_far")]
+
+
+def test_the_better_connected_of_two_covering_candidates_is_seated() -> None:
+    """Coverage is answered by both, so the one whose fiber carries more links wins."""
+    assert best_coverage_candidate(
+        _BOTH_COVER, _FIBER_BACKBONE, _FIBER_ADJACENCY, _FIBER_TARGET_MILES
+    ) == "rich"
+
+
+def test_a_candidates_spans_are_not_counted_as_independent_routes() -> None:
+    """Three spans leave "poor" and two of its routes out are all its own fiber allows."""
+    assert candidate_mesh_ceiling("poor", _FIBER_BACKBONE, _FIBER_ADJACENCY) == 2
+
+
+def test_the_nearest_candidate_is_seated_when_none_satisfies_the_target() -> None:
+    """No candidate answers the round, so fiber waits and the gap is closed as far as it can be."""
+    assert best_coverage_candidate(
+        _NEITHER_COVERS, _FIBER_BACKBONE, _FIBER_ADJACENCY, _FIBER_TARGET_MILES
+    ) == "poor_far"
 
 
 def _far_demand_inputs_plan(exempt: bool = False) -> tuple[DesignInputs, _SearchPlan]:

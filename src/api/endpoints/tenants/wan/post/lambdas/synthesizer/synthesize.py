@@ -62,6 +62,7 @@ from synthesizer.graphs import (
     path_edge_keys,
 )
 from synthesizer.backbone import BackboneConstraints, backbone_mesh_paths
+from synthesizer.ceiling import independent_route_ceiling
 from synthesizer.search_plan import _SearchPlan
 from synthesizer.strength import backbone_strength
 
@@ -520,6 +521,62 @@ def coverage_candidate_hauls(
     return hauls
 
 
+def candidate_mesh_ceiling(
+    candidate_id: str,
+    backbone_ids: tuple[str, ...],
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> int:
+    """How many independently failing links ``candidate_id`` could hold once it joins.
+
+    The number of routes from it to the rest of the grown backbone that no single city's
+    loss takes two of (see :func:`synthesizer.ceiling.independent_route_ceiling`).
+
+    This is not the number of fiber spans leaving the city, and the difference is the whole
+    reason to measure it rather than count them. A city with three spans whose branches
+    funnel through one upstream city can hold two links that fail independently, not three,
+    so a raw span count would say it can carry a backbone node when its fiber cannot.
+    """
+    return independent_route_ceiling(
+        candidate_id, tuple(sorted((*backbone_ids, candidate_id))), adjacency
+    )
+
+
+def best_coverage_candidate(
+    improving: list[tuple[float, str]],
+    backbone_ids: tuple[str, ...],
+    adjacency: dict[str, list[tuple[str, float]]],
+    target_miles: float,
+) -> str:
+    """Which improving candidate to seat: the best connected of those that satisfy coverage.
+
+    The coverage target is a constraint on how far the backbone may leave demand, not a cost
+    to be minimised. Once a candidate brings the worst haul inside the target it has fully
+    answered the question the round asked, and seating a nearer one instead buys nothing the
+    operator asked for. So coverage narrows the field and does not order it.
+
+    Among the candidates left, the one whose fiber can carry the most independently failing
+    links wins (see :func:`candidate_mesh_ceiling`). A hub is chosen for what its fiber can
+    do rather than for where it sits, which is the position the base backbone search already
+    takes when it ranks sets by strength, and the reason the spec forbids mileage as a design
+    cost. A city that satisfies coverage and then cannot hold the links a backbone node is
+    required to hold has not solved the problem, it has moved it.
+
+    Distance decides only what fiber cannot. Where no candidate reaches the target none has
+    answered the round, so the one leaving the worst haul shortest is seated and the next
+    round asks again -- a preference for well-connected fiber must never hold a gap open.
+    Ties are settled by haul and then by id, so the choice is deterministic.
+    """
+    satisfying = [pair for pair in improving if pair[0] <= target_miles]
+    if not satisfying:
+        return min(improving)[1]
+    return min(
+        satisfying,
+        key=lambda pair: (
+            -candidate_mesh_ceiling(pair[1], backbone_ids, adjacency), pair[0], pair[1]
+        ),
+    )[1]
+
+
 def grow_backbone_for_coverage(
     base: Design,
     inputs: DesignInputs,
@@ -530,23 +587,29 @@ def grow_backbone_for_coverage(
     """Add backbone nodes beyond the strength-chosen base until demand is close enough.
 
     While some demand vertex the target applies to is farther than
-    ``backbone_coverage_target_miles`` from every selected backbone node, add the one
-    remaining candidate that leaves the worst such distance shortest, rebuilding the design
-    around it. Extra nodes are thus coverage-driven: strength still chooses the base
-    backbone, and the operator's coverage target is a constraint on how far the backbone may
-    leave demand, not a mileage cost minimized over candidate sets. Growth stops once every
-    non-exempt demand vertex is within target, the backbone reaches ``max_backbone_count``,
-    no remaining candidate brings the worst haul meaningfully closer, or the candidates are
-    exhausted.
+    ``backbone_coverage_target_miles`` from every selected backbone node, seat one more
+    candidate and rebuild the design around it. Extra nodes are thus coverage-driven:
+    strength still chooses the base backbone, and the operator's coverage target is a
+    constraint on how far the backbone may leave demand, not a mileage cost minimized over
+    candidate sets. Growth stops once every non-exempt demand vertex is within target, the
+    backbone reaches ``max_backbone_count``, no remaining candidate brings the worst haul
+    meaningfully closer, or the candidates are exhausted.
 
-    One measure decides the round throughout, and it has to be the same one in all three
-    places or the loop argues with itself. A round opens because a site the target applies
-    to is too far out. Were candidates ranked by the summed haul over every site instead,
-    the round could be won by a node that shortens many sites already inside the target
-    while leaving the far one exactly where it was -- and the sites exempt from the target,
-    which are exempt precisely because they are far from everything, would contribute the
-    largest terms to that sum and so have the most say in a choice they were lifted out of.
-    The round would then spend a node and come round again with the same gap open.
+    Two questions decide a round and they are asked in that order. Which candidates are
+    admissible is a coverage question, and one measure has to answer it in all three places
+    -- the stop test, the scoring and the progress filter -- or the loop argues with itself.
+    That measure is the worst haul over the sites the target applies to. Were candidates
+    scored by the summed haul over every site instead, a round could be won by a node that
+    shortens many sites already inside the target while leaving the far one where it was,
+    and the exempt sites, exempt precisely because they are far from everything, would
+    contribute the largest terms to that sum and so have the most say in a choice they were
+    lifted out of. The round would spend a node and come round again with the gap still open.
+
+    Which of the admissible candidates to seat is not a coverage question at all, and
+    answering it with distance was the second half of the same mistake. Among candidates
+    that satisfy the target, the best-connected one is seated (see
+    :func:`best_coverage_candidate`), because a hub that meets the distance requirement and
+    then cannot hold the links a backbone node owes has not solved anything.
     """
     target_miles = params.tuning.backbone_coverage_target_miles
     backbone_ids = base.backbone_ids
@@ -576,7 +639,9 @@ def grow_backbone_for_coverage(
         if not improving:
             logger.info("No candidate improves coverage; holding at %d nodes", len(backbone_ids))
             break
-        best_id = min(improving)[1]
+        best_id = best_coverage_candidate(
+            improving, backbone_ids, inputs.adjacency, target_miles
+        )
         backbone_ids = tuple(sorted((*backbone_ids, best_id)))
         grown = build_design_for_backbone(backbone_ids, inputs, plan)
         # The winning candidate already passed evaluate_backbone above, so its design builds.
@@ -598,9 +663,10 @@ def search_best_design(
     strongest feasible set at ``min_backbone_count`` (total last-mile only breaking
     ties), growing the backbone one PoP at a time only if no feasible design exists at a
     size. It then adds nodes past that floor while some demand vertex is farther than
-    ``backbone_coverage_target_miles`` from every selected node, each added node being
-    the candidate that leaves that worst distance shortest -- so extra nodes appear only
-    where they bring the site that opened the round closer. Enumerating each size must fit
+    ``backbone_coverage_target_miles`` from every selected node, each added node being the
+    best-connected candidate that brings that worst distance inside the target -- so extra
+    nodes appear only where they close the gap, and the one seated is chosen for the fiber
+    it can carry rather than the miles it saves. Enumerating each size must fit
     the share of RAM
     the search may use, or the design is refused rather than risk exhausting memory.
     """
