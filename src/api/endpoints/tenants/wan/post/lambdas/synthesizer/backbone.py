@@ -17,7 +17,7 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
-from synthesizer.ceiling import mesh_degree_ceilings
+from synthesizer.ceiling import independent_routes
 from synthesizer.input_graph import PhysicalEdge, edge_key
 from synthesizer.graphs import (
     articulation_points,
@@ -167,6 +167,41 @@ def _diverse_picks(
     return picks + passed_over[: max(floor - len(picks), 0)]
 
 
+def _proven_picks(
+    node: str,
+    routes: list[tuple[str, ...]],
+    nearest: list[tuple[float, str]],
+    pinned: set[str],
+    slots: tuple[int, int],
+) -> list[str]:
+    """Fill ``node``'s free slots with the peers its proven independent routes reach.
+
+    The routes were found by proving how many ways out of ``node`` no one city's loss takes
+    two of (see :func:`synthesizer.ceiling.independent_routes`), so the peers they end at
+    are a set the node can hold independently -- known, not hoped for. Picking them is what
+    lets the routing step lay the node's links along the very paths the proof produced.
+
+    Nearer peers are taken first, which is free: the routes are already pairwise clear of
+    one another, so order decides only which of them a pin or a short reach displaces, never
+    whether the ones taken are independent. A proven peer the operator has pruned or already
+    pinned is not picked again, and one the distance table cannot reach is not picked at all.
+
+    ``slots`` is ``(diverse, floor)``, as in :func:`_diverse_picks`. Anything still short of
+    the floor is filled from the nearest peers left over, since a link the proof does not
+    cover still beats no link at all.
+    """
+    diverse, floor = slots
+    rank = {peer: index for index, (_distance, peer) in enumerate(nearest)}
+    proven = sorted(
+        (rank[route[-1]], route[-1])
+        for route in routes
+        if route[-1] in rank and route[-1] not in pinned
+    )
+    picks = [peer for _rank, peer in proven][:diverse]
+    spare = [peer for _distance, peer in nearest if peer not in picks]
+    return picks + spare[: max(floor - len(picks), 0)]
+
+
 @dataclass(frozen=True)
 class BackboneConstraints:
     """The backbone-mesh selection knobs: the operator's pins, prunes, and link count."""
@@ -177,6 +212,11 @@ class BackboneConstraints:
     # each node's computed ceiling (see :mod:`synthesizer.ceiling`); a node absent from
     # the mapping reaches only for the tenant's degree, which is what an empty one means
     ceilings: Mapping[str, int] = field(default_factory=dict)
+    # the routes behind those ceilings (see :func:`synthesizer.ceiling.independent_routes`):
+    # per node, a set of paths to distinct peers that no one city's loss takes two of. A
+    # node present here picks the peers they reach and is wired along them; an empty
+    # mapping means nothing has been proved and peers are picked by distance instead
+    routes: Mapping[str, list[tuple[str, ...]]] = field(default_factory=dict)
 
 
 def select_backbone_mesh_pairs(
@@ -212,14 +252,24 @@ def select_backbone_mesh_pairs(
     (see :func:`augment_for_resilience`) into a single connected, 2-edge-connected
     network wherever the carrier graph allows, never re-adding a pruned pair.
 
-    Nearest is not the same as diverse. A candidate whose shortest path transits a peer
-    the node has already picked shares that peer's city, so one city's loss takes both
-    links and the node's nominal degree overstates what it survives. Such a candidate is
-    passed over for the next nearest one that is diverse (see :func:`_shares_transit`),
-    which is what makes the degree a count of independent links rather than of lines on
-    a diagram. A node's pins count as picks here too, so a candidate reachable only
-    through a pinned peer is passed over just the same. The pins themselves are wired
-    however they route: an operator instruction is honoured, not second-guessed.
+    Nearest is not the same as diverse. Where ``constraints.routes`` carries a node's proven
+    independent routes, that node's peers are the ones those routes reach (see
+    :func:`_proven_picks`): the proof has already found a set of ways out that no one city's
+    loss takes two of, so the peers are known to be independently holdable rather than
+    guessed at, and the routing step can lay the links along the very paths the proof
+    produced. A node absent from the mapping falls back to distance, and an empty mapping is
+    the old behaviour exactly.
+
+    That fallback is a heuristic and is documented as one. A candidate whose shortest path
+    transits a peer the node has already picked shares that peer's city, so one city's loss
+    takes both links and the node's nominal degree overstates what it survives. Such a
+    candidate is passed over for the next nearest one that is diverse (see
+    :func:`_shares_transit`). Passing over a candidate is not the same as finding a set that
+    works, which is why a proof supersedes it wherever one is available.
+
+    A node's pins count as picks either way, so a candidate reachable only through a pinned
+    peer is passed over just the same. The pins themselves are wired however they route: an
+    operator instruction is honoured, not second-guessed.
 
     Where no diverse candidate is left, the node falls back to the nearest of the ones
     passed over rather than leaving a slot below the floor empty. Some cities are genuine
@@ -260,7 +310,11 @@ def select_backbone_mesh_pairs(
         )
         pinned = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
         slots = (max(reach - len(pinned), 0), max(floor - len(pinned), 0))
-        picks = _diverse_picks(node, nearest, pinned, slots, all_distances)
+        picks = (
+            _proven_picks(node, constraints.routes[node], nearest, pinned, slots)
+            if node in constraints.routes
+            else _diverse_picks(node, nearest, pinned, slots, all_distances)
+        )
         selected.update(edge_key(node, other) for other in picks)
     return sorted(augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs))
 
@@ -439,19 +493,56 @@ def _clearest_route(
     return min(clear, key=lambda route: (_route_miles(route, adjacency), route))
 
 
+def _proven_paths_for(
+    left: str,
+    right: str,
+    proven: Mapping[str, list[tuple[str, ...]]],
+) -> list[tuple[str, ...]]:
+    """The proved paths between ``left`` and ``right``, oriented from ``left``, or empty.
+
+    Each endpoint may have proved its own way to the other, and the two need not agree. Both
+    are kept when they differ, because each is what buys *its own* node an independent link:
+    a node's degree counts its links whose failure cities are disjoint, and the path the far
+    end proved may share a city with this end's other links. Two paths for one pair cost a
+    little cable and cannot mislead the count -- both carry the peer at the far end, so they
+    never read as two independent links to it.
+
+    A path and its reverse are the same fiber, so they collapse to one.
+    """
+    found: list[tuple[str, ...]] = []
+    for near, far in ((left, right), (right, left)):
+        for route in proven.get(near, ()):
+            if route[-1] != far:
+                continue
+            forward = route if near == left else tuple(reversed(route))
+            if forward not in found:
+                found.append(forward)
+    return found
+
+
 def diverse_mesh_routes(
     pairs: list[tuple[str, str]],
     all_predecessors: dict[str, dict[str, str]],
     adjacency: dict[str, list[tuple[str, float]]],
+    proven: Mapping[str, list[tuple[str, ...]]] | None = None,
 ) -> list[tuple[str, str, tuple[str, ...]]]:
     """Route every mesh link, keeping one node's links clear of each other's cities.
 
-    Routing each link along its own shortest path independently lets a node's links share
-    their cheapest egress corridor, so one city's loss takes several at once and the
-    node's degree overstates what it survives. Each link is therefore routed clear of the
-    cities its endpoints' earlier links already ride, accepting a longer path to buy the
-    independence -- selection can only choose which peers a node links to, and no choice
-    of peer helps when the shortest routes to all of them leave through one city.
+    Where ``proven`` carries a node's independent routes (see
+    :func:`synthesizer.ceiling.independent_routes`), a link that pair is wired along the
+    path the proof found for it. That is the whole of what makes a node reach the degree its
+    fiber allows: those paths are pairwise clear of one another by construction, so a node
+    whose links are laid along them holds as many independently failing links as the proof
+    says it can, and no ordering of the pairs and no later measurement is involved. The
+    number of links and the paths they take come from the same calculation, so neither can
+    be right while the other is wrong.
+
+    Every other link is routed by the heuristic below, which is what the fiber leaves to
+    judgement: an operator's pin, a join added to hold the backbone together, a slot filled
+    to the tenant's floor. Routing each of those along its own shortest path independently
+    would let a node's links share their cheapest egress corridor, so one city's loss takes
+    several at once. Each is therefore routed clear of the cities its endpoints' other links
+    already ride, proved ones included, accepting a longer path to buy the independence.
 
     Clearing both ends at once is not always possible, and where it is not the link still
     clears one of them (see :func:`_clearest_route`): independence is counted per node, so
@@ -464,7 +555,17 @@ def diverse_mesh_routes(
     """
     carried: dict[str, set[str]] = {}
     routes: list[tuple[str, str, tuple[str, ...]]] = []
+    remaining: list[tuple[str, str]] = []
     for left, right in pairs:
+        paths = _proven_paths_for(left, right, proven or {})
+        if not paths:
+            remaining.append((left, right))
+            continue
+        for path in paths:
+            routes.append((left, right, path))
+            for node in (left, right):
+                carried.setdefault(node, set()).update(set(path) - {node})
+    for left, right in remaining:
         path = _clearest_route(left, right, carried, adjacency)
         if not path:
             path = reconstruct_path(left, right, all_predecessors[left])
@@ -490,19 +591,33 @@ def backbone_mesh_paths(
     independently (see :func:`diverse_mesh_routes`).
 
     How many links each node reaches for is computed here rather than asked of the caller:
-    the ceilings come off the same substrate ``physical_edges`` describes (see
-    :func:`synthesizer.ceiling.mesh_degree_ceilings`), so no caller can thread a number
-    that disagrees with the fiber the links are then routed over. Any ceilings already on
-    ``constraints`` are replaced for the same reason.
+    the routes come off the same substrate ``physical_edges`` describes (see
+    :func:`synthesizer.ceiling.independent_routes`), so no caller can thread a number that
+    disagrees with the fiber the links are then routed over. Any routes or ceilings already
+    on ``constraints`` are replaced for the same reason.
+
+    One calculation answers both questions. A node's ceiling is how many of those routes
+    there are and its links are laid along the routes themselves, so the number it is held
+    to and the paths it is given cannot disagree -- which is what stops a node finishing
+    below a degree its own fiber was already known to support.
     """
     adjacency = build_adjacency(physical_edges)
+    proven = {
+        node: independent_routes(node, backbone_ids, adjacency)
+        for node in backbone_ids
+        if node in adjacency
+    }
     constraints = replace(
-        constraints, ceilings=mesh_degree_ceilings(backbone_ids, adjacency)
+        constraints,
+        routes=proven,
+        ceilings={node: len(routes) for node, routes in proven.items()},
     )
     pairs = select_backbone_mesh_pairs(backbone_ids, all_distances, constraints)
     uses = [
         PathUse("backbone_mesh", left, right, path, path_geometry_miles(path, physical_edges))
-        for left, right, path in diverse_mesh_routes(pairs, all_predecessors, adjacency)
+        for left, right, path in diverse_mesh_routes(
+            pairs, all_predecessors, adjacency, proven
+        )
     ]
     return augment_physical_resilience(
         uses, backbone_ids, physical_edges, constraints.removed_pairs

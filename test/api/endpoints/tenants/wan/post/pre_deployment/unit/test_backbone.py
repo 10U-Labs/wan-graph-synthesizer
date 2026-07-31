@@ -60,12 +60,13 @@ def _backbone(
     mesh_degree: int = 3,
     forced: frozenset[tuple[str, str]] = frozenset(),
     ceilings: dict[str, int] | None = None,
+    routes: dict[str, list[tuple[str, ...]]] | None = None,
 ) -> list[tuple[str, str]]:
     """The five-node backbone wiring each node to its nearest peers."""
     return select_backbone_mesh_pairs(
         _FIVE_NODES,
         _FIVE_NODE_DISTANCES,
-        BackboneConstraints(removed, mesh_degree, forced, ceilings or {}),
+        BackboneConstraints(removed, mesh_degree, forced, ceilings or {}, routes or {}),
     )
 
 
@@ -294,6 +295,34 @@ def test_a_node_below_its_ceiling_still_backfills_to_the_tenant_floor() -> None:
     assert edge_key("d", "b") in _transit_mesh(ceilings={"d": 2})
 
 
+# c5 is the farthest node from every other, so distance alone never reaches for it. A proof
+# that c1 has an independent route to c5 is the only thing that would wire the pair, which
+# is what makes it the case that tells a proven pick apart from a near one.
+_PROVED_TO_THE_FARTHEST = {"c1": [("c1", "c5")]}
+# The same from c5's side, where c5's one proved route is to the node it is farthest from.
+_PROVED_FROM_THE_FARTHEST = {"c5": [("c5", "c1")]}
+
+
+def test_a_proven_peer_is_picked_over_the_nearer_ones_distance_would_take() -> None:
+    """c1 wires the peer its proof reaches, though four others sit closer to it."""
+    assert edge_key("c1", "c5") in _backbone(routes=_PROVED_TO_THE_FARTHEST)
+
+
+def test_a_proof_shorter_than_the_floor_is_backfilled_by_distance() -> None:
+    """c5's one proved route leaves it two links short, and its nearest peers make them up."""
+    assert _node_degrees(_backbone(routes=_PROVED_FROM_THE_FARTHEST))["c5"] == 3
+
+
+def test_the_backfill_stops_at_the_floor_rather_than_filling_every_slot() -> None:
+    """c5 owes three links and its proof plus two nearest are three, so c4 is never reached."""
+    assert edge_key("c4", "c5") not in _backbone(routes=_PROVED_FROM_THE_FARTHEST)
+
+
+def test_a_node_with_no_proof_of_its_own_is_still_picked_by_distance() -> None:
+    """A proof for one node says nothing about another, which wires as it always did."""
+    assert edge_key("c1", "c2") in _backbone(routes=_PROVED_FROM_THE_FARTHEST)
+
+
 _UNIT_MESH_EDGES = physical({
     ("c1", "c2"): 1.0, ("c1", "c3"): 1.0, ("c1", "c4"): 1.0, ("c1", "c5"): 1.0,
     ("c2", "c3"): 1.0, ("c2", "c4"): 1.0, ("c2", "c5"): 1.0,
@@ -387,17 +416,34 @@ _ONLY_EGRESS_EDGES = physical({
 })
 
 
+def _routed(
+    pairs: list[tuple[str, str]],
+    edges: dict[tuple[str, str], PhysicalEdge],
+    proven: dict[str, list[tuple[str, ...]]] | None = None,
+) -> list[tuple[str, str, tuple[str, ...]]]:
+    """Route the given mesh pairs over ``edges``, along ``proven`` wherever it covers one."""
+    adjacency = build_adjacency(edges)
+    ids = {vertex_id for pair in edges for vertex_id in pair}
+    _distances, predecessors = all_pairs_shortest([pop(i) for i in sorted(ids)], adjacency)
+    return diverse_mesh_routes(pairs, predecessors, adjacency, proven)
+
+
 def _routes(
     pairs: list[tuple[str, str]],
     edges: dict[tuple[str, str], PhysicalEdge],
 ) -> dict[tuple[str, str], tuple[str, ...]]:
     """Route the given mesh pairs over ``edges``, keyed by the pair they route."""
-    adjacency = build_adjacency(edges)
-    ids = {vertex_id for pair in edges for vertex_id in pair}
-    _distances, predecessors = all_pairs_shortest([pop(i) for i in sorted(ids)], adjacency)
+    return {(left, right): path for left, right, path in _routed(pairs, edges)}
+
+
+def _routes_by_pair(
+    pairs: list[tuple[str, str]],
+    proven: dict[str, list[tuple[str, ...]]],
+) -> dict[tuple[str, str], tuple[str, ...]]:
+    """Route the given pairs over the shared-egress fiber along ``proven``, keyed by pair."""
     return {
         (left, right): path
-        for left, right, path in diverse_mesh_routes(pairs, predecessors, adjacency)
+        for left, right, path in _routed(pairs, _SHARED_EGRESS_EDGES, proven)
     }
 
 
@@ -453,6 +499,44 @@ def test_links_of_unrelated_nodes_do_not_constrain_each_other() -> None:
     """A city another node's link crosses is no reason to route this one around it."""
     routes = _routes([("g", "p"), ("h", "q")], _SHARED_EGRESS_EDGES)
     assert routes[("h", "q")] == ("h", "g", "q")
+
+
+# h reaches q through g on the cheap side, so an unproved h-q link takes that way round.
+# A proof that h has a route through r is the only thing that sends the link the long way,
+# which is what tells a proved path apart from the one the heuristic would have chosen.
+_H_PROVED_THE_LONG_WAY = {"h": [("h", "r", "q")]}
+# The same fiber proved from q's end instead, so the route arrives pointing the other way.
+_Q_PROVED_THE_LONG_WAY = {"q": [("q", "r", "h")]}
+
+
+def test_a_link_is_wired_along_the_route_its_node_proved() -> None:
+    """h proved a way round through r, so its link takes it rather than the cheaper g."""
+    routes = _routes_by_pair([("h", "q")], _H_PROVED_THE_LONG_WAY)
+    assert routes[("h", "q")] == ("h", "r", "q")
+
+
+def test_a_route_proved_from_the_far_end_is_wired_pointing_at_this_one() -> None:
+    """The proof belongs to q and the link runs h to q, so the path is turned to match."""
+    routes = _routes_by_pair([("h", "q")], _Q_PROVED_THE_LONG_WAY)
+    assert routes[("h", "q")] == ("h", "r", "q")
+
+
+def test_one_fiber_proved_from_both_ends_is_wired_once() -> None:
+    """A path and its reverse are the same cable, so the pair gets a single link."""
+    proven = {**_H_PROVED_THE_LONG_WAY, **_Q_PROVED_THE_LONG_WAY}
+    assert len(_routed([("h", "q")], _SHARED_EGRESS_EDGES, proven)) == 1
+
+
+def test_two_ends_that_proved_different_fiber_are_both_wired() -> None:
+    """Each end's proof is what buys that end its own independent link, so neither is dropped."""
+    proven = {"h": [("h", "g", "q")], **_Q_PROVED_THE_LONG_WAY}
+    assert len(_routed([("h", "q")], _SHARED_EGRESS_EDGES, proven)) == 2
+
+
+def test_a_pair_no_proof_covers_is_still_routed_by_the_heuristic() -> None:
+    """A pin or a join has no proof behind it and is wired the way it always was."""
+    routes = _routes_by_pair([("h", "p")], _H_PROVED_THE_LONG_WAY)
+    assert routes[("h", "p")] == ("h", "g", "p")
 
 
 def test_backbone_mesh_paths_route_a_nodes_links_over_distinct_cities() -> None:
