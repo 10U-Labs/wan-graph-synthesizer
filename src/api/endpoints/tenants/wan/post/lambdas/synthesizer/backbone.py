@@ -168,23 +168,29 @@ def _diverse_picks(
 
 
 def _proven_picks(
-    node: str,
     routes: list[tuple[str, ...]],
     nearest: list[tuple[float, str]],
-    pinned: set[str],
     slots: tuple[int, int],
 ) -> list[str]:
-    """Fill ``node``'s free slots with the peers its proven independent routes reach.
+    """Fill a node's free slots with the peers its own ``routes`` reach.
 
-    The routes were found by proving how many ways out of ``node`` no one city's loss takes
+    The routes were found by proving how many ways out of the node no one city's loss takes
     two of (see :func:`synthesizer.ceiling.independent_routes`), so the peers they end at
     are a set the node can hold independently -- known, not hoped for. Picking them is what
-    lets the routing step lay the node's links along the very paths the proof produced.
+    lets the routing step lay the node's links along the very paths the proof produced. The
+    node needs no name here: a route carries its own far end, which is the whole of what a
+    pick is.
 
     Nearer peers are taken first, which is free: the routes are already pairwise clear of
-    one another, so order decides only which of them a pin or a short reach displaces, never
-    whether the ones taken are independent. A proven peer the operator has pruned or already
-    pinned is not picked again, and one the distance table cannot reach is not picked at all.
+    one another, so order decides only which of them a short reach displaces, never whether
+    the ones taken are independent.
+
+    ``nearest`` is the only list of peers this may pick from, which is what keeps a proof
+    from overriding the operator. A peer they pruned and a peer they already pinned are both
+    absent from it -- the first must not be wired at all, the second is wired already and
+    must not take a second slot -- so a proved route to either is passed over here. A ceiling
+    counts routes over the fiber and knows nothing of either instruction, so this is the
+    place the two are reconciled.
 
     ``slots`` is ``(diverse, floor)``, as in :func:`_diverse_picks`. Anything still short of
     the floor is filled from the nearest peers left over, since a link the proof does not
@@ -193,9 +199,7 @@ def _proven_picks(
     diverse, floor = slots
     rank = {peer: index for index, (_distance, peer) in enumerate(nearest)}
     proven = sorted(
-        (rank[route[-1]], route[-1])
-        for route in routes
-        if route[-1] in rank and route[-1] not in pinned
+        (rank[route[-1]], route[-1]) for route in routes if route[-1] in rank
     )
     picks = [peer for _rank, peer in proven][:diverse]
     spare = [peer for _distance, peer in nearest if peer not in picks]
@@ -311,7 +315,7 @@ def select_backbone_mesh_pairs(
         pinned = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
         slots = (max(reach - len(pinned), 0), max(floor - len(pinned), 0))
         picks = (
-            _proven_picks(node, constraints.routes[node], nearest, pinned, slots)
+            _proven_picks(constraints.routes[node], nearest, slots)
             if node in constraints.routes
             else _diverse_picks(node, nearest, pinned, slots, all_distances)
         )
@@ -555,23 +559,25 @@ def diverse_mesh_routes(
     """
     carried: dict[str, set[str]] = {}
     routes: list[tuple[str, str, tuple[str, ...]]] = []
-    remaining: list[tuple[str, str]] = []
-    for left, right in pairs:
-        paths = _proven_paths_for(left, right, proven or {})
-        if not paths:
-            remaining.append((left, right))
-            continue
-        for path in paths:
-            routes.append((left, right, path))
-            for node in (left, right):
-                carried.setdefault(node, set()).update(set(path) - {node})
-    for left, right in remaining:
-        path = _clearest_route(left, right, carried, adjacency)
-        if not path:
-            path = reconstruct_path(left, right, all_predecessors[left])
+
+    def lay(left: str, right: str, path: tuple[str, ...]) -> None:
+        """Record one routed link and charge its cities to both of its endpoints."""
         routes.append((left, right, path))
         for node in (left, right):
             carried.setdefault(node, set()).update(set(path) - {node})
+
+    unproved: list[tuple[str, str]] = []
+    for left, right in pairs:
+        paths = _proven_paths_for(left, right, proven or {})
+        if not paths:
+            unproved.append((left, right))
+        for path in paths:
+            lay(left, right, path)
+    for left, right in unproved:
+        path = _clearest_route(left, right, carried, adjacency)
+        if not path:
+            path = reconstruct_path(left, right, all_predecessors[left])
+        lay(left, right, path)
     return routes
 
 
