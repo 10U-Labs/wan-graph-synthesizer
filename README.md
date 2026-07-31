@@ -6,4 +6,4 @@ vertices and edges: vertices represent network locations, and edges represent
 allowed connections between those locations.
 
 The application accepts structured inputs and renders the resulting WAN
-graph as a webpage. Graphviz is used as the graph rendering engine.
+graph as a webpage.

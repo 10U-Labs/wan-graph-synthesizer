@@ -77,6 +77,13 @@ Markdown is not hard-wrapped. There is no column limit on `.md` files here, and 
 Longer:
 [markdown-is-not-hard-wrapped](docs/claude/memories/markdown-is-not-hard-wrapped.md).
 
+## Issues
+
+An issue has five sections in a fixed order: Problem, Why Unit Tests Did Not Catch It, Why Integration Tests Did Not Catch It, Why E2E Tests Did Not Catch It, Solution. Every issue has all five; where a tier does not exist for the code in question, saying so is the finding, not a reason to drop the section. Write plain, ordinary English prose and use telecommunications vocabulary for the subject matter — path diversity rather than mesh degree, site rather than node. Tables where a table genuinely reads better, bullets only when enumerating things, never to break up an argument. Back claims with numbers computed from the repository's own data, and say how they were computed.
+
+Longer:
+[how-issues-are-written](docs/claude/memories/how-issues-are-written.md).
+
 ## Notes
 
 A convention learned in a session belongs in this repository: a paragraph

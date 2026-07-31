@@ -22,6 +22,7 @@ session tool's local memory only what is true of one machine alone.
   no branches and no pull requests
 - [markdown-is-not-hard-wrapped](markdown-is-not-hard-wrapped.md) — no
   column limit on `.md` files or on issue and pull-request bodies
+- [how-issues-are-written](how-issues-are-written.md) — five fixed sections, plain English, telecom vocabulary
 
 ## Tests
 
