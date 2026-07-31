@@ -298,9 +298,9 @@ def test_a_node_below_its_ceiling_still_backfills_to_the_tenant_floor() -> None:
 # c5 is the farthest node from every other, so distance alone never reaches for it. A proof
 # that c1 has an independent route to c5 is the only thing that would wire the pair, which
 # is what makes it the case that tells a proven pick apart from a near one.
-_PROVED_TO_THE_FARTHEST = {"c1": [("c1", "c5")]}
+_PROVED_TO_THE_FARTHEST: dict[str, list[tuple[str, ...]]] = {"c1": [("c1", "c5")]}
 # The same from c5's side, where c5's one proved route is to the node it is farthest from.
-_PROVED_FROM_THE_FARTHEST = {"c5": [("c5", "c1")]}
+_PROVED_FROM_THE_FARTHEST: dict[str, list[tuple[str, ...]]] = {"c5": [("c5", "c1")]}
 
 
 def test_a_proven_peer_is_picked_over_the_nearer_ones_distance_would_take() -> None:
@@ -509,9 +509,9 @@ def test_links_of_unrelated_nodes_do_not_constrain_each_other() -> None:
 # h reaches q through g on the cheap side, so an unproved h-q link takes that way round.
 # A proof that h has a route through r is the only thing that sends the link the long way,
 # which is what tells a proved path apart from the one the heuristic would have chosen.
-_H_PROVED_THE_LONG_WAY = {"h": [("h", "r", "q")]}
+_H_PROVED_THE_LONG_WAY: dict[str, list[tuple[str, ...]]] = {"h": [("h", "r", "q")]}
 # The same fiber proved from q's end instead, so the route arrives pointing the other way.
-_Q_PROVED_THE_LONG_WAY = {"q": [("q", "r", "h")]}
+_Q_PROVED_THE_LONG_WAY: dict[str, list[tuple[str, ...]]] = {"q": [("q", "r", "h")]}
 
 
 def test_a_link_is_wired_along_the_route_its_node_proved() -> None:
@@ -528,13 +528,13 @@ def test_a_route_proved_from_the_far_end_is_wired_pointing_at_this_one() -> None
 
 def test_one_fiber_proved_from_both_ends_is_wired_once() -> None:
     """A path and its reverse are the same cable, so the pair gets a single link."""
-    proven = {**_H_PROVED_THE_LONG_WAY, **_Q_PROVED_THE_LONG_WAY}
+    proven: dict[str, list[tuple[str, ...]]] = {**_H_PROVED_THE_LONG_WAY, **_Q_PROVED_THE_LONG_WAY}
     assert len(_routed([("h", "q")], _SHARED_EGRESS_EDGES, proven)) == 1
 
 
 def test_two_ends_that_proved_different_fiber_are_both_wired() -> None:
     """Each end's proof is what buys that end its own independent link, so neither is dropped."""
-    proven = {"h": [("h", "g", "q")], **_Q_PROVED_THE_LONG_WAY}
+    proven: dict[str, list[tuple[str, ...]]] = {"h": [("h", "g", "q")], **_Q_PROVED_THE_LONG_WAY}
     assert len(_routed([("h", "q")], _SHARED_EGRESS_EDGES, proven)) == 2
 
 
