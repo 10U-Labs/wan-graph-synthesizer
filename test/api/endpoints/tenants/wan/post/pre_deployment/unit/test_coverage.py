@@ -7,6 +7,7 @@ from dataclasses import replace
 import pytest
 
 import fixtures
+from fixtures import design_inputs_from_edges, search_plan
 from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.graphs import build_adjacency
 from synthesizer.coverage import (
@@ -20,8 +21,6 @@ from synthesizer.coverage import (
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
 access = fixtures.access_vertex
-_inputs_from_edges = fixtures.design_inputs_from_edges
-_plan = fixtures.search_plan
 
 def test_demand_haul_miles_reports_the_worst_distance_to_a_nearest_node() -> None:
     """The haul metric takes the worst of each demand vertex's miles to its nearest node."""
@@ -58,10 +57,10 @@ def test_coverage_candidate_hauls_drops_an_infeasible_addition() -> None:
             ("c1", "c2"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0, ("z", "y"): 1.0,
         }
     )
-    inputs = _inputs_from_edges(
+    inputs = design_inputs_from_edges(
         ["c1", "c2", "z", "y"], edges, {"c1", "c2", "z"}, [access("s", 0.0, 0.05)]
     )
-    hauls = coverage_candidate_hauls(("c1", "c2"), ["z"], inputs, _plan([]), {
+    hauls = coverage_candidate_hauls(("c1", "c2"), ["z"], inputs, search_plan([]), {
         "c1": pop("c1", 0.0, 0.0), "c2": pop("c2", 0.0, 0.1), "z": pop("z", 0.0, 0.2)
     })
     assert not hauls
@@ -102,11 +101,11 @@ _OCONUS_SITE = replace(access("oconus", 0.0, -40.0), exempt_from_distance_constr
 
 def _ranking_hauls(candidates: list[str], sites: list[Vertex]) -> list[tuple[float, str]]:
     """Score each candidate over the ranking geometry against the given demand."""
-    inputs = _inputs_from_edges(
+    inputs = design_inputs_from_edges(
         _RANKING_IDS, _RANKING_EDGES, set(_RANKING_IDS), sites, _RANKING_COORDS
     )
     return coverage_candidate_hauls(
-        ("b1", "b2"), candidates, inputs, _plan(_RANKING_IDS),
+        ("b1", "b2"), candidates, inputs, search_plan(_RANKING_IDS),
         {carrier.id: carrier for carrier in inputs.carrier_pops},
     )
 

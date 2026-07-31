@@ -7,6 +7,13 @@ from dataclasses import replace
 import pytest
 
 import fixtures
+from fixtures import (
+    TRIANGLE,
+    TWO_POCKET_EDGES,
+    TWO_POCKET_IDS,
+    design_inputs_from_edges,
+    search_plan,
+)
 from synthesizer.input_graph import edge_key
 from synthesizer.model import (
     Design,
@@ -38,12 +45,7 @@ from synthesizer.strength import vertex_straightness
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
 access = fixtures.access_vertex
-_inputs_from_edges = fixtures.design_inputs_from_edges
-_plan = fixtures.search_plan
-TRIANGLE = fixtures.TRIANGLE
 TRIANGLE_VERTICES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
-_TWO_POCKET_EDGES = fixtures.TWO_POCKET_EDGES
-_TWO_POCKET_IDS = fixtures.TWO_POCKET_IDS
 
 
 def _cities(*ids: str) -> frozenset[tuple[str, str]]:
@@ -290,7 +292,7 @@ MESH_COORDS = {"a": (0.0, 1.0), "b": (0.0, 2.0), "c": (0.0, 50.0), "d": (0.0, 51
 
 def _mesh_inputs() -> DesignInputs:
     """A four-PoP full mesh with one graph-connected demand site, for selection tests."""
-    return _inputs_from_edges(
+    return design_inputs_from_edges(
         ["a", "b", "c", "d"], MESH_EDGES, {"a", "b", "c", "d"},
         [access("s", 0.0, 0.0)], MESH_COORDS,
     )
@@ -307,7 +309,8 @@ def test_best_design_at_size_selects_strongest_then_least_last_mile(
     strength: dict[str, float],
 ) -> None:
     """Backbone nodes are chosen by strength first, with last-mile only breaking ties."""
-    design = best_design_at_size(_mesh_inputs(), _plan(["a", "b", "c", "d"], strength=strength), 2)
+    plan = search_plan(["a", "b", "c", "d"], strength=strength)
+    design = best_design_at_size(_mesh_inputs(), plan, 2)
     assert design is not None and set(design.backbone_ids) == {"a", "b"}
 
 
@@ -318,25 +321,28 @@ def test_best_design_at_size_returns_none_when_nothing_feasible() -> None:
     other to wire its mesh links and no backbone set of that size is feasible.
     """
     edges = physical({("c1", "x"): 1.0, ("c2", "y"): 1.0})
-    inputs = _inputs_from_edges(["c1", "c2", "x", "y"], edges, {"c1", "c2"}, [access("s")])
-    assert best_design_at_size(inputs, _plan(["c1", "c2"]), 2) is None
+    inputs = design_inputs_from_edges(["c1", "c2", "x", "y"], edges, {"c1", "c2"}, [access("s")])
+    assert best_design_at_size(inputs, search_plan(["c1", "c2"]), 2) is None
 
 
 def test_required_backbone_is_fixed_into_every_set() -> None:
     """Required backbone nodes appear in every candidate set the search considers."""
-    plan = _plan(["a", "b", "c"], forced_links=ForcedLinks(required_backbone=frozenset({"a"})))
+    forced = ForcedLinks(required_backbone=frozenset({"a"}))
+    plan = search_plan(["a", "b", "c"], forced_links=forced)
     assert backbone_combinations(plan, 2) == [("a", "b"), ("a", "c")]
 
 
 def test_backbone_combinations_empty_when_size_below_required() -> None:
     """No backbone set exists when more nodes are required than the size allows."""
-    plan = _plan(["a", "b"], forced_links=ForcedLinks(required_backbone=frozenset({"a", "b"})))
+    forced = ForcedLinks(required_backbone=frozenset({"a", "b"}))
+    plan = search_plan(["a", "b"], forced_links=forced)
     assert backbone_combinations(plan, 1) == []
 
 
 def test_backbone_combination_count_zero_when_size_below_required() -> None:
     """The count is zero when more nodes are required than the size allows."""
-    plan = _plan(["a", "b"], forced_links=ForcedLinks(required_backbone=frozenset({"a", "b"})))
+    forced = ForcedLinks(required_backbone=frozenset({"a", "b"}))
+    plan = search_plan(["a", "b"], forced_links=forced)
     assert backbone_combination_count(plan, 1) == 0
 
 
@@ -360,8 +366,8 @@ def test_total_memory_falls_back_to_physical_ram(monkeypatch: pytest.MonkeyPatch
 
 def test_search_refuses_a_space_too_large_for_memory() -> None:
     """The search refuses to enumerate more backbone sets than RAM can hold."""
-    inputs = _inputs_from_edges([], {}, set(), [])
-    plan = _plan([f"c{index}" for index in range(40)])
+    inputs = design_inputs_from_edges([], {}, set(), [])
+    plan = search_plan([f"c{index}" for index in range(40)])
     with pytest.raises(ValueError):
         search_best_design(inputs, DesignParams(min_backbone_count=20), plan)
 
@@ -373,8 +379,8 @@ def test_search_raises_when_no_size_is_feasible() -> None:
     each other to wire their mesh links and no size is feasible.
     """
     edges = physical({("c1", "x"): 1.0, ("c2", "y"): 1.0})
-    inputs = _inputs_from_edges(["c1", "c2", "x", "y"], edges, {"c1", "c2"}, [access("s")])
-    plan = _plan(["c1", "c2"])
+    inputs = design_inputs_from_edges(["c1", "c2", "x", "y"], edges, {"c1", "c2"}, [access("s")])
+    plan = search_plan(["c1", "c2"])
     with pytest.raises(ValueError):
         search_best_design(inputs, DesignParams(min_backbone_count=2), plan)
 
@@ -382,7 +388,7 @@ def test_search_raises_when_no_size_is_feasible() -> None:
 def test_build_search_plan_ranks_candidates_by_strength() -> None:
     """Every eligible PoP is a backbone candidate, ranked by strength."""
     edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-    inputs = _inputs_from_edges(["a", "b", "c"], edges, {"a", "b", "c"})
+    inputs = design_inputs_from_edges(["a", "b", "c"], edges, {"a", "b", "c"})
     plan = build_search_plan(inputs, {"a", "b", "c"}, RoleOverrides(), DesignParams())
     assert set(plan.backbone_candidates) == {"a", "b", "c"}
 
@@ -390,7 +396,7 @@ def test_build_search_plan_ranks_candidates_by_strength() -> None:
 def test_build_search_plan_fixes_promoted_nodes_into_required() -> None:
     """Convergence-promoted nodes join the operator-forced nodes in the required set."""
     edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-    inputs = _inputs_from_edges(["a", "b", "c"], edges, {"a", "b", "c"})
+    inputs = design_inputs_from_edges(["a", "b", "c"], edges, {"a", "b", "c"})
     overrides = RoleOverrides(forced_backbone_ids=frozenset({"a"}))
     plan = build_search_plan(
         inputs, {"a", "b", "c"}, overrides, DesignParams(), frozenset({"b"})
@@ -432,8 +438,8 @@ def _far_demand_inputs_plan(exempt: bool = False) -> tuple[DesignInputs, _Search
         access_nodes = [
             replace(node, exempt_from_distance_constraint=True) for node in access_nodes
         ]
-    inputs = _inputs_from_edges(ids, edges, {"cc1", "cc2", "cw", "ce"}, access_nodes, coords)
-    plan = _plan(
+    inputs = design_inputs_from_edges(ids, edges, {"cc1", "cc2", "cw", "ce"}, access_nodes, coords)
+    plan = search_plan(
         ["cc1", "cc2", "cw", "ce"],
         strength={"cc1": 3.0, "cc2": 3.0, "cw": 1.0, "ce": 1.0},
     )
@@ -517,10 +523,10 @@ def test_search_holds_at_the_floor_when_the_only_candidate_is_infeasible() -> No
     coords = {
         "c1": (40.0, -100.0), "c2": (40.0, -99.0), "p": (40.0, -81.0),
     }
-    inputs = _inputs_from_edges(
+    inputs = design_inputs_from_edges(
         ["c1", "c2", "p", "q"], edges, {"c1", "c2", "p"}, [access("s", 40.0, -80.5)], coords
     )
-    plan = _plan(["c1", "c2", "p"], strength={"c1": 3.0, "c2": 3.0, "p": 1.0})
+    plan = search_plan(["c1", "c2", "p"], strength={"c1": 3.0, "c2": 3.0, "p": 1.0})
     params = DesignParams(
         min_backbone_count=2, datacenter_cities=frozenset(),
         tuning=Tuning(backbone_coverage_target_miles=300),
@@ -530,13 +536,13 @@ def test_search_holds_at_the_floor_when_the_only_candidate_is_infeasible() -> No
 
 def test_synthesize_rejects_forced_nodes_split_across_pockets() -> None:
     """Synthesis fails loudly when forced nodes straddle a single-fiber cut."""
-    vertices = [pop(name) for name in _TWO_POCKET_IDS]
+    vertices = [pop(name) for name in TWO_POCKET_IDS]
     params = DesignParams(
         min_backbone_count=2,
         forced_backbone_names=("a", "d"),
-        datacenter_cities=_cities(*_TWO_POCKET_IDS),
+        datacenter_cities=_cities(*TWO_POCKET_IDS),
     )
-    pinned, edges, overrides = apply_role_overrides(vertices, _TWO_POCKET_EDGES, params)
+    pinned, edges, overrides = apply_role_overrides(vertices, TWO_POCKET_EDGES, params)
     with pytest.raises(ValueError):
         synthesize_two_tier_design(pinned, edges, params, overrides)
 

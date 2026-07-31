@@ -444,14 +444,3 @@ TWO_POCKET_EDGES = physical_edges_from(
     }
 )
 TWO_POCKET_IDS = ["a", "b", "c", "d", "e", "f"]
-
-# A bowtie -- triangles {a,b,x} and {x,d,e} sharing the cut city x. It is bridgeless (so
-# 2-edge-connectable across the lobes) yet x is an articulation point: {a,d} cannot be
-# made city-survivable. The case the cable gate passed but the city gate must reject.
-_BOWTIE_EDGES = physical_edges_from(
-    {
-        ("a", "b"): 1.0, ("b", "x"): 1.0, ("a", "x"): 1.0,
-        ("x", "d"): 1.0, ("d", "e"): 1.0, ("x", "e"): 1.0,
-    }
-)
-_BOWTIE_IDS = ["a", "b", "x", "d", "e"]
