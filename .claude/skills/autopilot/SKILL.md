@@ -22,7 +22,7 @@ Create six jobs with `CronCreate`, exactly as listed below. Use `recurring: true
 | :04 | `4,14,24,34,44,54 * * * *` | `REMINDER: Issues must be solved through a set of indivisible Claude tasks.` |
 | :06 | `6,16,26,36,46,56 * * * *` | `REMINDER: Ensure Claude tasks are indivisible.` |
 | :07 | `7,17,27,37,47,57 * * * *` | `REMINDER: Do not do anything but wait while a workflow is running.` |
-| :09 | `9,19,29,39,49,59 * * * *` | `REMINDER: When you come up against a new problem, file a GitHub issue with the sub-headers Problem, Why Unit Tests Did Not Catch It, Why Integration Tests Did Not Catch It, Why E2E Tests Did Not Catch It, Which Unit, Integration, or E2E regression tests would prevent this from happening again?, and Proposed Solution.` |
+| :09 | `9,19,29,39,49,59 * * * *` | `REMINDER: When you come up against a new problem, file a GitHub issue with the sub-headers "Problem", "Why Unit Tests Did Not Catch It", "Why Integration Tests Did Not Catch It", "Why E2E Tests Did Not Catch It", "Which Unit, Integration, or E2E regression tests would prevent this from happening again?", and "Proposed Solution".` |
 
 Then tell the user which issue number is in force, that six reminders are running, and the two limits that come with them: the jobs live in this session only and are gone when it ends, and recurring jobs auto-expire after seven days.
 

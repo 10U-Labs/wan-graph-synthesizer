@@ -35,14 +35,14 @@ _VERTICES = [
     fixtures.access_vertex("east_site", 0.0, 7.5),
     fixtures.access_vertex("west_site", 0.0, -7.49),
 ]
-# Every hub and every site hangs off both base nodes, so each grown backbone is buildable
-# and every site homes: what the design settles on is decided by geography alone.
+# Each far hub hangs off both base nodes, so every grown backbone is a pair of triangles
+# sharing the base span and survives any one city: what the design settles on is decided by
+# geography alone. The fiber is carrier PoPs only, as the real substrate is -- demand homes
+# to its nearest backbone nodes logically, over no last-mile fiber anyone has measured.
 _EDGES = fixtures.physical_edges_from({
     ("hub_a", "hub_b"): 1.0,
     ("cape", "hub_a"): 1.0, ("cape", "hub_b"): 1.0,
     ("plains", "hub_a"): 1.0, ("plains", "hub_b"): 1.0,
-    ("east_site", "hub_a"): 1.0, ("east_site", "hub_b"): 1.0,
-    ("west_site", "hub_a"): 1.0, ("west_site", "hub_b"): 1.0,
 })
 # The base pair is pinned so the strength search cannot settle anywhere else, leaving the
 # coverage pass as the only thing that can seat the other two. The convergence promotion is
