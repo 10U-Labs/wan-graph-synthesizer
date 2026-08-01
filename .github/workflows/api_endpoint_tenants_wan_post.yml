@@ -19,10 +19,13 @@ jobs:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
       - name: Install tools
-        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8'
+        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8' pyyaml
+      # The delivered-design layer reads the tenant roster in etc/ (through seed, on
+      # scripts/) and measures the published networks with the synthesizer's own
+      # haversine, so this tier needs both on the path as the other tiers do.
       - name: Run post-deployment integration tests against live AWS
         run: >-
-          PYTHONPATH=.:lib/python
+          PYTHONPATH=.:lib/python:scripts:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pytest
           test/api/endpoints/tenants/wan/post/post_deployment/integration/
           --import-mode=importlib --confcutdir=test
@@ -210,5 +213,10 @@ on:
       - test/fixtures.py
       - lib/python/**
       - lib/opentofu/common/**
+      # The delivered-design layer holds the published networks to the targets and seat
+      # caps the tenant configs set, and reaches them through seed's roster rules, so a
+      # change to either is a change to what that layer asserts.
+      - etc/**
+      - scripts/**
       - .github/workflows/api_endpoint_tenants_wan_post.yml
   workflow_dispatch: {}

@@ -1,0 +1,121 @@
+"""Layer 4 (delivered designs): the published networks answer the targets their configs set.
+
+Layers 1 to 3 stop at the shape of the deployment. The synthesizer exists, its runtime and
+memory match the declaration, and its role can reach the store -- and none of that reads a
+design. A synthesizer that publishes a network missing its coverage target by more than a
+factor of two passes every one of those assertions, because the build was accepted and the
+status said ``ready``, which is exactly how GitHub issue #41 stayed invisible from outside
+while DAF sat at 518 miles against a 200-mile target. This layer reads what was published
+and measures it.
+
+The measurement here does not go through ``synthesizer.coverage``. The report under test is
+what that module produced, so recomputing with it would only establish that it agrees with
+itself. Only ``haversine_miles`` is borrowed, since the distance between two points on the
+globe is not the thing in question.
+
+The last test is the one that would have failed on the old DAF build. A design that ends
+below its target has either spent every backbone seat its operator allowed or given up
+early, and only the second is a defect. Minuteman is the first kind today: it pins six
+cities into a backbone capped at six, so the coverage pass has nothing left to seat and its
+884-mile worst haul against a 400-mile target is the honest answer to a question its own
+config already settled. DAF, at 34 seats against a cap of 99, had no such excuse.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from synthesizer.input_graph import Vertex, haversine_miles
+
+
+def _vertex(node: dict[str, Any]) -> Vertex:
+    """Rebuild a published node as the vertex type the distance helper takes."""
+    latitude, longitude = node["coords"]
+    return Vertex(node["id"], node["name"], node["kind"], (latitude, longitude))
+
+
+def _worst_haul(design: dict[str, Any]) -> float:
+    """The farthest any site the target applies to sits from its nearest backbone node.
+
+    Sites the operator has excused the distance constraint are left out, as they are in the
+    synthesizer's own stop condition, and a design carrying no demand at all reads zero.
+    """
+    nodes = [_vertex(node) for node in design["backbone"]]
+    hauls = [
+        min(haversine_miles(_vertex(site), node) for node in nodes)
+        for site in design["demand"]
+        if not site["exempt_from_distance_constraint"]
+    ]
+    return round(max(hauls, default=0.0), 1)
+
+
+def test_every_tenant_the_roster_declares_has_a_published_network(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """No tenant git declares is left without a WAN the synthesizer finished building."""
+    unfinished = {
+        design["tenant"]: design["status"].get("status")
+        for design in delivered_designs
+        if design["status"].get("status") != "ready"
+    }
+    assert unfinished == {}
+
+
+def test_every_published_network_reports_the_coverage_it_delivered(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """A published status says what the design did about its target, not only ``ready``.
+
+    That one word was all a reader outside the synthesizer used to get, and it read the same
+    whether the coverage pass met the target or ran out of things to try.
+    """
+    silent = [
+        design["tenant"] for design in delivered_designs if "coverage" not in design["status"]
+    ]
+    assert silent == []
+
+
+def test_every_report_is_measured_against_the_target_its_tenant_declares(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """The target each report was judged against is the one that tenant's own config sets.
+
+    The number travels from ``etc/`` through seed, the knobs resource and the tuning block
+    before it reaches the report, and a report judged against some other number would look
+    perfectly well formed at the end of that journey.
+    """
+    reported = {
+        design["tenant"]: design["status"]["coverage"]["target_miles"]
+        for design in delivered_designs
+    }
+    declared = {design["tenant"]: design["target_miles"] for design in delivered_designs}
+    assert reported == declared
+
+
+def test_the_reported_worst_haul_is_the_one_the_published_network_delivers(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """The worst haul a status claims is the worst haul its own published network has.
+
+    Measured off the backbone and the sites as published, so the claim is checked against
+    the artifact an operator reads rather than against the run that wrote it.
+    """
+    mismeasured = [
+        (design["tenant"], _worst_haul(design))
+        for design in delivered_designs
+        if _worst_haul(design) != design["status"]["coverage"]["worst_haul_miles"]
+    ]
+    assert mismeasured == []
+
+
+def test_no_design_stopped_short_of_its_target_with_a_seat_left_to_spend(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """A design that ended below its coverage target had spent every seat it was allowed.
+
+    This is the assertion the defect had to get past. Growth that halts with seats still
+    free has decided no remaining candidate is worth taking, and on the old DAF build that
+    decision was wrong twice over: sixteen seats used of ninety-nine, and every site the
+    target applied to more than twice as far out as the target allowed.
+    """
+    gave_up_early = [
+        (design["tenant"], len(design["backbone"]), design["seat_cap"])
+        for design in delivered_designs
+        if not design["status"]["coverage"]["met"]
+        and len(design["backbone"]) < design["seat_cap"]
+    ]
+    assert gave_up_early == []
