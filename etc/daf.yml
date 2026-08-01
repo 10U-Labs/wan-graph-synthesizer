@@ -9,18 +9,27 @@ backbone:
     connections: []
     nodes:
       - Ashburn, VA
+      - Atlanta, GA
       - Boston, MA
       - Cheyenne, WY
       - Colorado Springs, CO
+      - Dallas, TX
       - Great Falls, MT
       - Hillsboro, OR
+      - Houston, TX
+      - Kansas City, MO
+      - Las Vegas, NV
       - Los Angeles, CA
       - McLean, VA
       - Minot, ND
       - New York, NY
+      - Omaha, NE
+      - Phoenix, AZ
+      - Reno, NV
       - Salt Lake City, UT
       - San Jose, CA
       - Seattle, WA
+      - Tallahassee, FL
   node_count:
     max: 99
     min: 3
