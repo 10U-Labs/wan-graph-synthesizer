@@ -1,0 +1,9 @@
+# A rejected push is fixed forward
+
+When a push fails CI, fix it in a follow-up commit. Do not amend and force-push. `main` is the only branch and it is already published by the time the run reports, so rewriting it discards the history of what was actually tried. The user was asked directly whether an amended force-push would be preferable and said no.
+
+This puts two standing rules in tension, and the resolution is worth stating plainly rather than rediscovering. Issues are meant to be solved in single pushes, and verification happens only in CI — see [verification-in-ci-only](verification-in-ci-only.md). But CI stops at the first failing gate, so a change carrying several independent static-analysis findings surfaces exactly one per cycle: fix it, push, learn the next one. Issue #40 took five pushes for this reason, four of them rejected before any test ran — pylint `R0914`, a mypy dict-invariance error, pylint `C1803`, then three more mypy errors. The tests first executed on the fifth.
+
+Running the analysers locally would collapse that to one push, and it is the obvious suggestion to make. It has been made and declined: the answer is still no local runs, of anything, including linters. So when the two rules collide, CI-only is the one that holds and the extra commits are the accepted cost of it. Do not propose local linting again as a way to honour the single-push rule, and do not quietly treat a static-analysis rejection as licence to rewrite the commit.
+
+What is worth doing instead is reading the whole failed log rather than the first error, and sweeping the change for other instances of the same shape before pushing the fix. Several of #40's cycles were one finding that recurred in a second file. A fix that also clears every sibling instance turns two cycles into one without running anything locally.

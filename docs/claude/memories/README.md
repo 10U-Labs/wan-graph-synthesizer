@@ -20,6 +20,7 @@ session tool's local memory only what is true of one machine alone.
 - [find-a-run-by-the-full-hash](find-a-run-by-the-full-hash.md) — `gh run list --commit` returns nothing for a short hash, and says nothing about why
 - [commit-straight-to-main](commit-straight-to-main.md) — direct commits,
   no branches and no pull requests
+- [a-rejected-push-is-fixed-forward](a-rejected-push-is-fixed-forward.md) — a failed run is answered with a follow-up commit, never an amended force-push
 - [markdown-is-not-hard-wrapped](markdown-is-not-hard-wrapped.md) — no
   column limit on `.md` files or on issue and pull-request bodies
 - [how-issues-are-written](how-issues-are-written.md) — five fixed sections, plain English, telecom vocabulary

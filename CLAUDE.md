@@ -30,8 +30,11 @@ branch, do not open a pull request, and do not structure advice around a
 review cycle. There is no pull-request buffer, so CI is the only review
 there is and the tests land in the same commit as the code they cover.
 
+A push rejected by CI is answered with a follow-up commit. Do not amend and force-push: `main` is published by the time the run reports, and rewriting it discards what was tried. This sits awkwardly beside solving an issue in a single push, because CI stops at the first failing gate and so surfaces one static-analysis finding per cycle. When the two collide, verifying only in CI is the rule that holds and the extra commits are its cost — local linting has been proposed and declined. Read the whole failed log rather than its first error, and sweep the change for other instances of the same shape before pushing the fix.
+
 Longer:
-[commit-straight-to-main](docs/claude/memories/commit-straight-to-main.md).
+[commit-straight-to-main](docs/claude/memories/commit-straight-to-main.md),
+[a-rejected-push-is-fixed-forward](docs/claude/memories/a-rejected-push-is-fixed-forward.md).
 
 ## Tests
 
