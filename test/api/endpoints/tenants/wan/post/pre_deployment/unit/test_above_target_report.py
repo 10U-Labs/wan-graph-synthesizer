@@ -63,7 +63,7 @@ def _above_target(*extra: PathUse) -> list[dict[str, object]]:
 
 def test_a_site_holding_exactly_what_it_asked_for_is_not_reported() -> None:
     """Two links against a target of two is the design working, not a thing to report."""
-    assert _above_target() == []
+    assert not _above_target()
 
 
 @pytest.mark.parametrize(
