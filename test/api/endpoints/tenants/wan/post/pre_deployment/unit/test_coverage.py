@@ -206,7 +206,7 @@ def _grown(candidates: list[str], target_miles: int) -> tuple[str, ...]:
         _GROWTH_IDS, _GROWTH_EDGES, set(_GROWTH_IDS), _GROWTH_SITES, _GROWTH_COORDS
     )
     plan = search_plan(candidates)
-    base = cast("Design", build_design_for_backbone(("b1", "b2"), inputs, plan))
+    base = cast(Design, build_design_for_backbone(("b1", "b2"), inputs, plan))
     params = DesignParams(
         min_backbone_count=2, tuning=Tuning(backbone_coverage_target_miles=target_miles)
     )
