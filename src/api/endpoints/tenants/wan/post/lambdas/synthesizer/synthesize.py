@@ -6,7 +6,7 @@ compass spread plus path straightness, and the strongest feasible set of at leas
 configured ``min_backbone_count`` wins, with total last-mile only breaking ties. The
 backbone then grows past that floor while any demand vertex is farther than
 ``backbone_coverage_target_miles`` from every selected backbone node, each added node
-being the one that most shortens the demand-to-backbone haul -- so extra backbone
+being the one that leaves the demand hauls shortest read worst-first -- so extra backbone
 nodes appear only where they bring demand closer, never as a mileage cost minimized
 over candidate sets.
 
@@ -273,8 +273,8 @@ def search_best_design(
     ties), growing the backbone one PoP at a time only if no feasible design exists at a
     size. It then adds nodes past that floor while some demand vertex is farther than
     ``backbone_coverage_target_miles`` from every selected node, each added node being the
-    best-connected candidate that brings that worst distance inside the target -- so extra
-    nodes appear only where they close the gap, and the one seated is chosen for the fiber
+    best-connected candidate that brings those distances inside the target -- so extra
+    nodes appear only where they close a gap, and the one seated is chosen for the fiber
     it can carry rather than the miles it saves. Enumerating each size must fit
     the share of RAM
     the search may use, or the design is refused rather than risk exhausting memory.

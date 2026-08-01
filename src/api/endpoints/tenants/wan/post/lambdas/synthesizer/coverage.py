@@ -8,12 +8,14 @@ true, and decides which node to add.
 Two questions decide a round and they are asked in that order: coverage says which
 candidates are admissible, and fiber says which of those is worth seating. Both are written
 up where they are answered, in :func:`grow_backbone_for_coverage` and
-:func:`best_coverage_candidate`.
+:func:`best_coverage_candidate`. What the delivered design did about the target is
+reported by :func:`coverage_report`, since growth can stop without having met it.
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TypedDict
 
 from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.model import Design, DesignInputs, DesignParams
@@ -24,43 +26,84 @@ from synthesizer.search_plan import _SearchPlan
 logger = logging.getLogger(__name__)
 
 
-COVERAGE_EPSILON_MILES = 1.0  # a new backbone node must cut the worst demand haul by this
+class CoverageReport(TypedDict):
+    """What a delivered design does about the coverage target it was built to."""
+
+    target_miles: float
+    worst_haul_miles: float
+    sites_above_target: int
+    met: bool
 
 
-def demand_haul_miles(
+def demand_hauls(
     backbone_ids: tuple[str, ...],
     access_vertices: list[Vertex],
     pop_by_id: dict[str, Vertex],
-) -> float:
-    """The worst straight-line miles from any demand vertex to its nearest backbone node.
+) -> list[float]:
+    """Each demand vertex's straight-line miles to its nearest backbone node.
 
-    The coverage signal the search drives down by adding backbone nodes: the long haul an
+    The coverage signal the search drives down by adding backbone nodes: the hauls an
     operator sees on the map, and the quantity the coverage target is stated in.
     """
     nodes = [pop_by_id[backbone_id] for backbone_id in backbone_ids]
-    return max(
-        (
-            min(haversine_miles(access, node) for node in nodes)
-            for access in access_vertices
-        ),
-        default=0.0,
-    )
+    return [
+        min(haversine_miles(access, node) for node in nodes) for access in access_vertices
+    ]
 
 
-def coverage_worst_haul(
+def coverage_haul_profile(
     backbone_ids: tuple[str, ...],
     access_vertices: list[Vertex],
     pop_by_id: dict[str, Vertex],
-) -> float:
-    """The worst demand haul over only the non-exempt sites -- the coverage stop signal.
+) -> tuple[float, ...]:
+    """Every non-exempt site's haul to its nearest backbone node, worst first.
 
     Sites the operator marked exempt from the distance constraint (OCONUS) are dropped:
     each may sit farther than any backbone node can reach, so counting one would hold growth
     open to the node cap. They still drive hub scoring and home to their nearest node
-    elsewhere; only coverage ignores them. An all-exempt design reads as 0.
+    elsewhere; only coverage ignores them. An all-exempt design reads as empty.
+
+    The whole list rather than its worst entry, because one number cannot say whether a hub
+    helped anybody. Two sites that need separate hubs and whose hauls sit within a mile of
+    each other take turns at the top of the list, so a hub rescuing either one moves the
+    worst number by the gap between them and by nothing else -- a hub bringing a site four
+    hundred miles closer reads as having achieved four tenths of a mile, and a second site
+    at exactly equal haul makes it read as having achieved nothing at all. Compared position
+    by position, the same hub is plainly the better design: the two lists first differ where
+    the rescued site used to be.
     """
     covered = [v for v in access_vertices if not v.exempt_from_distance_constraint]
-    return demand_haul_miles(backbone_ids, covered, pop_by_id)
+    return tuple(sorted(demand_hauls(backbone_ids, covered, pop_by_id), reverse=True))
+
+
+def coverage_worst_haul(profile: tuple[float, ...]) -> float:
+    """The worst haul in a coverage profile -- the stop signal. An empty profile reads 0."""
+    return max(profile, default=0.0)
+
+
+def coverage_report(
+    backbone_ids: tuple[str, ...],
+    access_vertices: list[Vertex],
+    pop_by_id: dict[str, Vertex],
+    target_miles: float,
+) -> CoverageReport:
+    """Measure a finished design against the coverage target it was built to.
+
+    Growth ends on one of four things -- the target met, the seat cap reached, the
+    candidates exhausted, or no candidate improving on the design in hand -- and only the
+    first is success. Rather than carry which one fired, this measures the design that came
+    out: the worst haul over the sites the target applies to, and how many of them sit
+    outside it. A design that stopped short then says so somewhere a caller can read it,
+    instead of being published under the same word as one that met the target.
+    """
+    profile = coverage_haul_profile(backbone_ids, access_vertices, pop_by_id)
+    worst = coverage_worst_haul(profile)
+    return {
+        "target_miles": target_miles,
+        "worst_haul_miles": round(worst, 1),
+        "sites_above_target": sum(1 for haul in profile if haul > target_miles),
+        "met": worst <= target_miles,
+    }
 
 
 def coverage_candidate_hauls(
@@ -69,10 +112,10 @@ def coverage_candidate_hauls(
     inputs: DesignInputs,
     plan: _SearchPlan,
     pop_by_id: dict[str, Vertex],
-) -> list[tuple[float, str]]:
-    """Each free candidate's worst non-exempt demand haul once it joins the backbone.
+) -> list[tuple[tuple[float, ...], str]]:
+    """Each free candidate's non-exempt haul profile once it joins the backbone.
 
-    This is the same quantity :func:`coverage_worst_haul` measures and the same one the
+    This is the same quantity :func:`coverage_haul_profile` measures and the same one the
     growth loop stops on, which is the whole point of it. A round opens because some site
     the target applies to is too far from every backbone node, so the candidate worth
     seating is the one that leaves that site closest -- not the one that shaves the most
@@ -80,15 +123,15 @@ def coverage_candidate_hauls(
     the target was deliberately lifted from.
 
     Infeasible additions (a candidate whose promotion strands demand) are dropped, so
-    every returned pair is a buildable grown set ranked by how short it leaves the haul.
+    every returned pair is a buildable grown set beside the coverage it would deliver.
     """
-    hauls: list[tuple[float, str]] = []
+    hauls: list[tuple[tuple[float, ...], str]] = []
     for candidate_id in free:
         candidate_set = tuple(sorted((*backbone_ids, candidate_id)))
         if evaluate_backbone(candidate_set, inputs, plan) is None:
             continue
-        haul = coverage_worst_haul(candidate_set, inputs.access_vertices, pop_by_id)
-        hauls.append((haul, candidate_id))
+        profile = coverage_haul_profile(candidate_set, inputs.access_vertices, pop_by_id)
+        hauls.append((profile, candidate_id))
     return hauls
 
 
@@ -113,7 +156,7 @@ def candidate_mesh_ceiling(
 
 
 def best_coverage_candidate(
-    improving: list[tuple[float, str]],
+    improving: list[tuple[tuple[float, ...], str]],
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     target_miles: float,
@@ -133,11 +176,13 @@ def best_coverage_candidate(
     required to hold has not solved the problem, it has moved it.
 
     Distance decides only what fiber cannot. Where no candidate reaches the target none has
-    answered the round, so the one leaving the worst haul shortest is seated and the next
+    answered the round, so the one leaving the best haul profile is seated and the next
     round asks again -- a preference for well-connected fiber must never hold a gap open.
-    Ties are settled by haul and then by id, so the choice is deterministic.
+    Ties are settled by profile and then by id, so the choice is deterministic.
     """
-    satisfying = [pair for pair in improving if pair[0] <= target_miles]
+    satisfying = [
+        pair for pair in improving if coverage_worst_haul(pair[0]) <= target_miles
+    ]
     if not satisfying:
         return min(improving)[1]
     return min(
@@ -163,18 +208,30 @@ def grow_backbone_for_coverage(
     strength still chooses the base backbone, and the operator's coverage target is a
     constraint on how far the backbone may leave demand, not a mileage cost minimized over
     candidate sets. Growth stops once every non-exempt demand vertex is within target, the
-    backbone reaches ``max_backbone_count``, no remaining candidate brings the worst haul
-    meaningfully closer, or the candidates are exhausted.
+    backbone reaches ``max_backbone_count``, no remaining candidate leaves any site nearer
+    than the design already does, or the candidates are exhausted. Only the first of those
+    is success, which is why :func:`coverage_report` measures what came out.
 
     Two questions decide a round and they are asked in that order. Which candidates are
     admissible is a coverage question, and one measure has to answer it in all three places
     -- the stop test, the scoring and the progress filter -- or the loop argues with itself.
-    That measure is the worst haul over the sites the target applies to. Were candidates
-    scored by the summed haul over every site instead, a round could be won by a node that
-    shortens many sites already inside the target while leaving the far one where it was,
-    and the exempt sites, exempt precisely because they are far from everything, would
-    contribute the largest terms to that sum and so have the most say in a choice they were
-    lifted out of. The round would spend a node and come round again with the gap still open.
+    That measure is the haul profile over the sites the target applies to: every one of
+    their hauls, worst first, compared position by position. Were candidates scored by the
+    summed haul over every site instead, a round could be won by a node that shortens many
+    sites already inside the target while leaving the far one where it was, and the exempt
+    sites, exempt precisely because they are far from everything, would contribute the
+    largest terms to that sum and so have the most say in a choice they were lifted out of.
+    The round would spend a node and come round again with the gap still open.
+
+    Judging progress on the worst haul alone was the same error read the other way. It
+    asks whether the worst number on the board moved rather than whether a hub helped a
+    site, and the two part company the moment a second site is queued just behind the
+    first: seating the hub that rescues the leader promotes the runner-up, the board barely
+    moves, and the round reports that nothing improved while a site went from five hundred
+    miles of haul to fifty. Two sites at exactly equal haul deadlock such a test at any
+    tolerance, which is why there is no tolerance to tune here and the profiles are simply
+    compared. Growth is bounded regardless: each round spends a candidate, and the stop
+    test above ends it as soon as the target is met.
 
     Which of the admissible candidates to seat is not a coverage question at all, and
     answering it with distance was the second half of the same mistake. Among candidates
@@ -193,11 +250,12 @@ def grow_backbone_for_coverage(
         if params.max_backbone_count is not None and len(backbone_ids) >= params.max_backbone_count:
             logger.info("Coverage growth stopped at the %d-node cap", len(backbone_ids))
             break
-        # One quantity runs the whole round: the worst haul over the sites the target
+        # One quantity runs the whole round: the haul profile over the sites the target
         # applies to. It decides whether to stop, which candidate wins, and whether any
         # candidate is worth seating -- so the round cannot be won by a node that does
-        # nothing about the gap that opened it.
-        worst = coverage_worst_haul(backbone_ids, inputs.access_vertices, pop_by_id)
+        # nothing about the gap that opened it, nor abandoned by a node that plainly helps.
+        profile = coverage_haul_profile(backbone_ids, inputs.access_vertices, pop_by_id)
+        worst = coverage_worst_haul(profile)
         if worst <= target_miles:
             logger.info("Coverage met at %d nodes (worst haul %.0f mi)", len(backbone_ids), worst)
             break
@@ -206,7 +264,7 @@ def grow_backbone_for_coverage(
             len(backbone_ids), worst, target_miles, len(free),
         )
         candidates = coverage_candidate_hauls(backbone_ids, free, inputs, plan, pop_by_id)
-        improving = [pair for pair in candidates if pair[0] < worst - COVERAGE_EPSILON_MILES]
+        improving = [pair for pair in candidates if pair[0] < profile]
         if not improving:
             logger.info("No candidate improves coverage; holding at %d nodes", len(backbone_ids))
             break

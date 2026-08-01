@@ -64,7 +64,10 @@ def _stub_pipeline(
         module, "apply_role_overrides", lambda *_a: (graph, {}, RoleOverrides())
     )
     monkeypatch.setattr(module, "synthesize_two_tier_design", lambda *_a: object())
-    monkeypatch.setattr(module, "finalize", lambda *_a: (graph, {}, object(), {}))
+    # The design carries its backbone because the handler measures the coverage it
+    # delivered before publishing; the rest of it is the stubbed payload's business.
+    design = SimpleNamespace(backbone_ids=("P",))
+    monkeypatch.setattr(module, "finalize", lambda *_a: (graph, {}, design, {}))
     monkeypatch.setattr(module, "design_payload", lambda *_a: payload)
 
 
@@ -123,6 +126,28 @@ def test_marks_status_ready_on_success(synthesizer: Any, monkeypatch: pytest.Mon
     """A successful build records a 'ready' status."""
     objects = _run(synthesizer, monkeypatch)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "ready"
+
+
+def test_the_ready_status_says_whether_the_coverage_target_was_met(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A published build records what it did about the target, not just that it finished.
+
+    The lone site sits inside the target here, so this build met it -- and a build that
+    stopped short would be published under the same word without this.
+    """
+    objects = _run(synthesizer, monkeypatch)
+    status = json.loads(objects["tenants/f-35/wan-status.json"])
+    assert status["coverage"]["met"] is True
+
+
+def test_the_ready_status_carries_the_target_the_design_was_measured_against(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The tenant's own coverage target travels with the measurement of its design."""
+    objects = _run(synthesizer, monkeypatch)
+    status = json.loads(objects["tenants/f-35/wan-status.json"])
+    assert status["coverage"]["target_miles"] == 600
 
 
 def test_records_failed_when_no_valid_wan(

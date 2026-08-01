@@ -29,7 +29,15 @@ from synthesizer.collections import (
     vertices,
 )
 from synthesizer.config import app_config_from_parts
-from synthesizer.model import DesignArtifacts, SourceFiles
+from synthesizer.coverage import CoverageReport, coverage_report
+from synthesizer.input_graph import Vertex
+from synthesizer.model import (
+    Design,
+    DesignArtifacts,
+    DesignParams,
+    SourceFiles,
+    is_carrier_pop,
+)
 from synthesizer.synthesize import synthesize_two_tier_design
 from synthesizer.output import design_payload
 from synthesizer.overrides import apply_role_overrides
@@ -82,8 +90,32 @@ def _write_json(client: Any, key: str, body: Any) -> None:
     )
 
 
-def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
-    """Run the whole design pipeline for one tenant; shape its WAN collections."""
+def _delivered_coverage(
+    graph: list[Vertex], design: Design, params: DesignParams, tenant: str
+) -> CoverageReport:
+    """Measure -- and log -- what the finished design did about the tenant's coverage target.
+
+    Measured off the delivered network rather than reported by the search that built it, so
+    a design that grew until nothing was left to seat is told apart from one that met the
+    target by the only evidence an operator has: where the sites ended up.
+    """
+    coverage = coverage_report(
+        design.backbone_ids,
+        [vertex for vertex in graph if not is_carrier_pop(vertex)],
+        {vertex.id: vertex for vertex in graph},
+        params.tuning.backbone_coverage_target_miles,
+    )
+    logger.info("Coverage delivered for %s: %s", tenant, coverage)
+    return coverage
+
+
+def _build_wan(client: Any, tenant: str) -> tuple[dict[str, Any], CoverageReport]:
+    """Run the whole design pipeline for one tenant; shape its WAN collections.
+
+    The coverage the design actually delivers comes back beside the collections, because
+    growth can stop without having met the operator's target and a caller reading only the
+    published WAN would have no way to tell the two apart.
+    """
     logger.info("Loading substrate and inputs for %s", tenant)
     carrier_pops, physical_edges = load_substrate(
         _read_json(client, "carriers/merge/vertices.json"),
@@ -133,7 +165,7 @@ def _build_wan(client: Any, tenant: str) -> dict[str, Any]:
         "backbone-links": backbone_links(payload),
         "tenant-nodes": tenant_nodes(payload),
         "provider-nodes": provider_nodes(payload),
-    }
+    }, _delivered_coverage(graph, design, params, tenant)
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
@@ -142,6 +174,11 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     The dispatcher async-invokes this with ``{"tenant": ...}``. The status is moved to
     ``building`` first -- the in-progress marker the GET reads -- then ``ready`` once the
     WAN is published, or ``failed`` if the build raises.
+
+    A ``ready`` status carries the coverage the design delivered. Growth toward the
+    operator's target can stop short of it, and a build that gave up used to be published
+    under the same one word as a build that met it, so nothing downstream could tell them
+    apart without reading the synthesizer's own log.
     """
     # Surface INFO progress in CloudWatch (the Lambda runtime defaults the root logger
     # to WARNING, which would drop every progress line).
@@ -155,12 +192,12 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     # an unforeseen bug can raise anything) must be recorded as the WAN's status
     # rather than crash the invocation and leave the tenant stuck "building" forever.
     try:
-        wan = _build_wan(client, tenant)
+        wan, coverage = _build_wan(client, tenant)
     except Exception as exc:
         logger.warning("Build failed for %s: %s", tenant, exc)
         _write_json(client, status_key, {"status": "failed", "reason": str(exc)})
         return {"status": "failed", "tenant": tenant}
     _write_json(client, f"tenants/{tenant}/wan.json", wan)
-    _write_json(client, status_key, {"status": "ready"})
+    _write_json(client, status_key, {"status": "ready", "coverage": coverage})
     logger.info("Build ready for %s", tenant)
     return {"status": "ready", "tenant": tenant}
