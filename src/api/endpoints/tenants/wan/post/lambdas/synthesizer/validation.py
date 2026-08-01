@@ -316,7 +316,7 @@ def unrequested_mesh_links(design: Design, node: str) -> list[dict[str, object]]
     from this node's side that is what it is: a link has two ends and only one of them
     asked for it.
     """
-    unrequested = [
+    unrequested: list[dict[str, object]] = [
         {
             "peer": use.target if use.source == node else use.source,
             "reason": "peer_target" if use.reason == LINK_FOR_TARGET else use.reason,

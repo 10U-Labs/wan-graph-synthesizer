@@ -6,12 +6,7 @@ from collections.abc import Iterable
 
 import fixtures
 from synthesizer.input_graph import PhysicalEdge, edge_key
-from synthesizer.model import (
-    LINK_FOR_CONNECTIVITY,
-    LINK_FOR_PIN,
-    LINK_FOR_TARGET,
-    PathUse,
-)
+from synthesizer.model import LINK_FOR_TARGET, PathUse
 from synthesizer.backbone import (
     BackboneConstraints,
     LinkReason,

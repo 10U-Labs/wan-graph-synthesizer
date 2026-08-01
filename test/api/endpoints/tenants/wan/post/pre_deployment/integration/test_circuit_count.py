@@ -28,8 +28,6 @@ _SPANS = {
     (_SITES[left], _SITES[right]): 100.0 * (right - left)
     for left, right in combinations(range(len(_SITES)), 2)
 }
-_FULL_MESH = len(_SITES) * (len(_SITES) - 1) // 2
-
 ARTIFACTS = run_design(
     [
         fixtures.carrier_pop(site, 38.0, -115.0 + 2.0 * index)
