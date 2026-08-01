@@ -38,4 +38,4 @@ Call `CronList`, then call `CronDelete` once per job it returns — all of them,
 
 Cron jobs fire only while the session is idle, never mid-turn, because a turn cannot be preempted. That limit is the reason this skill does not try to correct drift in the middle of a task: what it can do is restart a loop that has stalled, which is the failure it is there to catch.
 
-The issue sub-headers in the last reminder are the user's wording. `CLAUDE.md` names the closing section `Solution` rather than `Proposed Solution`, and does not yet carry the regression-test section at all; `docs/claude/memories/how-issues-are-written.md` is the authority when an issue is actually being written, so the two need reconciling before the next issue is filed.
+The issue sub-headers in the last reminder are the user's wording. `CLAUDE.md` carries the same six sections, the regression one included, and names the closing one `Solution` rather than `Proposed Solution`; `docs/claude/memories/how-issues-are-written.md` is the authority when an issue is actually being written, and that last name is the only place the two still differ.

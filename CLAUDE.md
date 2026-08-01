@@ -82,7 +82,7 @@ Longer:
 
 ## Issues
 
-An issue has five sections in a fixed order: Problem, Why Unit Tests Did Not Catch It, Why Integration Tests Did Not Catch It, Why E2E Tests Did Not Catch It, Solution. Every issue has all five; where a tier does not exist for the code in question, saying so is the finding, not a reason to drop the section. Write plain, ordinary English prose and use telecommunications vocabulary for the subject matter — path diversity rather than mesh degree, site rather than node. Tables where a table genuinely reads better, bullets only when enumerating things, never to break up an argument. Back claims with numbers computed from the repository's own data, and say how they were computed.
+An issue has six sections in a fixed order: "Problem", "Why Unit Tests Did Not Catch It", "Why Integration Tests Did Not Catch It", "Why E2E Tests Did Not Catch It", "Which Unit, Integration, or E2E regression tests would prevent this from happening again?", "Solution". Every issue has all six; where a tier does not exist for the code in question, saying so is the finding, not a reason to drop the section. The regression section names the tests to write, each with its tier and its assertion, and is separate from the solution so that a fix cannot ship with the coverage folded into its last paragraph. Write plain, ordinary English prose and use telecommunications vocabulary for the subject matter — path diversity rather than mesh degree, site rather than node. Tables where a table genuinely reads better, bullets only when enumerating things, never to break up an argument. Back claims with numbers computed from the repository's own data, and say how they were computed.
 
 Longer:
 [how-issues-are-written](docs/claude/memories/how-issues-are-written.md).
