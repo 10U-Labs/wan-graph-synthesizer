@@ -114,6 +114,10 @@ def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str
                 "target_name": vertices_by_id[path_use.target].name,
                 "distance_miles": round(path_use.distance_miles, 3),
                 "path": [vertices_by_id[vertex_id].name for vertex_id in path_use.path],
+                "reason": path_use.reason,
+                "requested_by": [
+                    vertices_by_id[vertex_id].name for vertex_id in path_use.requested_by
+                ],
             }
             for path_use in design.path_uses
         ],

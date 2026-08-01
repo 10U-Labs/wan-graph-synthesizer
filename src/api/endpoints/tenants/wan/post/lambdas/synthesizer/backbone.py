@@ -28,7 +28,13 @@ from synthesizer.graphs import (
     path_edge_keys,
     reconstruct_path,
 )
-from synthesizer.model import PathUse
+from synthesizer.model import (
+    LINK_FOR_CITY_DETOUR,
+    LINK_FOR_CONNECTIVITY,
+    LINK_FOR_PIN,
+    LINK_FOR_TARGET,
+    PathUse,
+)
 
 
 def path_geometry_miles(
@@ -133,7 +139,7 @@ def _diverse_picks(
     node: str,
     nearest: list[tuple[float, str]],
     pinned: set[str],
-    slots: tuple[int, int],
+    slots: int,
     all_distances: dict[str, dict[str, float]],
 ) -> list[str]:
     """Fill ``node``'s free slots from ``nearest``, preferring peers it shares no transit with.
@@ -141,36 +147,34 @@ def _diverse_picks(
     Candidates are walked nearest first; one that routes through a peer already held --
     a pin or an earlier pick -- is passed over rather than taken.
 
-    ``slots`` is ``(diverse, floor)``: how many independent links the node is reaching for,
-    and how many links it must end with either way. Diverse picks fill up to the first
-    number, which is what the node's own fiber can carry. Anything still short of the
-    second is filled from the passed-over candidates, nearest first, since a link through
-    a chokepoint still beats no link at all.
+    ``slots`` is how many links the node is reaching for: the number of diverse paths its
+    tenant asked for, less any the operator already pinned. Diverse candidates fill it
+    first, and anything still short is filled from the passed-over ones, nearest first,
+    since a link through a chokepoint still beats no link at all.
 
-    The two differ because a chokepoint link is worth having up to the operator's minimum
-    and worthless above it. Backfilling past the floor would spend cable on a link that
-    must re-cross a city the node already depends on, which buys none of the independence
-    the reach above the floor was for.
+    The backfill stops at the same number the diverse picks aimed at. A node short of its
+    target has a shortfall worth reporting, not a slot worth filling with cable that must
+    re-cross a city it already depends on -- and a node that met its target has no slot
+    left to fill whatever else its fiber offers.
     """
-    diverse, floor = slots
     chosen = set(pinned)
     picks: list[str] = []
     passed_over: list[str] = []
     for _distance, other in nearest:
-        if len(picks) == diverse:
+        if len(picks) == slots:
             break
         if _shares_transit(node, other, chosen, all_distances):
             passed_over.append(other)
             continue
         picks.append(other)
         chosen.add(other)
-    return picks + passed_over[: max(floor - len(picks), 0)]
+    return picks + passed_over[: max(slots - len(picks), 0)]
 
 
 def _proven_picks(
     routes: list[tuple[str, ...]],
     nearest: list[tuple[float, str]],
-    slots: tuple[int, int],
+    slots: int,
 ) -> list[str]:
     """Fill a node's free slots with the peers its own ``routes`` reach.
 
@@ -192,18 +196,20 @@ def _proven_picks(
     counts routes over the fiber and knows nothing of either instruction, so this is the
     place the two are reconciled.
 
-    ``slots`` is ``(diverse, floor)``, as in :func:`_diverse_picks`. Anything still short of
-    the floor is filled from the nearest peers left over, since a link the proof does not
-    cover still beats no link at all.
+    ``slots`` is how many links the node is reaching for, as in :func:`_diverse_picks`.
+    The proof may have found more routes than that -- it counts what the fiber can carry,
+    not what anyone asked for -- and the extra ones are left unwired: the number the tenant
+    set is the number, and taking a route because it happens to exist is the tool spending
+    an operator's cable on its own judgement. Anything still short is filled from the
+    nearest peers left over, since a link the proof does not cover still beats no link.
     """
-    diverse, floor = slots
     rank = {peer: index for index, (_distance, peer) in enumerate(nearest)}
     proven = sorted(
         (rank[route[-1]], route[-1]) for route in routes if route[-1] in rank
     )
-    picks = [peer for _rank, peer in proven][:diverse]
+    picks = [peer for _rank, peer in proven][:slots]
     spare = [peer for _distance, peer in nearest if peer not in picks]
-    return picks + spare[: max(floor - len(picks), 0)]
+    return picks + spare[: max(slots - len(picks), 0)]
 
 
 @dataclass(frozen=True)
@@ -213,43 +219,64 @@ class BackboneConstraints:
     removed_pairs: frozenset[tuple[str, str]] = frozenset()
     number_of_diverse_paths: int = 3
     forced_pairs: frozenset[tuple[str, str]] = frozenset()
-    # each node's computed ceiling (see :mod:`synthesizer.ceiling`); a node absent from
-    # the mapping reaches only for the tenant's degree, which is what an empty one means
-    ceilings: Mapping[str, int] = field(default_factory=dict)
-    # the routes behind those ceilings (see :func:`synthesizer.ceiling.independent_routes`):
-    # per node, a set of paths to distinct peers that no one city's loss takes two of. A
-    # node present here picks the peers they reach and is wired along them; an empty
-    # mapping means nothing has been proved and peers are picked by distance instead
+    # the proved diverse routes (see :func:`synthesizer.ceiling.independent_routes`): per
+    # node, a set of paths to distinct peers that no one city's loss takes two of. A node
+    # present here picks the peers they reach, as many as its target asks for, and is wired
+    # along them; an empty mapping means nothing has been proved and peers are picked by
+    # distance instead. How many routes there are does not decide how many are taken --
+    # that is the tenant's number, and the surplus is left unwired
     routes: Mapping[str, list[tuple[str, ...]]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class LinkReason:
+    """Why one backbone mesh link is in the design.
+
+    ``requested_by`` names the sites that reached for it, and is empty unless ``reason``
+    is :data:`synthesizer.model.LINK_FOR_TARGET`.
+    """
+
+    reason: str
+    requested_by: tuple[str, ...] = ()
 
 
 def select_backbone_mesh_pairs(
     backbone_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
     constraints: BackboneConstraints = BackboneConstraints(),
-) -> list[tuple[str, str]]:
-    """Choose which backbone pairs get a logical mesh link.
+) -> dict[tuple[str, str], LinkReason]:
+    """Choose which backbone pairs get a logical mesh link, and say why each one is there.
 
-    Every backbone node reaches for as many independent links as its own fiber can carry
-    -- its ceiling in ``constraints.ceilings`` (see :mod:`synthesizer.ceiling`) -- and never
-    for fewer than ``number_of_diverse_paths``, which stays the floor it has always been (fewer when
-    the backbone itself is smaller). The tenant's degree is a minimum every node owes, not
-    a quota that stops a node the ground has been generous to: where the fiber offers more
-    independently failing routes than the degree asks for, taking them is nearly free and
-    is exactly the redundancy the degree exists to buy. A node absent from the mapping
-    reaches for the floor alone, so an empty mapping is the old behaviour exactly.
+    Every backbone node reaches for exactly ``number_of_diverse_paths`` links -- the number
+    of diverse paths its tenant asked for, or one fewer than the backbone itself where the
+    backbone is smaller than that. The number is a target and not a floor. Where the fiber
+    offers more independently failing routes than were asked for, the surplus is left
+    unwired: each link is a real circuit on a real route with a real cost, and an operator
+    who asked for two diverse paths has made an engineering decision about how much
+    protection this network is worth. Taking more because the ground allows it substitutes
+    the tool's judgement for theirs.
+
+    Exceeding the target stays possible, because some of a node's links are not its own
+    choice, and the reason each one is there is returned beside it. A node may end above
+    its target because the operator pinned a link, because a peer needed this node to reach
+    its own target and a link has two ends, because the link holds the backbone together as
+    one network, or because it is a detour keeping one city off the only path (that last
+    one is added later, when the links are routed -- see
+    :func:`augment_physical_resilience`). A link that would exist only because the ground
+    was generous is on none of those grounds and is not built.
 
     Peers are measured over the carrier graph in ``all_distances``. Any pair in
     ``removed_pairs`` -- an operator-pruned backbone-backbone link from ``etc/*.yml`` -- is
     skipped, so the node fills that slot with its next nearest peer. The per-node picks are
     unioned, so a node chosen by a farther peer can end with one more link than it reached
-    for itself.
+    for itself; that is the second of the four grounds, and the peer that asked is recorded.
 
     Any pair in ``forced_pairs`` -- an operator-forced backbone-backbone link from
     ``etc/*.yml`` -- is wired however far apart its endpoints are, and counts against
-    each endpoint's degree: a node with one pin picks only ``number_of_diverse_paths - 1`` nearest
-    peers of its own, so the configured degree keeps meaning what it says and the pin
-    displaces the farthest link the node would otherwise have chosen.
+    each endpoint's target: a node with one pin picks only
+    ``number_of_diverse_paths - 1`` nearest peers of its own, so the configured number
+    keeps meaning what it says and the pin displaces the farthest link the node would
+    otherwise have chosen.
 
     The nearest-neighbour pass alone can leave geographic clusters unlinked -- every
     node's nearest peers sit inside its own cluster -- so the mesh is then augmented
@@ -276,33 +303,27 @@ def select_backbone_mesh_pairs(
     operator instruction is honoured, not second-guessed.
 
     Where no diverse candidate is left, the node falls back to the nearest of the ones
-    passed over rather than leaving a slot below the floor empty. Some cities are genuine
+    passed over rather than leaving a slot below its target empty. Some cities are genuine
     carrier chokepoints with no alternate fiber, and a node behind one would otherwise drop
     to a single link; the link is worth having even though it is not independent. Reporting
     that shortfall is validation's job, not selection's.
 
-    That fallback stops at the floor. Above it the node is reaching for independence it can
-    actually have, and a chokepoint link there is cable spent on a route that must re-cross
-    a city the node already depends on -- so the reach above the floor is filled with
-    diverse peers or not at all.
-
-    A node left with fewer reachable, non-removed peers than the floor -- because the
+    A node left with fewer reachable, non-removed peers than its target -- because the
     operator pruned its links or the carrier graph cannot reach them -- wires to every
-    peer it can and no more. Thinning one node below the floor therefore costs only
+    peer it can and no more. Thinning one node below its target therefore costs only
     that node's missing links, never the rest of the backbone, so an operator may
     deliberately isolate a node without blanking the whole mesh.
 
-    Nothing here knows which nodes the operator holds to no degree. An exemption relieves
-    a node of a requirement; it is not an instruction to leave fiber unused, and a node
-    that can hold a link takes it whether or not anyone will ask for it later. So the
-    exemption acts in validation alone, and this pass treats every node the same.
+    Nothing here knows which nodes the operator holds to no diverse path count. An
+    exemption relieves a node of a requirement and says nothing about how much cable to
+    spend on it, so the exemption acts in validation alone and this pass treats every node
+    the same.
     """
     forced_pairs = constraints.forced_pairs
     removed_pairs = constraints.removed_pairs
-    floor = min(constraints.number_of_diverse_paths, len(backbone_ids) - 1)
-    selected: set[tuple[str, str]] = set(forced_pairs)
+    target = min(constraints.number_of_diverse_paths, len(backbone_ids) - 1)
+    requested: dict[tuple[str, str], list[str]] = {}
     for node in backbone_ids:
-        reach = max(constraints.ceilings.get(node, floor), floor)
         distances = all_distances[node]
         nearest = sorted(
             (distances[other], other)
@@ -313,14 +334,36 @@ def select_backbone_mesh_pairs(
             and math.isfinite(distances.get(other, math.inf))
         )
         pinned = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
-        slots = (max(reach - len(pinned), 0), max(floor - len(pinned), 0))
+        slots = max(target - len(pinned), 0)
         picks = (
             _proven_picks(constraints.routes[node], nearest, slots)
             if node in constraints.routes
             else _diverse_picks(node, nearest, pinned, slots, all_distances)
         )
-        selected.update(edge_key(node, other) for other in picks)
-    return sorted(augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs))
+        for other in picks:
+            requested.setdefault(edge_key(node, other), []).append(node)
+    selected = set(forced_pairs) | set(requested)
+    augmented = augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs)
+    return {pair: _link_reason(pair, forced_pairs, requested) for pair in sorted(augmented)}
+
+
+def _link_reason(
+    pair: tuple[str, str],
+    forced_pairs: frozenset[tuple[str, str]],
+    requested: dict[tuple[str, str], list[str]],
+) -> LinkReason:
+    """Which of the grounds put ``pair`` in the mesh.
+
+    A pin is checked before a request because a pinned pair is never offered to a node as a
+    candidate, so the two cannot both hold. Anything neither pinned nor asked for by an
+    endpoint was added to keep the backbone one network (see
+    :func:`augment_for_resilience`), which is the only other thing that adds a pair here.
+    """
+    if pair in forced_pairs:
+        return LinkReason(LINK_FOR_PIN)
+    if pair in requested:
+        return LinkReason(LINK_FOR_TARGET, tuple(sorted(requested[pair])))
+    return LinkReason(LINK_FOR_CONNECTIVITY)
 
 
 def _component_index(vertices: set[str], spans: set[tuple[str, str]]) -> dict[str, int]:
@@ -389,6 +432,7 @@ def _resilience_detour(
             return PathUse(
                 "backbone_mesh", near, far, detour,
                 path_geometry_miles(detour, physical_edges),
+                LINK_FOR_CITY_DETOUR,
             )
     return None
 
@@ -596,16 +640,16 @@ def backbone_mesh_paths(
     links are routed clear of one another's cities so the degree counts links that fail
     independently (see :func:`diverse_mesh_routes`).
 
-    How many links each node reaches for is computed here rather than asked of the caller:
-    the routes come off the same substrate ``physical_edges`` describes (see
-    :func:`synthesizer.ceiling.independent_routes`), so no caller can thread a number that
-    disagrees with the fiber the links are then routed over. Any routes or ceilings already
-    on ``constraints`` are replaced for the same reason.
+    Which peers each node reaches for is proved here rather than asked of the caller: the
+    routes come off the same substrate ``physical_edges`` describes (see
+    :func:`synthesizer.ceiling.independent_routes`), so the peers a node is wired to and
+    the paths its links are laid along cannot disagree. Any routes already on
+    ``constraints`` are replaced for that reason.
 
-    One calculation answers both questions. A node's ceiling is how many of those routes
-    there are and its links are laid along the routes themselves, so the number it is held
-    to and the paths it is given cannot disagree -- which is what stops a node finishing
-    below a degree its own fiber was already known to support.
+    The proof says which peers a node *could* hold independently, and the tenant's number
+    says how many of them it takes. The two are deliberately separate: a proof that finds
+    ten ways out of a city is a fact about the fiber, not an instruction to buy ten
+    circuits.
     """
     adjacency = build_adjacency(physical_edges)
     proven = {
@@ -613,16 +657,17 @@ def backbone_mesh_paths(
         for node in backbone_ids
         if node in adjacency
     }
-    constraints = replace(
-        constraints,
-        routes=proven,
-        ceilings={node: len(routes) for node, routes in proven.items()},
-    )
-    pairs = select_backbone_mesh_pairs(backbone_ids, all_distances, constraints)
+    constraints = replace(constraints, routes=proven)
+    reasons = select_backbone_mesh_pairs(backbone_ids, all_distances, constraints)
     uses = [
-        PathUse("backbone_mesh", left, right, path, path_geometry_miles(path, physical_edges))
+        PathUse(
+            "backbone_mesh", left, right, path,
+            path_geometry_miles(path, physical_edges),
+            reasons[edge_key(left, right)].reason,
+            reasons[edge_key(left, right)].requested_by,
+        )
         for left, right, path in diverse_mesh_routes(
-            pairs, all_predecessors, adjacency, proven
+            sorted(reasons), all_predecessors, adjacency, proven
         )
     ]
     return augment_physical_resilience(

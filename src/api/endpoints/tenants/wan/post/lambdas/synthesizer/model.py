@@ -27,15 +27,34 @@ class AccessEdge:
     target: str
     distance_miles: float
 
+# Why a backbone mesh link is in the design. A site is wired for exactly the number of
+# diverse paths its tenant asked for, so any link it holds beyond that number is one
+# somebody else's requirement put there, and these are the only four things that can have.
+# Carrying the cause on the link is what lets the report name it rather than leave an
+# operator to infer from a count why their network is larger than they asked for.
+LINK_FOR_TARGET = "site_target"  # a site reached for it to meet its own target
+LINK_FOR_PIN = "operator_pin"  # the operator wrote it into etc/*.yml
+LINK_FOR_CONNECTIVITY = "network_connectivity"  # it holds the backbone together as one
+LINK_FOR_CITY_DETOUR = "city_detour"  # it stops one city's loss splitting the backbone
+
+
 @dataclass(frozen=True)
 class PathUse:
-    """A routed path over the physical graph for one design purpose."""
+    """A routed path over the physical graph for one design purpose.
+
+    ``reason`` is why a ``backbone_mesh`` link exists, one of the four constants above.
+    ``requested_by`` names the sites that reached for it and is empty unless ``reason`` is
+    ``LINK_FOR_TARGET`` -- a link has two ends, and which end asked for it is exactly what
+    separates a site's own link from one it is holding for a peer.
+    """
 
     purpose: str
     source: str
     target: str
     path: tuple[str, ...]
     distance_miles: float
+    reason: str = LINK_FOR_TARGET
+    requested_by: tuple[str, ...] = ()
 
 @dataclass
 class DesignMetrics:
@@ -267,7 +286,7 @@ class ValidationReport(TypedDict):
     backbone_mesh_independence_deficient: list[dict[str, object]]
     backbone_degree_exempt: list[dict[str, str]]
     backbone_diverse_paths_ceiling_limited: list[dict[str, object]]
-    backbone_diverse_paths_above_floor: list[dict[str, object]]
+    backbone_diverse_paths_above_target: list[dict[str, object]]
     backbone_mesh_two_edge_connected: bool
     backbone_mesh_two_vertex_connected: bool
 

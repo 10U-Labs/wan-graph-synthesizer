@@ -9,6 +9,7 @@ homing is exercised at the unit level (see ``test_synthesize.py``).
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import cast
 
 import fixtures
 from fixtures import run_design
@@ -216,15 +217,36 @@ def test_the_chorded_ring_names_the_spur_whose_target_it_lowered() -> None:
     ]
 
 
-def test_a_chorded_node_with_headroom_beats_the_tenant_degree() -> None:
-    """P0 has four independent ways out, so it holds four links where three were asked."""
-    assert diverse_path_count(CHORDED.design, "P0") > 3
+def test_a_chorded_node_ends_above_the_number_only_because_a_peer_asked() -> None:
+    """P0 holds four links where three were asked, and the fourth is P5 reaching for its own.
+
+    P0's fiber carries four independent ways out and it takes three, because three is what
+    the tenant asked for. The fourth link is there because P5 picked P0 to meet its own
+    number, and a link has two ends -- which is a different thing from the tool deciding
+    the extra path was worth buying.
+    """
+    assert diverse_path_count(CHORDED.design, "P0") == 4
 
 
-def test_the_chorded_ring_names_the_nodes_it_aimed_above_the_degree() -> None:
-    """Reaching past three is the tool's own decision, so the report names where it did."""
-    aimed = CHORDED.validation["backbone_diverse_paths_above_floor"]
-    assert [entry["id"] for entry in aimed] == ["P0", "P2", "P3"]
+def test_the_chorded_ring_names_the_nodes_holding_more_than_was_asked() -> None:
+    """Four of the six end above three links, each because a peer reached for them."""
+    above = CHORDED.validation["backbone_diverse_paths_above_target"]
+    assert [entry["id"] for entry in above] == ["P0", "P1", "P2", "P3"]
+
+
+def test_every_link_past_the_number_is_attributed_to_a_peer() -> None:
+    """No node is over on the tool's own account: every extra link names the peer.
+
+    This is the guarantee the exact target buys. A link above the number has to trace back
+    to somebody's requirement, and on this graph every one of them traces to a peer that
+    needed the node to reach its own.
+    """
+    above = CHORDED.validation["backbone_diverse_paths_above_target"]
+    assert {
+        str(link["reason"])
+        for entry in above
+        for link in cast(list[dict[str, object]], entry["unrequested_links"])
+    } == {"peer_target"}
 
 
 def test_no_chorded_node_finishes_below_what_its_own_fiber_allows() -> None:

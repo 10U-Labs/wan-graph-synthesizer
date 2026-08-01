@@ -218,12 +218,9 @@ def test_the_report_lowers_nobody_when_the_fiber_meets_the_degree() -> None:
     assert _mesh_report(*_HEALTHY)["backbone_diverse_paths_ceiling_limited"] == []
 
 
-def test_the_report_names_a_node_aimed_above_the_tenant_degree() -> None:
-    """Reaching past the degree is the tool's decision, so the report says where it did."""
-    report = _mesh_report(*_HEALTHY, backbone_number_of_diverse_paths=2, ceilings={"C1": 3})
-    assert report["backbone_diverse_paths_above_floor"] == [
-        {"id": "C1", "name": "C1", "ceiling": 3, "independent_degree": 3}
-    ]
+# The report of nodes holding more links than were asked for is driven by what put each
+# link there, which a hand-built mesh does not record, so it is exercised over designs that
+# do carry it -- see ``test_above_target_report.py``.
 
 
 def test_small_backbone_is_exempt_from_the_mesh_rule() -> None:

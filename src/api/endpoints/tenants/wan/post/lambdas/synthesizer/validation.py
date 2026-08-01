@@ -6,7 +6,13 @@ from collections.abc import Callable, Mapping
 from itertools import combinations
 
 from synthesizer.input_graph import Vertex, edge_key
-from synthesizer.model import Design, MeshTargets, PathUse, ValidationReport
+from synthesizer.model import (
+    LINK_FOR_TARGET,
+    Design,
+    MeshTargets,
+    PathUse,
+    ValidationReport,
+)
 from synthesizer.graphs import (
     articulation_points,
     connected_components,
@@ -256,9 +262,8 @@ def _ceilings_where(
 ) -> list[tuple[str, int]]:
     """The ``(node, ceiling)`` pairs ``keep`` selects, in id order.
 
-    Shared by the two report fields, which differ only in which side of the tenant degree
-    a ceiling has to fall on. A node the substrate said nothing about has no ceiling and so
-    appears in neither: the tool made no decision about it to report.
+    A node the substrate said nothing about has no ceiling and so never appears: the tool
+    made no decision about it to report.
     """
     if ceilings is None:
         return []
@@ -290,33 +295,85 @@ def ceiling_limited_nodes(
     ]
 
 
-def above_floor_nodes(
+def node_mesh_links(design: Design, node: str) -> list[PathUse]:
+    """Every routed backbone mesh link with ``node`` at one end."""
+    return [
+        use
+        for use in design.path_uses
+        if use.purpose == "backbone_mesh" and node in (use.source, use.target)
+    ]
+
+
+def unrequested_mesh_links(design: Design, node: str) -> list[dict[str, object]]:
+    """The mesh links at ``node`` that ``node`` did not reach for, each with why it is there.
+
+    A link the node picked itself is one of the number its tenant asked for -- selection
+    never gives a node more of those than its target. Every other link at the node is one
+    somebody else's requirement put there, and the link carries which (see
+    :data:`synthesizer.model.LINK_FOR_TARGET` and its siblings).
+
+    A link the far end reached for is reported as the peer's rather than as a target, since
+    from this node's side that is what it is: a link has two ends and only one of them
+    asked for it.
+    """
+    unrequested = [
+        {
+            "peer": use.target if use.source == node else use.source,
+            "reason": "peer_target" if use.reason == LINK_FOR_TARGET else use.reason,
+        }
+        for use in node_mesh_links(design, node)
+        if not (use.reason == LINK_FOR_TARGET and node in use.requested_by)
+    ]
+    return sorted(unrequested, key=lambda item: (str(item["peer"]), str(item["reason"])))
+
+
+def above_target_nodes(
     design: Design,
     vertices_by_id: dict[str, Vertex],
     targets: MeshTargets,
 ) -> list[dict[str, object]]:
-    """Backbone nodes the tool reached past the tenant degree for, and what came of it.
+    """Backbone nodes holding more links than they were asked for, and why each one stands.
 
-    The number of diverse paths is a floor, so a node whose fiber carries more independent
-    routes than the tenant asked for is aimed at its ceiling instead (see
-    :func:`synthesizer.backbone.select_backbone_mesh_pairs`). That is the tool's decision
-    rather than the operator's, so it is reported with both numbers: the ceiling it aimed
-    at, and the independent links it came away with. The two differ when the routing could
-    not deliver what the substrate allowed, which is worth seeing.
+    The number of diverse paths is the number a site gets, not a floor it may be carried
+    past because the ground was generous (see
+    :func:`synthesizer.backbone.select_backbone_mesh_pairs`). So a node above its target is
+    the exception rather than the norm, and every link taking it there is attributable to
+    somebody else's requirement: an operator pin, a peer that needed this node to reach its
+    own target, a link holding the backbone together as one network, or a detour keeping
+    one city off the only path.
+
+    Reporting the reason is the point. A count alone leaves an operator to work out for
+    themselves why the network they were handed is larger than the one they asked for, and
+    the honest answer -- that each of these was unavoidable, and which requirement made it
+    so -- is exactly what a count cannot say.
+
+    The number compared against is the one the tenant asked for, not the per-node target
+    :func:`node_mesh_target` lowers where the fiber cannot carry it. A node the ceiling
+    holds to two still reaches for the tenant's three and may take a chokepoint link to
+    get there; that link is one it asked for, and reporting it as surplus would tell an
+    operator they were given cable they ordered themselves. What is reported is cable
+    nobody ordered, which is a different question from how much protection came of it --
+    so ``diverse_path_count`` sits beside ``link_count`` rather than standing in for it.
+
+    Every node listed has at least one link it did not reach for, because selection never
+    gives a node more of its own than the number asked, so the reasons below are never an
+    empty list.
     """
-    return [
-        {
+    asked_for = min(targets.number_of_diverse_paths, len(design.backbone_ids) - 1)
+    rows: list[dict[str, object]] = []
+    for node in sorted(design.backbone_ids):
+        links = node_mesh_links(design, node)
+        if len(links) <= asked_for:
+            continue
+        rows.append({
             "id": node,
             "name": vertices_by_id[node].name,
-            "ceiling": ceiling,
-            "independent_degree": diverse_path_count(design, node),
-        }
-        for node, ceiling in _ceilings_where(
-            design.backbone_ids,
-            targets.ceilings,
-            lambda value: value > targets.number_of_diverse_paths,
-        )
-    ]
+            "target": asked_for,
+            "link_count": len(links),
+            "diverse_path_count": diverse_path_count(design, node),
+            "unrequested_links": unrequested_mesh_links(design, node),
+        })
+    return rows
 
 
 def neighbor_degrees(
@@ -348,10 +405,11 @@ def validate_design(
     degree and what its fiber can independently carry.
 
     Three things about that are reported rather than left to be inferred: the nodes the
-    degree was not asked of, the nodes whose target the tool lowered on its own, and the
-    nodes it reached past the degree for. All on one principle -- a check that was silenced
-    or a number the tool chose for itself is something an operator reads, because a
-    reduction nobody can see is worse than the noise it removed.
+    number was not asked of, the nodes whose target the tool lowered on its own, and the
+    nodes holding more links than they were asked for, with what put each one there. All on
+    one principle -- a check that was silenced, a number the tool chose for itself, or a
+    circuit nobody ordered is something an operator reads, because a design that differs
+    from the one that was asked for and does not say so is worse than the noise it saves.
     """
     vertices_by_id = {vertex.id: vertex for vertex in vertices}
     ids = included_vertex_ids(design)
@@ -398,7 +456,7 @@ def validate_design(
         "backbone_diverse_paths_ceiling_limited": ceiling_limited_nodes(
             design.backbone_ids, vertices_by_id, targets
         ),
-        "backbone_diverse_paths_above_floor": above_floor_nodes(
+        "backbone_diverse_paths_above_target": above_target_nodes(
             design, vertices_by_id, targets
         ),
         "backbone_mesh_two_edge_connected": backbone_mesh_two_edge_connected(design),

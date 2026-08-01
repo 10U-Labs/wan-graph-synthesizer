@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import fixtures
 from synthesizer.input_graph import PhysicalEdge, edge_key
-from synthesizer.model import PathUse
+from synthesizer.model import (
+    LINK_FOR_CONNECTIVITY,
+    LINK_FOR_PIN,
+    LINK_FOR_TARGET,
+    PathUse,
+)
 from synthesizer.backbone import (
     BackboneConstraints,
+    LinkReason,
     augment_physical_resilience,
     backbone_mesh_paths,
     diverse_mesh_routes,
@@ -59,18 +67,17 @@ def _backbone(
     removed: frozenset[tuple[str, str]] = frozenset(),
     number_of_diverse_paths: int = 3,
     forced: frozenset[tuple[str, str]] = frozenset(),
-    ceilings: dict[str, int] | None = None,
     routes: dict[str, list[tuple[str, ...]]] | None = None,
-) -> list[tuple[str, str]]:
+) -> dict[tuple[str, str], LinkReason]:
     """The five-node backbone wiring each node to its nearest peers."""
     return select_backbone_mesh_pairs(
         _FIVE_NODES,
         _FIVE_NODE_DISTANCES,
-        BackboneConstraints(removed, number_of_diverse_paths, forced, ceilings or {}, routes or {}),
+        BackboneConstraints(removed, number_of_diverse_paths, forced, routes or {}),
     )
 
 
-def _node_degrees(pairs: list[tuple[str, str]]) -> dict[str, int]:
+def _node_degrees(pairs: Iterable[tuple[str, str]]) -> dict[str, int]:
     """Distinct-neighbor degree of every five-node vertex over ``pairs``."""
     degrees = {node: 0 for node in _FIVE_NODES}
     for left, right in pairs:
@@ -104,12 +111,23 @@ def test_a_node_picked_by_a_farther_peer_gains_an_extra_link() -> None:
     assert _node_degrees(_backbone())["c2"] == 4
 
 
-# c5 is the farthest node from everything, so at a degree of two nobody picks it and its
-# own picks are the whole of its wiring -- two without a ceiling, which is what makes a
-# third link visible as the ceiling's doing and nothing else's.
-def test_a_node_with_headroom_takes_more_than_the_tenant_degree() -> None:
-    """c5's ceiling of three buys a third link the tenant degree of two would stop at."""
-    assert _node_degrees(_backbone(number_of_diverse_paths=2, ceilings={"c5": 3}))["c5"] == 3
+# c5 is the farthest node from everything, so at a target of two nobody else picks it and
+# its own picks are the whole of its wiring. That makes it the one node on this fixture
+# whose link count is its target and nothing else, which is what the next two tests need.
+def test_a_node_with_headroom_takes_only_what_was_asked_for() -> None:
+    """c5's fiber reaches four peers and the tenant asked for two, so it wires two.
+
+    This is the decision the ceiling behaviour used to make the other way. A site with
+    headroom was aimed at its ceiling on the reasoning that the extra paths were nearly
+    free, which is true of the fiber and false of the circuits riding it.
+    """
+    assert _node_degrees(_backbone(number_of_diverse_paths=2))["c5"] == 2
+
+
+def test_a_link_a_node_reached_for_is_attributed_to_that_node() -> None:
+    """c5's own links name c5 as the site that asked for them."""
+    backbone = _backbone(number_of_diverse_paths=2)
+    assert backbone[edge_key("c2", "c5")] == LinkReason(LINK_FOR_TARGET, ("c5",))
 
 
 def test_a_removed_pair_gets_no_link() -> None:
@@ -247,17 +265,14 @@ _TRANSIT_DISTANCES = all_pairs_shortest(
 
 def _transit_mesh(
     forced: frozenset[tuple[str, str]] = frozenset(),
-    ceilings: dict[str, int] | None = None,
-) -> list[tuple[str, str]]:
+) -> dict[tuple[str, str], LinkReason]:
     """The transit backbone wired at three diverse paths."""
     return select_backbone_mesh_pairs(
-        _TRANSIT_NODES,
-        _TRANSIT_DISTANCES,
-        BackboneConstraints(frozenset(), 3, forced, ceilings or {}),
+        _TRANSIT_NODES, _TRANSIT_DISTANCES, BackboneConstraints(frozenset(), 3, forced)
     )
 
 
-def _peers(pairs: list[tuple[str, str]], node: str) -> set[str]:
+def _peers(pairs: Iterable[tuple[str, str]], node: str) -> set[str]:
     """Every node ``node`` shares a mesh link with."""
     return {other for pair in pairs if node in pair for other in pair if other != node}
 
@@ -287,14 +302,14 @@ def test_a_forced_pair_is_wired_even_when_it_shares_transit() -> None:
     assert edge_key("h", "d") in _transit_mesh(frozenset({edge_key("h", "d")}))
 
 
-def test_a_ceiling_above_what_the_fiber_supports_changes_nothing() -> None:
-    """h has three diverse peers, so aiming at five buys no fourth chokepoint cable."""
-    assert _transit_mesh(ceilings={"h": 5}) == _transit_mesh()
+def test_a_node_short_of_diverse_peers_still_backfills_to_its_target() -> None:
+    """d reaches only a and e diversely, and still spends its third slot on b.
 
-
-def test_a_node_below_its_ceiling_still_backfills_to_the_tenant_floor() -> None:
-    """d reaches only a and e diversely, and still spends its third slot on b."""
-    assert edge_key("d", "b") in _transit_mesh(ceilings={"d": 2})
+    Falling short of diverse peers is not a reason to leave a slot empty: the tenant asked
+    for three links and a chokepoint link is worth having up to that number. What the
+    backfill will not do is carry on past it.
+    """
+    assert edge_key("d", "b") in _transit_mesh()
 
 
 # c5 is the farthest node from every other, so distance alone never reaches for it. A proof
@@ -347,9 +362,16 @@ def _five_node_mesh_paths(removed: frozenset[tuple[str, str]] = frozenset()) -> 
     )
 
 
-def test_backbone_mesh_paths_route_each_mesh_link() -> None:
-    """Every node's ceiling on a clique is four, so all ten pairs get a routed link."""
-    assert len(_five_node_mesh_paths()) == 10
+def test_backbone_mesh_paths_stop_at_the_number_asked_for() -> None:
+    """A five-node clique offers each site four diverse paths; three were asked for.
+
+    This test used to assert all ten pairs were wired, which is a full mesh on a network
+    that asked for a fraction of one, written down as correct. Each site now picks three
+    peers and the union is nine: every span on a unit clique is the same length, so the
+    tie falls to the lowest ids and both c4 and c5 pick c1, c2 and c3, leaving the pair
+    between them the one nobody reached for.
+    """
+    assert len(_five_node_mesh_paths()) == 9
 
 
 def test_backbone_mesh_paths_are_labelled_backbone_mesh() -> None:
