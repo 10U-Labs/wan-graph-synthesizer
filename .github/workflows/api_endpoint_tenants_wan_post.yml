@@ -213,10 +213,10 @@ on:
       - test/fixtures.py
       - lib/python/**
       - lib/opentofu/common/**
-      # The delivered-design layer holds the published networks to the targets and seat
-      # caps the tenant configs set, and reaches them through seed's roster rules, so a
-      # change to either is a change to what that layer asserts.
-      - etc/**
+      # The delivered-design layer reaches the roster through seed's rules, so a change to
+      # them is a change to what that layer can read. etc/ is deliberately not here: a
+      # config change is not delivered until the seed workflow reseeds and rebuilds, and
+      # that workflow runs independently of this one, so triggering on it would only race.
       - scripts/**
       - .github/workflows/api_endpoint_tenants_wan_post.yml
   workflow_dispatch: {}

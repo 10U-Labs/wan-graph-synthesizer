@@ -17,6 +17,7 @@ A tenant whose build is not ``ready`` has no network to read and carries both em
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, cast
 
 import pytest
@@ -24,6 +25,15 @@ import yaml
 
 import seed
 from seed import _slug
+
+# How long the published networks are given to catch up with the configs git holds, and
+# how often they are asked. A tenant config change is delivered by the seed workflow, which
+# runs independently of this one, so a push that touches both arrives here with a rebuild
+# either in flight or not yet started. Waiting turns that race into a bounded contract --
+# the store settles on the configuration within the deadline -- rather than a coin flip on
+# which workflow reached its last job first. A build of the largest tenant takes minutes.
+_SETTLE_DEADLINE_SECONDS = 900
+_SETTLE_POLL_SECONDS = 20
 
 
 def _stored(client: Any, bucket: str, key: str) -> Any:
@@ -50,21 +60,18 @@ def store_bucket_name_fixture(synthesizer_config: dict[str, Any]) -> str:
     return str(variables["STORE_BUCKET"])
 
 
-@pytest.fixture(name="delivered_designs")
-def delivered_designs_fixture(
-        s3_client: Any, store_bucket_name: str) -> list[dict[str, Any]]:
-    """Return every declared tenant's published network beside its config's demands.
+def _read_designs(client: Any, bucket: str) -> list[dict[str, Any]]:
+    """Every declared tenant's published network beside the demands its config makes of it.
 
-    A tenant whose build did not finish has no ``wan.json`` at all, so its collections are
-    left empty rather than read: the first test in the layer is then the one that reports
-    it, instead of every test in the layer dying inside this fixture.
+    A tenant whose build did not finish has no ``wan.json`` at all, so its collections come
+    back empty rather than read: the first test in the layer is then the one that reports
+    it, instead of every test in the layer dying inside a fixture.
     """
     designs: list[dict[str, Any]] = []
     for tenant, config in _roster().items():
-        status = _stored(
-            s3_client, store_bucket_name, f"tenants/{tenant}/wan-status.json")
+        status = _stored(client, bucket, f"tenants/{tenant}/wan-status.json")
         published = (
-            _stored(s3_client, store_bucket_name, f"tenants/{tenant}/wan.json")
+            _stored(client, bucket, f"tenants/{tenant}/wan.json")
             if status.get("status") == "ready"
             else {}
         )
@@ -77,6 +84,38 @@ def delivered_designs_fixture(
             "backbone": published.get("backbone-nodes", []),
             "demand": published.get("tenant-nodes", []) + published.get("provider-nodes", []),
         })
+    return designs
+
+
+def _settled(design: dict[str, Any]) -> bool:
+    """True once a tenant's published network is one built to the target git now holds.
+
+    Two things make a design unsettled, and both mean a rebuild is owed rather than that
+    anything is wrong: the build is still running, or it finished against a target the
+    config has since moved off. Either resolves on its own once the seed workflow has run.
+    """
+    coverage = design["status"].get("coverage")
+    if design["status"].get("status") != "ready" or coverage is None:
+        return design["status"].get("status") == "failed"
+    return bool(coverage["target_miles"] == design["target_miles"])
+
+
+@pytest.fixture(name="delivered_designs")
+def delivered_designs_fixture(
+        s3_client: Any, store_bucket_name: str) -> list[dict[str, Any]]:
+    """Return the published networks, once the store has caught up with the configs.
+
+    The configs are delivered by the seed workflow and this one runs independently of it,
+    so a push that touches both reaches here with rebuilds in flight or not yet begun.
+    Sampling that moment would fail on the timing rather than on the designs, so the store
+    is given until the deadline to settle and only then read. A build that has recorded
+    ``failed`` is settled: waiting cannot improve it and the layer should report it.
+    """
+    deadline = time.monotonic() + _SETTLE_DEADLINE_SECONDS
+    designs = _read_designs(s3_client, store_bucket_name)
+    while not all(map(_settled, designs)) and time.monotonic() < deadline:
+        time.sleep(_SETTLE_POLL_SECONDS)
+        designs = _read_designs(s3_client, store_bucket_name)
     return designs
 
 

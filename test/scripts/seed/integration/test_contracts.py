@@ -25,10 +25,11 @@ import yaml
 
 import seed
 from repo_utils import REPO_ROOT
-from seed import _carrier_cities, _city_key, _rows, _slug
+from seed import _carrier_cities, _city_key, _mapping_rows, _rows, _slug
 from synthesizer.ceiling import independent_route_ceiling
-from synthesizer.codec import load_substrate
+from synthesizer.codec import load_regions, load_sites, load_substrate
 from synthesizer.graphs import build_adjacency
+from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
 from test_http_doubles import UrlopenRecorder
 
 _API = "http://stub"
@@ -103,16 +104,21 @@ def test_yamllint_names_every_tenant_config() -> None:
     assert _linted_configs() == declared
 
 
+def _tenant_configs() -> dict[str, dict[str, Any]]:
+    """The whole config git holds for each tenant, keyed by the tenant id seed derives."""
+    return {
+        _slug(path.stem): yaml.safe_load(path.read_text(encoding="utf-8"))
+        for path in seed.ETC.glob("*.yml")
+    }
+
+
 def _backbone_blocks() -> dict[str, dict[str, Any]]:
     """Each tenant's whole ``backbone`` block, keyed by the tenant id seed derives.
 
     Every backbone knob a contract here asserts on is read through this one place, so a
     test names the key it means and nothing re-opens the config files to find it.
     """
-    return {
-        _slug(path.stem): yaml.safe_load(path.read_text(encoding="utf-8"))["backbone"]
-        for path in seed.ETC.glob("*.yml")
-    }
+    return {tenant: config["backbone"] for tenant, config in _tenant_configs().items()}
 
 
 def _declared_coverage_targets() -> dict[str, int]:
@@ -206,14 +212,12 @@ def test_pipeline_writes_a_forced_homes_document_for_every_tenant(
     assert _tenants_written(paths, "forced-homes") == len(list(seed.ETC.glob("*.yml")))
 
 
-def _substrate() -> tuple[dict[str, str], dict[str, list[tuple[str, float]]]]:
-    """The merged carrier substrate: its cities by display name, and its fiber adjacency.
+def _merged_substrate() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
+    """Every carrier's points and every carrier's spans, merged as the API merges them.
 
-    Every carrier's points and every carrier's spans, read with seed's own reader and
-    merged by the same loader the API uses, so the graph measured here is the graph the
-    synthesizer starts from. The files are taken in sorted order because a generated id
-    depends on what claimed the name first, and the mapping back from a config's
-    ``City, ST`` spelling to that id is what the caller needs.
+    Read with seed's own reader and merged by the same loader, so the graph measured here
+    is the graph the synthesizer starts from. The files are taken in sorted order because
+    a generated id depends on what claimed the name first.
     """
     points = [
         row
@@ -223,7 +227,16 @@ def _substrate() -> tuple[dict[str, str], dict[str, list[tuple[str, float]]]]:
     spans = [
         row for path in sorted((seed.DATA / "edges").glob("*.csv")) for row in _rows(path)
     ]
-    vertices, edges = load_substrate(points, spans)
+    return load_substrate(points, spans)
+
+
+def _substrate() -> tuple[dict[str, str], dict[str, list[tuple[str, float]]]]:
+    """The merged carrier substrate: its cities by display name, and its fiber adjacency.
+
+    The mapping back from a config's ``City, ST`` spelling to a generated id is what the
+    callers below need, since a config names cities and the graph is keyed by id.
+    """
+    vertices, edges = _merged_substrate()
     return {vertex.name: vertex.id for vertex in vertices}, build_adjacency(edges)
 
 
@@ -326,3 +339,84 @@ def test_every_pinned_city_can_carry_the_diversity_its_tenant_asks_for() -> None
         for tenant, city, bound, asked in _ceiling_bounds(_pinned_cities)
         if bound < asked
     ] == []
+
+
+def _demand(config: dict[str, Any]) -> list[Vertex]:
+    """A tenant's demand the coverage target applies to: its own sites and its cloud regions.
+
+    Loaded through the synthesizer's own readers, so the exemption that excuses an OCONUS
+    site the target is the one the coverage pass honours rather than a second reading of the
+    same column. Off-net candidates are not here: they are seats the design may fabricate,
+    not places asking to be served.
+    """
+    inputs = config["inputs"]
+    places = load_sites(_mapping_rows(inputs.get("locations", {})))
+    places += load_regions(_rows(REPO_ROOT / inputs["providers"]))
+    return [place for place in places if not place.exempt_from_distance_constraint]
+
+
+def _seats_for_coverage(config: dict[str, Any], carriers: list[Vertex]) -> int:
+    """How many backbone seats a tenant's own coverage target needs before it is met.
+
+    The pinned cities are seated first, since the design has no choice about them, and
+    carrier points are then taken greedily, each round the point that brings in the most
+    places still outside the target. Greedy returns an upper bound on the smallest such
+    set, which is the direction that matters: a tenant whose cap clears this number
+    genuinely has the room, so no tenant is failed for a cap that would have sufficed.
+
+    A place beyond the target from every carrier point cannot be brought in by any seat,
+    and the count stops rather than looping. That leaves the answer short, so a tenant with
+    demand the maps cannot reach at all passes here and is a question for whoever put the
+    place on the map.
+    """
+    target = config["backbone"]["coverage_target_miles"]
+    places = _demand(config)
+    reach = {
+        carrier.name: {
+            place.id for place in places if haversine_miles(place, carrier) <= target
+        }
+        for carrier in carriers
+    }
+    pinned = _pinned_cities(config["backbone"])
+    unserved = {place.id for place in places}
+    for city in pinned:
+        unserved -= reach.get(city, set())
+    seats = len(pinned)
+    while unserved:
+        best = max(reach.values(), key=lambda served: len(served & unserved))
+        if not best & unserved:
+            break
+        unserved -= best
+        seats += 1
+    return seats
+
+
+def _seat_shortfalls() -> list[tuple[str, int, int]]:
+    """Per tenant, the seat cap beside the seats its target needs, where the cap is smaller."""
+    carriers, _spans = _merged_substrate()
+    shortfalls: list[tuple[str, int, int]] = []
+    for tenant, config in sorted(_tenant_configs().items()):
+        cap = config["backbone"]["node_count"]["max"]
+        needed = _seats_for_coverage(config, carriers)
+        if cap < needed:
+            shortfalls.append((tenant, cap, needed))
+    return shortfalls
+
+
+def test_no_tenant_caps_its_backbone_below_the_coverage_target_it_asks_for() -> None:
+    """No tenant caps its backbone below the seats its own coverage target would need.
+
+    A tenant states two things that have to agree, and neither file settles it alone: the
+    config sets the target and the seat cap, and only the carrier maps say how many points
+    it takes to bring every site inside that distance. Where the cap is the smaller of the
+    two the coverage pass runs out of seats before it runs out of target, and the design it
+    publishes misses by whatever the pins happened to leave. Nothing objects, because both
+    numbers are legal on their own and the design is the honest answer to the pair.
+
+    Minuteman was the tenant that failed this. It pinned six cities into a backbone capped
+    at six and asked for 400 miles, so the coverage pass began with no seat to spend and
+    ended 484 miles out, while the greedy cover says nine seats would have done it and no
+    place it serves is more than 37.7 miles from some carrier point. Its target was raised
+    to what the six pinned cities deliver rather than its cap being raised to the target.
+    """
+    assert _seat_shortfalls() == []

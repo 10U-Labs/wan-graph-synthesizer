@@ -15,10 +15,11 @@ globe is not the thing in question.
 
 The last test is the one that would have failed on the old DAF build. A design that ends
 below its target has either spent every backbone seat its operator allowed or given up
-early, and only the second is a defect. Minuteman is the first kind today: it pins six
-cities into a backbone capped at six, so the coverage pass has nothing left to seat and its
-884-mile worst haul against a 400-mile target is the honest answer to a question its own
-config already settled. DAF, at 34 seats against a cap of 99, had no such excuse.
+early, and only the second is a defect. Minuteman was the first kind: it pins six cities
+into a backbone capped at six, so the coverage pass had nothing left to seat and missed a
+400-mile target by 484 miles, which is the honest answer to a question its own config had
+already settled (GitHub issue #42, closed by moving the target to what those six cities
+deliver). DAF, at 34 seats against a cap of 99, had no such excuse.
 """
 from __future__ import annotations
 
@@ -74,11 +75,14 @@ def test_every_published_network_reports_the_coverage_it_delivered(
 
 def test_every_report_is_measured_against_the_target_its_tenant_declares(
         delivered_designs: list[dict[str, Any]]) -> None:
-    """The target each report was judged against is the one that tenant's own config sets.
+    """Each published network has caught up with the target its tenant's config sets.
 
     The number travels from ``etc/`` through seed, the knobs resource and the tuning block
     before it reaches the report, and a report judged against some other number would look
-    perfectly well formed at the end of that journey.
+    perfectly well formed at the end of that journey. Because a config change is delivered
+    by a workflow independent of this one, the fixture gives the store until its deadline
+    to converge, so what fails here is a target that never reached the network at all --
+    a tenant seed stopped short of, or a build that failed and was left where it fell.
     """
     reported = {
         design["tenant"]: design["status"]["coverage"]["target_miles"]
