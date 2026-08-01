@@ -63,7 +63,7 @@ every descendant. An ordinary expression `if` does not break the cascade;
 each downstream job needs its own status-check function, normally
 `if: ${{ !cancelled() && needs.<parent>.result == 'success' }}`.
 
-A `seed` run whose push touched only `data/raw/` reports success without testing anything: `determining-testing` sets `testing-necessary=false` and the static-analysis, unit, integration and e2e jobs all skip. Read the job list, not the conclusion. `gh run rerun` recomputes the same decision, so force one with `gh workflow run seed.yml --ref main`, which has no `github.event.before` and so runs every tier. The exclusion covered all of `data/` and `etc/` until the integration tier gained a contract that reads both, so a config-only push tests now; do not assume it skips.
+A `seed` run whose push touched only `data/raw/` reports success without testing anything: `determining-testing` sets `testing-necessary=false` and the static-analysis, unit, integration and e2e jobs all skip. `gh run rerun` recomputes the same decision, so force one with `gh workflow run seed.yml --ref main`, which has no `github.event.before` and so runs every tier. The exclusion covered all of `data/` and `etc/` until the integration tier gained a contract that reads both, so a config-only push tests now; do not assume it skips.
 
 Longer:
 [seed-races-routing-deploy](docs/claude/memories/seed-races-routing-deploy.md),
