@@ -96,7 +96,7 @@ def _settled(design: dict[str, Any]) -> bool:
     """
     coverage = design["status"].get("coverage")
     if design["status"].get("status") != "ready" or coverage is None:
-        return design["status"].get("status") == "failed"
+        return bool(design["status"].get("status") == "failed")
     return bool(coverage["target_miles"] == design["target_miles"])
 
 

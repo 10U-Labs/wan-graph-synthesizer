@@ -419,4 +419,4 @@ def test_no_tenant_caps_its_backbone_below_the_coverage_target_it_asks_for() -> 
     place it serves is more than 37.7 miles from some carrier point. Its target was raised
     to what the six pinned cities deliver rather than its cap being raised to the target.
     """
-    assert _seat_shortfalls() == []
+    assert not _seat_shortfalls()
