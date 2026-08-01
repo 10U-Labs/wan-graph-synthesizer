@@ -1,4 +1,4 @@
-"""Unit tests for exempting a backbone node from the mesh degree.
+"""Unit tests for exempting a backbone node from the diverse path count.
 
 These pin the resolution step: the operator writes PoP names, and the search reads ids.
 What an exemption then does to selection and to validation is pinned with those units.

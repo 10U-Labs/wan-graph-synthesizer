@@ -22,7 +22,7 @@ from synthesizer.model import (
     is_carrier_pop,
 )
 from synthesizer.synthesize import convergence_promotion_ids
-from synthesizer.validation import backbone_mesh_pairs, independent_mesh_degree
+from synthesizer.validation import backbone_mesh_pairs, diverse_path_count
 
 ARTIFACTS = fixtures.ring_artifacts()
 FORCED = fixtures.forced_backbone_artifacts("P3")
@@ -31,7 +31,7 @@ PROHIBITED = fixtures.prohibited_backbone_artifacts("P4")
 
 # A forced backbone-backbone link over the ring, resolved through the operator-pin path
 # so the asserted edge reflects a genuinely honored request. All six ring PoPs are
-# seated so the mesh degree binds: P0 and P3 sit opposite each other, three hops apart,
+# seated so the diverse path count binds: P0 and P3 sit opposite each other, three hops apart,
 # and are each other's farthest peer, so a nearest-neighbour mesh never picks the pair
 # and the ring is already 2-edge-connected without it. The link can only be the pin.
 #
@@ -43,7 +43,7 @@ _MESHED_RING = DesignParams(
     min_backbone_count=2,
     forced_backbone_names=_RING_BACKBONE,
     datacenter_cities=fixtures.ring_datacenter_cities(),
-    tuning=Tuning(backbone_mesh_degree=2),
+    tuning=Tuning(backbone_number_of_diverse_paths=2),
 )
 FORCED_BACKBONE_LINK = fixtures.forced_link_artifacts(
     _MESHED_RING, OperatorLinks(backbone=(NamedLink("P0", "P3"),))
@@ -149,7 +149,7 @@ def test_every_meshed_ring_node_holds_its_links_independently() -> None:
 
 
 _RING_AT_THREE = fixtures.forced_link_artifacts(
-    replace(_MESHED_RING, tuning=Tuning(backbone_mesh_degree=3)), OperatorLinks()
+    replace(_MESHED_RING, tuning=Tuning(backbone_number_of_diverse_paths=3)), OperatorLinks()
 )
 
 
@@ -165,12 +165,12 @@ def test_a_degree_the_ring_cannot_carry_is_lowered_rather_than_refused() -> None
 
 def test_the_ring_reports_every_node_whose_target_it_lowered() -> None:
     """All six ring PoPs are held to two, and the report says so of each one."""
-    lowered = _RING_AT_THREE.validation["backbone_mesh_degree_ceiling_limited"]
+    lowered = _RING_AT_THREE.validation["backbone_diverse_paths_ceiling_limited"]
     assert [entry["id"] for entry in lowered] == list(_RING_BACKBONE)
 
 
 # The ring with four chords, so P0 through P4 each have a third fiber direction and P5
-# keeps only its two ring neighbours. At a mesh degree of three P5 is the one node the
+# keeps only its two ring neighbours. At three diverse paths P5 is the one node the
 # fiber cannot carry: the spur an operator exempts, with every other node meeting the
 # degree, which is what makes the exemption's effect legible here.
 _CHORDED_PAIRS = {
@@ -182,7 +182,7 @@ _CHORDED_BACKBONE = ("P0", "P1", "P2", "P3", "P4", "P5")
 
 
 def _chorded_design(exempt: tuple[str, ...] = ()) -> DesignArtifacts:
-    """Synthesize the chorded ring at a mesh degree of three, exempting the named nodes."""
+    """Synthesize the chorded ring at three diverse paths, exempting the named nodes."""
     vertices = [
         fixtures.carrier_pop(name, *fixtures.RING_COORDS[name]) for name in _CHORDED_BACKBONE
     ]
@@ -191,7 +191,7 @@ def _chorded_design(exempt: tuple[str, ...] = ()) -> DesignArtifacts:
         forced_backbone_names=_CHORDED_BACKBONE,
         degree_exempt_backbone_names=exempt,
         datacenter_cities=fixtures.ring_datacenter_cities(),
-        tuning=Tuning(backbone_mesh_degree=3),
+        tuning=Tuning(backbone_number_of_diverse_paths=3),
     )
     return run_design(vertices, fixtures.physical_edges_from(_CHORDED_PAIRS), params)
 
@@ -211,19 +211,19 @@ def test_the_chorded_ring_is_no_longer_refused_at_its_one_spur() -> None:
 
 def test_the_chorded_ring_names_the_spur_whose_target_it_lowered() -> None:
     """The published report says P5 was held to two, so the reduction is read not inferred."""
-    assert CHORDED.validation["backbone_mesh_degree_ceiling_limited"] == [
+    assert CHORDED.validation["backbone_diverse_paths_ceiling_limited"] == [
         {"id": "P5", "name": "P5", "ceiling": 2}
     ]
 
 
 def test_a_chorded_node_with_headroom_beats_the_tenant_degree() -> None:
     """P0 has four independent ways out, so it holds four links where three were asked."""
-    assert independent_mesh_degree(CHORDED.design, "P0") > 3
+    assert diverse_path_count(CHORDED.design, "P0") > 3
 
 
 def test_the_chorded_ring_names_the_nodes_it_aimed_above_the_degree() -> None:
     """Reaching past three is the tool's own decision, so the report names where it did."""
-    aimed = CHORDED.validation["backbone_mesh_degree_above_floor"]
+    aimed = CHORDED.validation["backbone_diverse_paths_above_floor"]
     assert [entry["id"] for entry in aimed] == ["P0", "P2", "P3"]
 
 
@@ -238,12 +238,12 @@ def test_no_chorded_node_finishes_below_what_its_own_fiber_allows() -> None:
     fiber was already known to carry, rather than as many as choosing peers by distance
     happened to leave it with.
     """
-    ceilings = CHORDED.validation["backbone_mesh_degree_ceiling_limited"]
+    ceilings = CHORDED.validation["backbone_diverse_paths_ceiling_limited"]
     capped = {str(entry["id"]): int(str(entry["ceiling"])) for entry in ceilings}
     assert [
         node
         for node in _CHORDED_BACKBONE
-        if independent_mesh_degree(CHORDED.design, node) < min(3, capped.get(node, 3))
+        if diverse_path_count(CHORDED.design, node) < min(3, capped.get(node, 3))
     ] == []
 
 

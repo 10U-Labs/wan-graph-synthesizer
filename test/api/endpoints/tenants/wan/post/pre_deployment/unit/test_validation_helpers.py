@@ -13,7 +13,7 @@ from synthesizer.validation import (
     demand_backbone_homes,
     design_edge_set,
     included_vertex_ids,
-    independent_mesh_degree,
+    diverse_path_count,
     mesh_link_failure_cities,
     neighbor_degrees,
 )
@@ -106,34 +106,34 @@ def test_mesh_link_failure_cities_counts_the_peer_as_a_city() -> None:
 
 
 @pytest.mark.parametrize("degree", [2, 3, 4])
-def test_independent_mesh_degree_counts_every_city_disjoint_link(degree: int) -> None:
+def test_diverse_path_count_counts_every_city_disjoint_link(degree: int) -> None:
     """A node whose links each leave through a city of their own counts all of them."""
     peers = "bcde"[:degree]
     design = meshed_design(
         [("a", f"x{peer}", peer) for peer in peers], ("a", *peers)
     )
-    assert independent_mesh_degree(design, "a") == degree
+    assert diverse_path_count(design, "a") == degree
 
 
-def test_independent_mesh_degree_counts_links_sharing_a_transit_city_once() -> None:
+def test_diverse_path_count_counts_links_sharing_a_transit_city_once() -> None:
     """Two links crossing one transit city are one independent link, not two."""
-    assert independent_mesh_degree(_SHARED_EGRESS, "a") == 1
+    assert diverse_path_count(_SHARED_EGRESS, "a") == 1
 
 
-def test_independent_mesh_degree_counts_a_diverse_pair_as_two() -> None:
+def test_diverse_path_count_counts_a_diverse_pair_as_two() -> None:
     """Two links crossing no common city are two independent links."""
-    assert independent_mesh_degree(_DIVERSE_EGRESS, "a") == 2
+    assert diverse_path_count(_DIVERSE_EGRESS, "a") == 2
 
 
-def test_independent_mesh_degree_of_a_node_with_no_links_is_zero() -> None:
+def test_diverse_path_count_of_a_node_with_no_links_is_zero() -> None:
     """A backbone node holding no mesh link has no independent links."""
-    assert independent_mesh_degree(meshed_design([], ("a",)), "a") == 0
+    assert diverse_path_count(meshed_design([], ("a",)), "a") == 0
 
 
-def test_independent_mesh_degree_counts_a_detour_to_one_peer_once() -> None:
+def test_diverse_path_count_counts_a_detour_to_one_peer_once() -> None:
     """Two routes to the same peer are one link: losing the peer city takes both."""
     design = meshed_design([("a", "x", "b"), ("a", "y", "b")], ("a", "b"))
-    assert independent_mesh_degree(design, "a") == 1
+    assert diverse_path_count(design, "a") == 1
 
 
 # Four nodes where "a" holds one mesh link and the rest hold two, against a target of
@@ -143,7 +143,7 @@ _MESH_NODES = ("a", "b", "c", "d")
 
 
 def test_mesh_deficient_names_the_node_below_the_degree() -> None:
-    """A node under the mesh degree is reported with the count it holds."""
+    """A node under the diverse path count is reported with the count it holds."""
     vertices = fixtures.carrier_pops_by_id("abcd")
     assert backbone_mesh_deficient(_MESH_NODES, _MESH_DEGREES, vertices, MeshTargets(2)) == [
         {"id": "a", "name": "a", "degree": 1}

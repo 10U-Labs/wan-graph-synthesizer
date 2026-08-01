@@ -1,6 +1,6 @@
 """How many independently failing links a backbone node's fiber can actually carry.
 
-The mesh degree asks for links that fail independently: two links leaving a node through
+The number of diverse paths asks for links that fail independently: two links leaving a node through
 one city are one link the moment that city goes. So the question "how many links should
 this node have" is really "how many routes out of it reach the rest of the backbone
 without sharing a city", and that is a fact about the substrate rather than a number
@@ -12,12 +12,12 @@ short; the routes say what it is short of, and can be wired. So the flow is read
 paths (:func:`independent_routes`) and the ceiling is their number, rather than the paths
 being thrown away once they have been counted.
 
-The ceiling is the exact point where the thing the mesh degree buys runs out. Below it a
+The ceiling is the exact point where the thing path diversity buys runs out. Below it a
 node is leaving built fiber unused; above it every further link must, by the max-flow
 min-cut theorem, re-cross a city the node already depends on -- a real cable with real
 capacity, but not another independent link, because there is nowhere else for it to go.
 That is why it needs no operator input to be the right place to stop, and why it bounds
-:func:`synthesizer.validation.independent_mesh_degree` from above: a set of the node's
+:func:`synthesizer.validation.diverse_path_count` from above: a set of the node's
 links whose failure cities are pairwise disjoint *is* a feasible integral flow here, so
 no way of choosing peers can beat the cut.
 
@@ -190,7 +190,7 @@ def independent_route_ceiling(
     return len(independent_routes(node, backbone_ids, adjacency))
 
 
-def mesh_degree_ceilings(
+def diverse_path_ceilings(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> dict[str, int]:

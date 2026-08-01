@@ -569,17 +569,17 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/backbone-mesh-degree": {
+    "/wan-graph-synthesizer/tenants/{tenant}/backbone-number-of-diverse-paths": {
       "get": {
-        "summary": "A tenant's backbone mesh degree (input).",
+        "summary": "A tenant's backbone number of diverse paths (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The backbone mesh degree." } },
+        "responses": { "200": { "description": "The backbone number of diverse paths." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's backbone mesh degree (stores only).",
+        "summary": "Replace a tenant's backbone number of diverse paths (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The backbone mesh degree was replaced." } },
+        "responses": { "200": { "description": "The backbone number of diverse paths was replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },

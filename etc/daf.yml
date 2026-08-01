@@ -19,10 +19,10 @@ backbone:
       - New York, NY
       - Salt Lake City, UT
       - San Jose, CA
-  mesh_degree: 2
   node_count:
     max: 99
     min: 3
+  number_of_diverse_paths: 2
   prohibited:
     connections: []
     nodes: []

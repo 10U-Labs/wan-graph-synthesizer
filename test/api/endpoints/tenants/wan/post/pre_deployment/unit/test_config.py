@@ -14,7 +14,7 @@ from synthesizer.model import NamedLink, OperatorLinks
 # The two redundancy degrees and the coverage target are required (no default); inject
 # them so each test can focus on the field under test without restating them.
 _REQUIRED_TUNING = {
-    "backbone_mesh_degree": 3,
+    "backbone_number_of_diverse_paths": 3,
     "access_backbone_links": 2,
     "backbone_coverage_target_miles": 600,
 }
@@ -116,16 +116,37 @@ def test_reads_access_backbone_links() -> None:
     ).params.tuning.access_backbone_links == 3
 
 
-def test_default_backbone_mesh_degree_is_three() -> None:
+def test_default_backbone_number_of_diverse_paths_is_three() -> None:
     """The default config wires each backbone node to three others on the mesh."""
-    assert default_config().params.tuning.backbone_mesh_degree == 3
+    assert default_config().params.tuning.backbone_number_of_diverse_paths == 3
 
 
-def test_reads_backbone_mesh_degree() -> None:
-    """A backbone_mesh_degree value is read into the tuning."""
+def test_reads_backbone_number_of_diverse_paths() -> None:
+    """A backbone_number_of_diverse_paths value is read into the tuning."""
     assert _config(
-        {"tuning": {"backbone_mesh_degree": 4}}
-    ).params.tuning.backbone_mesh_degree == 4
+        {"tuning": {"backbone_number_of_diverse_paths": 4}}
+    ).params.tuning.backbone_number_of_diverse_paths == 4
+
+
+def test_the_old_mesh_degree_key_is_refused() -> None:
+    """A tuning document still calling the setting a mesh degree is refused by name.
+
+    The key was renamed rather than aliased, so a tenant config written before the rename
+    does not quietly fall through to a construction fallback nobody chose. It fails, and
+    the message names the key that was wanted.
+    """
+    with pytest.raises(ValueError, match="backbone_number_of_diverse_paths"):
+        config_from_data({
+            "design": {
+                "restrict_backbone_to_data_centers": True,
+                "promote_high_degree_convergences_to_backbone_nodes": True,
+            },
+            "tuning": {
+                "backbone_mesh_degree": 3,
+                "access_backbone_links": 2,
+                "backbone_coverage_target_miles": 600,
+            },
+        })
 
 
 def test_reads_forced_backbone() -> None:
@@ -143,7 +164,7 @@ def test_reads_degree_exempt_backbone() -> None:
 
 
 def test_default_exempts_no_backbone_node_from_the_degree() -> None:
-    """The default config holds every backbone node to the mesh degree."""
+    """The default config holds every backbone node to the diverse path count."""
     assert len(default_config().params.degree_exempt_backbone_names) == 0
 
 
@@ -430,16 +451,19 @@ def test_rejects_non_list_regional_edges() -> None:
 def test_missing_required_degree_is_rejected() -> None:
     """A config whose tuning omits a required redundancy degree is rejected."""
     with pytest.raises(ValueError):
-        config_from_data(
-            {"tuning": {"backbone_mesh_degree": 3, "backbone_coverage_target_miles": 600}}
-        )
+        config_from_data({
+            "tuning": {
+                "backbone_number_of_diverse_paths": 3,
+                "backbone_coverage_target_miles": 600,
+            }
+        })
 
 
 def test_non_integer_degree_is_rejected() -> None:
     """A required degree that is not an integer is rejected."""
     with pytest.raises(ValueError):
         config_from_data(
-            {"tuning": {"backbone_mesh_degree": "three", "access_backbone_links": 2}}
+            {"tuning": {"backbone_number_of_diverse_paths": "three", "access_backbone_links": 2}}
         )
 
 
@@ -447,7 +471,7 @@ def test_boolean_degree_is_rejected() -> None:
     """A required degree given as a bool (an int subclass) is rejected."""
     with pytest.raises(ValueError):
         config_from_data(
-            {"tuning": {"backbone_mesh_degree": True, "access_backbone_links": 2}}
+            {"tuning": {"backbone_number_of_diverse_paths": True, "access_backbone_links": 2}}
         )
 
 
@@ -456,7 +480,7 @@ def test_missing_coverage_target_is_rejected() -> None:
     with pytest.raises(ValueError):
         config_from_data(
             {
-                "tuning": {"backbone_mesh_degree": 3, "access_backbone_links": 2},
+                "tuning": {"backbone_number_of_diverse_paths": 3, "access_backbone_links": 2},
                 "design": {"restrict_backbone_to_data_centers": True},
             }
         )
@@ -500,7 +524,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "prohibited-backbone-nodes": [],
         "prohibited-connections": [],
         "backbone-node-count": {"min": 3, "max": 5},
-        "backbone-mesh-degree": {"degree": 3},
+        "backbone-number-of-diverse-paths": {"degree": 3},
         "access-homing-degree": {"degree": 2},
         "backbone-placement": {"restrict": True},
         "convergence-promotion": {"promote": True},
@@ -542,7 +566,7 @@ def test_app_config_from_parts_without_settings_is_unchanged() -> None:
 def test_app_config_from_parts_assembles_the_two_degrees() -> None:
     """The assembler reads both redundancy degrees from their documents."""
     tuning = app_config_from_parts(_parts()).params.tuning
-    assert (tuning.backbone_mesh_degree, tuning.access_backbone_links) == (3, 2)
+    assert (tuning.backbone_number_of_diverse_paths, tuning.access_backbone_links) == (3, 2)
 
 
 def test_app_config_from_parts_reads_the_label() -> None:
@@ -575,7 +599,7 @@ def test_app_config_from_parts_reads_the_degree_exempt_nodes() -> None:
 
 
 def test_app_config_from_parts_exempts_nobody_without_the_document() -> None:
-    """A tenant carrying no exemption document holds every node to the mesh degree."""
+    """A tenant carrying no exemption document holds every node to the diverse path count."""
     params = app_config_from_parts(_parts()).params
     assert len(params.degree_exempt_backbone_names) == 0
 
@@ -585,6 +609,19 @@ def test_app_config_from_parts_requires_each_degree() -> None:
     parts = _parts()
     del parts["access-homing-degree"]
     with pytest.raises(ValueError):
+        app_config_from_parts(parts)
+
+
+def test_app_config_from_parts_refuses_the_old_mesh_degree_resource() -> None:
+    """A tenant still storing the setting under its old resource name is refused.
+
+    The stored resource was renamed with the config key, and neither name is an alias for
+    the other, so a store the seed tool has not been run against since the rename reads as
+    a tenant that never stated the number -- which is a refusal, not a default.
+    """
+    parts = _parts()
+    parts["backbone-mesh-degree"] = parts.pop("backbone-number-of-diverse-paths")
+    with pytest.raises(ValueError, match="backbone-number-of-diverse-paths"):
         app_config_from_parts(parts)
 
 
@@ -598,7 +635,7 @@ def test_app_config_from_parts_requires_coverage_target() -> None:
 def test_app_config_from_parts_rejects_a_malformed_degree_document() -> None:
     """A degree document that is not a ``{"degree": int}`` object is rejected."""
     parts = _parts()
-    parts["backbone-mesh-degree"] = 3
+    parts["backbone-number-of-diverse-paths"] = 3
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 
@@ -606,7 +643,7 @@ def test_app_config_from_parts_rejects_a_malformed_degree_document() -> None:
 def test_app_config_from_parts_rejects_a_non_integer_degree() -> None:
     """A degree document whose value is not an integer is rejected."""
     parts = _parts()
-    parts["backbone-mesh-degree"] = {"degree": "three"}
+    parts["backbone-number-of-diverse-paths"] = {"degree": "three"}
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 

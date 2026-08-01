@@ -51,6 +51,18 @@ def test_seed_cli_writes_a_tenant_label(stub_api: StubApi) -> None:
     assert any(path.endswith("/label") for path in paths)
 
 
+def test_seed_cli_writes_the_backbone_number_of_diverse_paths(stub_api: StubApi) -> None:
+    """The seed CLI writes each tenant's diverse path count to its own resource.
+
+    The resource name is the one place the rename off the graph-theory word is observable
+    from outside the process, so this tier is where it is held: the tenant configs and the
+    reader of them could both be renamed together and pass every other test unchanged.
+    """
+    _run_seed(stub_api.url)
+    paths = [path for _method, path, _body in stub_api.records]
+    assert any(path.endswith("/backbone-number-of-diverse-paths") for path in paths)
+
+
 def test_seed_cli_fails_when_the_api_rejects_writes() -> None:
     """The seed CLI exits non-zero when the API returns an error status."""
     with StubApi(status=500) as api:

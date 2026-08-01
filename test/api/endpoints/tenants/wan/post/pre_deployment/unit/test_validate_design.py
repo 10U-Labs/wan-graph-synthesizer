@@ -130,7 +130,9 @@ def _mesh_design(backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]]) ->
 
 
 def _mesh_report(
-    backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]], backbone_mesh_degree: int = 3,
+    backbone_ids: tuple[str, ...],
+    pairs: list[tuple[str, str]],
+    backbone_number_of_diverse_paths: int = 3,
     degree_exempt: frozenset[str] = frozenset(),
     ceilings: dict[str, int] | None = None,
 ) -> ValidationReport:
@@ -138,7 +140,7 @@ def _mesh_report(
     return validate_design(
         [make_pop(name) for name in backbone_ids],
         _mesh_design(backbone_ids, pairs),
-        targets=MeshTargets(backbone_mesh_degree, degree_exempt, ceilings),
+        targets=MeshTargets(backbone_number_of_diverse_paths, degree_exempt, ceilings),
     )
 
 
@@ -153,7 +155,7 @@ _DEFICIENT = (
     ("C1", "C2", "C3", "C4", "C5"),
     [("C1", "C2"), ("C1", "C3"), ("C1", "C4"), ("C2", "C4"), ("C2", "C5"), ("C3", "C5")],
 )
-# Three nodes cannot reach a target of three, so the mesh-degree rule is moot.
+# Three nodes cannot reach a target of three, so the diverse-path rule is moot.
 _SMALL = (("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3"), ("C1", "C3")])
 
 
@@ -167,9 +169,9 @@ def test_backbone_below_the_target_fails_the_mesh_rule() -> None:
     assert _mesh_report(*_DEFICIENT)["backbone_meets_mesh_link_target"] is False
 
 
-def test_mesh_degree_is_configurable() -> None:
+def test_number_of_diverse_paths_is_configurable() -> None:
     """The same nodes meet a lowered target of two links each."""
-    assert _mesh_report(*_DEFICIENT, backbone_mesh_degree=2)[
+    assert _mesh_report(*_DEFICIENT, backbone_number_of_diverse_paths=2)[
         "backbone_meets_mesh_link_target"
     ] is True
 
@@ -177,7 +179,7 @@ def test_mesh_degree_is_configurable() -> None:
 def test_backbone_below_the_target_names_the_deficient_nodes() -> None:
     """The deficient list names every node left under the three-link target."""
     report = _mesh_report(*_DEFICIENT)
-    assert {item["id"] for item in report["backbone_mesh_degree_deficient"]} == {"C3", "C4", "C5"}
+    assert {item["id"] for item in report["backbone_diverse_paths_deficient"]} == {"C3", "C4", "C5"}
 
 
 def test_exempting_every_short_node_satisfies_the_mesh_rule() -> None:
@@ -189,7 +191,7 @@ def test_exempting_every_short_node_satisfies_the_mesh_rule() -> None:
 def test_exempting_one_short_node_leaves_the_others_reported() -> None:
     """Exempting C3 says nothing about C4 and C5, which stay under the target."""
     report = _mesh_report(*_DEFICIENT, degree_exempt=frozenset({"C3"}))
-    assert {item["id"] for item in report["backbone_mesh_degree_deficient"]} == {"C4", "C5"}
+    assert {item["id"] for item in report["backbone_diverse_paths_deficient"]} == {"C4", "C5"}
 
 
 def test_the_report_names_the_exempt_nodes() -> None:
@@ -206,20 +208,20 @@ def test_the_report_names_no_exempt_node_by_default() -> None:
 def test_the_report_names_a_node_whose_target_the_tool_lowered() -> None:
     """A target the tool lowered on its own is read in the report, not inferred from counts."""
     report = _mesh_report(*_DEFICIENT, ceilings={"C3": 2})
-    assert report["backbone_mesh_degree_ceiling_limited"] == [
+    assert report["backbone_diverse_paths_ceiling_limited"] == [
         {"id": "C3", "name": "C3", "ceiling": 2}
     ]
 
 
 def test_the_report_lowers_nobody_when_the_fiber_meets_the_degree() -> None:
     """With no target lowered the field is empty, so a reduction is what it distinguishes."""
-    assert _mesh_report(*_HEALTHY)["backbone_mesh_degree_ceiling_limited"] == []
+    assert _mesh_report(*_HEALTHY)["backbone_diverse_paths_ceiling_limited"] == []
 
 
 def test_the_report_names_a_node_aimed_above_the_tenant_degree() -> None:
     """Reaching past the degree is the tool's decision, so the report says where it did."""
-    report = _mesh_report(*_HEALTHY, backbone_mesh_degree=2, ceilings={"C1": 3})
-    assert report["backbone_mesh_degree_above_floor"] == [
+    report = _mesh_report(*_HEALTHY, backbone_number_of_diverse_paths=2, ceilings={"C1": 3})
+    assert report["backbone_diverse_paths_above_floor"] == [
         {"id": "C1", "name": "C1", "ceiling": 3, "independent_degree": 3}
     ]
 

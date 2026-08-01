@@ -16,7 +16,7 @@ from synthesizer.graphs import (
 )
 
 
-# Every backbone node must link to at least ``mesh_degree`` other backbone nodes --
+# Every backbone node must link to at least ``number_of_diverse_paths`` other backbone nodes --
 # but only once the backbone is larger than that target, since fewer nodes cannot
 # reach it.
 
@@ -30,7 +30,7 @@ def node_mesh_target(node: str, targets: MeshTargets) -> int:
     on its own, and no exemption list has to name the node.
 
     Lowering it can only relax. The ceiling is an upper bound on
-    :func:`independent_mesh_degree` -- a set of links with pairwise disjoint failure cities
+    :func:`diverse_path_count` -- a set of links with pairwise disjoint failure cities
     is a feasible flow in the network the ceiling maximises over -- so ``min`` never raises
     a target above what was asked before, and no design that passes today is refused
     because of a number the tool derived. A node with no ceiling recorded owes the full
@@ -39,8 +39,8 @@ def node_mesh_target(node: str, targets: MeshTargets) -> int:
     """
     ceilings = targets.ceilings
     if ceilings is None or node not in ceilings:
-        return targets.mesh_degree
-    return min(targets.mesh_degree, ceilings[node])
+        return targets.number_of_diverse_paths
+    return min(targets.number_of_diverse_paths, ceilings[node])
 
 
 def backbone_mesh_deficient(
@@ -51,8 +51,8 @@ def backbone_mesh_deficient(
 ) -> list[dict[str, object]]:
     """Backbone nodes with fewer mesh links than their own target.
 
-    With ``targets.mesh_degree`` or fewer backbone nodes the target cannot be met (a node
-    has only that many peers), so the list is empty. That guard is unconditional, so a
+    With ``targets.number_of_diverse_paths`` or fewer backbone nodes the target cannot be
+    met (a node has only that many peers), so the list is empty. That guard is unconditional, so a
     backbone no larger than the degree reports nothing whatever the ceilings say -- which
     keeps the ceiling a pure relaxation and never a new refusal.
 
@@ -65,7 +65,7 @@ def backbone_mesh_deficient(
     not asked of it, and reporting a shortfall nobody intends to act on buries the ones
     that matter.
     """
-    if len(backbone_ids) <= targets.mesh_degree:
+    if len(backbone_ids) <= targets.number_of_diverse_paths:
         return []
     return [
         {"id": backbone_id, "name": vertices_by_id[backbone_id].name, "degree": degree}
@@ -205,7 +205,7 @@ def routed_independent_degree(path_uses: list[PathUse], node: str) -> int:
     return 0
 
 
-def independent_mesh_degree(design: Design, node: str) -> int:
+def diverse_path_count(design: Design, node: str) -> int:
     """How many of ``node``'s mesh links no single city's loss can take two of."""
     return routed_independent_degree(design.path_uses, node)
 
@@ -219,7 +219,7 @@ def backbone_mesh_independence_deficient(
 
     The city-diversity counterpart of :func:`backbone_mesh_deficient`: a node can hold its
     full nominal degree and still fall below it when one transit city goes, because two of
-    its links cross that city. With ``targets.mesh_degree`` or fewer backbone nodes the
+    its links cross that city. With ``targets.number_of_diverse_paths`` or fewer backbone nodes the
     target cannot be met at all, so the list is empty.
 
     The target is per node (see :func:`node_mesh_target`), which is what separates a
@@ -233,7 +233,7 @@ def backbone_mesh_independence_deficient(
     only the nominal one would leave the operator with the same report they asked to be rid
     of -- and this is the count the build refuses on.
     """
-    if len(design.backbone_ids) <= targets.mesh_degree:
+    if len(design.backbone_ids) <= targets.number_of_diverse_paths:
         return []
     return [
         {
@@ -242,7 +242,7 @@ def backbone_mesh_independence_deficient(
             "independent_degree": degree,
         }
         for backbone_id, degree in sorted(
-            (node, independent_mesh_degree(design, node)) for node in design.backbone_ids
+            (node, diverse_path_count(design, node)) for node in design.backbone_ids
         )
         if degree < node_mesh_target(backbone_id, targets)
         and backbone_id not in targets.degree_exempt
@@ -285,7 +285,7 @@ def ceiling_limited_nodes(
     return [
         {"id": node, "name": vertices_by_id[node].name, "ceiling": ceiling}
         for node, ceiling in _ceilings_where(
-            backbone_ids, targets.ceilings, lambda value: value < targets.mesh_degree
+            backbone_ids, targets.ceilings, lambda value: value < targets.number_of_diverse_paths
         )
     ]
 
@@ -297,8 +297,8 @@ def above_floor_nodes(
 ) -> list[dict[str, object]]:
     """Backbone nodes the tool reached past the tenant degree for, and what came of it.
 
-    The mesh degree is a floor, so a node whose fiber carries more independent routes than
-    the degree asks for is aimed at its ceiling instead (see
+    The number of diverse paths is a floor, so a node whose fiber carries more independent
+    routes than the tenant asked for is aimed at its ceiling instead (see
     :func:`synthesizer.backbone.select_backbone_mesh_pairs`). That is the tool's decision
     rather than the operator's, so it is reported with both numbers: the ceiling it aimed
     at, and the independent links it came away with. The two differ when the routing could
@@ -309,10 +309,12 @@ def above_floor_nodes(
             "id": node,
             "name": vertices_by_id[node].name,
             "ceiling": ceiling,
-            "independent_degree": independent_mesh_degree(design, node),
+            "independent_degree": diverse_path_count(design, node),
         }
         for node, ceiling in _ceilings_where(
-            design.backbone_ids, targets.ceilings, lambda value: value > targets.mesh_degree
+            design.backbone_ids,
+            targets.ceilings,
+            lambda value: value > targets.number_of_diverse_paths,
         )
     ]
 
@@ -386,17 +388,17 @@ def validate_design(
             for vertex_id in missing_redundancy
         ],
         "backbone_meets_mesh_link_target": not mesh_deficient,
-        "backbone_mesh_degree_deficient": mesh_deficient,
+        "backbone_diverse_paths_deficient": mesh_deficient,
         "backbone_meets_independent_mesh_link_target": not independence_deficient,
         "backbone_mesh_independence_deficient": independence_deficient,
         "backbone_degree_exempt": [
             {"id": backbone_id, "name": vertices_by_id[backbone_id].name}
             for backbone_id in sorted(set(design.backbone_ids) & targets.degree_exempt)
         ],
-        "backbone_mesh_degree_ceiling_limited": ceiling_limited_nodes(
+        "backbone_diverse_paths_ceiling_limited": ceiling_limited_nodes(
             design.backbone_ids, vertices_by_id, targets
         ),
-        "backbone_mesh_degree_above_floor": above_floor_nodes(
+        "backbone_diverse_paths_above_floor": above_floor_nodes(
             design, vertices_by_id, targets
         ),
         "backbone_mesh_two_edge_connected": backbone_mesh_two_edge_connected(design),

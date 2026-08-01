@@ -198,7 +198,7 @@ def routed_path_uses(
     backbone_set = set(backbone_ids)
     constraints = BackboneConstraints(
         removed_backbone_pairs(backbone_set, plan.forced_links),
-        mesh_degree=plan.tuning.backbone_mesh_degree,
+        number_of_diverse_paths=plan.tuning.backbone_number_of_diverse_paths,
         forced_pairs=forced_backbone_pairs(backbone_set, plan.forced_links),
     )
     return backbone_mesh_paths(

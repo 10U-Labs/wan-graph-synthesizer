@@ -57,7 +57,7 @@ _FIVE_NODES = ("c1", "c2", "c3", "c4", "c5")
 
 def _backbone(
     removed: frozenset[tuple[str, str]] = frozenset(),
-    mesh_degree: int = 3,
+    number_of_diverse_paths: int = 3,
     forced: frozenset[tuple[str, str]] = frozenset(),
     ceilings: dict[str, int] | None = None,
     routes: dict[str, list[tuple[str, ...]]] | None = None,
@@ -66,7 +66,7 @@ def _backbone(
     return select_backbone_mesh_pairs(
         _FIVE_NODES,
         _FIVE_NODE_DISTANCES,
-        BackboneConstraints(removed, mesh_degree, forced, ceilings or {}, routes or {}),
+        BackboneConstraints(removed, number_of_diverse_paths, forced, ceilings or {}, routes or {}),
     )
 
 
@@ -79,14 +79,14 @@ def _node_degrees(pairs: list[tuple[str, str]]) -> dict[str, int]:
     return degrees
 
 
-def test_every_node_meets_its_mesh_degree() -> None:
-    """With a mesh degree of three, every node wires to at least three others."""
+def test_every_node_meets_its_number_of_diverse_paths() -> None:
+    """With three diverse paths asked for, every node wires to at least three others."""
     assert min(_node_degrees(_backbone()).values()) == 3
 
 
-def test_mesh_degree_scales_with_the_config() -> None:
+def test_number_of_diverse_paths_scales_with_the_config() -> None:
     """Lowering the degree to two leaves the least-connected node with two links."""
-    assert min(_node_degrees(_backbone(mesh_degree=2)).values()) == 2
+    assert min(_node_degrees(_backbone(number_of_diverse_paths=2)).values()) == 2
 
 
 def test_a_node_wires_to_its_nearest_not_its_farthest() -> None:
@@ -109,7 +109,7 @@ def test_a_node_picked_by_a_farther_peer_gains_an_extra_link() -> None:
 # third link visible as the ceiling's doing and nothing else's.
 def test_a_node_with_headroom_takes_more_than_the_tenant_degree() -> None:
     """c5's ceiling of three buys a third link the tenant degree of two would stop at."""
-    assert _node_degrees(_backbone(mesh_degree=2, ceilings={"c5": 3}))["c5"] == 3
+    assert _node_degrees(_backbone(number_of_diverse_paths=2, ceilings={"c5": 3}))["c5"] == 3
 
 
 def test_a_removed_pair_gets_no_link() -> None:
@@ -132,7 +132,7 @@ def test_a_forced_pair_gets_a_mesh_link() -> None:
     assert edge_key("c1", "c5") in _backbone(forced=_FORCED)
 
 
-def test_a_forced_link_counts_towards_the_mesh_degree() -> None:
+def test_a_forced_link_counts_towards_the_number_of_diverse_paths() -> None:
     """c5's forced link fills one of its three slots rather than adding a fourth."""
     assert _node_degrees(_backbone(forced=_FORCED))["c5"] == 3
 
@@ -148,7 +148,7 @@ _THINNED = frozenset({edge_key("c1", "c2"), edge_key("c1", "c3"), edge_key("c1",
 
 
 def test_a_node_thinned_below_target_still_renders_a_backbone() -> None:
-    """Thinning one node below its mesh degree does not blank the whole backbone."""
+    """Thinning one node below its diverse path count does not blank the whole backbone."""
     assert _backbone(_THINNED)
 
 
@@ -193,9 +193,11 @@ _TWO_CLUSTER_NODES = ("a1", "a2", "a3", "b1", "b2", "b3")
 def _two_cluster_mesh(
     removed: frozenset[tuple[str, str]] = frozenset(),
 ) -> list[tuple[str, str]]:
-    """The two-cluster backbone wired at mesh degree two."""
+    """The two-cluster backbone wired at two diverse paths."""
     return select_backbone_mesh_pairs(
-        _TWO_CLUSTER_NODES, _TWO_CLUSTER_DISTANCES, BackboneConstraints(removed, mesh_degree=2)
+        _TWO_CLUSTER_NODES,
+        _TWO_CLUSTER_DISTANCES,
+        BackboneConstraints(removed, number_of_diverse_paths=2),
     )
 
 
@@ -247,7 +249,7 @@ def _transit_mesh(
     forced: frozenset[tuple[str, str]] = frozenset(),
     ceilings: dict[str, int] | None = None,
 ) -> list[tuple[str, str]]:
-    """The transit backbone wired at mesh degree three."""
+    """The transit backbone wired at three diverse paths."""
     return select_backbone_mesh_pairs(
         _TRANSIT_NODES,
         _TRANSIT_DISTANCES,
@@ -551,7 +553,7 @@ def test_backbone_mesh_paths_route_a_nodes_links_over_distinct_cities() -> None:
     distances, predecessors = all_pairs_shortest([pop(i) for i in ids], adjacency)
     uses = backbone_mesh_paths(
         ("h", "p", "q"), distances, predecessors, _SHARED_EGRESS_EDGES,
-        BackboneConstraints(mesh_degree=2),
+        BackboneConstraints(number_of_diverse_paths=2),
     )
     routed = {edge_key(use.source, use.target): set(use.path) - {"h"} for use in uses}
     assert not routed[edge_key("h", "p")] & routed[edge_key("h", "q")]

@@ -53,10 +53,10 @@ backbone:
         target: Nellis, NV
     nodes:
       - Luke, AZ
-  mesh_degree: 2
   node_count:
     max: 3
     min: 3
+  number_of_diverse_paths: 2
   prohibited:
     connections:
       - source: Luke, AZ
@@ -443,12 +443,12 @@ def test_push_tenants_puts_the_access_homing_degree_resource(
     assert bodies["tenants/f-35/access-homing-degree"] == {"degree": 1}
 
 
-def test_push_tenants_puts_the_backbone_mesh_degree_resource(
+def test_push_tenants_puts_the_backbone_number_of_diverse_paths_resource(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
-    """push_tenants reads the mesh degree from the backbone block, not a root key."""
+    """push_tenants reads the diverse path count from the backbone block, not a root key."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/backbone-mesh-degree"] == {"degree": 2}
+    assert bodies["tenants/f-35/backbone-number-of-diverse-paths"] == {"degree": 2}
 
 
 def test_push_tenants_puts_the_backbone_node_count_resource(

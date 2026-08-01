@@ -86,7 +86,7 @@ def _required_bool(data: dict[str, Any], key: str) -> bool:
 def _required_int(data: dict[str, Any], key: str) -> int:
     """Return a required integer config value, rejecting an absent or non-int value.
 
-    The two redundancy degrees (``backbone-mesh-degree``, ``access-homing-degree``)
+    The two redundancy degrees (``backbone-number-of-diverse-paths``, ``access-homing-degree``)
     have no default: every tenant must state each one, so a missing key is an error
     rather than a silently-filled fallback. ``backbone_coverage_target_miles`` is
     required on the same terms -- every tenant must state how far the backbone must
@@ -240,7 +240,7 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
     settings = _checked_settings(settings)
     return Tuning(
         compass_sector_count=_sector_count(settings, base.compass_sector_count),
-        backbone_mesh_degree=_required_int(tuning, "backbone_mesh_degree"),
+        backbone_number_of_diverse_paths=_required_int(tuning, "backbone_number_of_diverse_paths"),
         backbone_coverage_target_miles=_required_int(
             tuning, "backbone_coverage_target_miles"
         ),
@@ -310,7 +310,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     """Assemble an :class:`AppConfig` from the per-resource tenant documents.
 
     Each operator concern is its own stored document (``forced-backbone-nodes``,
-    ``forced-homes``, ``prohibited-connections``, ``backbone-mesh-degree``, ``knobs``,
+    ``forced-homes``, ``prohibited-connections``, ``backbone-number-of-diverse-paths``, ``knobs``,
     ...). This reshapes those documents into the canonical mapping
     :func:`config_from_data` expects and delegates to it, so all parsing and validation
     stays in one place. The two redundancy degrees are required -- a missing one raises
@@ -343,7 +343,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
         design["max_backbone_count"] = count["max"]
     tuning = {
         **_mapping(parts, "knobs"),
-        "backbone_mesh_degree": _degree(parts, "backbone-mesh-degree"),
+        "backbone_number_of_diverse_paths": _degree(parts, "backbone-number-of-diverse-paths"),
         "access_backbone_links": _degree(parts, "access-homing-degree"),
     }
     label = parts.get("label", {})

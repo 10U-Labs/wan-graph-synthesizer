@@ -82,7 +82,7 @@ def test_finalize_reports_the_independent_mesh_target() -> None:
     assert validation["backbone_meets_independent_mesh_link_target"] is True
 
 
-def test_finalize_refuses_a_design_short_of_the_configured_mesh_degree() -> None:
+def test_finalize_refuses_a_design_short_of_the_configured_number_of_diverse_paths() -> None:
     """A backbone node without the configured independent links makes finalize raise.
 
     Node a's two links both leave through transit city x, so one city's loss takes both
@@ -91,7 +91,7 @@ def test_finalize_refuses_a_design_short_of_the_configured_mesh_degree() -> None
     design = fixtures.meshed_backbone_design(
         fixtures.SHARED_TRANSIT_ROUTES, fixtures.SHARED_TRANSIT_BACKBONE
     )
-    params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_mesh_degree=2))
+    params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_number_of_diverse_paths=2))
     with pytest.raises(ValueError, match="independently failing backbone mesh links at"):
         finalize(list(fixtures.carrier_pops_by_id("abcx").values()), {}, design, params)
 
@@ -107,7 +107,7 @@ def test_finalize_holds_a_node_to_the_ceiling_of_the_substrate_it_is_given() -> 
     design = fixtures.meshed_backbone_design(
         fixtures.SHARED_TRANSIT_ROUTES, fixtures.SHARED_TRANSIT_BACKBONE
     )
-    params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_mesh_degree=2))
+    params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_number_of_diverse_paths=2))
     edges = fixtures.physical_edges_from({
         ("a", "x"): 1.0, ("x", "b"): 1.0, ("x", "c"): 1.0, ("b", "c"): 1.0,
     })
@@ -122,7 +122,7 @@ def _finalize_shared_transit(degree_exempt: frozenset[str]) -> ValidationReport:
     design = fixtures.meshed_backbone_design(
         fixtures.SHARED_TRANSIT_ROUTES, fixtures.SHARED_TRANSIT_BACKBONE
     )
-    params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_mesh_degree=2))
+    params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_number_of_diverse_paths=2))
     _vertices, _edges, _design, validation = finalize(
         list(fixtures.carrier_pops_by_id("abcx").values()), {}, design, params, degree_exempt
     )

@@ -11,7 +11,7 @@ import fixtures
 from synthesizer.ceiling import (
     independent_route_ceiling,
     independent_routes,
-    mesh_degree_ceilings,
+    diverse_path_ceilings,
 )
 from synthesizer.graphs import build_adjacency
 
@@ -68,7 +68,7 @@ def test_an_unreachable_node_has_no_ceiling_at_all() -> None:
 
 def test_the_ceilings_are_computed_for_every_backbone_node() -> None:
     """The per-node pass answers for each backbone node, not just the one asked about."""
-    assert mesh_degree_ceilings(_TWO_CUT_BACKBONE, _TWO_CUTS) == {"bos": 2, "n1": 2, "n2": 2}
+    assert diverse_path_ceilings(_TWO_CUT_BACKBONE, _TWO_CUTS) == {"bos": 2, "n1": 2, "n2": 2}
 
 
 # The count is only ever as good as the routes behind it, and something has to be able to

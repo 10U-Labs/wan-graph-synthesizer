@@ -7,7 +7,7 @@ The synthesizer composes these over the JSON-loaded graph:
 
 from __future__ import annotations
 
-from synthesizer.ceiling import mesh_degree_ceilings
+from synthesizer.ceiling import diverse_path_ceilings
 from synthesizer.graphs import build_adjacency
 from synthesizer.input_graph import PhysicalEdge, Vertex
 from synthesizer.model import Design, DesignParams, MeshTargets, ValidationReport
@@ -55,13 +55,13 @@ def finalize(
 ) -> tuple[
     list[Vertex], dict[tuple[str, str], PhysicalEdge], Design, ValidationReport
 ]:
-    """Validate the design over the real fiber, refusing one that misses the mesh degree.
+    """Validate the design over the real fiber, refusing one that misses its diverse path count.
 
     Resilience is the operator's two required redundancy degrees, enforced over the
     real fiber and reported by :func:`validate_design`; there is no silent edge
     augmentation.
 
-    ``backbone_mesh_degree`` is a count of links that fail independently, so a design
+    ``backbone_number_of_diverse_paths`` is a count of links that fail independently, so a design
     where some backbone node cannot reach its target is not a design that meets the
     configuration and is refused by name.
 
@@ -81,9 +81,9 @@ def finalize(
     took every link its fiber could carry.
     """
     targets = MeshTargets(
-        mesh_degree=params.tuning.backbone_mesh_degree,
+        number_of_diverse_paths=params.tuning.backbone_number_of_diverse_paths,
         degree_exempt=degree_exempt,
-        ceilings=mesh_degree_ceilings(design.backbone_ids, build_adjacency(physical_edges)),
+        ceilings=diverse_path_ceilings(design.backbone_ids, build_adjacency(physical_edges)),
     )
     validation = validate_design(
         vertices, design, params.tuning.access_backbone_links, targets

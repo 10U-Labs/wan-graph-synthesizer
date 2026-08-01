@@ -20,7 +20,7 @@ class _SearchPlan:
     ``backbone_candidates`` are the eligible PoPs ranked by strength.
     ``forced_links`` carries the operator's resolved pins for routing.
 
-    The nodes the mesh degree is not asked of are not here: the exemption acts in
+    The nodes the diverse path count is not asked of are not here: the exemption acts in
     validation, which the handler reaches directly, and selection treats every node
     alike.
     """

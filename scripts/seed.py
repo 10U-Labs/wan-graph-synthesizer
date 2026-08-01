@@ -216,14 +216,14 @@ def push_tenants(api: str) -> list[str]:
         _put(api, f"tenants/{tid}/forced-homes", homes)
         _put(api, f"tenants/{tid}/prohibited-backbone-nodes", prohibited.get("nodes", []))
         _put(api, f"tenants/{tid}/prohibited-connections", prohibited.get("connections", []))
-        # The nodes held to no mesh degree. A config naming none says so with an empty
+        # The nodes held to no diverse path count. A config naming none says so with an empty
         # document rather than by leaving the resource absent, since the synthesizer
         # reads every config resource and a missing one is a failed build.
         _put(api, f"tenants/{tid}/degree-exempt-backbone-nodes",
              backbone.get("degree_exempt", []))
         _put(api, f"tenants/{tid}/backbone-node-count", backbone.get("node_count", {}))
-        _put(api, f"tenants/{tid}/backbone-mesh-degree",
-             _degree_doc(backbone["mesh_degree"]))
+        _put(api, f"tenants/{tid}/backbone-number-of-diverse-paths",
+             _degree_doc(backbone["number_of_diverse_paths"]))
         _put(api, f"tenants/{tid}/access-homing-degree",
              _degree_doc(access["homing_degree"]))
         _put(api, f"tenants/{tid}/backbone-placement",

@@ -69,9 +69,9 @@ class Tuning:
     """Algorithm dials plus the required redundancy degrees and coverage target.
 
     The two degrees are operator requirements the design must meet, each its own
-    REST resource (``backbone-mesh-degree`` / ``access-homing-degree``) with no
+    REST resource (``backbone-number-of-diverse-paths`` / ``access-homing-degree``) with no
     default at the config layer; the values here are construction fallbacks only.
-    ``backbone_mesh_degree`` is how many other backbone nodes each backbone node
+    ``backbone_number_of_diverse_paths`` is how many other backbone nodes each backbone node
     links to on the mesh; ``access_backbone_links`` is how many backbone nodes each
     demand vertex homes to. ``backbone_coverage_target_miles`` is likewise required
     at the config layer (its field default here is a construction fallback only,
@@ -84,7 +84,8 @@ class Tuning:
     """
 
     compass_sector_count: int = 8  # compass sectors used to score a backbone node's link spread
-    backbone_mesh_degree: int = 3  # other backbone nodes each one wires to (backbone-mesh-degree)
+    # diverse paths each backbone node is asked for (backbone-number-of-diverse-paths)
+    backbone_number_of_diverse_paths: int = 3
     # grow backbone until every demand is this near; whole miles, since the great-circle
     # haul it is compared against stands in for an unmeasured last-mile build
     backbone_coverage_target_miles: int = 600
@@ -137,7 +138,7 @@ class DesignParams:
     hub stays a transit node. It is required (no default) at the config layer; the field
     default here is a construction fallback only.
 
-    ``degree_exempt_backbone_names`` are PoPs the mesh degree is not asked of: validation
+    ``degree_exempt_backbone_names`` are PoPs the diverse path count is not asked of: validation
     neither reports nor refuses their shortfall. It relieves a node of a requirement and
     nothing more -- selection never sees the list, so an exempt node reaches for every
     link its fiber can carry exactly like any other node. Every other node is held to the
@@ -153,7 +154,7 @@ class DesignParams:
     min_backbone_count: int = 3  # minimum backbone nodes; the search adds more only if needed
     max_backbone_count: int | None = None  # ceiling on backbone nodes; None leaves it uncapped
     forced_backbone_names: tuple[str, ...] = ()  # PoPs pinned as backbone by the operator
-    degree_exempt_backbone_names: tuple[str, ...] = ()  # PoPs held to no mesh degree
+    degree_exempt_backbone_names: tuple[str, ...] = ()  # PoPs held to no diverse path count
     exclusions: RoleExclusions = field(default_factory=RoleExclusions)  # role bars
     # cities a provider has a cage in; None lifts the gate (free-for-all)
     datacenter_cities: frozenset[tuple[str, str]] | None = frozenset()
@@ -203,7 +204,7 @@ class RoleOverrides:
 
     ``forced_backbone_ids`` are the ids fixed into the backbone tier;
     ``prohibited_backbone_ids`` are barred from it. ``degree_exempt_backbone_ids`` are
-    held to no mesh degree: validation stops reporting their shortfall, while they pick
+    held to no diverse path count: validation stops reporting their shortfall, while they pick
     peers and are picked as peers like any other node.
     ``forced_links`` carries the operator's pinned edges resolved to ids.
     """
@@ -237,14 +238,14 @@ class MeshTargets:
     this particular node is held to -- so they travel as one value rather than as three
     parameters threaded through every check that asks it.
 
-    ``mesh_degree`` is the operator's configured minimum, asked of every node.
+    ``number_of_diverse_paths`` is the operator's configured minimum, asked of every node.
     ``degree_exempt`` are the nodes it is not asked of at all. ``ceilings`` are the computed
     per-node ceilings (see :mod:`synthesizer.ceiling`), which cap the degree where the fiber
     cannot carry it; ``None`` means no substrate was at hand, and every node is then held to
     the flat degree.
     """
 
-    mesh_degree: int = 3
+    number_of_diverse_paths: int = 3
     degree_exempt: frozenset[str] = frozenset()
     ceilings: Mapping[str, int] | None = None
 
@@ -261,12 +262,12 @@ class ValidationReport(TypedDict):
     access_vertices_with_required_backbone_links: bool
     demand_missing_backbone_redundancy: list[dict[str, str]]
     backbone_meets_mesh_link_target: bool
-    backbone_mesh_degree_deficient: list[dict[str, object]]
+    backbone_diverse_paths_deficient: list[dict[str, object]]
     backbone_meets_independent_mesh_link_target: bool
     backbone_mesh_independence_deficient: list[dict[str, object]]
     backbone_degree_exempt: list[dict[str, str]]
-    backbone_mesh_degree_ceiling_limited: list[dict[str, object]]
-    backbone_mesh_degree_above_floor: list[dict[str, object]]
+    backbone_diverse_paths_ceiling_limited: list[dict[str, object]]
+    backbone_diverse_paths_above_floor: list[dict[str, object]]
     backbone_mesh_two_edge_connected: bool
     backbone_mesh_two_vertex_connected: bool
 

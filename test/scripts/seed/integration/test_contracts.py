@@ -257,7 +257,7 @@ def _exemption_ceiling_bounds() -> list[tuple[str, str, int, int]]:
         for city in backbone.get("degree_exempt") or []:
             if city in by_name:
                 bound = independent_route_ceiling(by_name[city], pinned, adjacency)
-                bounds.append((tenant, city, bound, backbone["mesh_degree"]))
+                bounds.append((tenant, city, bound, backbone["number_of_diverse_paths"]))
     return bounds
 
 

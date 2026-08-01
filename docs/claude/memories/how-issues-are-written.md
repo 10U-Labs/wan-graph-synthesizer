@@ -12,7 +12,7 @@ The three test sections are the point of the format, not padding. A defect that 
 
 Write prose in simple, plain, ordinary English. Short sentences, no hedging, no jargon from computer science where a plain word will do. Assume a network engineer is reading, not a graph theorist.
 
-Use telecommunications vocabulary for the subject matter. Path diversity, not mesh degree. Site or point of presence, not node. Circuit, link, span, haul, chokepoint, protection. The repository's own source has historically used graph-theory words for telecom concepts, and that mismatch is itself the subject of issue #38 — so take the vocabulary from this note rather than from the identifier you are describing.
+Use telecommunications vocabulary for the subject matter. Path diversity, not mesh degree. Site or point of presence, not node. Circuit, link, span, haul, chokepoint, protection. The source used graph-theory words for telecom concepts until issue #38 renamed the backbone setting to `number_of_diverse_paths`; where an identifier still reads as graph theory, take the vocabulary from this note rather than from the identifier you are describing.
 
 Tables are allowed where a table genuinely reads better than a paragraph: a name-to-name rename mapping, or two measured columns being compared. Bullets are allowed only when enumerating a list of things. Do not use bullets to break up an argument — an argument is prose.
 

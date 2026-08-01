@@ -87,7 +87,7 @@ def _resolve_operator_pins(
     Returns the forced-backbone, prohibited-backbone and degree-exempt id sets. A forced
     pin at a city no colocation provider serves is rejected -- the data-center gate
     applies to operator forces too. An exemption is not a pin and is not gated: it says
-    only that the mesh degree is not asked of that node, which decides nothing about
+    only that the diverse path count is not asked of that node, which decides nothing about
     where the node may sit.
     """
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
@@ -224,7 +224,7 @@ def apply_role_overrides(
     and land in ``RoleOverrides.prohibited_backbone_ids``. Forced backbone pins are
     gated by ``params.datacenter_cities``: a pin at a city no colocation provider
     serves is rejected. ``params.degree_exempt_backbone_names`` resolve the same way
-    into ``RoleOverrides.degree_exempt_backbone_ids``, the nodes the mesh degree is not
+    into ``RoleOverrides.degree_exempt_backbone_ids``, the nodes the diverse path count is not
     asked of. The graph is returned unchanged (operator pins resolve to
     existing carrier-PoP ids; demand attachment is the caller's earlier stage).
     """

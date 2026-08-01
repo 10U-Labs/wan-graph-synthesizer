@@ -237,7 +237,7 @@ def test_tenant_put_persists_the_degree_exempt_backbone_nodes_document(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """A PUT to the degree-exempt-backbone-nodes resource is stored verbatim.
 
-    The nodes an operator holds to no mesh degree are their own resource, so the
+    The nodes an operator holds to no diverse path count are their own resource, so the
     endpoint has to accept one before the synthesizer can read it.
     """
     exempt = ["San Jose, CA"]

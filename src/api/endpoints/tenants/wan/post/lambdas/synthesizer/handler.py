@@ -49,7 +49,7 @@ CONFIG_RESOURCES = (
     "prohibited-connections",
     "degree-exempt-backbone-nodes",
     "backbone-node-count",
-    "backbone-mesh-degree",
+    "backbone-number-of-diverse-paths",
     "access-homing-degree",
     "backbone-placement",
     "convergence-promotion",

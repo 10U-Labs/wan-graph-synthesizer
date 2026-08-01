@@ -1,6 +1,6 @@
 """Select and route the backbone-to-backbone mesh.
 
-Every backbone node links to its ``mesh_degree`` nearest reachable backbone nodes that
+Every backbone node links to its ``number_of_diverse_paths`` nearest reachable backbone nodes that
 do not route through one another, minus any backbone-backbone pairs the operator pruned
 in ``etc/*.yml``. Counting links that share a transit city would let a node report its
 full degree and still fall to one link when that city goes. The mesh is then augmented
@@ -211,7 +211,7 @@ class BackboneConstraints:
     """The backbone-mesh selection knobs: the operator's pins, prunes, and link count."""
 
     removed_pairs: frozenset[tuple[str, str]] = frozenset()
-    mesh_degree: int = 3
+    number_of_diverse_paths: int = 3
     forced_pairs: frozenset[tuple[str, str]] = frozenset()
     # each node's computed ceiling (see :mod:`synthesizer.ceiling`); a node absent from
     # the mapping reaches only for the tenant's degree, which is what an empty one means
@@ -232,7 +232,7 @@ def select_backbone_mesh_pairs(
 
     Every backbone node reaches for as many independent links as its own fiber can carry
     -- its ceiling in ``constraints.ceilings`` (see :mod:`synthesizer.ceiling`) -- and never
-    for fewer than ``mesh_degree``, which stays the floor it has always been (fewer when
+    for fewer than ``number_of_diverse_paths``, which stays the floor it has always been (fewer when
     the backbone itself is smaller). The tenant's degree is a minimum every node owes, not
     a quota that stops a node the ground has been generous to: where the fiber offers more
     independently failing routes than the degree asks for, taking them is nearly free and
@@ -247,7 +247,7 @@ def select_backbone_mesh_pairs(
 
     Any pair in ``forced_pairs`` -- an operator-forced backbone-backbone link from
     ``etc/*.yml`` -- is wired however far apart its endpoints are, and counts against
-    each endpoint's degree: a node with one pin picks only ``mesh_degree - 1`` nearest
+    each endpoint's degree: a node with one pin picks only ``number_of_diverse_paths - 1`` nearest
     peers of its own, so the configured degree keeps meaning what it says and the pin
     displaces the farthest link the node would otherwise have chosen.
 
@@ -299,7 +299,7 @@ def select_backbone_mesh_pairs(
     """
     forced_pairs = constraints.forced_pairs
     removed_pairs = constraints.removed_pairs
-    floor = min(constraints.mesh_degree, len(backbone_ids) - 1)
+    floor = min(constraints.number_of_diverse_paths, len(backbone_ids) - 1)
     selected: set[tuple[str, str]] = set(forced_pairs)
     for node in backbone_ids:
         reach = max(constraints.ceilings.get(node, floor), floor)
