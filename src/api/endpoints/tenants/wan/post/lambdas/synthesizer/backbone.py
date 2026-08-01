@@ -320,31 +320,50 @@ def select_backbone_mesh_pairs(
     the same.
     """
     forced_pairs = constraints.forced_pairs
-    removed_pairs = constraints.removed_pairs
     target = min(constraints.number_of_diverse_paths, len(backbone_ids) - 1)
     requested: dict[tuple[str, str], list[str]] = {}
     for node in backbone_ids:
-        distances = all_distances[node]
-        nearest = sorted(
-            (distances[other], other)
-            for other in backbone_ids
-            if other != node
-            and edge_key(node, other) not in removed_pairs
-            and edge_key(node, other) not in forced_pairs
-            and math.isfinite(distances.get(other, math.inf))
-        )
-        pinned = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
-        slots = max(target - len(pinned), 0)
-        picks = (
-            _proven_picks(constraints.routes[node], nearest, slots)
-            if node in constraints.routes
-            else _diverse_picks(node, nearest, pinned, slots, all_distances)
-        )
-        for other in picks:
+        for other in _node_picks(node, backbone_ids, all_distances, constraints, target):
             requested.setdefault(edge_key(node, other), []).append(node)
-    selected = set(forced_pairs) | set(requested)
-    augmented = augment_for_resilience(backbone_ids, selected, all_distances, removed_pairs)
+    augmented = augment_for_resilience(
+        backbone_ids,
+        set(forced_pairs) | set(requested),
+        all_distances,
+        constraints.removed_pairs,
+    )
     return {pair: _link_reason(pair, forced_pairs, requested) for pair in sorted(augmented)}
+
+
+def _node_picks(
+    node: str,
+    backbone_ids: tuple[str, ...],
+    all_distances: dict[str, dict[str, float]],
+    constraints: BackboneConstraints,
+    target: int,
+) -> list[str]:
+    """The peers ``node`` reaches for: its target, less any the operator already pinned.
+
+    A pruned pair and a pinned pair are both kept out of the candidates it chooses among --
+    the first must not be wired at all, the second is wired already and must not take a
+    second slot -- and a peer the carrier graph cannot reach goes with them. What is left
+    is walked nearest first by :func:`_diverse_picks`, or replaced outright by the proved
+    routes where :func:`_proven_picks` has them.
+    """
+    forced_pairs, removed_pairs = constraints.forced_pairs, constraints.removed_pairs
+    distances = all_distances[node]
+    nearest = sorted(
+        (distances[other], other)
+        for other in backbone_ids
+        if other != node
+        and edge_key(node, other) not in removed_pairs
+        and edge_key(node, other) not in forced_pairs
+        and math.isfinite(distances.get(other, math.inf))
+    )
+    pinned = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
+    slots = max(target - len(pinned), 0)
+    if node in constraints.routes:
+        return _proven_picks(constraints.routes[node], nearest, slots)
+    return _diverse_picks(node, nearest, pinned, slots, all_distances)
 
 
 def _link_reason(
