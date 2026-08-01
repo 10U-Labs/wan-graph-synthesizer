@@ -12,6 +12,8 @@ what put that third link there.
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 import fixtures
@@ -104,4 +106,5 @@ def test_the_report_shows_the_arithmetic_it_is_claiming() -> None:
 def test_a_sites_own_links_are_not_reported_as_unrequested() -> None:
     """The two links a asked for are its own, however many other links it ends up with."""
     rows = _above_target(_link("d", LINK_FOR_PIN))
-    assert [item["peer"] for item in rows[0]["unrequested_links"]] == ["d"]
+    links = cast(list[dict[str, object]], rows[0]["unrequested_links"])
+    assert [item["peer"] for item in links] == ["d"]

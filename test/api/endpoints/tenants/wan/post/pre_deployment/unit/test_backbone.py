@@ -184,7 +184,9 @@ def test_backbone_wires_what_it_can_when_a_node_is_unreachable() -> None:
     """An unreachable node blanks only its own links, not the whole backbone."""
     distances = _symmetric_distances({("c1", "c2"): 1.0})
     distances["c3"] = {"c3": 0.0}
-    assert select_backbone_mesh_pairs(("c1", "c2", "c3"), distances) == [edge_key("c1", "c2")]
+    assert sorted(select_backbone_mesh_pairs(("c1", "c2", "c3"), distances)) == [
+        edge_key("c1", "c2")
+    ]
 
 
 # Two tight triangles -- {a1,a2,a3} and {b1,b2,b3} -- joined only by long but finite
@@ -205,7 +207,7 @@ _TWO_CLUSTER_NODES = ("a1", "a2", "a3", "b1", "b2", "b3")
 
 def _two_cluster_mesh(
     removed: frozenset[tuple[str, str]] = frozenset(),
-) -> list[tuple[str, str]]:
+) -> dict[tuple[str, str], LinkReason]:
     """The two-cluster backbone wired at two diverse paths."""
     return select_backbone_mesh_pairs(
         _TWO_CLUSTER_NODES,
