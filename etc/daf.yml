@@ -4,7 +4,7 @@ access:
     connections: []
   homing_degree: 2
 backbone:
-  coverage_target_miles: 400
+  coverage_target_miles: 300
   forced:
     connections: []
     nodes:
@@ -19,6 +19,7 @@ backbone:
       - New York, NY
       - Salt Lake City, UT
       - San Jose, CA
+      - Seattle, WA
   node_count:
     max: 99
     min: 3
