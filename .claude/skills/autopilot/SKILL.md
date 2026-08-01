@@ -22,7 +22,7 @@ Create six jobs with `CronCreate`, exactly as listed below. Use `recurring: true
 | :04 | `4,14,24,34,44,54 * * * *` | `REMINDER: Issues must be solved through a set of indivisible Claude tasks.` |
 | :06 | `6,16,26,36,46,56 * * * *` | `REMINDER: Ensure Claude tasks are indivisible.` |
 | :07 | `7,17,27,37,47,57 * * * *` | `REMINDER: Do not do anything but wait while a workflow is running.` |
-| :09 | `9,19,29,39,49,59 * * * *` | `REMINDER: When you come up against a new problem, file a GitHub issue with the sub-headers Problem, Why Unit Tests Did Not Catch It, Why Integration Tests Did Not Catch It, Why E2E Tests Did Not Catch It, and Proposed Solution.` |
+| :09 | `9,19,29,39,49,59 * * * *` | `REMINDER: When you come up against a new problem, file a GitHub issue with the sub-headers Problem, Why Unit Tests Did Not Catch It, Why Integration Tests Did Not Catch It, Why E2E Tests Did Not Catch It, Which Unit, Integration, or E2E regression tests would prevent this from happening again?, and Proposed Solution.` |
 
 Then tell the user which issue number is in force, that six reminders are running, and the two limits that come with them: the jobs live in this session only and are gone when it ends, and recurring jobs auto-expire after seven days.
 
@@ -38,4 +38,4 @@ Call `CronList`, then call `CronDelete` once per job it returns — all of them,
 
 Cron jobs fire only while the session is idle, never mid-turn, because a turn cannot be preempted. That limit is the reason this skill does not try to correct drift in the middle of a task: what it can do is restart a loop that has stalled, which is the failure it is there to catch.
 
-The issue sub-headers in the last reminder are the user's wording. `CLAUDE.md` names the fifth section `Solution` rather than `Proposed Solution`; `docs/claude/memories/how-issues-are-written.md` is the authority when an issue is actually being written.
+The issue sub-headers in the last reminder are the user's wording. `CLAUDE.md` names the closing section `Solution` rather than `Proposed Solution`, and does not yet carry the regression-test section at all; `docs/claude/memories/how-issues-are-written.md` is the authority when an issue is actually being written, so the two need reconciling before the next issue is filed.

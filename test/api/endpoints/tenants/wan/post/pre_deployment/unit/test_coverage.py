@@ -161,8 +161,10 @@ _FIBER_BACKBONE = ("b1", "b2", "b3")
 # nearer, so distance and fiber name different winners. In the second pair neither reaches
 # the target, and again the worse-connected one is nearer. One site each, so the profile a
 # real round would compare is a single haul.
-_BOTH_COVER = [((0.0,), "poor"), ((6.9,), "rich")]
-_NEITHER_COVERS = [((103.6,), "poor_far"), ((138.2,), "rich_far")]
+_BOTH_COVER: list[tuple[tuple[float, ...], str]] = [((0.0,), "poor"), ((6.9,), "rich")]
+_NEITHER_COVERS: list[tuple[tuple[float, ...], str]] = [
+    ((103.6,), "poor_far"), ((138.2,), "rich_far"),
+]
 
 
 def _seated(improving: list[tuple[tuple[float, ...], str]]) -> str:
