@@ -56,12 +56,18 @@ jobs:
         # to break that contract and was exactly the push that skipped it. data/raw/ is
         # still sound to exclude, holding the carriers' published maps that the cleaned
         # vertices and edges were transcribed from, which no code opens.
+        #
+        # A manual run carries no github.event.before, so it has no previous commit to
+        # diff against and every tier runs. That is what `gh workflow run seed.yml --ref
+        # main` is for, and asking the event directly is what keeps it true: the rest of
+        # this condition is about hashes, and rewriting it must not take the escape hatch
+        # away by accident. cat-file covers every hash a push can leave — the all-zero one
+        # a new branch sends, and one this checkout does not hold after a force push.
         name: Decide whether static analysis and tests are necessary
         run: |
           base='${{ github.event.before }}'
           head='${{ github.sha }}'
-          zero='0000000000000000000000000000000000000000'
-          if [ -z "$base" ] || [ "$base" = "$zero" ] \
+          if [ '${{ github.event_name }}' = workflow_dispatch ] \
               || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
             necessary=true
           elif git diff --name-only "$base" "$head" \
@@ -81,12 +87,14 @@ jobs:
         with:
           fetch-depth: 0
       - id: decide
+        # A manual run carries no github.event.before, so it has no previous commit to
+        # diff against and the linting runs. Asking the event directly says so, rather
+        # than leaving it to an empty hash; see the same condition in determining-testing.
         name: Decide whether YAML linting is necessary
         run: |
           base='${{ github.event.before }}'
           head='${{ github.sha }}'
-          zero='0000000000000000000000000000000000000000'
-          if [ -z "$base" ] || [ "$base" = "$zero" ] \
+          if [ '${{ github.event_name }}' = workflow_dispatch ] \
               || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
             necessary=true
           elif git diff --name-only "$base" "$head" \
