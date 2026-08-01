@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from collections.abc import Callable
 from typing import Any, cast
 
 import pytest
@@ -226,6 +227,16 @@ def _substrate() -> tuple[dict[str, str], dict[str, list[tuple[str, float]]]]:
     return {vertex.name: vertex.id for vertex in vertices}, build_adjacency(edges)
 
 
+def _pinned_cities(backbone: dict[str, Any]) -> list[str]:
+    """The cities a tenant pins into its backbone, as its config spells them."""
+    return list((backbone.get("forced") or {}).get("nodes") or [])
+
+
+def _exempt_cities(backbone: dict[str, Any]) -> list[str]:
+    """The cities a tenant excuses the diverse path count, as its config spells them."""
+    return list(backbone.get("degree_exempt") or [])
+
+
 def _pinned_ids(backbone: dict[str, Any], by_name: dict[str, str]) -> tuple[str, ...]:
     """The tenant's pinned backbone cities as substrate ids, skipping any it has no point for.
 
@@ -233,12 +244,17 @@ def _pinned_ids(backbone: dict[str, Any], by_name: dict[str, str]) -> tuple[str,
     graph does not have. Leaving it out costs the count a place a route could have ended,
     which can only make the bound below smaller.
     """
-    names = (backbone.get("forced") or {}).get("nodes") or []
-    return tuple(by_name[name] for name in names if name in by_name)
+    return tuple(by_name[name] for name in _pinned_cities(backbone) if name in by_name)
 
 
-def _exemption_ceiling_bounds() -> list[tuple[str, str, int, int]]:
-    """Every exempt city's ceiling lower bound beside the degree its tenant asks for.
+def _ceiling_bounds(
+    cities: Callable[[dict[str, Any]], list[str]],
+) -> list[tuple[str, str, int, int]]:
+    """Per tenant, each named city's ceiling lower bound beside the number it asks for.
+
+    ``cities`` picks which of a tenant's cities to measure, which is the only thing the two
+    contracts below differ in: one asks about the cities a tenant excuses, the other about
+    the cities it pins.
 
     The bound counts routes from the city to the tenant's pinned backbone cities that share
     no city on the way, over the merged carrier substrate. It is a floor rather than the
@@ -247,18 +263,23 @@ def _exemption_ceiling_bounds() -> list[tuple[str, str, int, int]]:
     on-net points and seats off-net ones, which adds spans. Neither can lower a maximum
     flow, so the real ceiling is at least what this returns.
 
-    An exempt city the carrier files hold no point for is left out, since there is no graph
-    to measure it on and a silent zero would read as a proven limit.
+    A city the carrier files hold no point for is left out, since there is no graph to
+    measure it on and a silent zero would read as a proven limit.
     """
     by_name, adjacency = _substrate()
     bounds: list[tuple[str, str, int, int]] = []
     for tenant, backbone in sorted(_backbone_blocks().items()):
         pinned = _pinned_ids(backbone, by_name)
-        for city in backbone.get("degree_exempt") or []:
+        for city in cities(backbone):
             if city in by_name:
                 bound = independent_route_ceiling(by_name[city], pinned, adjacency)
                 bounds.append((tenant, city, bound, backbone["number_of_diverse_paths"]))
     return bounds
+
+
+def _exemption_ceiling_bounds() -> list[tuple[str, str, int, int]]:
+    """Every exempt city's ceiling lower bound beside the number its tenant asks for."""
+    return _ceiling_bounds(_exempt_cities)
 
 
 def test_no_tenant_exempts_a_city_its_own_fiber_already_accounts_for() -> None:
@@ -281,4 +302,27 @@ def test_no_tenant_exempts_a_city_its_own_fiber_already_accounts_for() -> None:
         (tenant, city, bound, degree)
         for tenant, city, bound, degree in _exemption_ceiling_bounds()
         if bound < degree
+    ] == []
+
+
+def test_every_pinned_city_can_carry_the_diversity_its_tenant_asks_for() -> None:
+    """No tenant pins a backbone city whose own fiber cannot hold the paths it asks for.
+
+    The base backbone is now ranked by how many diverse paths a site's fiber can carry
+    rather than by how many spans touch it, which makes this the question the ranking is
+    trying to answer -- and a pin is the one site the ranking never gets to decide, because
+    an operator has already decided it. So a pin is the place a design can still start out
+    short, and neither file can say on its own: the config names the cities, the carrier
+    files say what their fiber does.
+
+    Measured over the merged carriers today, five pinned cities sit exactly on the number
+    their tenant asks for and the rest are above it -- DAF's Boston, AFGSC's Tacoma, and
+    DOW's Boardman, Umatilla and Tucson, each with two routes out that share no city. The
+    bound counts only routes to the tenant's other pins, so the real run, which seats more
+    sites and adds spans, can only do better.
+    """
+    assert [
+        (tenant, city, bound, asked)
+        for tenant, city, bound, asked in _ceiling_bounds(_pinned_cities)
+        if bound < asked
     ] == []

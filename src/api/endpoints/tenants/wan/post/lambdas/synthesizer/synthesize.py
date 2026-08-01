@@ -1,10 +1,10 @@
 """Synthesize a two-tier backbone/demand WAN over the carrier graph.
 
 Backbone nodes are chosen for strength, not mileage (the source mapbook has no
-distances): each node's strength is its degree plus compass spread plus path
-straightness, and the strongest feasible set of at least the configured
-``min_backbone_count`` wins, with total last-mile only breaking ties. The backbone
-then grows past that floor while any demand vertex is farther than
+distances): each node's strength is how many diverse paths its fiber can carry plus
+compass spread plus path straightness, and the strongest feasible set of at least the
+configured ``min_backbone_count`` wins, with total last-mile only breaking ties. The
+backbone then grows past that floor while any demand vertex is farther than
 ``backbone_coverage_target_miles`` from every selected backbone node, each added node
 being the one that most shortens the demand-to-backbone haul -- so extra backbone
 nodes appear only where they bring demand closer, never as a mileage cost minimized
@@ -59,7 +59,7 @@ from synthesizer.assemble import (
 )
 from synthesizer.coverage import grow_backbone_for_coverage
 from synthesizer.search_plan import _SearchPlan
-from synthesizer.strength import backbone_strength
+from synthesizer.strength import backbone_strength, diverse_path_bounds
 
 logger = logging.getLogger(__name__)
 
@@ -356,10 +356,10 @@ def build_search_plan(
     validation's, and the handler carries it there itself.
     """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
-    max_degree = max((len(inputs.adjacency[pop_id]) for pop_id in eligible_ids), default=1)
+    bounds = diverse_path_bounds(eligible_ids, inputs.adjacency)
     strength_by_id = {
         pop_id: backbone_strength(
-            pop_id, inputs, pop_by_id, max_degree, params.tuning.compass_sector_count
+            pop_id, inputs, pop_by_id, bounds, params.tuning.compass_sector_count
         )
         for pop_id in eligible_ids
     }

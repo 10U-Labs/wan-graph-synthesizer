@@ -433,6 +433,98 @@ def search_plan(
 TRIANGLE = physical_edges_from({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
 
 
+# --- span count against path diversity: the one graph where the two measures disagree ----
+#
+# Every other fixture here is a ring, a small cluster or a clique, and on all three a site's
+# span count and its diverse path count are the same number: ring sites have two spans and
+# two paths, clique sites turn every span into a path. So none of them can tell a ranking by
+# spans from a ranking by diversity, and this graph exists to.
+#
+# ``funnel`` and ``second_funnel`` have five spans each and ``spread`` has three. Four of
+# each funnel's spans reach the same upstream city ``choke_east`` and the fifth reaches
+# ``choke_west``, so however many spans a funnel has, every route out of it crosses one of
+# those two cities and it can hold two paths that fail independently. The spread's three
+# spans go to three separate cities, each of which is itself a candidate, so it can hold
+# three. Span count therefore ranks both funnels above the spread and path diversity ranks
+# the spread above both.
+#
+# There are two funnels rather than one so that a two-seat backbone has to choose. With one,
+# the spread places second under either measure and the chosen backbone is the same either
+# way, which would let a synthesis pass while ranking by the wrong thing.
+#
+# The funnelled spans leave eastward together, because fiber that converges on one upstream
+# city is fiber pointing one way -- so the compass term is not carrying this fixture's
+# disagreement. Under the span-count term a funnel scored a full 1.0 against the spread's
+# 0.6; under the diversity term it scores 2/3 against the spread's 1.0.
+FUNNEL_EDGES = physical_edges_from({
+    ("funnel", "east_a"): 40.0,
+    ("funnel", "east_b"): 45.0,
+    ("funnel", "east_c"): 50.0,
+    ("funnel", "east_d"): 55.0,
+    ("funnel", "west_a"): 60.0,
+    ("east_a", "choke_east"): 40.0,
+    ("east_b", "choke_east"): 45.0,
+    ("east_c", "choke_east"): 50.0,
+    ("east_d", "choke_east"): 55.0,
+    ("west_a", "choke_west"): 60.0,
+    ("second_funnel", "east_e"): 40.0,
+    ("second_funnel", "east_f"): 45.0,
+    ("second_funnel", "east_g"): 50.0,
+    ("second_funnel", "east_h"): 55.0,
+    ("second_funnel", "west_b"): 60.0,
+    ("east_e", "choke_east"): 40.0,
+    ("east_f", "choke_east"): 45.0,
+    ("east_g", "choke_east"): 50.0,
+    ("east_h", "choke_east"): 55.0,
+    ("west_b", "choke_west"): 60.0,
+    ("choke_east", "north"): 70.0,
+    ("choke_east", "south"): 70.0,
+    ("choke_west", "west"): 70.0,
+    ("spread", "north"): 80.0,
+    ("spread", "south"): 80.0,
+    ("spread", "west"): 80.0,
+})
+FUNNEL_IDS = [
+    "funnel", "second_funnel", "spread", "north", "south", "west",
+    "east_a", "east_b", "east_c", "east_d", "west_a",
+    "east_e", "east_f", "east_g", "east_h", "west_b",
+    "choke_east", "choke_west",
+]
+# Only the six sites the measures are compared over are gate-eligible; the spurs and the
+# two chokepoints are transit the routes pass through, not places a backbone node may sit.
+FUNNEL_ELIGIBLE = {"funnel", "second_funnel", "spread", "north", "south", "west"}
+FUNNEL_COORDS = {
+    "funnel": (40.0, -100.0),
+    "east_a": (40.0, -99.0), "east_b": (40.05, -99.0),
+    "east_c": (39.95, -99.0), "east_d": (40.0, -98.9),
+    "west_a": (40.0, -101.0),
+    "second_funnel": (36.0, -100.0),
+    "east_e": (36.0, -99.0), "east_f": (36.05, -99.0),
+    "east_g": (35.95, -99.0), "east_h": (36.0, -98.9),
+    "west_b": (36.0, -101.0),
+    "choke_east": (38.0, -98.0), "choke_west": (38.0, -102.0),
+    "north": (42.0, -108.0), "south": (34.0, -108.0), "west": (38.0, -110.0),
+    "spread": (38.0, -108.0),
+}
+
+
+def funnel_vertices() -> list[Vertex]:
+    """The disagreement graph's sites, each a carrier PoP at its fixture coordinates."""
+    return [carrier_pop(vertex_id, *FUNNEL_COORDS[vertex_id]) for vertex_id in FUNNEL_IDS]
+
+
+def funnel_datacenter_cities() -> frozenset[tuple[str, str]]:
+    """Only the six compared sites pass the gate, so spurs and chokepoints stay transit."""
+    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in FUNNEL_ELIGIBLE)
+
+
+def funnel_inputs() -> DesignInputs:
+    """The disagreement graph as design inputs, for scoring one site at a time."""
+    return design_inputs_from_edges(
+        FUNNEL_IDS, FUNNEL_EDGES, set(FUNNEL_ELIGIBLE), coords=FUNNEL_COORDS
+    )
+
+
 # --- physical biconnectivity: the search-time city-survivability gate --------------------
 
 # Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single span c-d, so the two
