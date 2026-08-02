@@ -22,15 +22,16 @@ stack is rewritten; if a sentence would not, it does not belong here.
 
 ## Test Tiers
 
-There are four tiers, separated by what a test may touch and by when it
-becomes possible to run. Each name links to that tier's own tenets.
+There are three kinds of test, separated by how much of the program each one exercises: one unit, several units against each other, and the journey a caller makes. Integration comes in two halves because the program is deployed, and a unit in the repository and the deployed instance of that unit are different things to exercise. Each name links to that tier's own tenets.
 
-| Tier | The question it answers | What it may touch | What it needs before it can run |
-| --- | --- | --- | --- |
-| [Unit](UNIT_TESTS.md) | Is this unit correct on its own | Nothing external | Nothing |
-| [Pre-deployment integration](PRE_DEPLOYMENT_INTEGRATION_TESTS.md) | Can this change be deployed | Live state, read only | Credentials |
-| [Post-deployment integration](POST_DEPLOYMENT_INTEGRATION_TESTS.md) | Did the deployment succeed | What it just created | A deployment |
-| [End to end](E2E_TESTS.md) | Does the whole entrypoint behave | A local double | Nothing |
+| Tier | The question it answers |
+| --- | --- |
+| [Unit](UNIT_TESTS.md) | Is this unit correct on its own |
+| [Integration, pre-deployment](PRE_DEPLOYMENT_INTEGRATION_TESTS.md) | Can this be deployed |
+| [Integration, post-deployment](POST_DEPLOYMENT_INTEGRATION_TESTS.md) | Did the deployment succeed |
+| [End to end](E2E_TESTS.md) | Does the journey work for the caller |
+
+How much of the program a test exercises is the only thing that separates them. What a test may touch and what it needs before it can run follow from that and decide nothing: a tier is not defined by its cost, and naming the cost as the boundary is how a tier ends up exercising less of the program than the one below it.
 
 ## General Tenets
 
@@ -119,9 +120,10 @@ nothing may precede it. Unit tests presume the code survived being read.
 Pre-deployment integration presumes the units are correct and must
 precede the deployment it is asked about, which in turn presumes
 everything knowable without it is known. Post-deployment integration
-presumes a deployment, so nothing it asserts can be known sooner.
+presumes a deployment, so nothing it asserts can be known sooner. End to
+end presumes that deployment as well, and asks what the caller receives
+from it, which is worth asking only once the platform has reported the
+deployment sound; so it runs last, after every tier that could have named
+the failure more precisely.
 
-Cost follows from the same rule and does not compete with it. A tier
-that needs credentials or a live environment cannot be required of every
-change; a tier that needs neither must be, because no change may wait on
-an expensive answer that a cheap one already gave.
+Cost follows from the same rule and does not compete with it. A tier that presumes a deployment cannot be required of a change that deploys nothing; a tier that presumes only the code must be required of every change, because no change may wait on an expensive answer that a cheap one already gave. That is a consequence of the order and not a second rule set beside it. Where cost is allowed to decide what a tier may exercise, the tier stops answering its question, and the cheap answer it gives instead is mistaken for the expensive one nobody asked for.
