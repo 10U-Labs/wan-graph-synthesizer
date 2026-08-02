@@ -137,10 +137,11 @@ def _overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
     allowed = _SINUOSITY * design["max_path_stretch"]
     overrun = []
     for link in design["links"]:
-        ends = (coords.get(link["source_id"]), coords.get(link["target_id"]))
-        if None in ends or ends[0] is ends[1]:
+        source = coords.get(link["source_id"])
+        target = coords.get(link["target_id"])
+        if source is None or target is None or source is target:
             continue
-        direct = haversine_miles(*ends)
+        direct = haversine_miles(source, target)
         if direct > 0 and link["distance_miles"] > allowed * direct:
             overrun.append((" -> ".join(link["path"]), link["distance_miles"] / direct))
     return overrun

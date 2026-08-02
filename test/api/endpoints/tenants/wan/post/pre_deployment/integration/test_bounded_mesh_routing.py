@@ -16,12 +16,12 @@ design that will buy diversity at any price takes it.
 from __future__ import annotations
 
 import fixtures
-from synthesizer.model import DesignParams, Tuning
+from synthesizer.model import DesignArtifacts, DesignParams, Tuning
 
 _SEATS = 3
 
 
-def _artifacts(stretch: float) -> fixtures.DesignArtifacts:
+def _artifacts(stretch: float) -> DesignArtifacts:
     """The design the whole pipeline settles on at one stretch bound.
 
     All three sites are seated, so the question is only how their links are routed. The
@@ -47,7 +47,7 @@ BOUNDED = _artifacts(3.0)
 UNBOUNDED = _artifacts(1000.0)
 
 
-def _routed_cities(artifacts: fixtures.DesignArtifacts) -> set[str]:
+def _routed_cities(artifacts: DesignArtifacts) -> set[str]:
     """Every city the backbone's routed mesh links pass through."""
     return {
         city
