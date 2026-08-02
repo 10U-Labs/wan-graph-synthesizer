@@ -123,3 +123,49 @@ def test_no_design_stopped_short_of_its_target_with_a_seat_left_to_spend(
         and len(design["backbone"]) < design["seat_cap"]
     ]
     assert gave_up_early == []
+
+
+# How far a fiber route wanders past the straight line between its two ends. Route miles
+# run somewhere between one and two air miles on real terrestrial builds, so a published
+# link measured against the great-circle distance is allowed twice its tenant's bound.
+_SINUOSITY = 2.0
+
+
+def _overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
+    """Every published backbone link routed further than even a generous bound allows."""
+    coords = {node["id"]: _vertex(node) for node in design["backbone"]}
+    allowed = _SINUOSITY * design["max_path_stretch"]
+    overrun = []
+    for link in design["links"]:
+        ends = (coords.get(link["source_id"]), coords.get(link["target_id"]))
+        if None in ends or ends[0] is ends[1]:
+            continue
+        direct = haversine_miles(*ends)
+        if direct > 0 and link["distance_miles"] > allowed * direct:
+            overrun.append((" -> ".join(link["path"]), link["distance_miles"] / direct))
+    return overrun
+
+
+def test_no_published_link_is_routed_further_than_its_tenant_allows(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """No backbone link wanders far past the direct distance between the two sites it joins.
+
+    This is the assertion GitHub issue #44 had to get past. DAF's published network
+    protected Ashburn to New York, 220 miles apart, along a 7,471-mile path through Paris,
+    and protected Seattle to Hillsboro through Tokyo at 9,607 miles against 161 -- because
+    the proof behind the mesh counted routes that share no city and read no distance at all.
+
+    Measured against the great-circle distance rather than the shortest fiber route, since
+    the published collections carry no substrate to route over and rebuilding one here would
+    reimplement the router this layer exists to check from the outside. Great-circle is the
+    shorter denominator, so the ratio it yields overstates the real stretch and the bound is
+    loosened by ``_SINUOSITY`` to stay sound. That leaves it far looser than what the
+    synthesizer enforces -- six times the direct distance rather than three -- and it still
+    catches every route the defect produced, the nearest of which ran twelve times.
+    """
+    overrun = {
+        design["tenant"]: _overrun_links(design)
+        for design in delivered_designs
+        if _overrun_links(design)
+    }
+    assert overrun == {}

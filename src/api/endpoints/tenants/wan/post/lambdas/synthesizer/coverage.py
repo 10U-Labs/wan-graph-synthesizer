@@ -20,7 +20,7 @@ from typing import TypedDict
 from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.model import Design, DesignInputs, DesignParams
 from synthesizer.assemble import build_design_for_backbone, evaluate_backbone
-from synthesizer.ceiling import independent_route_ceiling
+from synthesizer.ceiling import StretchLimit, independent_route_ceiling
 from synthesizer.search_plan import _SearchPlan
 
 logger = logging.getLogger(__name__)
@@ -139,6 +139,7 @@ def candidate_mesh_ceiling(
     candidate_id: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
+    limit: StretchLimit | None = None,
 ) -> int:
     """How many independently failing links ``candidate_id`` could hold once it joins.
 
@@ -149,9 +150,14 @@ def candidate_mesh_ceiling(
     reason to measure it rather than count them. A city with three spans whose branches
     funnel through one upstream city can hold two links that fail independently, not three,
     so a raw span count would say it can carry a backbone node when its fiber cannot.
+
+    ``limit`` bounds how far the routes counted may run (see
+    :func:`synthesizer.ceiling.independent_routes`). A hub credited with a route it could
+    only take by crossing an ocean is chosen for protection the operator will not buy, so
+    the bound belongs to the ranking as much as to the routing.
     """
     return independent_route_ceiling(
-        candidate_id, tuple(sorted((*backbone_ids, candidate_id))), adjacency
+        candidate_id, tuple(sorted((*backbone_ids, candidate_id))), adjacency, limit
     )
 
 
@@ -160,6 +166,7 @@ def best_coverage_candidate(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     target_miles: float,
+    limit: StretchLimit | None = None,
 ) -> str:
     """Which improving candidate to seat: the best connected of those that satisfy coverage.
 
@@ -188,7 +195,9 @@ def best_coverage_candidate(
     return min(
         satisfying,
         key=lambda pair: (
-            -candidate_mesh_ceiling(pair[1], backbone_ids, adjacency), pair[0], pair[1]
+            -candidate_mesh_ceiling(pair[1], backbone_ids, adjacency, limit),
+            pair[0],
+            pair[1],
         ),
     )[1]
 
@@ -269,7 +278,11 @@ def grow_backbone_for_coverage(
             logger.info("No candidate improves coverage; holding at %d nodes", len(backbone_ids))
             break
         best_id = best_coverage_candidate(
-            improving, backbone_ids, inputs.adjacency, target_miles
+            improving,
+            backbone_ids,
+            inputs.adjacency,
+            target_miles,
+            StretchLimit(params.tuning.backbone_max_path_stretch, inputs.all_distances),
         )
         backbone_ids = tuple(sorted((*backbone_ids, best_id)))
         grown = build_design_for_backbone(backbone_ids, inputs, plan)

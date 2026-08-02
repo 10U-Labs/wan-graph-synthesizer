@@ -17,7 +17,7 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
-from synthesizer.ceiling import independent_routes
+from synthesizer.ceiling import StretchLimit, independent_routes
 from synthesizer.input_graph import PhysicalEdge, edge_key
 from synthesizer.graphs import (
     articulation_points,
@@ -35,6 +35,11 @@ from synthesizer.model import (
     LINK_FOR_TARGET,
     PathUse,
 )
+
+# Slack in miles when a routed length is compared against its budget, absorbing the
+# rounding of a sum of great-circle distances. Five millimetres, so it can admit nothing a
+# real route could be refused for.
+_LIMIT_TOLERANCE = 1e-6
 
 
 def path_geometry_miles(
@@ -226,6 +231,12 @@ class BackboneConstraints:
     # distance instead. How many routes there are does not decide how many are taken --
     # that is the tenant's number, and the surplus is left unwired
     routes: Mapping[str, list[tuple[str, ...]]] = field(default_factory=dict)
+    # how far a link may be routed against the direct distance between its two ends. It
+    # bounds the proof that picks a node's peers (see :func:`backbone_mesh_paths`) and the
+    # two heuristics that route everything the proof does not cover, so a node cannot be
+    # given a peer it reaches only by a detour nobody would buy. None leaves every route
+    # admissible, which is the behaviour of every caller that has no tenant in hand
+    limit: StretchLimit | None = None
 
 
 @dataclass(frozen=True)
@@ -425,6 +436,7 @@ def _resilience_detour(
     removed_pairs: frozenset[tuple[str, str]],
     adjacency: dict[str, list[tuple[str, float]]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
+    limit: StretchLimit | None = None,
 ) -> PathUse | None:
     """One detour route relieving a cut city in the span union, or None when none remains.
 
@@ -447,11 +459,10 @@ def _resilience_detour(
         )
         _distances, predecessors = dijkstra(adjacency, near, blocked)
         detour = reconstruct_path(near, far, predecessors)
-        if detour:
+        miles = path_geometry_miles(detour, physical_edges) if detour else 0.0
+        if within_limit(detour, near, far, miles, limit):
             return PathUse(
-                "backbone_mesh", near, far, detour,
-                path_geometry_miles(detour, physical_edges),
-                LINK_FOR_CITY_DETOUR,
+                "backbone_mesh", near, far, detour, miles, LINK_FOR_CITY_DETOUR,
             )
     return None
 
@@ -461,6 +472,7 @@ def augment_physical_resilience(
     backbone_ids: tuple[str, ...],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     removed_pairs: frozenset[tuple[str, str]],
+    limit: StretchLimit | None = None,
 ) -> list[PathUse]:
     """Add detour routes until the backbone's physical spans survive any single city loss.
 
@@ -474,6 +486,11 @@ def augment_physical_resilience(
     early when a cut has no usable detour (a genuine carrier chokepoint or a fully pruned
     join); the search gate keeps such sets from winning, and validation reports the truth
     either way.
+
+    ``limit`` makes a detour past the operator's stretch bound one of the unusable ones. A
+    city stays a cut rather than being relieved by a route nobody would build, which is the
+    honest report: the fiber here cannot survive that city's loss, and saying so is worth
+    more than a cable on the map that would never be ordered.
     """
     adjacency = build_adjacency(physical_edges)
     backbone_set = set(backbone_ids)
@@ -482,7 +499,9 @@ def augment_physical_resilience(
     for use in uses:
         spans |= path_edge_keys(use.path)
     while True:
-        detour = _resilience_detour(spans, backbone_set, removed_pairs, adjacency, physical_edges)
+        detour = _resilience_detour(
+            spans, backbone_set, removed_pairs, adjacency, physical_edges, limit
+        )
         if detour is None:
             break
         uses.append(detour)
@@ -521,11 +540,40 @@ def _route_miles(
     )
 
 
+def within_limit(
+    route: tuple[str, ...],
+    left: str,
+    right: str,
+    miles: float,
+    limit: StretchLimit | None,
+) -> bool:
+    """Whether a routed ``left``-to-``right`` link is inside the operator's stretch bound.
+
+    An empty route is never inside it, since there is no route to be inside anything. With
+    no limit every route passes, which is the behaviour of every caller with no tenant in
+    hand.
+
+    A pair the substrate cannot join at all has no direct distance to measure against, so
+    nothing is asserted about it: the bound says a protect path may not run far past the
+    working path, and where there is no working path the bound has no opinion rather than a
+    silent refusal.
+    """
+    if not route:
+        return False
+    if limit is None:
+        return True
+    direct = limit.distances.get(left, {}).get(right, math.inf)
+    if not math.isfinite(direct):
+        return True
+    return miles <= limit.stretch * direct + _LIMIT_TOLERANCE
+
+
 def _clearest_route(
     left: str,
     right: str,
     carried: dict[str, set[str]],
     adjacency: dict[str, list[tuple[str, float]]],
+    limit: StretchLimit | None = None,
 ) -> tuple[str, ...]:
     """The route clearing as many of the endpoints' carried cities as the fiber allows.
 
@@ -540,21 +588,33 @@ def _clearest_route(
     Returns empty when the fiber offers no route clear of either end's cities. Falling
     back to the shortest path is the caller's business, since it is the caller that knows
     a link must be routed somehow.
+
+    ``limit`` bounds how far a clearing route may run against the direct distance between
+    the two ends, and a route past it is discarded rather than taken. Independence bought
+    that way is not worth having: the route exists to carry the traffic when the other one
+    fails, and one four hundred times as long does not do that. A link whose only clear
+    route is over the bound falls back to its shortest path and reads as the shortfall it
+    is, which validation reports.
     """
     left_cities = carried.get(left, set()) - {left, right}
     right_cities = carried.get(right, set()) - {left, right}
     both = left_cities | right_cities
     if not both:
         return ()
+
+    def admissible(route: tuple[str, ...]) -> bool:
+        """Whether this clearing route is one the operator's bound allows."""
+        return within_limit(route, left, right, _route_miles(route, adjacency), limit)
+
     route = _route_avoiding(left, right, both, adjacency)
-    if route:
+    if admissible(route):
         return route
     one_sided = [
         _route_avoiding(left, right, cities, adjacency)
         for cities in (left_cities, right_cities)
         if cities and cities != both
     ]
-    clear = [route for route in one_sided if route]
+    clear = [route for route in one_sided if admissible(route)]
     if not clear:
         return ()
     return min(clear, key=lambda route: (_route_miles(route, adjacency), route))
@@ -592,6 +652,7 @@ def diverse_mesh_routes(
     all_predecessors: dict[str, dict[str, str]],
     adjacency: dict[str, list[tuple[str, float]]],
     proven: Mapping[str, list[tuple[str, ...]]] | None = None,
+    limit: StretchLimit | None = None,
 ) -> list[tuple[str, str, tuple[str, ...]]]:
     """Route every mesh link, keeping one node's links clear of each other's cities.
 
@@ -619,6 +680,12 @@ def diverse_mesh_routes(
     The endpoints themselves are never avoided, since a link cannot route around its own
     ends. A link with no clear route falls back to its shortest path: the fiber genuinely
     offers no alternative there, and validation is what reports the shortfall.
+
+    ``limit`` bounds the heuristic's clearing routes (see :func:`_clearest_route`), and a
+    link whose only clear route runs past it falls back the same way one with no clear
+    route at all does. The proved paths need no such check here: the proof is already
+    bounded where it is computed, so a route reaching this function has passed the same
+    test over the same fiber.
     """
     carried: dict[str, set[str]] = {}
     routes: list[tuple[str, str, tuple[str, ...]]] = []
@@ -637,7 +704,7 @@ def diverse_mesh_routes(
         for path in paths:
             lay(left, right, path)
     for left, right in unproved:
-        path = _clearest_route(left, right, carried, adjacency)
+        path = _clearest_route(left, right, carried, adjacency, limit)
         if not path:
             path = reconstruct_path(left, right, all_predecessors[left])
         lay(left, right, path)
@@ -669,10 +736,16 @@ def backbone_mesh_paths(
     says how many of them it takes. The two are deliberately separate: a proof that finds
     ten ways out of a city is a fact about the fiber, not an instruction to buy ten
     circuits.
+
+    ``constraints.limit`` bounds how far the proof may route (see
+    :func:`synthesizer.ceiling.independent_routes`). The proof is the reason it must be
+    applied here rather than to the drawn links afterwards: these routes are laid verbatim,
+    so a route the proof finds is cable the design orders, and a proof reading no distance
+    at all will happily order an ocean crossing to protect a link across a state line.
     """
     adjacency = build_adjacency(physical_edges)
     proven = {
-        node: independent_routes(node, backbone_ids, adjacency)
+        node: independent_routes(node, backbone_ids, adjacency, constraints.limit)
         for node in backbone_ids
         if node in adjacency
     }
@@ -686,9 +759,9 @@ def backbone_mesh_paths(
             reasons[edge_key(left, right)].requested_by,
         )
         for left, right, path in diverse_mesh_routes(
-            sorted(reasons), all_predecessors, adjacency, proven
+            sorted(reasons), all_predecessors, adjacency, proven, constraints.limit
         )
     ]
     return augment_physical_resilience(
-        uses, backbone_ids, physical_edges, constraints.removed_pairs
+        uses, backbone_ids, physical_edges, constraints.removed_pairs, constraints.limit
     )

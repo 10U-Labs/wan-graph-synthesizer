@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import fixtures
 from synthesizer.ceiling import (
+    StretchLimit,
     independent_route_ceiling,
     independent_routes,
     diverse_path_ceilings,
 )
-from synthesizer.graphs import build_adjacency
+from synthesizer.graphs import build_adjacency, distances_from
 
 physical = fixtures.physical_edges_from
 
@@ -88,3 +89,62 @@ def test_the_counted_routes_share_no_intermediate_city() -> None:
     """No city carries two of them, which is the whole of what independence means."""
     inner = [city for route in _BOS_ROUTES for city in route[1:-1]]
     assert sorted(inner) == sorted(set(inner))
+
+
+# The Pacific in miniature, and the first fixture here whose spans are not all the same
+# length. ``sea`` reaches both of its peers overland through ``pdx``, ten miles a span, and
+# reaches them again through ``tok`` a thousand miles away. The overland routes share
+# ``pdx``, so a proof counting disjoint routes alone takes the ocean crossing as ``sea``'s
+# second way out -- and prefers it, since a breadth-first augmenting search takes the route
+# crossing the fewest cities and the crossing is the shortest such route there is.
+_PACIFIC = physical({
+    ("sea", "pdx"): 10.0, ("pdx", "hil"): 10.0, ("pdx", "eug"): 10.0,
+    ("sea", "tok"): 1000.0, ("tok", "hil"): 1000.0, ("tok", "eug"): 1000.0,
+})
+_PACIFIC_ADJACENCY = build_adjacency(_PACIFIC)
+_PACIFIC_BACKBONE = ("eug", "hil", "sea")
+# 2,000 miles of cable to cover the twenty ``sea`` is from either peer overland, so the
+# crossing runs a hundred times the direct route and a bound of three refuses it.
+_PACIFIC_LIMIT = StretchLimit(3.0, distances_from(_PACIFIC_ADJACENCY, _PACIFIC_BACKBONE))
+
+
+def test_a_route_far_longer_than_the_direct_one_is_not_proved() -> None:
+    """No route out of sea is laid through tok once the stretch bound is applied."""
+    routes = independent_routes(
+        "sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, _PACIFIC_LIMIT
+    )
+    assert not [route for route in routes if "tok" in route]
+
+
+def test_the_ceiling_counts_usable_routes_rather_than_merely_disjoint_ones() -> None:
+    """sea holds one link, not two: everything it can use runs through pdx.
+
+    Without the bound the ocean crossing counts and sea scores two, which is the ceiling
+    inflation that credits a site with protection its fiber cannot deliver.
+    """
+    assert independent_route_ceiling(
+        "sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, _PACIFIC_LIMIT
+    ) == 1
+
+
+def test_the_unbounded_ceiling_still_counts_the_crossing() -> None:
+    """Omitting the limit leaves the old behaviour exactly, which is what the callers rely on."""
+    assert independent_route_ceiling(
+        "sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY
+    ) == 2
+
+
+def test_a_crossing_that_is_the_only_way_to_a_peer_is_kept() -> None:
+    """The bound refuses a detour, not an ocean: the sole route to a peer is admissible.
+
+    ``syd`` hangs off ``tok`` and no overland fiber reaches it, so the crossing is the
+    shortest route to it rather than a hundred times the shortest, and a bound measured
+    against the direct distance has nothing to say against it.
+    """
+    spans = {**_PACIFIC, **physical({("tok", "syd"): 1000.0})}
+    adjacency = build_adjacency(spans)
+    backbone = ("eug", "hil", "sea", "syd")
+    routes = independent_routes(
+        "sea", backbone, adjacency, StretchLimit(3.0, distances_from(adjacency, backbone))
+    )
+    assert [route for route in routes if route[-1] == "syd"] == [("sea", "tok", "syd")]

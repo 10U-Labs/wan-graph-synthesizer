@@ -103,6 +103,33 @@ def _required_int(data: dict[str, Any], key: str) -> int:
     return value
 
 
+def _required_ratio(data: dict[str, Any], key: str) -> float:
+    """Return a required ratio config value, rejecting an absent, non-numeric or flat one.
+
+    ``backbone_max_path_stretch`` has no default, on the same terms as the two redundancy
+    degrees and the coverage target: how much detour a protect path may take is an
+    engineering decision about the network being bought, and a tenant that has not made it
+    must not have one made on its behalf.
+
+    A ratio rather than a mileage, so a fraction is meaningful here where it is not on the
+    coverage target -- the number multiplies a distance instead of standing in for one, and
+    2.5 states a real bound rather than a precision the design does not have.
+
+    At or below one the bound admits nothing but the shortest route. That is not a tight
+    bound but a contradiction: a protect path is a detour by definition, so every design
+    would be refused rather than bounded, and an operator writing it has not meant to
+    forbid path diversity outright.
+    """
+    if key not in data:
+        raise ValueError(f"config key '{key}' is required and has no default")
+    value = data[key]
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"config key '{key}' must be a number")
+    if value <= 1:
+        raise ValueError(f"config key '{key}' must be above 1")
+    return float(value)
+
+
 def _connection_list(design: dict[str, Any], key: str) -> tuple[NamedLink, ...]:
     """Parse one list of operator connection mappings, rejecting bad shapes.
 
@@ -227,9 +254,9 @@ def _memory_share(settings: dict[str, Any], default: float) -> float:
 def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
     """Resolve the tuning and settings configuration into a :class:`Tuning`.
 
-    The operator's requirements -- the two degrees and the coverage target -- come from
-    ``tuning``, which the assembler builds from the ``knobs`` resource and the two
-    degree resources. The implementation dials come from ``settings``, and only from
+    The operator's requirements -- the two degrees, the coverage target and the path
+    stretch bound -- come from ``tuning``, which the assembler builds from the ``knobs``
+    resource and the two degree resources. The implementation dials come from ``settings``, and only from
     there: a value left behind under ``knobs`` is not read, so it falls back to the
     dataclass default rather than quietly continuing to steer the search. A settings
     document carrying a key the resource does not define -- a typo, or a name from
@@ -245,6 +272,7 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
             tuning, "backbone_coverage_target_miles"
         ),
         access_backbone_links=_required_int(tuning, "access_backbone_links"),
+        backbone_max_path_stretch=_required_ratio(tuning, "backbone_max_path_stretch"),
         search_memory_budget=SearchMemoryBudget(
             memory_share=_memory_share(settings, base.search_memory_budget.memory_share),
             bytes_per_combination=settings.get(

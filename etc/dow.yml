@@ -30,6 +30,7 @@ backbone:
       - Seattle, WA
       - Tucson, AZ
       - Umatilla, OR
+  max_path_stretch: 3
   node_count:
     max: 1000
     min: 3

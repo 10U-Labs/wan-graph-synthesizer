@@ -30,7 +30,10 @@ for the map.
 
 from __future__ import annotations
 
+import math
 from collections import deque
+from collections.abc import Mapping
+from dataclasses import dataclass
 
 # One end of a split substrate vertex: ("in", city) and ("out", city) are joined by a
 # single unit of capacity, which is what makes a city usable by one route only.
@@ -39,6 +42,100 @@ _Residual = dict[_Node, dict[_Node, int]]
 _Arc = tuple[_Node, _Node]
 
 _SINK: _Node = ("sink", "")
+
+# Slack in miles, absorbing the rounding of a sum of great-circle distances. Five
+# millimetres, so it can admit nothing a real span could be refused for.
+_TOLERANCE = 1e-6
+
+
+@dataclass(frozen=True)
+class StretchLimit:
+    """How far a route may run against the direct distance between its two ends.
+
+    ``stretch`` multiplies the shortest route between a site and the peer a route ends at,
+    giving that route its budget: a protect path takes a detour, and this says how much of
+    one the operator is buying. ``distances`` supplies the shortest-path rows the test
+    needs -- one for the site being measured and one for each of its peers, which the
+    callers holding all-pairs distances already have (see
+    :func:`synthesizer.graphs.distances_from` for the ones that do not).
+    """
+
+    stretch: float
+    distances: Mapping[str, Mapping[str, float]]
+
+
+def _admissible_adjacency(
+    node: str,
+    backbone_ids: tuple[str, ...],
+    adjacency: dict[str, list[tuple[str, float]]],
+    limit: StretchLimit,
+) -> dict[str, list[tuple[str, float]]]:
+    """``adjacency`` less the spans no route from ``node`` inside the bound could use.
+
+    A span from ``u`` to ``v`` can lie on a route from ``node`` to a peer ``B`` no longer
+    than ``B``'s budget only if ``d(node,u) + len(u,v) + d(v,B)`` fits inside it. A span
+    failing that for every peer, in both of its orientations, cannot appear on any
+    admissible route and is withheld from the flow.
+
+    The test is written as a per-city slack -- the least ``d(v,B) - budget(B)`` over the
+    peers -- so the peers are walked once per city rather than once per span, and the spans
+    themselves are then a single pass. Both orientations are tested together, so a span
+    either survives for both of its endpoints or for neither and the substrate the flow
+    sees stays undirected.
+
+    This bounds the fiber and not the finished route, which is a relaxation rather than an
+    exact filter: a route assembled entirely from surviving spans can still overrun its
+    budget. It is the right trade rather than a corner cut. Asking for the largest set of
+    disjoint routes that each respect a length bound is NP-hard, so an exact answer is not
+    available at any price, while pruning first leaves the flow a maximum flow over the
+    fiber this tenant may use -- which is what makes the count it returns a true ceiling
+    (see :func:`independent_route_ceiling`) rather than the size of some set.
+
+    Erring towards keeping a span is deliberate for the same reason. A ceiling that is too
+    low lowers the target a site is held to and silences the check on it, which is the
+    quiet pass :func:`diverse_path_ceilings` refuses to take elsewhere; a ceiling that is
+    slightly too high leaves a shortfall for validation to report out loud.
+
+    A limit carrying no distances from ``node`` is refused rather than worked around. Every
+    budget would be unmeasurable, every span would fail the test, and the site would score
+    a ceiling of zero -- which reads as a site whose fiber can hold nothing and would lower
+    its target to nothing on the strength of a caller's omission. That is the same quiet
+    pass by another route, so it is an error and says which row is missing.
+    """
+    if node not in limit.distances:
+        raise ValueError(
+            f"stretch limit carries no distances from '{node}', so no route out of it can "
+            "be measured; pass a row for every site the bound is applied to"
+        )
+    from_node = limit.distances[node]
+    budgets = [
+        (peer, limit.stretch * from_node[peer])
+        for peer in backbone_ids
+        if peer != node and math.isfinite(from_node.get(peer, math.inf))
+    ]
+    slack = {
+        city: min(
+            (
+                limit.distances.get(peer, {}).get(city, math.inf) - budget
+                for peer, budget in budgets
+            ),
+            default=math.inf,
+        )
+        for city in adjacency
+    }
+    admissible: dict[str, list[tuple[str, float]]] = {}
+    for city, neighbors in adjacency.items():
+        reach = from_node.get(city, math.inf)
+        kept = [
+            (neighbor, weight)
+            for neighbor, weight in neighbors
+            if reach + weight + slack.get(neighbor, math.inf) <= _TOLERANCE
+            or from_node.get(neighbor, math.inf) + weight
+            + slack.get(city, math.inf) <= _TOLERANCE
+        ]
+        if kept:
+            admissible[city] = kept
+    return admissible
 
 
 def _add_capacity(residual: _Residual, tail: _Node, head: _Node, amount: int) -> None:
@@ -147,6 +244,7 @@ def independent_routes(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
+    limit: StretchLimit | None = None,
 ) -> list[tuple[str, ...]]:
     """The most routes from ``node`` that no single city's loss takes two of.
 
@@ -160,7 +258,18 @@ def independent_routes(
     a node short of what its fiber allows, they are what it is short of, and wiring them is
     what closes the gap -- which is the reason this returns the routes rather than only
     counting them.
+
+    ``limit`` bounds how far a route may run against the direct distance to the peer it
+    ends at, and is applied to the fiber before the flow rather than to the routes after it
+    (see :func:`_admissible_adjacency`). Without it the flow reads no distance at all: a
+    span is one unit of a city's capacity whether it is four miles long or four thousand,
+    and the breadth-first augmenting search actively prefers the long one, since it takes
+    the route crossing the fewest cities each round and an ocean crossing is the shortest
+    such route between two coasts there is. Omitting it leaves that behaviour exactly,
+    which is what the graph-shaped callers with no tenant in hand rely on.
     """
+    if limit is not None:
+        adjacency = _admissible_adjacency(node, backbone_ids, adjacency, limit)
     residual, arcs = _unit_vertex_network(node, backbone_ids, adjacency)
     source: _Node = ("out", node)
     while True:
@@ -176,6 +285,7 @@ def independent_route_ceiling(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
+    limit: StretchLimit | None = None,
 ) -> int:
     """The most links ``node`` could hold that no single city's loss takes two of.
 
@@ -186,13 +296,18 @@ def independent_route_ceiling(
     A node the substrate does not carry, or one whose peers it cannot reach, scores zero:
     it can hold no independent link, which is the truth about it. The count never exceeds
     the number of other backbone nodes, since that is how many arcs feed the sink.
+
+    ``limit`` bounds how far the routes counted may run (see :func:`independent_routes`).
+    A route the operator's bound refuses is not protection the site can be credited with,
+    so counting it would say a chokepointed site can hold links that it cannot.
     """
-    return len(independent_routes(node, backbone_ids, adjacency))
+    return len(independent_routes(node, backbone_ids, adjacency, limit))
 
 
 def diverse_path_ceilings(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
+    limit: StretchLimit | None = None,
 ) -> dict[str, int]:
     """Each backbone node's ceiling, computed over the substrate they all sit on.
 
@@ -206,9 +321,15 @@ def diverse_path_ceilings(
     ceiling, and a target lowered on it is exactly the quiet pass a computed ceiling has to
     avoid. Such a node is left out, and whoever holds it to a target holds it to the full
     configured degree.
+
+    Membership is judged on the substrate as given rather than on what the bound leaves of
+    it, so a site whose every span the bound withholds is reported as a ceiling of zero
+    rather than left out. The two say different things: the substrate carries that site and
+    the answer about it is that nothing it can reach is worth reaching, which is a finding
+    and not a silence.
     """
     return {
-        node: independent_route_ceiling(node, backbone_ids, adjacency)
+        node: independent_route_ceiling(node, backbone_ids, adjacency, limit)
         for node in backbone_ids
         if node in adjacency
     }

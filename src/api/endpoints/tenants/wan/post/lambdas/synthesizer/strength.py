@@ -112,6 +112,17 @@ def diverse_path_bounds(
     coverage growth step still asks what a candidate's fiber can carry against the actual
     grown backbone (see :func:`synthesizer.coverage.candidate_mesh_ceiling`), because it
     weighs a handful of candidates rather than millions of sets.
+
+    The tenant's path stretch bound is deliberately not applied here, and the reason is the
+    same one that makes this bound affordable. It counts routes to every other candidate,
+    so every city on the map is a peer a route may legitimately end at -- and a route that
+    ends where it was going is not a detour, whatever its length. A crossing to a landing
+    point is measured against the direct distance to that same landing point and comes out
+    at one. So the bound has almost nothing to say at this scale: over the carrier files in
+    ``data/`` it moves no candidate's score at all, while costing more than ten times what
+    the count itself does. It bites where the peers are an actual backbone and the far side
+    of an ocean is not among them, which is the growth step above and the mesh routing,
+    and it is applied at both.
     """
     sites = tuple(sorted(candidate_ids))
     per_site = {site: independent_route_ceiling(site, sites, adjacency) for site in sites}

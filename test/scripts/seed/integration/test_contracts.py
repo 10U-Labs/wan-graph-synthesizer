@@ -26,9 +26,9 @@ import yaml
 import seed
 from repo_utils import REPO_ROOT
 from seed import _carrier_cities, _city_key, _mapping_rows, _rows, _slug
-from synthesizer.ceiling import independent_route_ceiling
+from synthesizer.ceiling import StretchLimit, independent_route_ceiling
 from synthesizer.codec import load_regions, load_sites, load_substrate
-from synthesizer.graphs import build_adjacency
+from synthesizer.graphs import build_adjacency, distances_from
 from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
 from test_http_doubles import UrlopenRecorder
 
@@ -129,6 +129,22 @@ def _declared_coverage_targets() -> dict[str, int]:
     }
 
 
+def _declared_path_stretch_bounds() -> dict[str, float]:
+    """Each tenant's path stretch bound, read from the backbone block of its own config."""
+    return {
+        tenant: backbone["max_path_stretch"]
+        for tenant, backbone in _backbone_blocks().items()
+    }
+
+
+def _knob(urlopen_recorder: UrlopenRecorder, key: str) -> dict[str, Any]:
+    """One key of every tenant's written knobs document, by tenant."""
+    return {
+        tenant: document[key]
+        for tenant, document in _written_by_tenant(urlopen_recorder, "knobs").items()
+    }
+
+
 def test_pipeline_writes_each_tenant_the_coverage_target_its_config_declares(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
     """Each knobs document carries the target its config declares, under the stored key.
@@ -139,10 +155,38 @@ def test_pipeline_writes_each_tenant_the_coverage_target_its_config_declares(
     tenant, which neither file can establish alone.
     """
     _seed(urlopen_recorder, monkeypatch)
-    assert _written_by_tenant(urlopen_recorder, "knobs") == {
-        tenant: {"backbone_coverage_target_miles": target}
-        for tenant, target in _declared_coverage_targets().items()
-    }
+    assert _knob(urlopen_recorder, "backbone_coverage_target_miles") == \
+        _declared_coverage_targets()
+
+
+def test_pipeline_writes_each_tenant_the_path_stretch_bound_its_config_declares(
+        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each knobs document carries the stretch bound its config declares, under the stored key.
+
+    The same two-spellings problem as the coverage target, and the same reason it cannot be
+    checked in either file alone: the config names it ``backbone.max_path_stretch`` and the
+    synthesizer reads ``backbone_max_path_stretch``. A tenant whose bound never arrives is
+    a failed build rather than a design that quietly routes the long way, since the
+    synthesizer requires the key, but the failure would name the store and not this seam.
+    """
+    _seed(urlopen_recorder, monkeypatch)
+    assert _knob(urlopen_recorder, "backbone_max_path_stretch") == \
+        _declared_path_stretch_bounds()
+
+
+def test_pipeline_writes_no_knob_the_synthesizer_does_not_read(
+        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The knobs document carries the two keys the synthesizer reads and nothing else.
+
+    Asserted over the key set rather than tenant by tenant: a knob written here and read
+    nowhere steers nothing, and one the seed tool stops writing is a required key the
+    synthesizer will refuse the build for.
+    """
+    _seed(urlopen_recorder, monkeypatch)
+    assert {
+        frozenset(document)
+        for document in _written_by_tenant(urlopen_recorder, "knobs").values()
+    } == {frozenset({"backbone_coverage_target_miles", "backbone_max_path_stretch"})}
 
 
 def test_pipeline_writes_every_tenant_the_regions_of_the_file_its_config_names(
@@ -278,14 +322,30 @@ def _ceiling_bounds(
 
     A city the carrier files hold no point for is left out, since there is no graph to
     measure it on and a silent zero would read as a proven limit.
+
+    The tenant's own path stretch bound is applied, because the real run applies it: a
+    ceiling measured over fiber the design may not use is not a floor under the real one
+    but a number above it, and a tenant could clear this contract on routes its build would
+    refuse. Adding pins can only admit more spans, since a span is withheld only when no
+    peer at all can reach it inside its budget, so the bound stays a floor under the real
+    ceiling exactly as before.
     """
     by_name, adjacency = _substrate()
     bounds: list[tuple[str, str, int, int]] = []
     for tenant, backbone in sorted(_backbone_blocks().items()):
         pinned = _pinned_ids(backbone, by_name)
+        measured = [by_name[city] for city in cities(backbone) if city in by_name]
+        # A row per peer and per city measured: an exempt city need not be a pin, and the
+        # bound is measured from it as well as to it.
+        limit = StretchLimit(
+            float(backbone["max_path_stretch"]),
+            distances_from(adjacency, {*pinned, *measured}),
+        )
         for city in cities(backbone):
             if city in by_name:
-                bound = independent_route_ceiling(by_name[city], pinned, adjacency)
+                bound = independent_route_ceiling(
+                    by_name[city], pinned, adjacency, limit
+                )
                 bounds.append((tenant, city, bound, backbone["number_of_diverse_paths"]))
     return bounds
 

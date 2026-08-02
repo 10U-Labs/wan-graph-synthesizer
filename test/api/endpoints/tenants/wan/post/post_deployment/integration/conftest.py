@@ -79,10 +79,12 @@ def _read_designs(client: Any, bucket: str) -> list[dict[str, Any]]:
         designs.append({
             "tenant": tenant,
             "target_miles": backbone["coverage_target_miles"],
+            "max_path_stretch": backbone["max_path_stretch"],
             "seat_cap": backbone["node_count"]["max"],
             "status": status,
             "backbone": published.get("backbone-nodes", []),
             "demand": published.get("tenant-nodes", []) + published.get("provider-nodes", []),
+            "links": published.get("backbone-links", []),
         })
     return designs
 

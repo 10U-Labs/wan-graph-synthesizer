@@ -518,6 +518,44 @@ def funnel_datacenter_cities() -> frozenset[tuple[str, str]]:
     return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in FUNNEL_ELIGIBLE)
 
 
+# Three backbone sites within twenty miles of each other, all reaching one another over
+# ``pdx``, and all reaching one another again over ``tok`` a thousand miles offshore. The
+# overland routes share ``pdx``, so a proof counting only disjoint routes takes the
+# crossing as a second way out and the mesh is wired along it -- two thousand miles of
+# cable standing in for twenty. It is the one fixture whose spans differ by orders of
+# magnitude, which is what the stretch bound is measured against.
+CROSSING_EDGES = physical_edges_from({
+    ("sea", "pdx"): 10.0,
+    ("pdx", "hil"): 10.0,
+    ("pdx", "eug"): 10.0,
+    ("sea", "tok"): 1000.0,
+    ("tok", "hil"): 1000.0,
+    ("tok", "eug"): 1000.0,
+})
+CROSSING_IDS = ["sea", "hil", "eug", "pdx", "tok"]
+# The three compared sites are seatable; ``pdx`` and ``tok`` are transit the routes pass
+# through, never places a backbone node may sit -- which is what keeps ``tok`` a crossing
+# rather than a peer a route may legitimately end at.
+CROSSING_ELIGIBLE = {"sea", "hil", "eug"}
+CROSSING_COORDS = {
+    "sea": (47.6, -122.3),
+    "pdx": (45.5, -122.7),
+    "hil": (45.5, -123.0),
+    "eug": (44.0, -123.1),
+    "tok": (35.7, 139.7),
+}
+
+
+def crossing_vertices() -> list[Vertex]:
+    """The crossing graph's sites, each a carrier PoP at its fixture coordinates."""
+    return [carrier_pop(vertex_id, *CROSSING_COORDS[vertex_id]) for vertex_id in CROSSING_IDS]
+
+
+def crossing_datacenter_cities() -> frozenset[tuple[str, str]]:
+    """Only the three compared sites pass the gate, so pdx and tok stay transit."""
+    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in CROSSING_ELIGIBLE)
+
+
 def funnel_inputs() -> DesignInputs:
     """The disagreement graph as design inputs, for scoring one site at a time."""
     return design_inputs_from_edges(

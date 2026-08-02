@@ -15,10 +15,12 @@ from synthesizer.backbone import (
     diverse_mesh_routes,
     select_backbone_mesh_pairs,
 )
+from synthesizer.ceiling import StretchLimit
 from synthesizer.synthesize import all_pairs_shortest
 from synthesizer.graphs import (
     build_adjacency,
     connected_components,
+    distances_from,
     is_two_edge_connected,
     is_two_vertex_connected,
     path_edge_keys,
@@ -437,6 +439,70 @@ def test_augment_physical_resilience_skips_pruned_detour_pairs() -> None:
     assert augment_physical_resilience(_BASE_HUB, ("a", "b", "c"), _HUB_EDGES, pruned) == (
         _BASE_HUB
     )
+
+
+# The same hub, with the alternates moved a thousand miles offshore: the only way around
+# ``h`` is out through ``x`` and back. The detour exists and relieves the cut city, and no
+# operator would buy a two-thousand-mile protect path for a two-mile link.
+_OFFSHORE_EDGES = physical({
+    ("a", "h"): 1.0, ("b", "h"): 1.0, ("c", "h"): 1.0,
+    ("a", "x"): 1000.0, ("b", "x"): 1000.0, ("c", "x"): 1000.0,
+})
+_OFFSHORE_LIMIT = StretchLimit(
+    3.0, distances_from(build_adjacency(_OFFSHORE_EDGES), ("a", "b", "c"))
+)
+
+
+def test_a_detour_beyond_the_bound_is_not_added() -> None:
+    """The cut city stands rather than being relieved by a route nobody would buy."""
+    assert augment_physical_resilience(
+        _BASE_HUB, ("a", "b", "c"), _OFFSHORE_EDGES, frozenset(), _OFFSHORE_LIMIT
+    ) == _BASE_HUB
+
+
+def test_a_detour_inside_the_bound_is_still_added() -> None:
+    """The bound refuses a detour for its length, not for being a detour."""
+    limit = StretchLimit(3.0, distances_from(build_adjacency(_HUB_EDGES), ("a", "b", "c")))
+    assert augment_physical_resilience(
+        _BASE_HUB, ("a", "b", "c"), _HUB_EDGES, frozenset(), limit
+    ) != _BASE_HUB
+
+
+# Two backbone sites a short hop apart through ``m``, which each of them already rides for
+# its other link, plus a thousand-mile pair of spans through ``x`` that clears ``m``. The
+# clearing route is what the diversity heuristic reaches for, and it is four hundred times
+# the direct one.
+_OFFSHORE_CLEAR = physical({
+    ("p", "m"): 1.0, ("m", "q"): 1.0, ("p", "n"): 1.0, ("q", "n"): 1.0,
+    ("p", "x"): 1000.0, ("x", "q"): 1000.0,
+})
+_OFFSHORE_CLEAR_ADJACENCY = build_adjacency(_OFFSHORE_CLEAR)
+_OFFSHORE_CLEAR_DISTANCES = all_pairs_shortest(
+    [pop(node) for node in ("p", "q", "m", "n", "x")], _OFFSHORE_CLEAR_ADJACENCY
+)
+
+
+def _clear_route(limit: StretchLimit | None) -> tuple[str, ...]:
+    """The route the mesh lays p-q when both ends already carry ``m`` and ``n``."""
+    routes = diverse_mesh_routes(
+        [("p", "n"), ("q", "n"), ("p", "q")],
+        _OFFSHORE_CLEAR_DISTANCES[1],
+        _OFFSHORE_CLEAR_ADJACENCY,
+        limit=limit,
+    )
+    return next(path for left, right, path in routes if (left, right) == ("p", "q"))
+
+
+def test_a_clearing_route_beyond_the_bound_falls_back_to_the_shortest_path() -> None:
+    """p-q takes the two-mile route through m rather than the two-thousand-mile one."""
+    assert _clear_route(
+        StretchLimit(3.0, distances_from(_OFFSHORE_CLEAR_ADJACENCY, ("p", "q")))
+    ) == ("p", "m", "q")
+
+
+def test_an_unbounded_clearing_route_still_takes_the_detour() -> None:
+    """Without a bound the heuristic buys the crossing, which is the defect it had."""
+    assert _clear_route(None) == ("p", "x", "q")
 
 
 # h reaches both p and q through g on the cheap side, and q again through r the long way

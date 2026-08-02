@@ -43,6 +43,7 @@ backbone:
       - Seattle, WA
       - Tallahassee, FL
       - Tulsa, OK
+  max_path_stretch: 3
   node_count:
     max: 99
     min: 3

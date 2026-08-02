@@ -21,6 +21,7 @@ backbone:
       - Salt Lake City, UT
       - Seattle, WA
       - Tallahassee, FL
+  max_path_stretch: 3
   node_count:
     max: 16
     min: 3

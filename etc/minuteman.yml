@@ -14,6 +14,7 @@ backbone:
       - McLean, VA
       - Minot, ND
       - Salt Lake City, UT
+  max_path_stretch: 3
   node_count:
     max: 6
     min: 3

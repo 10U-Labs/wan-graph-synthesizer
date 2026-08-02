@@ -23,6 +23,7 @@ backbone:
       - San Francisco, CA
       - Seattle, WA
       - Tacoma, WA
+  max_path_stretch: 3
   node_count:
     max: 99
     min: 3

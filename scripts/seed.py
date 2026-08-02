@@ -230,10 +230,14 @@ def push_tenants(api: str) -> list[str]:
              {"restrict": backbone["restrict_to_data_centers"]})
         _put(api, f"tenants/{tid}/convergence-promotion",
              {"promote": backbone["promote_high_degree_convergences"]})
-        # The stored document keeps the unshortened key: the config drops the prefix its
-        # block now supplies, but the synthesizer reads the target under the long name.
-        _put(api, f"tenants/{tid}/knobs",
-             {"backbone_coverage_target_miles": backbone["coverage_target_miles"]})
+        # The stored documents keep the unshortened keys: the config drops the prefix its
+        # block now supplies, but the synthesizer reads both values under the long names.
+        # The stretch bound rides the knobs resource rather than taking one of its own,
+        # which is what keeps a seed run from racing a route the API does not define yet.
+        _put(api, f"tenants/{tid}/knobs", {
+            "backbone_coverage_target_miles": backbone["coverage_target_miles"],
+            "backbone_max_path_stretch": backbone["max_path_stretch"],
+        })
         _put(api, f"tenants/{tid}/settings", config.get("settings", {}))
         _put(api, f"tenants/{tid}/label", {"label": config.get("label", "")})
     return tenant_ids

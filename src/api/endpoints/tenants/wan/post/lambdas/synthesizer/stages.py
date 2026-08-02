@@ -7,8 +7,8 @@ The synthesizer composes these over the JSON-loaded graph:
 
 from __future__ import annotations
 
-from synthesizer.ceiling import diverse_path_ceilings
-from synthesizer.graphs import build_adjacency
+from synthesizer.ceiling import StretchLimit, diverse_path_ceilings
+from synthesizer.graphs import build_adjacency, distances_from
 from synthesizer.input_graph import PhysicalEdge, Vertex
 from synthesizer.model import Design, DesignParams, MeshTargets, ValidationReport
 from synthesizer.on_net_fabrication import fabricate_missing_on_net_nodes
@@ -80,10 +80,18 @@ def finalize(
     degree it was configured with. It silences the check and nothing else; the node still
     took every link its fiber could carry.
     """
+    adjacency = build_adjacency(physical_edges)
     targets = MeshTargets(
         number_of_diverse_paths=params.tuning.backbone_number_of_diverse_paths,
         degree_exempt=degree_exempt,
-        ceilings=diverse_path_ceilings(design.backbone_ids, build_adjacency(physical_edges)),
+        ceilings=diverse_path_ceilings(
+            design.backbone_ids,
+            adjacency,
+            StretchLimit(
+                params.tuning.backbone_max_path_stretch,
+                distances_from(adjacency, design.backbone_ids),
+            ),
+        ),
     )
     validation = validate_design(
         vertices, design, params.tuning.access_backbone_links, targets

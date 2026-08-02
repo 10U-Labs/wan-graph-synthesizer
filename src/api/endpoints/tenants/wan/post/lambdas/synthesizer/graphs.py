@@ -5,9 +5,24 @@ from __future__ import annotations
 import heapq
 import math
 from collections import deque
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 
 from synthesizer.input_graph import PhysicalEdge, edge_key
+
+
+def distances_from(
+    adjacency: dict[str, list[tuple[str, float]]],
+    sources: Iterable[str],
+) -> dict[str, dict[str, float]]:
+    """Shortest-path distances to every city, from each of ``sources``.
+
+    One Dijkstra per source. Enough for the stretch bound, which needs the distance from
+    the site being measured and from each of its peers and nothing else, so the callers
+    that already hold all-pairs distances pass those straight in rather than paying for
+    this. A source the substrate does not carry gets a row holding only itself, which is
+    what Dijkstra returns for it and reads correctly as reaching nothing.
+    """
+    return {source: dijkstra(adjacency, source)[0] for source in sources}
 
 
 def dijkstra(
