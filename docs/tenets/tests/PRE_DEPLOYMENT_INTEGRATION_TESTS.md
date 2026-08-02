@@ -9,14 +9,17 @@ Post-deployment tests answer the other. Did the deployment succeed.
 ## Table of Contents
 
 - [Two Kinds of Test](#two-kinds-of-test)
-- [The Four-Layer Model](#the-four-layer-model)
+- [The Seven-Layer Model](#the-seven-layer-model)
 - [One File Per Layer](#one-file-per-layer)
 - [Layer 1, Contracts](#layer-1-contracts)
 - [Layer 2, Authentication](#layer-2-authentication)
 - [Layer 3, Authorization](#layer-3-authorization)
 - [Layer 4, State](#layer-4-state)
-- [Behavioural Integration Tests](#behavioural-integration-tests)
-- [Read Only, Never Write](#read-only-never-write)
+- [Layer 5, Existence](#layer-5-existence)
+- [Layer 6, Configuration](#layer-6-configuration)
+- [Layer 7, Capability](#layer-7-capability)
+- [The Tests That Carry No Layer](#the-tests-that-carry-no-layer)
+- [Read Only Everywhere But Layer 7](#read-only-everywhere-but-layer-7)
 - [Fail Fast with Granular Diagnostics](#fail-fast-with-granular-diagnostics)
 - [Shared Setup Is Declared, Not Rebuilt](#shared-setup-is-declared-not-rebuilt)
 - [Why a Dry Run Is Not a Gate](#why-a-dry-run-is-not-a-gate)
@@ -38,18 +41,21 @@ remote is touched.
 
 ### Prerequisite tests
 
-Verify that the credentials and the state this deployment depends on are
-sound.
+Verify that the credentials, the state and the prerequisites this
+deployment depends on are sound.
 
 - Do test: credentials exist and resolve to an identity.
 - Do test: those credentials may inspect what the deployment must read.
 - Do test: nothing the deployment would create already exists untracked.
+- Do test: what another deployment created and this one depends on is
+  there, is as this deployment needs it, and can be used the way this
+  deployment will use it.
 - Do NOT test: what this deployment is about to create. It does not
   exist yet, and asserting on it belongs to the post-deployment tier.
 
-## The Four-Layer Model
+## The Seven-Layer Model
 
-Every deployable unit passes through four layers, in order.
+Every deployable unit passes through seven layers, in order.
 
 | Layer | The question it answers |
 | --- | --- |
@@ -57,6 +63,9 @@ Every deployable unit passes through four layers, in order.
 | 2. Authentication | Are the credentials valid |
 | 3. Authorization | May they inspect what is needed |
 | 4. State | Does declared state match the world |
+| 5. Existence | Is the prerequisite there |
+| 6. Configuration | Is it as this deployment needs it |
+| 7. Capability | Can this deployment use it |
 
 Each layer isolates a different failure.
 
@@ -65,17 +74,20 @@ Each layer isolates a different failure.
 - Layer 3 fails: credentials are valid but may not look.
 - Layer 4 fails: something exists outside tracked state, so the
   deployment would collide with it.
+- Layer 5 fails: the look was permitted and the prerequisite is not
+  there, so the deployment that owns it has not run or did not finish.
+- Layer 6 fails: the prerequisite is there and carries settings this
+  deployment cannot work against.
+- Layer 7 fails: the prerequisite is there and right, and this
+  deployment cannot perform the operation it will have to perform.
 
 The order is the diagnostic. Each layer presumes its predecessors
 passed, so the first failure names the stage, and a layer never
 re-establishes what an earlier one settled.
 
-Existence, configuration and wiring are deliberately absent here.
-Whatever this deployment creates cannot be inspected before it runs, so
-those questions belong to
-[POST_DEPLOYMENT_INTEGRATION_TESTS.md](POST_DEPLOYMENT_INTEGRATION_TESTS.md).
-A dependency another unit owns is asserted against that unit's
-declaration in layer 1, not by asking the platform at run time.
+Layers 5 to 7 are about what another deployment created, never about what this deployment is about to create. Whatever this unit creates cannot be inspected before it runs, and asking after it belongs to [POST_DEPLOYMENT_INTEGRATION_TESTS.md](POST_DEPLOYMENT_INTEGRATION_TESTS.md). What separates the two is ownership and not the question: existence, configuration and capability are asked here of the ground the deployment lands on, and there of the ground it laid.
+
+A prerequisite is not a hypothetical. Units that deploy independently depend on each other's resources, and the deployment that owns a thing can be behind the deployment that needs it. That failure looks like a defect in the code of whichever unit ran second, and it is not; these three layers are what tell the two apart before either has run.
 
 ## One File Per Layer
 
@@ -136,26 +148,47 @@ skip its first run fails on a condition that cannot yet be true.
 
 This layer inspects and computes. It never deploys.
 
-## Behavioural Integration Tests
+## Layer 5, Existence
 
-Where the code is pure logic, the tier has a second kind of test:
-several units exercised against each other, with nothing remote and no
-declaration involved.
+The prerequisite is there, presuming permission to look was settled one layer up.
 
-Name these for the behaviour they exercise, not for a layer number, and
-keep them out of the numbered chain — they are not a stage every unit
-passes through. Keep the boundary with the unit tier sharp: if the test
-would still pass with every collaborating unit replaced by a literal, it
-is a unit test.
+Ask the platform for each thing another deployment owns and this one depends on, under the name the declaration gives it, and assert that it is there. Nothing about its settings belongs in this layer, however much of them the answer happens to carry.
 
-## Read Only, Never Write
+Layer 3 passed on a not-found because the call was allowed. This is the layer where a not-found is a failure, and the difference between the two is what makes the report worth reading: permission and absence are different problems, owned by different people.
 
-Pre-deployment tests inspect. They never create, mutate or delete
-anything remote, and they leave no artifact behind.
+## Layer 6, Configuration
 
-A write here would defeat layer 4, which exists precisely to prove that
-nothing untracked is sitting where the deployment is about to land. The
-tier therefore has no cleanup rules, because it has nothing to clean up.
+The prerequisite is as this deployment needs it, presuming existence has passed.
+
+Do not fetch a thing again to prove it is there before reading a setting off it. Existence was the previous layer's assertion, and repeating it here is a second assertion in disguise.
+
+Assert only the settings this deployment depends on. Everything else about a prerequisite is the business of the unit that owns it, and asserting on it here fails this unit's tests for a change it has no stake in.
+
+## Layer 7, Capability
+
+This deployment can perform the operations it will need, presuming configuration has passed.
+
+Permission to inspect is not permission to act, and the two are granted separately. A deployment that can read every prerequisite it depends on and cannot write where it must write fails halfway through, having already changed some of what it was going to change. This layer is what moves that failure to before the deployment, where nothing has been changed yet.
+
+Exercise the operation itself rather than reading back the permission that ought to allow it. A granted permission is a statement about intent; performing the operation is the only thing that settles whether the intent holds.
+
+## The Tests That Carry No Layer
+
+Several real units exercised against each other, before anything is deployed, is what this tier is. Two kinds of test are exactly that and carry no layer number. The reason is not that they count for less: the numbered chain is what a deployable unit passes through on its way to being deployed, and these two answer a question about the code rather than about the deployment.
+
+The first is behavioural. Where the code is pure logic, exercise the units against each other with nothing remote and no declaration involved, and name the test for the behaviour it exercises rather than for a layer. Keep the boundary with the unit tier sharp: if the test would still pass with every collaborating unit replaced by a literal, it is a unit test.
+
+The second is a journey with the far end replaced. Enter where a caller would enter, keep everything on this side of that boundary real — the real argument handling, the real committed inputs, the real code — and replace only what the entrypoint speaks to at the far end. Name it for the entrypoint. A double placed further in than the boundary stops the test covering the wiring it exists for, and a correct run behind a double is immediate, so a test of this shape never waits.
+
+A journey of that kind covers wiring no unit test sees, and it is still several real units against each other with nothing deployed, which is why it sits here. It may never stand in for the question [E2E_TESTS.md](E2E_TESTS.md) asks, which is what a caller receives from the deployed program.
+
+## Read Only Everywhere But Layer 7
+
+Layers 1 to 6 inspect. They never create, mutate or delete anything remote, and they leave no artifact behind.
+
+A write in those layers would defeat layer 4, which exists precisely to prove that nothing untracked is sitting where the deployment is about to land. A test that puts something there and a test that reports what it found there cannot both be trusted in the same tier.
+
+Layer 7 is the exception the tier is built to contain, because an operation is only proved by being performed. It writes the smallest thing that proves the operation, in a place the deployment itself would write, and it removes that thing on the way out — on the failing path as well as the passing one, with the failure of the removal failing the test. What is left behind is exactly what layer 4 is looking for on the next run, so a swallowed cleanup failure here reappears as a collision the deployment did not cause.
 
 ## Fail Fast with Granular Diagnostics
 
@@ -200,5 +233,10 @@ will not collide with something untracked.
 | Credentials resolve | 2 |
 | Permission to inspect | 3 |
 | Nothing untracked in the way | 4 |
-| A live resource's settings | Post-deployment |
-| Several units against each other | Behavioural |
+| A prerequisite another deployment owns is there | 5 |
+| Its settings are what this deployment needs | 6 |
+| An operation this deployment will perform | 7 |
+| Several units against each other | No layer |
+| An entrypoint driven against a local double | No layer |
+| A resource this deployment creates | Post-deployment |
+| What a caller receives from the deployed program | End to end |
