@@ -430,13 +430,26 @@ def _separated_backbone_pair(
     return None
 
 
+@dataclass(frozen=True)
+class _DetourSubstrate:
+    """Everything a detour search reads, which does not change as detours are added.
+
+    The augmentation routes one detour at a time and only the span union moves between
+    rounds; the sites in the backbone, the joins the operator pruned, the carrier fiber
+    and the stretch bound are the same on every one of them. Bundling them says so, and
+    keeps the search's own argument list to the union it is actually iterating on.
+    """
+
+    backbone_set: set[str]
+    removed_pairs: frozenset[tuple[str, str]]
+    adjacency: dict[str, list[tuple[str, float]]]
+    physical_edges: dict[tuple[str, str], PhysicalEdge]
+    limit: StretchLimit | None = None
+
+
 def _resilience_detour(
     spans: set[tuple[str, str]],
-    backbone_set: set[str],
-    removed_pairs: frozenset[tuple[str, str]],
-    adjacency: dict[str, list[tuple[str, float]]],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
-    limit: StretchLimit | None = None,
+    ground: _DetourSubstrate,
 ) -> PathUse | None:
     """One detour route relieving a cut city in the span union, or None when none remains.
 
@@ -448,19 +461,21 @@ def _resilience_detour(
     the union is biconnected, since each transit city stays joined to a backbone node it
     routes between after any single removal.
     """
-    vertices = {vertex for span in spans for vertex in span} | backbone_set
+    vertices = {vertex for span in spans for vertex in span} | ground.backbone_set
     for cut in sorted(articulation_points(vertices, spans)):
-        pair = _separated_backbone_pair(cut, vertices, spans, backbone_set, removed_pairs)
+        pair = _separated_backbone_pair(
+            cut, vertices, spans, ground.backbone_set, ground.removed_pairs
+        )
         if pair is None:
             continue
         near, far = pair
         blocked = frozenset(
-            edge_key(cut, neighbor) for neighbor, _weight in adjacency.get(cut, [])
+            edge_key(cut, neighbor) for neighbor, _weight in ground.adjacency.get(cut, [])
         )
-        _distances, predecessors = dijkstra(adjacency, near, blocked)
+        _distances, predecessors = dijkstra(ground.adjacency, near, blocked)
         detour = reconstruct_path(near, far, predecessors)
-        miles = path_geometry_miles(detour, physical_edges) if detour else 0.0
-        if within_limit(detour, near, far, miles, limit):
+        miles = path_geometry_miles(detour, ground.physical_edges) if detour else 0.0
+        if within_limit(detour, near, far, miles, ground.limit):
             return PathUse(
                 "backbone_mesh", near, far, detour, miles, LINK_FOR_CITY_DETOUR,
             )
@@ -492,16 +507,16 @@ def augment_physical_resilience(
     honest report: the fiber here cannot survive that city's loss, and saying so is worth
     more than a cable on the map that would never be ordered.
     """
-    adjacency = build_adjacency(physical_edges)
-    backbone_set = set(backbone_ids)
+    ground = _DetourSubstrate(
+        set(backbone_ids), removed_pairs, build_adjacency(physical_edges),
+        physical_edges, limit,
+    )
     uses = list(base_uses)
     spans: set[tuple[str, str]] = set()
     for use in uses:
         spans |= path_edge_keys(use.path)
     while True:
-        detour = _resilience_detour(
-            spans, backbone_set, removed_pairs, adjacency, physical_edges, limit
-        )
+        detour = _resilience_detour(spans, ground)
         if detour is None:
             break
         uses.append(detour)

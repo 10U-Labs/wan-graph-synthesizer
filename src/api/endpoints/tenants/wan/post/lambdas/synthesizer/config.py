@@ -256,12 +256,12 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
 
     The operator's requirements -- the two degrees, the coverage target and the path
     stretch bound -- come from ``tuning``, which the assembler builds from the ``knobs``
-    resource and the two degree resources. The implementation dials come from ``settings``, and only from
-    there: a value left behind under ``knobs`` is not read, so it falls back to the
-    dataclass default rather than quietly continuing to steer the search. A settings
-    document carrying a key the resource does not define -- a typo, or a name from
-    before a rename -- is refused outright, since defaulting past it would run the
-    design on values nobody chose (see :func:`_checked_settings`).
+    resource and the two degree resources. The implementation dials come from
+    ``settings``, and only from there: a value left behind under ``knobs`` is not read,
+    so it falls back to the dataclass default rather than quietly continuing to steer
+    the search. A settings document carrying a key the resource does not define -- a
+    typo, or a name from before a rename -- is refused outright, since defaulting past
+    it would run the design on values nobody chose (see :func:`_checked_settings`).
     """
     base = Tuning()
     settings = _checked_settings(settings)
