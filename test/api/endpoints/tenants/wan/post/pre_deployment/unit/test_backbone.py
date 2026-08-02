@@ -14,6 +14,7 @@ from synthesizer.backbone import (
     backbone_mesh_paths,
     diverse_mesh_routes,
     select_backbone_mesh_pairs,
+    within_limit,
 )
 from synthesizer.ceiling import StretchLimit
 from synthesizer.synthesize import all_pairs_shortest
@@ -468,24 +469,25 @@ def test_a_detour_inside_the_bound_is_still_added() -> None:
     ) != _BASE_HUB
 
 
-# Two backbone sites a short hop apart through ``m``, which each of them already rides for
-# its other link, plus a thousand-mile pair of spans through ``x`` that clears ``m``. The
-# clearing route is what the diversity heuristic reaches for, and it is four hundred times
-# the direct one.
+# Two backbone sites a short hop apart through ``m``, plus a thousand-mile pair of spans
+# through ``x`` that clears it. Both sites reach ``s`` through ``m`` and nowhere else, so
+# routing that link first is what leaves each of them already riding ``m`` when the p-q
+# link comes to be routed and the crossing is the only route clear of it. It is four
+# hundred times the direct one.
 _OFFSHORE_CLEAR = physical({
-    ("p", "m"): 1.0, ("m", "q"): 1.0, ("p", "n"): 1.0, ("q", "n"): 1.0,
+    ("p", "m"): 1.0, ("m", "q"): 1.0, ("m", "s"): 1.0,
     ("p", "x"): 1000.0, ("x", "q"): 1000.0,
 })
 _OFFSHORE_CLEAR_ADJACENCY = build_adjacency(_OFFSHORE_CLEAR)
 _OFFSHORE_CLEAR_DISTANCES = all_pairs_shortest(
-    [pop(node) for node in ("p", "q", "m", "n", "x")], _OFFSHORE_CLEAR_ADJACENCY
+    [pop(node) for node in ("p", "q", "m", "s", "x")], _OFFSHORE_CLEAR_ADJACENCY
 )
 
 
 def _clear_route(limit: StretchLimit | None) -> tuple[str, ...]:
-    """The route the mesh lays p-q when both ends already carry ``m`` and ``n``."""
+    """The route the mesh lays p-q when both ends already carry ``m``."""
     routes = diverse_mesh_routes(
-        [("p", "n"), ("q", "n"), ("p", "q")],
+        [("p", "s"), ("q", "s"), ("p", "q")],
         _OFFSHORE_CLEAR_DISTANCES[1],
         _OFFSHORE_CLEAR_ADJACENCY,
         limit=limit,
@@ -503,6 +505,19 @@ def test_a_clearing_route_beyond_the_bound_falls_back_to_the_shortest_path() -> 
 def test_an_unbounded_clearing_route_still_takes_the_detour() -> None:
     """Without a bound the heuristic buys the crossing, which is the defect it had."""
     assert _clear_route(None) == ("p", "x", "q")
+
+
+def test_a_pair_the_fiber_cannot_join_has_no_bound_to_break() -> None:
+    """Two sites with no working path between them are not measured against one.
+
+    The bound says a protect path may not run far past the working path the link already
+    has. Where the fiber joins the two ends nowhere there is no such path, so there is no
+    distance to multiply and nothing the bound can say -- and saying nothing is the honest
+    answer rather than refusing every route on a measurement that does not exist.
+    """
+    islands = build_adjacency(physical({("a", "b"): 1.0, ("c", "d"): 1.0}))
+    limit = StretchLimit(3.0, distances_from(islands, ("a", "c")))
+    assert within_limit(("a", "b", "c"), "a", "c", 500.0, limit)
 
 
 # h reaches both p and q through g on the cheap side, and q again through r the long way

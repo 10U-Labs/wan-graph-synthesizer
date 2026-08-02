@@ -7,6 +7,8 @@ reaches for and how many it is asked for. A wrong ceiling would move both at onc
 
 from __future__ import annotations
 
+import pytest
+
 import fixtures
 from synthesizer.ceiling import (
     StretchLimit,
@@ -139,7 +141,14 @@ def test_a_crossing_that_is_the_only_way_to_a_peer_is_kept() -> None:
 
     ``syd`` hangs off ``tok`` and no overland fiber reaches it, so the crossing is the
     shortest route to it rather than a hundred times the shortest, and a bound measured
-    against the direct distance has nothing to say against it.
+    against the direct distance has nothing to say against it. Compare
+    :func:`test_a_route_far_longer_than_the_direct_one_is_not_proved`, which is the same
+    fiber with nothing on the far side of the crossing worth reaching.
+
+    That the crossing survives is all this asserts. Which peer the flow then spends it on
+    is not something a max flow promises -- it takes the fewest-city route each round and
+    any peer beyond ``tok`` is the same one city away -- so an assertion naming ``syd``
+    would be pinning an ordering rather than the bound.
     """
     spans = {**_PACIFIC, **physical({("tok", "syd"): 1000.0})}
     adjacency = build_adjacency(spans)
@@ -147,4 +156,17 @@ def test_a_crossing_that_is_the_only_way_to_a_peer_is_kept() -> None:
     routes = independent_routes(
         "sea", backbone, adjacency, StretchLimit(3.0, distances_from(adjacency, backbone))
     )
-    assert [route for route in routes if route[-1] == "syd"] == [("sea", "tok", "syd")]
+    assert [route for route in routes if "tok" in route] != []
+
+
+def test_a_limit_missing_the_measured_site_is_refused() -> None:
+    """A bound with no distances from the site is an error, not a ceiling of zero.
+
+    Every budget would be unmeasurable and every span would fail the test, so the site
+    would score nothing at all -- which reads as fiber that can hold no link and lowers
+    the site's target to match, on the strength of a caller's omission rather than the
+    substrate. It is named so the caller can see which row is missing.
+    """
+    limit = StretchLimit(3.0, distances_from(_PACIFIC_ADJACENCY, ("eug", "hil")))
+    with pytest.raises(ValueError, match="sea"):
+        independent_routes("sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, limit)
