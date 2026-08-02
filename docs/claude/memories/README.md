@@ -23,7 +23,7 @@ session tool's local memory only what is true of one machine alone.
 - [a-rejected-push-is-fixed-forward](a-rejected-push-is-fixed-forward.md) — a failed run is answered with a follow-up commit, never an amended force-push
 - [markdown-is-not-hard-wrapped](markdown-is-not-hard-wrapped.md) — no
   column limit on `.md` files or on issue and pull-request bodies
-- [how-issues-are-written](how-issues-are-written.md) — five fixed sections, plain English, telecom vocabulary
+- [how-issues-are-written](how-issues-are-written.md) — six fixed sections for the program, two for everything else, plain English, telecom vocabulary
 
 ## Tests
 
