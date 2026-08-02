@@ -134,9 +134,7 @@ jobs:
           PYTHONPATH=lib/python:src/api/endpoints/tenants/lambdas
           python3 -m pylint
           src/api/endpoints/tenants/lambdas/handler.py
-          lib/python/test_terraform_config
-          lib/python/test_terraform_drift
-          lib/python/test_fixtures
+          lib/python/
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on source
         run: >-
@@ -144,16 +142,12 @@ jobs:
           python3 -m mypy --strict --explicit-package-bases
           --ignore-missing-imports
           src/api/endpoints/tenants/lambdas/handler.py
-          lib/python/test_terraform_config
-          lib/python/test_terraform_drift
-          lib/python/test_fixtures
+          lib/python/
       - name: Detect copy-paste in source
         run: >-
           jscpd --pattern "**/*.py" --threshold 0 --reporters console
           src/api/endpoints/tenants/lambdas
-          lib/python/test_terraform_config
-          lib/python/test_terraform_drift
-          lib/python/test_fixtures
+          lib/python/
       - name: Run pylint on tests
         run: >-
           PYTHONPATH=.:lib/python:src/api/endpoints/tenants/lambdas
