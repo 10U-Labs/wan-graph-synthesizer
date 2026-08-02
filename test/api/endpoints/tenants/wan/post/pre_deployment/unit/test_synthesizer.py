@@ -150,6 +150,20 @@ def test_the_ready_status_carries_the_target_the_design_was_measured_against(
     assert status["coverage"]["target_miles"] == 600
 
 
+def test_the_ready_status_carries_the_stretch_bound_the_build_ran_under(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The bound the links were routed under travels with the network they were drawn for.
+
+    An operator can move the bound, and until the tenant is rebuilt what is published is a
+    network built to the old one. Without this a reader has no way to tell that from a
+    network that ignores the bound, since nothing in the collections says which it is.
+    """
+    objects = _run(synthesizer, monkeypatch)
+    status = json.loads(objects["tenants/f-35/wan-status.json"])
+    assert status["max_path_stretch"] == 3.0
+
+
 def test_records_failed_when_no_valid_wan(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:

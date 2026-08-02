@@ -90,16 +90,26 @@ def _read_designs(client: Any, bucket: str) -> list[dict[str, Any]]:
 
 
 def _settled(design: dict[str, Any]) -> bool:
-    """True once a tenant's published network is one built to the target git now holds.
+    """True once a tenant's published network is one built to the requirements git now holds.
 
     Two things make a design unsettled, and both mean a rebuild is owed rather than that
-    anything is wrong: the build is still running, or it finished against a target the
+    anything is wrong: the build is still running, or it finished against requirements the
     config has since moved off. Either resolves on its own once the seed workflow has run.
+
+    Both requirements the published status echoes are checked, not just the coverage
+    target. A design built before the stretch bound was configured carries no bound at all
+    and one built before the operator moved it carries the old one; either way its links
+    were routed under a rule this layer is no longer measuring it by, and reading it would
+    report a violation where the truth is a rebuild that has not happened yet.
     """
-    coverage = design["status"].get("coverage")
-    if design["status"].get("status") != "ready" or coverage is None:
-        return bool(design["status"].get("status") == "failed")
-    return bool(coverage["target_miles"] == design["target_miles"])
+    status = design["status"]
+    coverage = status.get("coverage")
+    if status.get("status") != "ready" or coverage is None:
+        return bool(status.get("status") == "failed")
+    return bool(
+        coverage["target_miles"] == design["target_miles"]
+        and status.get("max_path_stretch") == design["max_path_stretch"]
+    )
 
 
 @pytest.fixture(name="delivered_designs")
