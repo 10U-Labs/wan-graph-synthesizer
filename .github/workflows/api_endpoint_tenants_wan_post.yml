@@ -154,7 +154,6 @@ jobs:
       - name: Detect copy-paste in source
         run: >-
           jscpd --pattern "**/*.py" --threshold 0 --reporters console
-          --ignore "**/test_handler_contracts/**,**/test_s3_store_mock/**"
           lib/python/ src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
       - name: Run pylint on tests
         run: >-
