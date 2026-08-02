@@ -196,7 +196,7 @@ the rule in configuration. Fix the code.
 | State drift | Pre-deployment integration |
 | Resource misconfiguration | Post-deployment integration |
 | Component wiring | Post-deployment integration |
-| Whole-entrypoint behaviour | End to end |
+| What a caller receives from the deployed program | End to end |
 
 ## Quick Reference
 
@@ -210,4 +210,4 @@ the rule in configuration. Fix the code.
 | Declared state matching the world | Pre-deployment integration |
 | A live resource's settings | Post-deployment integration |
 | A live resource's connections | Post-deployment integration |
-| An entrypoint driven as its caller does | End to end |
+| A caller's journey against the deployment | End to end |

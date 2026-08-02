@@ -105,10 +105,7 @@ derive both sides from one source and the assertion says nothing.
 If a test invokes a function, sends a request or enqueues a message, it
 has left this tier.
 
-Behaviour is covered by the tiers that own it: logic by unit tests over
-the code, and whole-entrypoint journeys by
-[E2E_TESTS.md](E2E_TESTS.md). Reaching for an invocation here usually
-means one of those tiers has a gap, and the gap is what to fix.
+Behaviour is covered by the tiers that own it: logic by unit tests over the code, and the journeys a caller makes against the deployment by [E2E_TESTS.md](E2E_TESTS.md). The rule is not that a deployment can only be asked to describe itself. It is that using the deployment is the next tier's work, and this tier gives that tier a report worth having by failing first, on the missing resource or the wrong setting, where the diagnosis is exact. Reaching for an invocation here usually means one of those tiers has a gap, and the gap is what to fix.
 
 The permitted calls are the read-only ones that describe a resource, its
 settings and its permissions.
@@ -153,4 +150,4 @@ deployment's outcome then reports several.
 | A caller may invoke it | 3 |
 | An identity grants the access it needs | 3 |
 | Application logic | Unit |
-| An entrypoint end to end | End to end |
+| What a caller receives from the deployment | End to end |

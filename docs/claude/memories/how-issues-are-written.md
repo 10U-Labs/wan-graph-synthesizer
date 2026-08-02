@@ -5,7 +5,7 @@ An issue about the program has six sections, in this order, and every issue abou
 - **Problem** — what is wrong, stated as a fact about the code with the evidence for it.
 - **Why Unit Tests Did Not Catch It** — the specific assertions that passed, and why they could not have failed.
 - **Why Integration Tests Did Not Catch It** — the same, for the tier that checks two units agreeing.
-- **Why E2E Tests Did Not Catch It** — the same, for the tier that drives a real entrypoint.
+- **Why E2E Tests Did Not Catch It** — the same, for the tier that makes a caller's journey against the deployed program and judges it on what the caller receives.
 - **Which Unit, Integration, or E2E regression tests would prevent this from happening again?** — the tests to write, each named by the tier it belongs to and the assertion it makes.
 - **Solution** — what to change.
 

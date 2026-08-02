@@ -45,8 +45,8 @@ Unit tests alone are never sufficient.
 The tiers are cumulative, not alternatives. A change that adds a
 coupling between two files owes a contract test. A change that adds a
 deployed resource owes existence, configuration and wiring. A change to
-an entrypoint's own plumbing owes a journey. Passing one tier says
-nothing about the question another tier asks.
+what a caller receives owes a journey against the deployment. Passing
+one tier says nothing about the question another tier asks.
 
 The converse is equally binding: do not answer a cheap question in an
 expensive tier. If a test would pass with every collaborator replaced by
