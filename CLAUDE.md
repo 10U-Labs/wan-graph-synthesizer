@@ -42,10 +42,7 @@ We do TDD: the test is written first, then the code that makes it pass.
 Test-first means authoring order — the red and green observations belong
 to CI, since nothing runs locally.
 
-Read `docs/tenets/tests/` before implementing. The repository enforces a
-strict hierarchy — `pre_deployment/{unit,integration}` and
-`post_deployment/integration` — and unit tests alone are not sufficient.
-Add coverage at every tier the change touches, one assert per pytest.
+Read `docs/tenets/tests/` before implementing. Unit tests alone are not sufficient: add coverage at every tier the change touches, one assert per pytest.
 
 Those docs are tenets, not a description of the suite. They name no
 language, tool, directory or resource, because the repository already
@@ -53,9 +50,12 @@ states all of that and a second copy drifts. When a tenet and the
 repository disagree, the repository is what changes. Editing a tenet to
 match the code is backwards.
 
+Every subsystem under `test/` is laid out as `pre_deployment/{unit,integration}` and `post_deployment/{integration,e2e}`, and a tier directory appears only when a test exists to put in it. The deployment phase is the top split because neither post-deployment tier can be attempted until there is a deployment to call. A journey against a localhost stub is pre-deployment integration however end-to-end it looks: `test/scripts/seed/pre_deployment/integration/test_cli.py` drives `scripts/seed.py` as a subprocess and touches nothing live, while `test/scripts/seed/post_deployment/e2e/test_delivered_designs.py` reads the deployed API.
+
 Longer: [tdd-workflow](docs/claude/memories/tdd-workflow.md),
 [read-test-tenets-first](docs/claude/memories/read-test-tenets-first.md),
-[tenets-are-generic](docs/claude/memories/tenets-are-generic.md).
+[tenets-are-generic](docs/claude/memories/tenets-are-generic.md),
+[the-test-tree-splits-on-deployment-phase](docs/claude/memories/the-test-tree-splits-on-deployment-phase.md).
 
 ## CI workflows
 
@@ -66,9 +66,9 @@ every descendant. An ordinary expression `if` does not break the cascade;
 each downstream job needs its own status-check function, normally
 `if: ${{ !cancelled() && needs.<parent>.result == 'success' }}`.
 
-A `seed` run whose push touched only `data/raw/` reports success without testing anything: `determining-testing` sets `testing-necessary=false` and the static-analysis, unit, integration and e2e jobs all skip. `gh run rerun` recomputes the same decision, so force one with `gh workflow run seed.yml --ref main`, which has no `github.event.before` and so runs every tier. The exclusion covered all of `data/` and `etc/` until the integration tier gained a contract that reads both, so a config-only push tests now; do not assume it skips.
+A `seed` run whose push touched only `data/raw/` reports success without testing anything: `determining-testing` sets `testing-necessary=false` and the `static-analysis`, `unit-tests` and `integration-tests` jobs all skip. `seeding` still runs, through `concluding-testing-unnecessary`, and `e2e-tests` after it — so the published networks are still measured, but nothing that would have caught a broken `scripts/seed.py` before it wrote to the live API ran first. `gh run rerun` recomputes the same decision, so force one with `gh workflow run seed.yml --ref main`, which has no `github.event.before` and so runs every tier. The exclusion covered all of `data/` and `etc/` until the integration tier gained a contract that reads both, so a config-only push tests now; do not assume it skips.
 
-A test runs in the workflow the change it guards arrives on. Tests about how an API behaves and how its deployment is shaped belong in that endpoint's own workflow: `test_01_existence.py`, `test_02_configuration.py` and `test_03_wiring.py` run in `api_endpoint_tenants_wan_post.yml` after `reconciliation`. Whether a WAN was actually rebuilt from a change to `etc/` belongs in `seed.yml`, because a push touching `etc/` alone starts `seed.yml` and nothing else, and its `seeding` job is what delivers the change and POSTs the builds — so `test_04_delivered_designs.py` runs there, after `seeding`. The file stays where it mirrors the code it covers and only the workflow that names it moves; a workflow running a file it does not own must list that file and its whole conftest chain in its `paths`.
+A test runs in the workflow the change it guards arrives on. Tests about how an API behaves and how its deployment is shaped belong in that endpoint's own workflow: `test_01_existence.py`, `test_02_configuration.py` and `test_03_wiring.py` run in `api_endpoint_tenants_wan_post.yml` after `reconciliation`. Whether a WAN was actually rebuilt from a change to `etc/` belongs in `seed.yml`, because a push touching `etc/` alone starts `seed.yml` and nothing else, and its `seeding` job is what delivers the change and POSTs the builds — so `test/scripts/seed/post_deployment/e2e/test_delivered_designs.py` runs there, in the `e2e-tests` job after `seeding`. Which directory a test sits in is the separate question of what it checks, and the two agreeing is the ordinary case; where they do not, the workflow must list the file and its whole conftest chain in its `paths`, which is what `api_endpoint_tenants_wan_post.yml` does for `test/lib/python/test_published_designs/**`.
 
 Longer:
 [where-a-test-runs-follows-what-starts-it](docs/claude/memories/where-a-test-runs-follows-what-starts-it.md),

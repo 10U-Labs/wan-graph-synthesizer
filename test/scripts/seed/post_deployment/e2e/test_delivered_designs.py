@@ -1,21 +1,30 @@
-"""Layer 4 (delivered designs): the published networks answer the targets their configs set.
+"""Whether the tenant configs in etc/ synthesize into the networks they ask for.
 
-Layers 1 to 3 stop at the shape of the deployment. The synthesizer exists, its runtime and
-memory match the declaration, and its role can reach the store -- and none of that reads a
-design. A synthesizer that publishes a network missing its coverage target by more than a
-factor of two passes every one of those assertions, because the build was accepted and the
-status said ``ready``, which is exactly how GitHub issue #41 stayed invisible from outside
-while DAF sat at 518 miles against a 200-mile target. This layer reads what was published
-and measures it.
+``scripts/seed.py`` PUTs every ``etc/*.yml`` to the API and then POSTs one build per
+tenant. This is that journey read back the way a caller reads it: each tenant's published
+status and its backbone, demand and links collections, measured against the
+``target_miles``, ``max_path_stretch``, ``seat_cap`` and pinned cities its own config sets.
+What fails here is as often a config asking for something its other settings rule out as it
+is a defect in the synthesizer -- GitHub issue #42 was closed by moving a target in
+etc/minuteman.yml, with no code changed at all.
+
+Nothing else asks this. The three files left under
+test/api/endpoints/tenants/wan/post/post_deployment/integration/ stop at the shape of the
+deployment: the synthesizer exists, its runtime and memory match the declaration, and its
+role can reach the store -- and none of that reads a design. A synthesizer that publishes a
+network missing its coverage target by more than a factor of two passes every one of those
+assertions, because the build was accepted and the status said ``ready``, which is exactly
+how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
+200-mile target.
 
 The measurement itself is not here. Two of the seven questions below are answered by
 recomputing a number from the published collections rather than by reading one back, and
-that recomputation lives in ``test_published_designs`` on the shared shelf, where a unit
-tier can hold it to literal inputs. A helper that measures wrongly fails a healthy network
-or passes a broken one depending on which way its error runs, and this layer has no second
-source of the answer with which to notice; leaving it here left it graded only by the
-deployment it exists to grade (GitHub issue #50). What that module does not do is measure
-through ``synthesizer.coverage``: the report under test is what that module produced, so
+that recomputation lives in lib/python/test_published_designs/, where a unit tier can hold
+it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
+broken one depending on which way its error runs, and this tier has no second source of the
+answer with which to notice; leaving it here left it graded only by the deployment it
+exists to grade (GitHub issue #50). What that module does not do is measure through
+``synthesizer.coverage``: the report under test is what that module produced, so
 recomputing with it would only establish that it agrees with itself.
 
 The last test is the one that would have failed on the old DAF build. A design that ends
@@ -68,10 +77,11 @@ def test_every_report_is_measured_against_the_target_its_tenant_declares(
 
     The number travels from ``etc/`` through seed, the knobs resource and the tuning block
     before it reaches the report, and a report judged against some other number would look
-    perfectly well formed at the end of that journey. Because a config change is delivered
-    by a workflow independent of this one, the fixture gives the store until its deadline
-    to converge, so what fails here is a target that never reached the network at all --
-    a tenant seed stopped short of, or a build that failed and was left where it fell.
+    perfectly well formed at the end of that journey. The ``seeding`` job that delivers the
+    config returns as soon as each build is recorded, not when it finishes, so the fixture
+    gives every tenant until its deadline to settle; what fails here is a target that never
+    reached the network at all -- a tenant seed stopped short of, or a build that failed
+    and was left where it fell.
     """
     reported = {
         design["tenant"]: design["status"]["coverage"]["target_miles"]
@@ -89,7 +99,7 @@ def test_every_city_a_tenant_pins_is_seated_in_its_published_backbone(
     finished network: put a backbone node here, whatever the coverage pass would rather do.
     Nothing outside the synthesizer checked that the fact came true, so a config that moved
     a pin and a network still seated on the old one read exactly alike -- which is how a
-    change to this setting could pass this whole layer against a network built before it
+    change to this setting could pass this whole tier against a network built before it
     (GitHub issue #47).
     """
     unseated = {

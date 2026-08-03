@@ -37,6 +37,7 @@ session tool's local memory only what is true of one machine alone.
   change touches
 - [tenets-are-generic](tenets-are-generic.md) — the tenets name no tool,
   language or directory; the repository follows them, not the reverse
+- [the-test-tree-splits-on-deployment-phase](the-test-tree-splits-on-deployment-phase.md) — `pre_deployment/{unit,integration}` and `post_deployment/{integration,e2e}` in every subsystem; a stub journey is integration, not end to end
 
 ## CI workflows
 

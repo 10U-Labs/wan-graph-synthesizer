@@ -22,17 +22,16 @@ jobs:
         run: pip install boto3 boto3-stubs pytest 'python-hcl2<8' pyyaml
       # These three files measure the shape of what was just deployed: the synthesizer
       # exists, its runtime and memory match the declaration, and its role can reach the
-      # store. None of them reads a design. test_04_delivered_designs.py, which does, runs
-      # in seed.yml after its seeding job instead: measuring a published network is only
-      # meaningful once the config it is measured against has been delivered and rebuilt,
-      # and seeding is what does that (GitHub issue #47). The roster and the synthesizer's
-      # own haversine are still on the path for the conftest chain pytest loads.
+      # store. None of them reads a design. Whether the configs in etc/ synthesize into the
+      # networks they ask for is asked by test/scripts/seed/post_deployment/e2e/, which runs
+      # in seed.yml after its seeding job: measuring a published network is only meaningful
+      # once the config it is measured against has been delivered and rebuilt, and seeding
+      # is what does that (GitHub issues #47 and #49).
       - name: Run post-deployment integration tests against live AWS
         run: >-
-          PYTHONPATH=.:lib/python:scripts:src/api/endpoints/tenants/wan/post/lambdas
+          PYTHONPATH=.:lib/python
           python3 -m pytest
           test/api/endpoints/tenants/wan/post/post_deployment/integration/
-          --ignore=test/api/endpoints/tenants/wan/post/post_deployment/integration/test_04_delivered_designs.py
           --import-mode=importlib --confcutdir=test
           --verbose
   pre-deployment-integration-tests:

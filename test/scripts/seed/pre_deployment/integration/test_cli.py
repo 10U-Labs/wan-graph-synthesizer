@@ -1,8 +1,16 @@
-"""End-to-end tests: the seed CLI as a subprocess against a stub API.
+"""Integration tests: the seed CLI as a subprocess against a stub API.
 
 These invoke the real ``python -m seed`` entrypoint as its own process over the
 repository's real inputs, with the API replaced by a localhost stub that records
 every request. Nothing leaves the machine and no live resource is touched.
+
+That last sentence is why this sits in the pre-deployment integration tier and
+not in end to end, where it used to be filed. It is several real units against
+each other with nothing deployed, which
+docs/tenets/tests/PRE_DEPLOYMENT_INTEGRATION_TESTS.md places here, and it never
+stands in for the question docs/tenets/tests/E2E_TESTS.md asks: what a caller
+receives from the deployed program. test_delivered_designs.py under
+../../post_deployment/e2e/ is the tier that asks it (GitHub issue #49).
 """
 
 from __future__ import annotations

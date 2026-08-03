@@ -1,4 +1,4 @@
-"""Fixtures for seed end-to-end tests (a localhost stub API, no live resources)."""
+"""Fixtures for the seed CLI's integration tier (a localhost stub, no live resources)."""
 
 from __future__ import annotations
 
