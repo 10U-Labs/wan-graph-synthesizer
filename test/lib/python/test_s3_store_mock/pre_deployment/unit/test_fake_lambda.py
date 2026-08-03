@@ -29,4 +29,4 @@ def test_a_caller_that_invokes_nothing_records_nothing() -> None:
     """The empty list is the assertion a write endpoint is held to, so it has to stay empty."""
     invocations: list[dict[str, Any]] = []
     fake_lambda(invocations)
-    assert invocations == []
+    assert len(invocations) == 0

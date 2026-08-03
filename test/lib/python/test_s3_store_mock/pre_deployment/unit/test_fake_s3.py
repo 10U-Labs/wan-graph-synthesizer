@@ -59,7 +59,7 @@ def test_a_deleted_object_is_gone_from_the_store() -> None:
     """A DELETE endpoint is judged on the store afterwards, so the removal has to be real."""
     objects = {"tenants/daf/label.json": b"{}"}
     fake_s3(objects).delete_object(Key="tenants/daf/label.json")
-    assert objects == {}
+    assert "tenants/daf/label.json" not in objects
 
 
 def test_deleting_a_key_that_is_not_there_is_not_an_error() -> None:

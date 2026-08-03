@@ -50,14 +50,14 @@ def test_a_file_declaring_no_outputs_yields_nothing(tmp_path: Path) -> None:
     """A file of resources alone is empty here rather than an error."""
     path = tmp_path / "main.tf"
     path.write_text('resource "aws_s3_bucket" "store" {\n  bucket = "b"\n}\n', encoding="utf-8")
-    assert output_values(path) == {}
+    assert len(output_values(path)) == 0
 
 
 def test_a_document_whose_outputs_are_not_a_list_yields_nothing(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Nothing is reduced from a document shaped unlike anything the parser emits."""
     _document(monkeypatch, {"output": {"aws_region": {"value": "eu-west-1"}}})
-    assert output_values(tmp_path / "ignored.tf") == {}
+    assert len(output_values(tmp_path / "ignored.tf")) == 0
 
 
 def test_a_block_that_is_not_a_block_is_stepped_over(
@@ -71,4 +71,4 @@ def test_a_block_body_that_is_not_a_body_is_stepped_over(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A name carrying something other than a body declares no value to reduce."""
     _document(monkeypatch, {"output": [{"aws_region": "not a body"}]})
-    assert output_values(tmp_path / "ignored.tf") == {}
+    assert len(output_values(tmp_path / "ignored.tf")) == 0

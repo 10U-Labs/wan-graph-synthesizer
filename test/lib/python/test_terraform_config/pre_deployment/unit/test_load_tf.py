@@ -20,11 +20,11 @@ def test_the_kinds_of_block_found_are_the_ones_the_file_declares(tf_document: Pa
 
 def test_an_output_keeps_the_value_it_was_declared_with(tf_document: Path) -> None:
     """The parse is literal: what the file says is what the document holds."""
-    outputs = cast("list[dict[str, Any]]", load_tf(tf_document)["output"])
+    outputs = cast(list[dict[str, Any]], load_tf(tf_document)["output"])
     assert outputs[0]["aws_region"]["value"] == "eu-west-1"
 
 
 def test_a_resource_keeps_the_body_it_was_declared_with(tf_document: Path) -> None:
     """Resource bodies survive the read too, since a drift check reads names out of them."""
-    resources = cast("list[dict[str, Any]]", load_tf(tf_document)["resource"])
+    resources = cast(list[dict[str, Any]], load_tf(tf_document)["resource"])
     assert resources[0]["aws_s3_bucket"]["store"]["bucket"] == "the-document-store"

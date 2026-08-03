@@ -81,7 +81,7 @@ def test_an_entry_that_is_not_a_planned_change_is_stepped_over(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """The plan reports its own progress in the same stream, and none of it is a create."""
     _planning(monkeypatch, json.dumps({"type": "version", "terraform": "1.6.0"}))
-    assert get_planned_creates(_STACK) == []
+    assert len(get_planned_creates(_STACK)) == 0
 
 
 def test_a_change_that_is_not_a_create_is_stepped_over(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -95,20 +95,20 @@ def test_a_change_that_is_not_a_create_is_stepped_over(monkeypatch: pytest.Monke
         },
     })
     _planning(monkeypatch, updated)
-    assert get_planned_creates(_STACK) == []
+    assert len(get_planned_creates(_STACK)) == 0
 
 
 def test_a_kind_with_no_probe_behind_it_is_stepped_over(monkeypatch: pytest.MonkeyPatch) -> None:
     """Reporting a create nothing can be asked about would fail the layer on every run."""
     _planning(monkeypatch, _line("aws_kinesis_stream", {"name": "the-stream"}))
-    assert get_planned_creates(_STACK) == []
+    assert len(get_planned_creates(_STACK)) == 0
 
 
 def test_a_create_whose_identifier_is_not_known_yet_is_stepped_over(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """A name the plan computes at apply time cannot be asked about before it exists."""
     _planning(monkeypatch, _line("aws_s3_bucket", {"bucket": ""}))
-    assert get_planned_creates(_STACK) == []
+    assert len(get_planned_creates(_STACK)) == 0
 
 
 def test_the_plan_is_run_in_the_stack_directory_it_was_given(

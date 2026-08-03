@@ -20,7 +20,7 @@ def test_the_arguments_of_a_call_are_recorded_as_they_were_passed() -> None:
 
 def test_a_recorder_nobody_called_has_recorded_nothing() -> None:
     """A test asserting that the call was never made needs the list to start out empty."""
-    assert CallRecorder().calls == []
+    assert len(CallRecorder().calls) == 0
 
 
 def test_every_call_is_recorded_in_the_order_it_was_made() -> None:

@@ -39,7 +39,7 @@ def test_every_request_is_recorded_in_the_order_it_was_made() -> None:
 
 def test_a_recorder_nobody_called_has_recorded_nothing() -> None:
     """A test asserting that nothing was sent needs the list to start out empty."""
-    assert UrlopenRecorder().requests == []
+    assert len(UrlopenRecorder().requests) == 0
 
 
 def test_the_paths_are_reported_with_the_base_removed() -> None:

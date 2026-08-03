@@ -71,7 +71,7 @@ def test_the_orphan_comes_with_the_command_that_settles_it(
 def test_a_planned_resource_that_does_not_exist_is_not_an_orphan(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """Creating something that is not there is what a deployment is for."""
-    assert _found(monkeypatch, exists=False) == []
+    assert len(_found(monkeypatch, exists=False)) == 0
 
 
 def test_a_plan_that_would_create_nothing_finds_nothing(
@@ -79,7 +79,7 @@ def test_a_plan_that_would_create_nothing_finds_nothing(
     """A stack already reconciled plans no creates, and there is nothing to collide with."""
     _planning(monkeypatch, [])
     _existing(monkeypatch, True)
-    assert find_orphaned_resources(_STACK) == []
+    assert len(find_orphaned_resources(_STACK)) == 0
 
 
 def test_each_resource_is_asked_about_in_the_region_given(
