@@ -58,19 +58,19 @@ def test_a_link_routed_past_the_bound_is_reported_by_the_path_it_takes() -> None
 
 def test_a_link_inside_the_bound_is_left_alone() -> None:
     """Twice the direct distance is ordinary terrestrial fiber, not a detour."""
-    assert overrun_links(_design("west", "east", 100.0)) == []
+    assert not overrun_links(_design("west", "east", 100.0))
 
 
 def test_a_link_whose_two_ends_are_the_same_node_is_discarded() -> None:
     """A node joined to itself has no direct distance to be measured against."""
-    assert overrun_links(_design("west", "west", 1000.0)) == []
+    assert not overrun_links(_design("west", "west", 1000.0))
 
 
 def test_a_link_naming_a_node_outside_the_backbone_is_discarded() -> None:
     """An endpoint the published backbone does not hold cannot be placed on the globe."""
-    assert overrun_links(_design("west", "ghost", 1000.0)) == []
+    assert not overrun_links(_design("west", "ghost", 1000.0))
 
 
 def test_a_link_between_two_nodes_at_one_place_is_discarded() -> None:
     """Zero direct distance makes every ratio infinite, so the bound says nothing."""
-    assert overrun_links(_design("west", "annex", 1000.0)) == []
+    assert not overrun_links(_design("west", "annex", 1000.0))
