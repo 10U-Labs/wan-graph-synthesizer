@@ -70,6 +70,11 @@ def _no_log_group(**_kwargs: Any) -> dict[str, Any]:
     return {"logGroups": []}
 
 
+def _neighbouring_log_group(**_kwargs: Any) -> dict[str, Any]:
+    """Answer a prefix query with a longer name, which is a different group."""
+    return {"logGroups": [{"logGroupName": f"{_NAME}-merge"}]}
+
+
 def _no_bucket(**_kwargs: Any) -> dict[str, Any]:
     """Refuse the way S3 refuses a bucket that is not there."""
     raise ClientError({"Error": {"Code": "404"}}, "HeadBucket")
@@ -112,6 +117,13 @@ def test_a_resource_the_platform_does_not_hold_reads_absent(
     """A refusal naming the resource as unknown is an absence, and is reported as one."""
     _answering(monkeypatch, _ABSENT.get(resource_type, _missing))
     assert check_resource_exists(resource_type, _NAME) is False
+
+
+def test_a_log_group_merely_sharing_the_prefix_is_not_the_one_asked_about(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """CloudWatch is asked by prefix, so every longer name comes back and none of them is it."""
+    _answering(monkeypatch, _neighbouring_log_group)
+    assert check_resource_exists("aws_cloudwatch_log_group", _NAME) is False
 
 
 def test_an_error_that_says_nothing_about_absence_is_not_made_into_one(
