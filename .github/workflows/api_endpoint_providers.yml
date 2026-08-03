@@ -6,7 +6,9 @@ jobs:
   post-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
     name: post-deployment-integration-tests
-    needs: reconciliation
+    needs:
+      - reconciliation
+      - test-repo-libraries
     permissions:
       contents: read
       id-token: write
@@ -30,7 +32,9 @@ jobs:
   pre-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
     name: pre-deployment-integration-tests
-    needs: unit-tests
+    needs:
+      - test-repo-libraries
+      - unit-tests
     permissions:
       contents: read
       id-token: write
@@ -55,8 +59,6 @@ jobs:
           PYTHONPATH=.:lib/python
           python3 -m pytest
           test/api/endpoints/providers/pre_deployment/integration/
-          test/lib/python/test_handler_contracts/pre_deployment/integration/
-          test/lib/python/test_terraform_config/pre_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose
   reconciliation:
@@ -216,40 +218,108 @@ jobs:
         run: |
           tofu -chdir=src/api/endpoints/providers init -backend=false -input=false
           tofu -chdir=src/api/endpoints/providers validate
-  unit-tests:
-    name: unit-tests
+  # The nine modules under lib/python/ are the fixtures, doubles, loaders and readers the
+  # rest of the suite is written on top of, and this job is where they are the subject
+  # rather than the setup. Without it a defect in one of them reaches the reader as a
+  # failure in whatever tier consumed it, named for the subject that tier was testing: a
+  # probe that reads a present log group as absent fails a post-deployment tier and names
+  # the log group, and no result anywhere names the module that was wrong (GitHub issue
+  # #53).
+  #
+  # Two shapes were proposed for this and neither works. A workflow of its own, named for
+  # lib/python/ the way seed.yml is named for scripts/seed.py, cannot put itself ahead of
+  # the eleven workflows that consume the modules: GitHub Actions orders nothing between
+  # workflows started by the same push, and this repository declares no workflow_run or
+  # workflow_call to build an order from. An expression `if` reading this job's result is
+  # not a substitute for the needs: edges either, because a job that only reads another
+  # job's result can start before that job has finished.
+  #
+  # Every workflow runs every module's tests, not only the ones its own tests import.
+  # Scoping the job to what a workflow imports would make its contents a function of an
+  # import graph nobody maintains, so a new import would silently widen what should have
+  # been checked and nothing would report that it had not. The modules are pure Python
+  # exercised against literals, so running all nine costs little.
+  #
+  # GitHub issue #56 proposes redrawing the needs: edges below so the jobs run
+  # concurrently. Whichever of the two lands second, these edges are the ones to keep:
+  # a run that carries on past a broken module spends its tofu apply and its
+  # post-deployment tier on results that will be thrown away, and a reader facing eleven
+  # red jobs has to be told which one to read, where one red job and ten skipped ones has
+  # already told them.
+  test-repo-libraries:
+    name: test-repo-libraries
     needs: static-analysis
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install boto3 boto3-stubs pytest pytest-cov 'python-hcl2<8' pyyaml
-      # The shared test machinery under lib/python/ that this workflow's own tests import,
-      # gated one module at a time. A module named in its own --cov fails when it arrives
-      # without tests, where one gate over the directory would let its neighbours' numbers
-      # carry it (GitHub issue #52).
-      - name: Run unit tests with a 100% coverage gate
+        run: pip install boto3 pytest pytest-cov 'python-hcl2<8' pyyaml
+      # Each module is named in a --cov of its own rather than lib/python covered as a
+      # whole, so the next module to arrive without tests fails here instead of being
+      # carried by its neighbours' numbers (GitHub issue #52).
+      - name: Run the shared modules' unit tests with a 100% coverage gate
         run: >-
-          PYTHONPATH=.:lib/python:src/api/endpoints/providers/lambdas
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pytest
-          test/api/endpoints/providers/pre_deployment/unit/
           test/lib/python/repo_utils/pre_deployment/unit/
           test/lib/python/test_fixtures/pre_deployment/unit/
           test/lib/python/test_handler_contracts/pre_deployment/unit/
+          test/lib/python/test_http_doubles/pre_deployment/unit/
           test/lib/python/test_module_utils/pre_deployment/unit/
+          test/lib/python/test_published_designs/pre_deployment/unit/
           test/lib/python/test_s3_store_mock/pre_deployment/unit/
           test/lib/python/test_terraform_config/pre_deployment/unit/
           test/lib/python/test_terraform_drift/pre_deployment/unit/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
-          --cov=src/api/endpoints/providers/lambdas
           --cov=lib/python/repo_utils
           --cov=lib/python/test_fixtures
           --cov=lib/python/test_handler_contracts
           --cov=lib/python/test_module_utils
+          --cov=lib/python/test_published_designs
           --cov=lib/python/test_s3_store_mock
           --cov=lib/python/test_terraform_config
           --cov=lib/python/test_terraform_drift
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+      # test_http_doubles is the ninth module and is gated here rather than on the step
+      # above. It publishes a stub API server, and the code that answers a request only
+      # runs when a client sends one, which its integration tests do and its unit tests do
+      # not. Coverage is counted per pytest run, so this step takes both of its tiers.
+      - name: Run the shared modules' integration tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_handler_contracts/pre_deployment/integration/
+          test/lib/python/test_http_doubles/pre_deployment/
+          test/lib/python/test_published_designs/pre_deployment/integration/
+          test/lib/python/test_terraform_config/pre_deployment/integration/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/test_http_doubles
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+  unit-tests:
+    name: unit-tests
+    needs: test-repo-libraries
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install boto3 boto3-stubs pytest pytest-cov 'python-hcl2<8' pyyaml
+      # What remains gated here is this workflow's own source, at 100% of its branches.
+      # The shared modules under lib/python/ that its tests import are gated in
+      # test-repo-libraries, which every job here that imports them runs after.
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:src/api/endpoints/providers/lambdas
+          python3 -m pytest
+          test/api/endpoints/providers/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=src/api/endpoints/providers/lambdas
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
@@ -262,12 +332,9 @@ on:
       - test/api/endpoints/providers/**
       - lib/python/**
       - lib/opentofu/common/**
-      - test/lib/python/repo_utils/**
-      - test/lib/python/test_fixtures/**
-      - test/lib/python/test_handler_contracts/**
-      - test/lib/python/test_module_utils/**
-      - test/lib/python/test_s3_store_mock/**
-      - test/lib/python/test_terraform_config/**
-      - test/lib/python/test_terraform_drift/**
+      # The tests over the nine shared modules in lib/python/. test-repo-libraries runs
+      # every one of them rather than the subset this workflow's own tests import, so a
+      # change to any of them has to be able to start this workflow.
+      - test/lib/python/**
       - .github/workflows/api_endpoint_providers.yml
   workflow_dispatch: {}
