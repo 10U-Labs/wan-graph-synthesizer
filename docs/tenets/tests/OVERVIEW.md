@@ -18,7 +18,7 @@ stack is rewritten; if a sentence would not, it does not belong here.
   - [Shared Code Sits as High as It Applies](#shared-code-sits-as-high-as-it-applies)
   - [Check Before You Create](#check-before-you-create)
   - [Enforcement Is Mechanical](#enforcement-is-mechanical)
-  - [Nothing Runs Before What It Presumes](#nothing-runs-before-what-it-presumes)
+  - [Nothing Is Trusted Before What It Presumes](#nothing-is-trusted-before-what-it-presumes)
 
 ## Test Tiers
 
@@ -109,21 +109,16 @@ A rule that can be set aside where it is inconvenient is not being
 applied, it is being negotiated, and it stops predicting anything about
 the code it governs. When a rule objects, what changes is the code.
 
-### Nothing Runs Before What It Presumes
+### Nothing Is Trusted Before What It Presumes
 
-Nothing runs before what it presumes has been decided, and of the things
-that may run, the one depending on least runs first.
+An answer is worth no more than what it presumes. A pass resting on a presumption that turns out false is not a pass; it is an answer to a question nobody asked, and reading it as one is how a suite reports sound while the thing under it is broken.
 
-That is a single rule, and it settles every question of order without
-anyone choosing one. A check that reads the code presumes nothing, so
-nothing may precede it. Unit tests presume the code survived being read.
-Pre-deployment integration presumes the units are correct and must
-precede the deployment it is asked about, which in turn presumes
-everything knowable without it is known. Post-deployment integration
-presumes a deployment, so nothing it asserts can be known sooner. End to
-end presumes that deployment as well, and asks what the caller receives
-from it, which is worth asking only once the platform has reported the
-deployment sound; so it runs last, after every tier that could have named
-the failure more precisely.
+The rule governs what a result may be taken to mean. It does not, on its own, govern what may be attempted at the same time. Two kinds of presumption sit behind that, and they differ in what they cost to ignore.
 
-Cost follows from the same rule and does not compete with it. A tier that presumes a deployment cannot be required of a change that deploys nothing; a tier that presumes only the code must be required of every change, because no change may wait on an expensive answer that a cheap one already gave. That is a consequence of the order and not a second rule set beside it. Where cost is allowed to decide what a tier may exercise, the tier stops answering its question, and the cheap answer it gives instead is mistaken for the expensive one nobody asked for.
+A tier may presume something exists. Post-deployment integration presumes a deployment, and end to end presumes one as well and asks what the caller receives from it. Without that deployment there is nothing to call, so neither can be attempted sooner, and here the presumption does fix when the tier runs. End to end runs last of all, after every tier that could have named the failure more precisely.
+
+A tier may instead presume something is correct. Unit tests presume the code survived being read; pre-deployment integration presumes the units are correct. Everything these need is in hand from the start, so nothing stops them being attempted at once, and attempting them at once is usually cheaper and tells the author more in one go. What their presumption fixes is the reading, not the running: a green unit tier over code that failed the checks which read it has established nothing, and must be reported and treated as unestablished rather than as a pass. Run them together; do not believe the one whose presumption failed.
+
+The rest of the rule is diagnostic. Of the results in hand, the one presuming least is the one that names the defect, and those presuming more are its consequences. When several fail together, read the failure that presumed least; the others say only that they stood on it. This is why a thing shared by many tiers is checked as its own subject rather than as a step inside its consumers — when it breaks, the result that names it must exist, or every tier that used it reports a defect of its own that it does not have.
+
+Cost follows from the same rule and does not compete with it. A tier that presumes a deployment cannot be required of a change that deploys nothing; a tier that presumes only the code must be required of every change, because no change may wait on an expensive answer that a cheap one already gave. That is a consequence of what each tier presumes and not a second rule set beside it. Where cost is allowed to decide what a tier may exercise, the tier stops answering its question, and the cheap answer it gives instead is mistaken for the expensive one nobody asked for.
