@@ -25,6 +25,7 @@ session tool's local memory only what is true of one machine alone.
   column limit on `.md` files or on issue and pull-request bodies
 - [how-issues-are-written](how-issues-are-written.md) — six fixed sections for the program, two for everything else, plain English, telecom vocabulary
 - [write-the-exact-name](write-the-exact-name.md) — name the file, function and line everywhere, in chat as much as in issues; never a coined collective noun
+- [lead-with-what-it-is-for](lead-with-what-it-is-for.md) — say what the thing is and what it costs before the first identifier, and cut the details that change nothing
 
 ## Tests
 

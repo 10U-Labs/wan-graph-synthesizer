@@ -10,6 +10,8 @@ Precision is separate from simplicity and both are required. Simple English mean
 
 Prefer a table when several named things each have several properties, so the reader can look one up rather than hold eight of them in their head. Verify a name before writing it: line numbers move, workflow files are not named after the directories they test, and a wrong name costs more than a vague one because it sends the reader somewhere real and wrong.
 
+This note settles which words the names are written in and not where in the paragraph they go. A plain sentence saying what the thing is and what it is for comes before the first identifier, and a correct detail that changes nothing the reader would do is cut rather than kept — see [lead-with-what-it-is-for](lead-with-what-it-is-for.md). The model sentence above is the right way to name a function and the wrong way to open an issue, which is how issue #47 opens.
+
 This was written on 2026-08-02, after the first two rewrites of issue #47 were rejected for exactly this. The first said "the delivered-design layer", a phrase appearing nowhere on disk. The second said "the post-deployment fixture", which narrowed the vagueness without removing it — there are several fixtures in that conftest, and the one that matters is `delivered_designs_fixture` at line 112. The third named the function, the file, the line, the eight config keys, the S3 object keys and the two workflows, and that is the standard.
 
 The issue-specific rules that sit on top of this — the six sections, telecom vocabulary, numbers computed from the repository's own data — are in [how-issues-are-written](how-issues-are-written.md).
