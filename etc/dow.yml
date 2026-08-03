@@ -10,6 +10,7 @@ backbone:
     nodes:
       - Ashburn, VA
       - Boardman, OR
+      - Boston, MA
       - Cheyenne, WY
       - Cincinnati, OH
       - Colorado Springs, CO
@@ -23,10 +24,12 @@ backbone:
       - Los Angeles, CA
       - McLean, VA
       - Minot, ND
+      - New York, NY
       - Phoenix, AZ
       - Salt Lake City, UT
       - San Antonio, TX
       - San Diego, CA
+      - San Jose, CA
       - Seattle, WA
       - Tucson, AZ
       - Umatilla, OR

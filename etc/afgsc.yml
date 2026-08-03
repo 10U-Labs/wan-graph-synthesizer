@@ -10,17 +10,21 @@ backbone:
     nodes:
       - Albuquerque, NM
       - Ashburn, VA
+      - Boston, MA
       - Cheyenne, WY
       - Colorado Springs, CO
       - Dallas, TX
       - Fort Worth, TX
       - Great Falls, MT
+      - Hillsboro, OR
       - Kansas City, MO
       - Los Angeles, CA
       - McLean, VA
       - Minot, ND
+      - New York, NY
       - Omaha, NE
       - San Francisco, CA
+      - San Jose, CA
       - Seattle, WA
       - Tacoma, WA
   max_path_stretch: 3

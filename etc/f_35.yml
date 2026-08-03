@@ -9,16 +9,20 @@ backbone:
     connections: []
     nodes:
       - Ashburn, VA
+      - Boston, MA
       - Cincinnati, OH
       - Colorado Springs, CO
       - Dallas, TX
       - Fort Worth, TX
+      - Hillsboro, OR
       - Jacksonville, FL
       - Las Vegas, NV
       - Los Angeles, CA
       - McLean, VA
+      - New York, NY
       - Pittsburgh, PA
       - Salt Lake City, UT
+      - San Jose, CA
       - Seattle, WA
       - Tallahassee, FL
   max_path_stretch: 3
