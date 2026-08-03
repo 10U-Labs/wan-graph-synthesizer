@@ -35,6 +35,34 @@ jobs:
     steps:
       - name: No-op
         run: 'true'
+  # Whether each tenant's published network is the one its config in etc/ asked for. That
+  # question belongs to this workflow and to no other: a push editing etc/ starts this one
+  # alone, and seeding is what delivers the edit and rebuilds the WANs, so this is the only
+  # place the rebuild can be measured on the push that caused it. Asking it from the
+  # endpoint's own workflow left every config change unmeasured, which is what it was
+  # supposed to catch (GitHub issue #47).
+  #
+  # It reads the published networks over the API and needs no AWS credentials. The test
+  # file stays where it mirrors the code it covers -- the synthesizer under
+  # src/api/endpoints/tenants/wan/post/ -- and only which workflow runs it moves here;
+  # api_endpoint_tenants_wan_post.yml still runs the three files beside it, which measure
+  # the shape of the deployed Lambda rather than what it built.
+  delivered-design-tests:
+    if: ${{ !cancelled() && needs.seeding.result == 'success' }}
+    name: delivered-design-tests
+    needs: seeding
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install boto3 pytest 'python-hcl2<8' pyyaml
+      - name: Check every published network against the config that asked for it
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/api/endpoints/tenants/wan/post/post_deployment/integration/test_04_delivered_designs.py
+          --import-mode=importlib --confcutdir=test
+          --verbose
   determining-testing:
     if: ${{ !failure() && !cancelled() }}
     name: determining-testing
@@ -286,5 +314,12 @@ on:
       - lib/python/**
       - scripts/**
       - src/www/api/openapi.json
+      # The delivered-design tests and the conftest chain pytest loads to reach them. Only
+      # the one file this workflow runs is named, so a change to the three that stay in
+      # api_endpoint_tenants_wan_post.yml does not seed and rebuild five WANs to no end.
+      - test/api/endpoints/tenants/wan/conftest.py
+      - test/api/endpoints/tenants/wan/post/post_deployment/conftest.py
+      - test/api/endpoints/tenants/wan/post/post_deployment/integration/conftest.py
+      - test/api/endpoints/tenants/wan/post/post_deployment/integration/test_04_delivered_designs.py
       - test/scripts/seed/**
   workflow_dispatch: {}

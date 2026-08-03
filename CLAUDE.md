@@ -68,7 +68,10 @@ each downstream job needs its own status-check function, normally
 
 A `seed` run whose push touched only `data/raw/` reports success without testing anything: `determining-testing` sets `testing-necessary=false` and the static-analysis, unit, integration and e2e jobs all skip. `gh run rerun` recomputes the same decision, so force one with `gh workflow run seed.yml --ref main`, which has no `github.event.before` and so runs every tier. The exclusion covered all of `data/` and `etc/` until the integration tier gained a contract that reads both, so a config-only push tests now; do not assume it skips.
 
+A test runs in the workflow the change it guards arrives on. Tests about how an API behaves and how its deployment is shaped belong in that endpoint's own workflow: `test_01_existence.py`, `test_02_configuration.py` and `test_03_wiring.py` run in `api_endpoint_tenants_wan_post.yml` after `reconciliation`. Whether a WAN was actually rebuilt from a change to `etc/` belongs in `seed.yml`, because a push touching `etc/` alone starts `seed.yml` and nothing else, and its `seeding` job is what delivers the change and POSTs the builds — so `test_04_delivered_designs.py` runs there, after `seeding`. The file stays where it mirrors the code it covers and only the workflow that names it moves; a workflow running a file it does not own must list that file and its whole conftest chain in its `paths`.
+
 Longer:
+[where-a-test-runs-follows-what-starts-it](docs/claude/memories/where-a-test-runs-follows-what-starts-it.md),
 [seed-races-routing-deploy](docs/claude/memories/seed-races-routing-deploy.md),
 [seed-skip-cascade-needs-guards](docs/claude/memories/seed-skip-cascade-needs-guards.md),
 [only-raw-map-commits-skip-the-tests](docs/claude/memories/only-raw-map-commits-skip-the-tests.md).
@@ -96,8 +99,11 @@ An issue about the program has six sections in a fixed order: "Problem", "Why Un
 
 The four test sections belong to the program and to nothing else. The program is what a test tier can run: `src/`, `lib/python/`, `scripts/`, and the OpenTofu under `lib/`. An issue about the configs in `etc/`, the maps in `data/`, the workflow files in `.github/workflows/` or the documentation has two sections, "Problem" and "Proposed Solution", and owes no tests — a test over a file no tier runs only reads a value back and asserts what it just read. `test/` falls on both sides: the machinery a tier runs on is program code and gets six, conftest fixtures included, because it can make a whole layer report the wrong answer and a unit tier can usually reach it; the assertions themselves get two, since asking why the unit tests did not catch a defective unit test answers itself. What the defect is in decides this, not what the fix touches. Write plain, ordinary English prose and use telecommunications vocabulary for the subject matter — path diversity rather than mesh degree, site rather than node. Tables where a table genuinely reads better, bullets only when enumerating things, never to break up an argument. Back claims with numbers computed from the repository's own data, and say how they were computed. Each section opens with a plain sentence saying what the thing is and what it is for before any identifier appears; "Problem" says what the code is there to do before it says what is wrong with it, and says what the defect costs within its first few lines.
 
+An issue that offers alternatives is a question to ask, not a choice to make. Where a `Proposed Solution` says "either X or Y", stop and ask which one before editing a file, however clearly the issue leans toward one of them and even when it calls one the smaller change. The alternatives are there because the trade-off was unsettled when the issue was written, and they usually decide which workflow runs a test or what a failure will mean. #47 was solved down the branch the issue preferred, which left the delivered-design tests in a workflow that a push touching `etc/` alone never starts — so every config change still went unmeasured, which was the defect being fixed. Ask before there is a draft, because a draft turns the question into a request to approve what is already done.
+
 Longer:
-[how-issues-are-written](docs/claude/memories/how-issues-are-written.md).
+[how-issues-are-written](docs/claude/memories/how-issues-are-written.md),
+[an-either-is-a-question-for-the-user](docs/claude/memories/an-either-is-a-question-for-the-user.md).
 
 ## Notes
 

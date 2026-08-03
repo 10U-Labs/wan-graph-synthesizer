@@ -26,6 +26,7 @@ session tool's local memory only what is true of one machine alone.
 - [how-issues-are-written](how-issues-are-written.md) — six fixed sections for the program, two for everything else, plain English, telecom vocabulary
 - [write-the-exact-name](write-the-exact-name.md) — name the file, function and line everywhere, in chat as much as in issues; never a coined collective noun
 - [lead-with-what-it-is-for](lead-with-what-it-is-for.md) — say what the thing is and what it costs before the first identifier, and cut the details that change nothing
+- [an-either-is-a-question-for-the-user](an-either-is-a-question-for-the-user.md) — an issue offering alternatives is asked about before anything is written, never decided
 
 ## Tests
 
@@ -46,3 +47,4 @@ session tool's local memory only what is true of one machine alone.
   a skipped gate silently skips every descendant without a status-check
   `if`
 - [only-raw-map-commits-skip-the-tests](only-raw-map-commits-skip-the-tests.md) — a push touching only `data/raw/` skips every test tier; a config-only push no longer does
+- [where-a-test-runs-follows-what-starts-it](where-a-test-runs-follows-what-starts-it.md) — a test runs in the workflow the change it guards arrives on; API shape in the endpoint's workflow, rebuilt WANs in `seed`
