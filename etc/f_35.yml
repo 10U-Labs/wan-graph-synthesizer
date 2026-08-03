@@ -23,7 +23,7 @@ backbone:
       - Tallahassee, FL
   max_path_stretch: 3
   node_count:
-    max: 16
+    max: 99
     min: 3
   number_of_diverse_paths: 2
   prohibited:
