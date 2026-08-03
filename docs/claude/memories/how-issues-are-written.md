@@ -7,9 +7,11 @@ An issue about the program has six sections, in this order, and every issue abou
 - **Why Integration Tests Did Not Catch It** — the same, for the tier that checks two units agreeing.
 - **Why E2E Tests Did Not Catch It** — the same, for the tier that makes a caller's journey against the deployed program and judges it on what the caller receives.
 - **Which Unit, Integration, or E2E regression tests would prevent this from happening again?** — the tests to write, each named by the tier it belongs to and the assertion it makes.
-- **Solution** — what to change.
+- **Proposed Solution** — what to change.
 
-An issue about anything else has two sections, **Problem** and **Solution**, and owes no tests at all.
+An issue about anything else has two sections, **Problem** and **Proposed Solution**, and owes no tests at all.
+
+The closing section is called "Proposed Solution" and not "Solution". It is what the issue proposes, and whoever picks the issue up is free to do something else; the name says so before they have read a word of it. Issues #35 and #37 through #55 were all written with `## Solution` while the reminder at :09 of `.claude/skills/autopilot/SKILL.md` asked for `Proposed Solution`, and this file was the one that was wrong.
 
 The program is the code a test tier can run: `src/`, `lib/python/`, `scripts/`, and the OpenTofu under `lib/` that the post-deployment tier checks once it is applied. The four test sections are about the program and are written only for it. A defect there got past tiers that exist and could have failed, and naming which assertion let it through is what turns one bug report into a gap in the suite that can be closed.
 
