@@ -11,7 +11,7 @@ An issue about the program has six sections, in this order, and every issue abou
 
 An issue about anything else has two sections, **Problem** and **Proposed Solution**, and owes no tests at all.
 
-The closing section is called "Proposed Solution" and not "Solution". It is what the issue proposes, and whoever picks the issue up is free to do something else; the name says so before they have read a word of it. Issues #35 and #37 through #55 were all written with `## Solution` while the reminder at :09 of `.claude/skills/autopilot/SKILL.md` asked for `Proposed Solution`, and this file was the one that was wrong.
+The closing section is called "Proposed Solution" and not "Solution". It is what the issue proposes, and whoever picks the issue up is free to do something else; the name says so before they have read a word of it. Issues #35 and #37 through #55 were all written with `## Solution` while the reminder at :09 of `.claude/skills/autopilot/SKILL.md` asked for `Proposed Solution`, and this file was the one that was wrong. The seven open on 2026-08-02 — #45, #46, #47, #49, #52, #53 and #56 — were rewritten that day and carry `## Proposed Solution`. Fourteen closed ones still carry `## Solution` and stay as they are: a closed issue is a record of what was written, and nobody is going to act on its heading.
 
 The program is the code a test tier can run: `src/`, `lib/python/`, `scripts/`, and the OpenTofu under `lib/` that the post-deployment tier checks once it is applied. The four test sections are about the program and are written only for it. A defect there got past tiers that exist and could have failed, and naming which assertion let it through is what turns one bug report into a gap in the suite that can be closed.
 
@@ -40,3 +40,5 @@ Back a claim with a number computed from the repository's own data wherever a nu
 Issue bodies are not hard-wrapped, like all markdown here — see [markdown-is-not-hard-wrapped](markdown-is-not-hard-wrapped.md). The tier vocabulary and what each tier is for come from `docs/tenets/tests/` — see [read-test-tenets-first](read-test-tenets-first.md).
 
 Issues #38, #39 and #40, written on 2026-07-31, are the worked examples of the prose. They predate the regression section, which was added on 2026-08-01, and each names its coverage inside the solution instead. The two-section form for everything outside the program was settled later the same day.
+
+They are examples of the sentences and not of the order, which they get wrong. For the order, read the seven issues open on 2026-08-02, all rewritten that day to say what the thing is and what it costs before naming a file: #47 is the closest one to read beside its own earlier draft, since the rule in [lead-with-what-it-is-for](lead-with-what-it-is-for.md) was written from it.
