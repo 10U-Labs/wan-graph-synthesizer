@@ -53,6 +53,7 @@ jobs:
           python3 -m pytest
           test/api/endpoints/tenants/wan/post/pre_deployment/integration/
           test/lib/python/test_published_designs/pre_deployment/integration/
+          test/lib/python/test_terraform_config/pre_deployment/integration/
           --verbose --pythonwarnings=error
   reconciliation:
     if: github.ref == 'refs/heads/main'
@@ -112,6 +113,11 @@ jobs:
           ${{ github.workspace }}/src/api/endpoints/tenants/wan/post/lambdas/synthesizer
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
           ${{ github.workspace }}/test/lib/python/test_published_designs
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_fixtures
+          ${{ github.workspace }}/test/lib/python/test_module_utils
+          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
+          ${{ github.workspace }}/test/lib/python/test_terraform_config
       - name: Assert no linter config files
         run: >-
           assert-no-linter-config-files
@@ -124,6 +130,11 @@ jobs:
           --verbose
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
           ${{ github.workspace }}/test/lib/python/test_published_designs
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_fixtures
+          ${{ github.workspace }}/test/lib/python/test_module_utils
+          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
+          ${{ github.workspace }}/test/lib/python/test_terraform_config
       # This source lint disables pylint's broad-exception-caught (W0718) check.
       # post/lambdas/synthesizer/handler.py is the synthesizer Lambda that builds a tenant's
       # WAN, and it deliberately wraps the whole build in a catch-all
@@ -173,6 +184,11 @@ jobs:
           python3 -m pylint --recursive=y
           test/api/endpoints/tenants/wan/post
           test/lib/python/test_published_designs
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on tests
         run: >-
@@ -180,6 +196,11 @@ jobs:
           python3 -m mypy --strict --ignore-missing-imports
           --explicit-package-bases test/api/endpoints/tenants/wan/post
           test/lib/python/test_published_designs
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
       - name: Detect copy-paste in tests
         run: >-
           jscpd --pattern "**/*.py"
@@ -187,6 +208,11 @@ jobs:
           --ignore "test/**/pre_deployment/unit/test_handler.py"
           test/api/endpoints/tenants/wan/post
           test/lib/python/test_published_designs
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v2
         with:
@@ -208,17 +234,29 @@ jobs:
       # and a helper that quietly discards what it was given returns the same empty answer
       # a sound network returns. Naming the module in its own --cov rather than covering
       # lib/python as a whole means the next module to arrive without tests fails rather
-      # than being carried by this one's numbers.
+      # than being carried by this one's numbers. The five modules named below it are the
+      # rest of the shared machinery this workflow's own tests import, gated the same way
+      # and for the same reason (GitHub issue #52).
       - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pytest
           test/api/endpoints/tenants/wan/post/pre_deployment/unit/
           test/lib/python/test_published_designs/pre_deployment/unit/
+          test/lib/python/repo_utils/pre_deployment/unit/
+          test/lib/python/test_fixtures/pre_deployment/unit/
+          test/lib/python/test_module_utils/pre_deployment/unit/
+          test/lib/python/test_s3_store_mock/pre_deployment/unit/
+          test/lib/python/test_terraform_config/pre_deployment/unit/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
           --cov=src/api/endpoints/tenants/wan/post/lambdas/synthesizer
           --cov=lib/python/test_published_designs
+          --cov=lib/python/repo_utils
+          --cov=lib/python/test_fixtures
+          --cov=lib/python/test_module_utils
+          --cov=lib/python/test_s3_store_mock
+          --cov=lib/python/test_terraform_config
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
@@ -248,5 +286,10 @@ on:
       # synthesizer stack, and seed.yml both delivers it and measures the networks it
       # rebuilds, so triggering this workflow too would only deploy a second time.
       - scripts/**
+      - test/lib/python/repo_utils/**
+      - test/lib/python/test_fixtures/**
+      - test/lib/python/test_module_utils/**
+      - test/lib/python/test_s3_store_mock/**
+      - test/lib/python/test_terraform_config/**
       - .github/workflows/api_endpoint_tenants_wan_post.yml
   workflow_dispatch: {}

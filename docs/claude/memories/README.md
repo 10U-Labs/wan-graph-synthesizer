@@ -48,4 +48,4 @@ session tool's local memory only what is true of one machine alone.
   a skipped gate silently skips every descendant without a status-check
   `if`
 - [only-raw-map-commits-skip-the-tests](only-raw-map-commits-skip-the-tests.md) — a push touching only `data/raw/` skips every test tier; a config-only push no longer does
-- [where-a-test-runs-follows-what-starts-it](where-a-test-runs-follows-what-starts-it.md) — a test runs in the workflow the change it guards arrives on; API shape in the endpoint's workflow, rebuilt WANs in `seed`
+- [where-a-test-runs-follows-what-starts-it](where-a-test-runs-follows-what-starts-it.md) — a test runs in the workflow the change it guards arrives on; API shape in the endpoint's workflow, rebuilt WANs in `seed`, and a shared module in every workflow that imports it

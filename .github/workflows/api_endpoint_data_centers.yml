@@ -55,6 +55,8 @@ jobs:
           PYTHONPATH=.:lib/python
           python3 -m pytest
           test/api/endpoints/data-centers/pre_deployment/integration/
+          test/lib/python/test_handler_contracts/pre_deployment/integration/
+          test/lib/python/test_terraform_config/pre_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose
   reconciliation:
@@ -114,6 +116,13 @@ jobs:
           ${{ github.workspace }}/lib/python
           ${{ github.workspace }}/src/api/endpoints/data-centers/lambdas
           ${{ github.workspace }}/test/api/endpoints/data-centers
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_fixtures
+          ${{ github.workspace }}/test/lib/python/test_handler_contracts
+          ${{ github.workspace }}/test/lib/python/test_module_utils
+          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
+          ${{ github.workspace }}/test/lib/python/test_terraform_config
+          ${{ github.workspace }}/test/lib/python/test_terraform_drift
       - name: Assert no linter config files
         run: >-
           assert-no-linter-config-files
@@ -127,6 +136,13 @@ jobs:
           ${{ github.workspace }}/test/api/endpoints/data-centers/conftest.py
           ${{ github.workspace }}/test/api/endpoints/data-centers/pre_deployment
           ${{ github.workspace }}/test/api/endpoints/data-centers/post_deployment
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_fixtures
+          ${{ github.workspace }}/test/lib/python/test_handler_contracts
+          ${{ github.workspace }}/test/lib/python/test_module_utils
+          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
+          ${{ github.workspace }}/test/lib/python/test_terraform_config
+          ${{ github.workspace }}/test/lib/python/test_terraform_drift
       # lib/python/test_published_designs reads a published WAN from the API and measures
       # it with the synthesizer's own distance helper, so scripts/ and the synthesizer are
       # both on the path here: pylint reads every import it is asked to lint, and that
@@ -157,6 +173,13 @@ jobs:
           test/api/endpoints/data-centers/conftest.py
           test/api/endpoints/data-centers/pre_deployment
           test/api/endpoints/data-centers/post_deployment
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_handler_contracts
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
+          test/lib/python/test_terraform_drift
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on tests
         run: >-
@@ -166,11 +189,25 @@ jobs:
           test/api/endpoints/data-centers/conftest.py
           test/api/endpoints/data-centers/pre_deployment
           test/api/endpoints/data-centers/post_deployment
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_handler_contracts
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
+          test/lib/python/test_terraform_drift
       - name: Detect copy-paste in tests
         run: >-
-          jscpd --pattern "test/api/endpoints/data-centers/**/*.py" --threshold 0
+          jscpd --pattern "**/*.py" --threshold 0
           --ignore "**/merge/**" --reporters console
           test/api/endpoints/data-centers/
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_handler_contracts
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
+          test/lib/python/test_terraform_drift
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v2
         with:
@@ -187,14 +224,32 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install tools
         run: pip install boto3 boto3-stubs pytest pytest-cov 'python-hcl2<8' pyyaml
+      # The shared test machinery under lib/python/ that this workflow's own tests import,
+      # gated one module at a time. A module named in its own --cov fails when it arrives
+      # without tests, where one gate over the directory would let its neighbours' numbers
+      # carry it (GitHub issue #52).
       - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:src/api/endpoints/data-centers/lambdas
           python3 -m pytest
           test/api/endpoints/data-centers/pre_deployment/unit/
+          test/lib/python/repo_utils/pre_deployment/unit/
+          test/lib/python/test_fixtures/pre_deployment/unit/
+          test/lib/python/test_handler_contracts/pre_deployment/unit/
+          test/lib/python/test_module_utils/pre_deployment/unit/
+          test/lib/python/test_s3_store_mock/pre_deployment/unit/
+          test/lib/python/test_terraform_config/pre_deployment/unit/
+          test/lib/python/test_terraform_drift/pre_deployment/unit/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
           --cov=src/api/endpoints/data-centers/lambdas
+          --cov=lib/python/repo_utils
+          --cov=lib/python/test_fixtures
+          --cov=lib/python/test_handler_contracts
+          --cov=lib/python/test_module_utils
+          --cov=lib/python/test_s3_store_mock
+          --cov=lib/python/test_terraform_config
+          --cov=lib/python/test_terraform_drift
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
@@ -209,5 +264,12 @@ on:
       - '!test/api/endpoints/data-centers/merge/**'
       - lib/python/**
       - lib/opentofu/common/**
+      - test/lib/python/repo_utils/**
+      - test/lib/python/test_fixtures/**
+      - test/lib/python/test_handler_contracts/**
+      - test/lib/python/test_module_utils/**
+      - test/lib/python/test_s3_store_mock/**
+      - test/lib/python/test_terraform_config/**
+      - test/lib/python/test_terraform_drift/**
       - .github/workflows/api_endpoint_data_centers.yml
   workflow_dispatch: {}
