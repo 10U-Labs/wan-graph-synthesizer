@@ -23,7 +23,7 @@ Create seven jobs with `CronCreate`, exactly as listed below. Use `recurring: tr
 | :05 | `5,15,25,35,45,55 * * * *` | `REMINDER: Lead with what the thing is for. Every paragraph — in chat as much as in issues, commits and comments — opens with a plain sentence saying what the thing is and what it does, before any file, function or line is named. Say what a defect costs in ordinary words near the top, not in the seventh paragraph. Then cut the details that change nothing the reader would do.` |
 | :06 | `6,16,26,36,46,56 * * * *` | `REMINDER: Ensure Claude tasks are indivisible.` |
 | :07 | `7,17,27,37,47,57 * * * *` | `REMINDER: Do not do anything but wait while a workflow is running.` |
-| :09 | `9,19,29,39,49,59 * * * *` | `REMINDER: When you come up against a new problem, file a GitHub issue. A problem in the program — src/, lib/python/, scripts/, lib/opentofu/ — gets the sub-headers "Problem", "Why Unit Tests Did Not Catch It", "Why Integration Tests Did Not Catch It", "Why E2E Tests Did Not Catch It", "Which Unit, Integration, or E2E regression tests would prevent this from happening again?", and "Proposed Solution". A problem in a config, a map, a workflow file or the docs gets "Problem" and "Proposed Solution" only, and owes no tests.` |
+| :09 | `9,19,29,39,49,59 * * * *` | `REMINDER: When you come up against a new problem, file a GitHub issue. A problem in the program — src/, lib/python/, scripts/, lib/opentofu/ — gets the sub-headers "Problem", "Why Unit Tests Did Not Catch It", "Why Integration Tests Did Not Catch It", "Why E2E Tests Did Not Catch It", "Which Unit, Integration, or E2E regression tests would prevent this from happening again?", and "Solution". A problem in a config, a map, a workflow file or the docs gets "Problem" and "Solution" only, and owes no tests.` |
 
 Then tell the user which issue number is in force, that seven reminders are running, and the two limits that come with them: the jobs live in this session only and are gone when it ends, and recurring jobs auto-expire after seven days.
 
@@ -31,7 +31,7 @@ Do not begin working the issues as part of starting the reminders. Starting auto
 
 ## Stop
 
-Call `CronList`, then call `CronDelete` once per job it returns — all of them, not only the six this skill created. "Delete all your reminders" means the session ends with an empty schedule. Call `CronList` again afterwards to confirm it is empty, and report how many jobs were deleted.
+Call `CronList`, then call `CronDelete` once per job it returns — all of them, not only the seven this skill created. "Delete all your reminders" means the session ends with an empty schedule. Call `CronList` again afterwards to confirm it is empty, and report how many jobs were deleted.
 
 `CronList` returning nothing is not a failure; say the schedule was already empty and stop.
 
@@ -39,7 +39,7 @@ Call `CronList`, then call `CronDelete` once per job it returns — all of them,
 
 Cron jobs fire only while the session is idle, never mid-turn, because a turn cannot be preempted. That limit is the reason this skill does not try to correct drift in the middle of a task: what it can do is restart a loop that has stalled, which is the failure it is there to catch.
 
-The issue sub-headers in the last reminder are the user's wording. `CLAUDE.md` carries the same six sections, the regression one included, and names the closing one `Solution` rather than `Proposed Solution`; `docs/claude/memories/how-issues-are-written.md` is the authority when an issue is actually being written, and that last name is the only place the two still differ.
+The issue sub-headers in the reminder at :09 now match `CLAUDE.md` and `docs/claude/memories/how-issues-are-written.md` word for word, closing section included. The reminder said `Proposed Solution` until 2026-08-02, against `Solution` in both of those and in every issue already filed, because the sub-headers were the user's wording and were left alone; the user aligned them on that date. Those two files stay the authority when an issue is actually being written, and there is now nothing left for them to disagree with.
 
 The reminder at :05 was added on 2026-08-02 for the same reason the two-section form was added to the one at :09. The :09 reminder names the sections and nothing else, so an issue written to it comes out correctly structured and ordered for whoever wrote it: issue #47 opens by naming `_settled` and the line it sits on, and reaches the race between `seed` and `api_endpoint_tenants_wan_post` that makes the function matter three paragraphs later. Structure is not the whole of how an issue is written, and a reminder that names only structure is read as though it were. `docs/claude/memories/lead-with-what-it-is-for.md` is the long form, and it applies to chat replies and commit messages too, which is why the reminder does not say "issue".
 
