@@ -194,9 +194,10 @@ jobs:
           assert-one-assert-per-pytest
           --verbose
           ${{ github.workspace }}/test/scripts/seed
-      # lib/python/test_published_designs measures a published WAN with the
-      # synthesizer's own distance helper, so the synthesizer is on the path here too:
-      # pylint reads every import it is asked to lint and lib/python/ now holds that one.
+      # lib/python/test_published_designs reads a published WAN from the API and measures
+      # it with the synthesizer's own distance helper, so scripts/ and the synthesizer are
+      # both on the path here: pylint reads every import it is asked to lint, and that
+      # module imports the API base and the sender from scripts/seed.py.
       - name: Run pylint on source
         run: >-
           PYTHONPATH=lib/python:scripts:src/api/endpoints/tenants/wan/post/lambdas
