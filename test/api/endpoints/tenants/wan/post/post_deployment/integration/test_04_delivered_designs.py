@@ -8,7 +8,7 @@ status said ``ready``, which is exactly how GitHub issue #41 stayed invisible fr
 while DAF sat at 518 miles against a 200-mile target. This layer reads what was published
 and measures it.
 
-The measurement itself is not here. Two of the six questions below are answered by
+The measurement itself is not here. Two of the seven questions below are answered by
 recomputing a number from the published collections rather than by reading one back, and
 that recomputation lives in ``test_published_designs`` on the shared shelf, where a unit
 tier can hold it to literal inputs. A helper that measures wrongly fails a healthy network
@@ -31,6 +31,11 @@ from __future__ import annotations
 from typing import Any
 
 from test_published_designs import overrun_links, worst_haul
+
+
+def _published_cities(design: dict[str, Any]) -> set[str]:
+    """The cities the published backbone seats, by the ``City, ST`` names a config pins by."""
+    return {node["name"] for node in design["backbone"]}
 
 
 def test_every_tenant_the_roster_declares_has_a_published_network(
@@ -74,6 +79,25 @@ def test_every_report_is_measured_against_the_target_its_tenant_declares(
     }
     declared = {design["tenant"]: design["target_miles"] for design in delivered_designs}
     assert reported == declared
+
+
+def test_every_city_a_tenant_pins_is_seated_in_its_published_backbone(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """Each city named in a tenant's ``backbone.forced.nodes`` is in its backbone tier.
+
+    A pinned city is the one requirement an operator states as a plain fact about the
+    finished network: put a backbone node here, whatever the coverage pass would rather do.
+    Nothing outside the synthesizer checked that the fact came true, so a config that moved
+    a pin and a network still seated on the old one read exactly alike -- which is how a
+    change to this setting could pass this whole layer against a network built before it
+    (GitHub issue #47).
+    """
+    unseated = {
+        design["tenant"]: sorted(set(design["forced"]) - _published_cities(design))
+        for design in delivered_designs
+        if not set(design["forced"]) <= _published_cities(design)
+    }
+    assert unseated == {}
 
 
 def test_the_reported_worst_haul_is_the_one_the_published_network_delivers(

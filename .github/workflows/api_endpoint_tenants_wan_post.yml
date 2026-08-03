@@ -6,7 +6,7 @@ jobs:
   post-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
     name: post-deployment-integration-tests
-    needs: reconciliation
+    needs: seeding
     permissions:
       contents: read
       id-token: write
@@ -73,6 +73,33 @@ jobs:
         run: |
           tofu -chdir=src/api/endpoints/tenants/wan/post init -input=false
           tofu -chdir=src/api/endpoints/tenants/wan/post apply -auto-approve -input=false
+  # The delivered-design layer measures a tenant's published network against the config
+  # git holds for it, so it has to run after the build that config asked for. Seeding is
+  # what asks: scripts/seed.py PUTs the inputs and then POSTs one build per tenant, and
+  # the POST records "creating" before it answers, so every tenant is mid-build or later
+  # by the time this job returns and the layer has nothing left to guess about. It runs
+  # after reconciliation so that a synthesizer change is deployed before it is seeded and
+  # measured, which is the order the two were already in within this workflow.
+  #
+  # seed.yml keeps its own seeding job: it is the only workflow a push touching etc/ alone
+  # starts, and that push is exactly the one a tenant config change arrives on. Both jobs
+  # share the `seed` concurrency group, so a push that starts both -- one touching
+  # scripts/ or lib/python/, which trigger each -- seeds twice in sequence rather than
+  # twice at once over the same tenants.
+  seeding:
+    concurrency:
+      cancel-in-progress: false
+      group: seed
+    if: github.ref == 'refs/heads/main'
+    name: seeding
+    needs: reconciliation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pyyaml
+      - name: Push the git-authored inputs to the API
+        run: PYTHONPATH=lib/python python3 scripts/seed.py
   static-analysis:
     name: static-analysis
     runs-on: ubuntu-24.04
@@ -234,10 +261,15 @@ on:
       - test/fixtures.py
       - lib/python/**
       - lib/opentofu/common/**
-      # The delivered-design layer reaches the roster through seed's rules, so a change to
-      # them is a change to what that layer can read. etc/ is deliberately not here: a
-      # config change is not delivered until the seed workflow reseeds and rebuilds, and
-      # that workflow runs independently of this one, so triggering on it would only race.
+      # The list of what the API serves. The delivered-design layer's reader is held
+      # against it before deployment, so a path renamed or withdrawn here has to be able
+      # to fail that check.
+      - src/www/api/openapi.json
+      # The delivered-design layer reaches the roster and the API base through seed's
+      # rules, and its seeding job runs seed.py itself, so a change to either is a change
+      # to what that layer reads. etc/ is deliberately not here: a config change needs no
+      # tofu apply over the synthesizer stack, and seed.yml already delivers and rebuilds
+      # it, so triggering this workflow too would only deploy and seed a second time.
       - scripts/**
       - .github/workflows/api_endpoint_tenants_wan_post.yml
   workflow_dispatch: {}

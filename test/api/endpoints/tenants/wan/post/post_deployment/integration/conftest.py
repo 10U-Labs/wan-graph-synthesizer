@@ -9,14 +9,16 @@ derived from the wan dispatcher name, matching the deploy-time derived name.
 pairing each tenant's network with the demands its own config makes of it. The roster
 in ``etc/`` is the list of tenants and ``seed`` supplies the file-stem-to-tenant-id
 rule, so a tenant added to git is one this tier starts asking about with no edit here.
-Each entry is a plain mapping of six keys: ``tenant``, the ``target_miles`` and
-``seat_cap`` the config sets, the ``status`` document the GET passes through, and the
-published ``backbone`` and ``demand`` collections that status can be measured against.
-A tenant whose build is not ``ready`` has no network to read and carries both empty.
+The reading itself is ``test_published_designs.published_design``, which asks the API
+for each tenant's build state and its four published collections; nothing here opens the
+store the synthesizer writes to. Each entry is a plain mapping of nine keys: ``tenant``,
+the ``target_miles``, ``max_path_stretch``, ``seat_cap`` and pinned ``forced`` cities the
+config sets, the ``status`` document the GET passes through, and the published
+``backbone``, ``demand`` and ``links`` collections that status can be measured against.
+A tenant whose build is not ``ready`` has no network to read and carries all three empty.
 """
 from __future__ import annotations
 
-import json
 import time
 from typing import Any, cast
 
@@ -24,21 +26,17 @@ import pytest
 import yaml
 
 import seed
-from seed import _slug
+from seed import DEFAULT_API, _slug
+from test_published_designs import published_design, settled
 
-# How long the published networks are given to catch up with the configs git holds, and
-# how often they are asked. A tenant config change is delivered by the seed workflow, which
-# runs independently of this one, so a push that touches both arrives here with a rebuild
-# either in flight or not yet started. Waiting turns that race into a bounded contract --
-# the store settles on the configuration within the deadline -- rather than a coin flip on
-# which workflow reached its last job first. A build of the largest tenant takes minutes.
-_SETTLE_DEADLINE_SECONDS = 900
-_SETTLE_POLL_SECONDS = 20
-
-
-def _stored(client: Any, bucket: str, key: str) -> Any:
-    """Decode a JSON document the synthesizer published to the store."""
-    return json.loads(client.get_object(Bucket=bucket, Key=key)["Body"].read())
+# How long the tenants are given to finish building, and how often they are asked. The
+# builds are started by the seeding job this tier runs after, and a build of the largest
+# tenant takes minutes: the POST that starts one records ``creating`` before it answers,
+# so by the time seeding returns every tenant is at ``creating`` or later and there is no
+# earlier build left to mistake for the current one. Waiting for the state to leave
+# ``creating`` and ``building`` is then the whole of the question (GitHub issue #47).
+_BUILD_DEADLINE_SECONDS = 900
+_BUILD_POLL_SECONDS = 20
 
 
 def _roster() -> dict[str, dict[str, Any]]:
@@ -49,85 +47,28 @@ def _roster() -> dict[str, dict[str, Any]]:
     }
 
 
-@pytest.fixture(name="store_bucket_name")
-def store_bucket_name_fixture(synthesizer_config: dict[str, Any]) -> str:
-    """Return the store bucket the live synthesizer publishes to.
-
-    Read off the running function rather than from the OpenTofu, so this tier reads the
-    bucket the synthesizer actually writes to and not the one it was declared to.
-    """
-    variables = cast("dict[str, Any]", synthesizer_config["Environment"])["Variables"]
-    return str(variables["STORE_BUCKET"])
-
-
-def _read_designs(client: Any, bucket: str) -> list[dict[str, Any]]:
-    """Every declared tenant's published network beside the demands its config makes of it.
-
-    A tenant whose build did not finish has no ``wan.json`` at all, so its collections come
-    back empty rather than read: the first test in the layer is then the one that reports
-    it, instead of every test in the layer dying inside a fixture.
-    """
-    designs: list[dict[str, Any]] = []
-    for tenant, config in _roster().items():
-        status = _stored(client, bucket, f"tenants/{tenant}/wan-status.json")
-        published = (
-            _stored(client, bucket, f"tenants/{tenant}/wan.json")
-            if status.get("status") == "ready"
-            else {}
-        )
-        backbone = config["backbone"]
-        designs.append({
-            "tenant": tenant,
-            "target_miles": backbone["coverage_target_miles"],
-            "max_path_stretch": backbone["max_path_stretch"],
-            "seat_cap": backbone["node_count"]["max"],
-            "status": status,
-            "backbone": published.get("backbone-nodes", []),
-            "demand": published.get("tenant-nodes", []) + published.get("provider-nodes", []),
-            "links": published.get("backbone-links", []),
-        })
-    return designs
-
-
-def _settled(design: dict[str, Any]) -> bool:
-    """True once a tenant's published network is one built to the requirements git now holds.
-
-    Two things make a design unsettled, and both mean a rebuild is owed rather than that
-    anything is wrong: the build is still running, or it finished against requirements the
-    config has since moved off. Either resolves on its own once the seed workflow has run.
-
-    Both requirements the published status echoes are checked, not just the coverage
-    target. A design built before the stretch bound was configured carries no bound at all
-    and one built before the operator moved it carries the old one; either way its links
-    were routed under a rule this layer is no longer measuring it by, and reading it would
-    report a violation where the truth is a rebuild that has not happened yet.
-    """
-    status = design["status"]
-    coverage = status.get("coverage")
-    if status.get("status") != "ready" or coverage is None:
-        return bool(status.get("status") == "failed")
-    return bool(
-        coverage["target_miles"] == design["target_miles"]
-        and status.get("max_path_stretch") == design["max_path_stretch"]
-    )
+def _read_designs() -> list[dict[str, Any]]:
+    """Every declared tenant's published network beside the demands its config makes of it."""
+    return [
+        published_design(DEFAULT_API, tenant, config)
+        for tenant, config in _roster().items()
+    ]
 
 
 @pytest.fixture(name="delivered_designs")
-def delivered_designs_fixture(
-        s3_client: Any, store_bucket_name: str) -> list[dict[str, Any]]:
-    """Return the published networks, once the store has caught up with the configs.
+def delivered_designs_fixture() -> list[dict[str, Any]]:
+    """Return the published networks, once every tenant's build has finished.
 
-    The configs are delivered by the seed workflow and this one runs independently of it,
-    so a push that touches both reaches here with rebuilds in flight or not yet begun.
-    Sampling that moment would fail on the timing rather than on the designs, so the store
-    is given until the deadline to settle and only then read. A build that has recorded
-    ``failed`` is settled: waiting cannot improve it and the layer should report it.
+    Sampling mid-build would fail on the timing rather than on the designs, so each tenant
+    is given until the deadline to finish and only then read. A build that has recorded
+    ``failed`` is finished: waiting cannot improve it and the layer should report it.
     """
-    deadline = time.monotonic() + _SETTLE_DEADLINE_SECONDS
-    designs = _read_designs(s3_client, store_bucket_name)
-    while not all(map(_settled, designs)) and time.monotonic() < deadline:
-        time.sleep(_SETTLE_POLL_SECONDS)
-        designs = _read_designs(s3_client, store_bucket_name)
+    deadline = time.monotonic() + _BUILD_DEADLINE_SECONDS
+    designs = _read_designs()
+    while (not all(settled(design["status"]) for design in designs)
+            and time.monotonic() < deadline):
+        time.sleep(_BUILD_POLL_SECONDS)
+        designs = _read_designs()
     return designs
 
 
