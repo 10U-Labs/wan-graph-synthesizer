@@ -127,9 +127,12 @@ jobs:
           ${{ github.workspace }}/test/api/endpoints/data-centers/merge/conftest.py
           ${{ github.workspace }}/test/api/endpoints/data-centers/merge/pre_deployment
           ${{ github.workspace }}/test/api/endpoints/data-centers/merge/post_deployment
+      # lib/python/test_published_designs measures a published WAN with the
+      # synthesizer's own distance helper, so the synthesizer is on the path here too:
+      # pylint reads every import it is asked to lint and lib/python/ now holds that one.
       - name: Run pylint on source
         run: >-
-          PYTHONPATH=lib/python:src/api/endpoints/data-centers/merge/lambdas
+          PYTHONPATH=lib/python:src/api/endpoints/data-centers/merge/lambdas:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint
           src/api/endpoints/data-centers/merge/lambdas/handler.py
           lib/python/

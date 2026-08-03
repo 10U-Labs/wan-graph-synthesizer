@@ -8,10 +8,15 @@ status said ``ready``, which is exactly how GitHub issue #41 stayed invisible fr
 while DAF sat at 518 miles against a 200-mile target. This layer reads what was published
 and measures it.
 
-The measurement here does not go through ``synthesizer.coverage``. The report under test is
-what that module produced, so recomputing with it would only establish that it agrees with
-itself. Only ``haversine_miles`` is borrowed, since the distance between two points on the
-globe is not the thing in question.
+The measurement itself is not here. Two of the six questions below are answered by
+recomputing a number from the published collections rather than by reading one back, and
+that recomputation lives in ``test_published_designs`` on the shared shelf, where a unit
+tier can hold it to literal inputs. A helper that measures wrongly fails a healthy network
+or passes a broken one depending on which way its error runs, and this layer has no second
+source of the answer with which to notice; leaving it here left it graded only by the
+deployment it exists to grade (GitHub issue #50). What that module does not do is measure
+through ``synthesizer.coverage``: the report under test is what that module produced, so
+recomputing with it would only establish that it agrees with itself.
 
 The last test is the one that would have failed on the old DAF build. A design that ends
 below its target has either spent every backbone seat its operator allowed or given up
@@ -25,28 +30,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from synthesizer.input_graph import Vertex, haversine_miles
-
-
-def _vertex(node: dict[str, Any]) -> Vertex:
-    """Rebuild a published node as the vertex type the distance helper takes."""
-    latitude, longitude = node["coords"]
-    return Vertex(node["id"], node["name"], node["kind"], (latitude, longitude))
-
-
-def _worst_haul(design: dict[str, Any]) -> float:
-    """The farthest any site the target applies to sits from its nearest backbone node.
-
-    Sites the operator has excused the distance constraint are left out, as they are in the
-    synthesizer's own stop condition, and a design carrying no demand at all reads zero.
-    """
-    nodes = [_vertex(node) for node in design["backbone"]]
-    hauls = [
-        min(haversine_miles(_vertex(site), node) for node in nodes)
-        for site in design["demand"]
-        if not site["exempt_from_distance_constraint"]
-    ]
-    return round(max(hauls, default=0.0), 1)
+from test_published_designs import overrun_links, worst_haul
 
 
 def test_every_tenant_the_roster_declares_has_a_published_network(
@@ -100,9 +84,9 @@ def test_the_reported_worst_haul_is_the_one_the_published_network_delivers(
     the artifact an operator reads rather than against the run that wrote it.
     """
     mismeasured = [
-        (design["tenant"], _worst_haul(design))
+        (design["tenant"], worst_haul(design))
         for design in delivered_designs
-        if _worst_haul(design) != design["status"]["coverage"]["worst_haul_miles"]
+        if worst_haul(design) != design["status"]["coverage"]["worst_haul_miles"]
     ]
     assert mismeasured == []
 
@@ -125,28 +109,6 @@ def test_no_design_stopped_short_of_its_target_with_a_seat_left_to_spend(
     assert gave_up_early == []
 
 
-# How far a fiber route wanders past the straight line between its two ends. Route miles
-# run somewhere between one and two air miles on real terrestrial builds, so a published
-# link measured against the great-circle distance is allowed twice its tenant's bound.
-_SINUOSITY = 2.0
-
-
-def _overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
-    """Every published backbone link routed further than even a generous bound allows."""
-    coords = {node["id"]: _vertex(node) for node in design["backbone"]}
-    allowed = _SINUOSITY * design["max_path_stretch"]
-    overrun = []
-    for link in design["links"]:
-        source = coords.get(link["source_id"])
-        target = coords.get(link["target_id"])
-        if source is None or target is None or source is target:
-            continue
-        direct = haversine_miles(source, target)
-        if direct > 0 and link["distance_miles"] > allowed * direct:
-            overrun.append((" -> ".join(link["path"]), link["distance_miles"] / direct))
-    return overrun
-
-
 def test_no_published_link_is_routed_further_than_its_tenant_allows(
         delivered_designs: list[dict[str, Any]]) -> None:
     """No backbone link wanders far past the direct distance between the two sites it joins.
@@ -160,13 +122,13 @@ def test_no_published_link_is_routed_further_than_its_tenant_allows(
     the published collections carry no substrate to route over and rebuilding one here would
     reimplement the router this layer exists to check from the outside. Great-circle is the
     shorter denominator, so the ratio it yields overstates the real stretch and the bound is
-    loosened by ``_SINUOSITY`` to stay sound. That leaves it far looser than what the
+    loosened by ``SINUOSITY`` to stay sound. That leaves it far looser than what the
     synthesizer enforces -- six times the direct distance rather than three -- and it still
     catches every route the defect produced, the nearest of which ran twelve times.
     """
     overrun = {
-        design["tenant"]: _overrun_links(design)
+        design["tenant"]: overrun_links(design)
         for design in delivered_designs
-        if _overrun_links(design)
+        if overrun_links(design)
     }
     assert overrun == {}

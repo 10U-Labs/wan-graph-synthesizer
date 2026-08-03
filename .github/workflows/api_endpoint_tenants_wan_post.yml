@@ -38,11 +38,17 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install tools
         run: pip install boto3 boto3-stubs pytest 'python-hcl2<8' pyyaml
+      # The delivered-design layer measures published networks with
+      # lib/python/test_published_designs, whose contract test holds the field names it
+      # reads against what the synthesizer's own collections emit. That module has no
+      # workflow of its own: it is tested here, in the workflow of the only code that
+      # imports it, so the tests over it run before the layer that stands on them.
       - name: Run pre-deployment integration tests
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pytest
           test/api/endpoints/tenants/wan/post/pre_deployment/integration/
+          test/lib/python/test_published_designs/pre_deployment/integration/
           --verbose --pythonwarnings=error
   reconciliation:
     if: github.ref == 'refs/heads/main'
@@ -101,6 +107,7 @@ jobs:
           ${{ github.workspace }}/lib/python
           ${{ github.workspace }}/src/api/endpoints/tenants/wan/post/lambdas/synthesizer
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
+          ${{ github.workspace }}/test/lib/python/test_published_designs
       - name: Assert no linter config files
         run: >-
           assert-no-linter-config-files
@@ -112,6 +119,7 @@ jobs:
           assert-one-assert-per-pytest
           --verbose
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
+          ${{ github.workspace }}/test/lib/python/test_published_designs
       # This source lint disables pylint's broad-exception-caught (W0718) check.
       # post/lambdas/synthesizer/handler.py is the synthesizer Lambda that builds a tenant's
       # WAN, and it deliberately wraps the whole build in a catch-all
@@ -160,18 +168,21 @@ jobs:
           PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint --recursive=y
           test/api/endpoints/tenants/wan/post
+          test/lib/python/test_published_designs
           --fail-on=C,R,W --fail-under=10.0
       - name: Run mypy on tests
         run: >-
           MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m mypy --strict --ignore-missing-imports
           --explicit-package-bases test/api/endpoints/tenants/wan/post
+          test/lib/python/test_published_designs
       - name: Detect copy-paste in tests
         run: >-
-          jscpd --pattern "test/api/endpoints/tenants/wan/post/**/*.py"
+          jscpd --pattern "**/*.py"
           --threshold 0 --reporters console
           --ignore "test/**/pre_deployment/unit/test_handler.py"
           test/api/endpoints/tenants/wan/post
+          test/lib/python/test_published_designs
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v2
         with:
@@ -188,14 +199,22 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install tools
         run: pip install boto3 boto3-stubs pytest pytest-cov 'python-hcl2<8' pyyaml
+      # The measuring helpers the delivered-design layer stands on are gated here beside
+      # the synthesizer they measure: the layer's verdicts are only as good as they are,
+      # and a helper that quietly discards what it was given returns the same empty answer
+      # a sound network returns. Naming the module in its own --cov rather than covering
+      # lib/python as a whole means the next module to arrive without tests fails rather
+      # than being carried by this one's numbers.
       - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pytest
           test/api/endpoints/tenants/wan/post/pre_deployment/unit/
+          test/lib/python/test_published_designs/pre_deployment/unit/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
           --cov=src/api/endpoints/tenants/wan/post/lambdas/synthesizer
+          --cov=lib/python/test_published_designs
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
@@ -207,6 +226,9 @@ on:
       - src/api/endpoints/tenants/wan/post/**
       - test/api/endpoints/tenants/wan/conftest.py
       - test/api/endpoints/tenants/wan/post/**
+      # The tests over the measuring helpers the delivered-design layer stands on. They
+      # run in this workflow, so they trigger it as that layer's own tests do.
+      - test/lib/python/test_published_designs/**
       # The shared test support this endpoint's tests are the only importers of; a change
       # to it can break them, so it has to be able to trigger them.
       - test/fixtures.py
