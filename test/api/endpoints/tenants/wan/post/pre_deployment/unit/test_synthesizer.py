@@ -65,9 +65,17 @@ def _stub_pipeline(
     )
     monkeypatch.setattr(module, "synthesize_two_tier_design", lambda *_a: object())
     # The design carries its backbone because the handler measures the coverage it
-    # delivered before publishing; the rest of it is the stubbed payload's business.
+    # delivered before publishing; the rest of it is the stubbed payload's business. The
+    # validation report carries the two diverse-path findings for the same reason: the
+    # handler republishes them in the status without recomputing either.
     design = SimpleNamespace(backbone_ids=("P",))
-    monkeypatch.setattr(module, "finalize", lambda *_a: (graph, {}, design, {}))
+    validation = {
+        "backbone_diverse_paths_ceilings": [
+            {"id": "P", "name": "P", "ceiling": 1, "target": 1}
+        ],
+        "backbone_mesh_independence_deficient": [],
+    }
+    monkeypatch.setattr(module, "finalize", lambda *_a: (graph, {}, design, validation))
     monkeypatch.setattr(module, "design_payload", lambda *_a: payload)
 
 
@@ -162,6 +170,36 @@ def test_the_ready_status_carries_the_stretch_bound_the_build_ran_under(
     objects = _run(synthesizer, monkeypatch)
     status = json.loads(objects["tenants/f-35/wan-status.json"])
     assert status["max_path_stretch"] == 3.0
+
+
+def test_the_ready_status_carries_what_each_site_was_asked_for(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The count that set each site's target is published beside the network it shaped.
+
+    Nothing in the collections says how many independently failing links a site was asked
+    to hold, so a reader outside the build cannot tell a thin site the fiber explains from
+    one the build got wrong (GitHub issue #45).
+    """
+    objects = _run(synthesizer, monkeypatch)
+    status = json.loads(objects["tenants/f-35/wan-status.json"])
+    assert status["diverse_paths"]["ceilings"] == [
+        {"id": "P", "name": "P", "ceiling": 1, "target": 1}
+    ]
+
+
+def test_the_ready_status_carries_the_sites_short_of_their_target(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A shortfall the build found is published rather than left in the Lambda's log.
+
+    This is the half a reader acts on. A site short of its target is either a link somebody
+    can still wire or a target the tool should never have set, and neither question can be
+    asked of a network that never says the site was short.
+    """
+    objects = _run(synthesizer, monkeypatch)
+    status = json.loads(objects["tenants/f-35/wan-status.json"])
+    assert status["diverse_paths"]["short"] == []
 
 
 def test_records_failed_when_no_valid_wan(

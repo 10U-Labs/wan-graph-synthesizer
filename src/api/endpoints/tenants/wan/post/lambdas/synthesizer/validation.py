@@ -35,13 +35,22 @@ def node_mesh_target(node: str, targets: MeshTargets) -> int:
     :mod:`synthesizer.ceiling`). Where the ground is the constraint the target comes down
     on its own, and no exemption list has to name the node.
 
-    Lowering it can only relax. The ceiling is an upper bound on
-    :func:`diverse_path_count` -- a set of links with pairwise disjoint failure cities
-    is a feasible flow in the network the ceiling maximises over -- so ``min`` never raises
-    a target above what was asked before, and no design that passes today is refused
-    because of a number the tool derived. A node with no ceiling recorded owes the full
-    degree, which covers both the caller with no substrate to hand and the node the
-    substrate says nothing about.
+    Lowering it can only relax: ``min`` never raises a target above what was asked, so no
+    design that passes today is refused because of a number the tool derived. A node with
+    no ceiling recorded owes the full degree, which covers both the caller with no substrate
+    to hand and the node the substrate says nothing about.
+
+    Which leaves the opposite risk, a ceiling below what the node could really hold, and
+    with it a target lowered past a shortfall worth reporting. Unbounded, the ceiling could
+    not do this: a set of links with pairwise disjoint failure cities is a feasible flow in
+    the network it maximises over, so the flow can never come out under them. A ceiling
+    measured against the operator's stretch bound is a search among the routes that bound
+    allows rather than a maximum over all of them (see
+    :func:`synthesizer.ceiling.independent_routes`), and no exact search is available at any
+    price, so it can now sit one under. That it happened is not silent: a node the ceiling
+    holds below the configured degree is reported by name in
+    ``backbone_diverse_paths_ceiling_limited`` (see :func:`ceiling_limited_nodes`), which is
+    where an operator sees a target the tool lowered rather than one they set.
     """
     ceilings = targets.ceilings
     if ceilings is None or node not in ceilings:
@@ -274,6 +283,35 @@ def _ceilings_where(
     ]
 
 
+def diverse_path_ceilings_reported(
+    backbone_ids: tuple[str, ...],
+    vertices_by_id: dict[str, Vertex],
+    targets: MeshTargets,
+) -> list[dict[str, object]]:
+    """Every backbone node's computed ceiling beside the target it was held to.
+
+    :func:`ceiling_limited_nodes` reports only the nodes the ceiling lowered, which is what
+    an operator needs to see and not enough for a reader outside the build to check the
+    lowering. The two numbers together are what say a node short of its target was short of
+    a link its fiber could have carried, rather than of one the stretch bound forbids -- and
+    the second of those is not a defect anybody can close.
+
+    A node the substrate said nothing about has no ceiling and so never appears here either;
+    it owes the full configured degree and the tool decided nothing about it to report.
+    """
+    return [
+        {
+            "id": node,
+            "name": vertices_by_id[node].name,
+            "ceiling": ceiling,
+            "target": node_mesh_target(node, targets),
+        }
+        for node, ceiling in _ceilings_where(
+            backbone_ids, targets.ceilings, lambda _ceiling: True
+        )
+    ]
+
+
 def ceiling_limited_nodes(
     backbone_ids: tuple[str, ...],
     vertices_by_id: dict[str, Vertex],
@@ -453,6 +491,9 @@ def validate_design(
             {"id": backbone_id, "name": vertices_by_id[backbone_id].name}
             for backbone_id in sorted(set(design.backbone_ids) & targets.degree_exempt)
         ],
+        "backbone_diverse_paths_ceilings": diverse_path_ceilings_reported(
+            design.backbone_ids, vertices_by_id, targets
+        ),
         "backbone_diverse_paths_ceiling_limited": ceiling_limited_nodes(
             design.backbone_ids, vertices_by_id, targets
         ),

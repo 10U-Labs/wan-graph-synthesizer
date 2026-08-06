@@ -36,6 +36,7 @@ from synthesizer.model import (
     DesignArtifacts,
     DesignParams,
     SourceFiles,
+    ValidationReport,
     is_carrier_pop,
 )
 from synthesizer.synthesize import synthesize_two_tier_design
@@ -91,7 +92,11 @@ def _write_json(client: Any, key: str, body: Any) -> None:
 
 
 def _delivered(
-    graph: list[Vertex], design: Design, params: DesignParams, tenant: str
+    graph: list[Vertex],
+    design: Design,
+    validation: ValidationReport,
+    params: DesignParams,
+    tenant: str,
 ) -> dict[str, Any]:
     """Measure -- and log -- what the finished design did about the tenant's requirements.
 
@@ -103,6 +108,14 @@ def _delivered(
     can fall short of by degrees the way a coverage target is. What a reader needs from it
     is which bound the links in front of them were routed under, since the operator can
     move it and a network published before they did is built to the old one.
+
+    How many independently failing links each site was asked for, and which sites did not
+    get that many, travel with it. A count computed too high asks a site for a link the
+    stretch bound will not let the mesh lay, and the design then reports a shortfall no
+    cable an operator buys can close (GitHub issue #45). None of that reaches the published
+    collections -- they carry the links that were drawn, not the links that were asked for
+    -- so a reader outside the build could see the network was thin and never see that the
+    build had already said so.
     """
     coverage: CoverageReport = coverage_report(
         design.backbone_ids,
@@ -111,9 +124,16 @@ def _delivered(
         params.tuning.backbone_coverage_target_miles,
     )
     logger.info("Coverage delivered for %s: %s", tenant, coverage)
+    short = validation["backbone_mesh_independence_deficient"]
+    logger.info("Sites short of their diverse-path target for %s: %s", tenant, short)
     return {
         "coverage": coverage,
         "max_path_stretch": params.tuning.backbone_max_path_stretch,
+        "diverse_paths": {
+            "number_of_diverse_paths": params.tuning.backbone_number_of_diverse_paths,
+            "ceilings": validation["backbone_diverse_paths_ceilings"],
+            "short": short,
+        },
     }
 
 
@@ -174,7 +194,7 @@ def _build_wan(client: Any, tenant: str) -> tuple[dict[str, Any], dict[str, Any]
         "backbone-links": backbone_links(payload),
         "tenant-nodes": tenant_nodes(payload),
         "provider-nodes": provider_nodes(payload),
-    }, _delivered(graph, design, params, tenant)
+    }, _delivered(graph, design, validation, params, tenant)
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
@@ -194,6 +214,10 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     network is one built to the old one. A reader comparing the network against the config
     git now holds needs to know which of the two it is looking at, and nothing in the
     collections themselves says so.
+
+    It carries what each site was asked for and which sites came up short for a third
+    reason: those are the build's own findings about the network, and they are the only
+    place a shortfall appears at all (see :func:`_delivered`).
     """
     # Surface INFO progress in CloudWatch (the Lambda runtime defaults the root logger
     # to WARNING, which would drop every progress line).

@@ -7,10 +7,10 @@ by reading a number back -- what the worst haul of a published network really is
 whether any published link wanders further from the straight line than its tenant allows.
 
 The reading goes through the API and not through the S3 bucket the synthesizer writes to.
-The bucket holds only what the synthesizer chose to publish, which is two of the eight
+The bucket holds only what the synthesizer chose to publish, which is three of the eight
 settings a tenant's ``backbone`` block declares, so a reader there has to guess whether
 the network in front of it was built to the config git now holds and is wrong about the
-other six. ``GET tenants/{tenant}/wan`` answers that outright: it reports the state of the
+other five. ``GET tenants/{tenant}/wan`` answers that outright: it reports the state of the
 build rather than the requirements the build ran under, and the build is started by the
 seed run that delivered those requirements (GitHub issue #47).
 

@@ -294,6 +294,7 @@ class ValidationReport(TypedDict):
     backbone_meets_independent_mesh_link_target: bool
     backbone_mesh_independence_deficient: list[dict[str, object]]
     backbone_degree_exempt: list[dict[str, str]]
+    backbone_diverse_paths_ceilings: list[dict[str, object]]
     backbone_diverse_paths_ceiling_limited: list[dict[str, object]]
     backbone_diverse_paths_above_target: list[dict[str, object]]
     backbone_mesh_two_edge_connected: bool

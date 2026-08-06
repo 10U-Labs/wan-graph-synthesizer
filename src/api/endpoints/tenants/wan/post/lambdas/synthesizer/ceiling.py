@@ -12,14 +12,21 @@ short; the routes say what it is short of, and can be wired. So the flow is read
 paths (:func:`independent_routes`) and the ceiling is their number, rather than the paths
 being thrown away once they have been counted.
 
-The ceiling is the exact point where the thing path diversity buys runs out. Below it a
-node is leaving built fiber unused; above it every further link must, by the max-flow
-min-cut theorem, re-cross a city the node already depends on -- a real cable with real
-capacity, but not another independent link, because there is nowhere else for it to go.
-That is why it needs no operator input to be the right place to stop, and why it bounds
-:func:`synthesizer.validation.diverse_path_count` from above: a set of the node's
-links whose failure cities are pairwise disjoint *is* a feasible integral flow here, so
-no way of choosing peers can beat the cut.
+The ceiling is the point where the thing path diversity buys runs out. Below it a node is
+leaving built fiber unused; above it every further link must, by the max-flow min-cut
+theorem, re-cross a city the node already depends on -- a real cable with real capacity,
+but not another independent link, because there is nowhere else for it to go. That is why
+it needs no operator input to be the right place to stop, and why it bounds
+:func:`synthesizer.validation.diverse_path_count` from above: a set of the node's links
+whose failure cities are pairwise disjoint *is* a feasible integral flow here, so no way of
+choosing peers can beat the cut.
+
+Under the operator's stretch bound that argument holds one step less far. Only the routes
+the bound allows may be counted, and the largest set of disjoint routes that each respect a
+length bound is NP-hard to find, so the number is the best such set this module's search
+came across rather than the most there are (see :func:`independent_routes`). It is a close
+answer and not a proved one, and where it errs low the node is named in the design's report
+rather than quietly held to less.
 
 Two details the count turns on. A route is charged for the peer it ends at as well as the
 cities it crosses, since a peer is a city too -- so two disjoint routes to one peer count
@@ -83,18 +90,19 @@ def _admissible_adjacency(
     either survives for both of its endpoints or for neither and the substrate the flow
     sees stays undirected.
 
-    This bounds the fiber and not the finished route, which is a relaxation rather than an
-    exact filter: a route assembled entirely from surviving spans can still overrun its
-    budget. It is the right trade rather than a corner cut. Asking for the largest set of
-    disjoint routes that each respect a length bound is NP-hard, so an exact answer is not
-    available at any price, while pruning first leaves the flow a maximum flow over the
-    fiber this tenant may use -- which is what makes the count it returns a true ceiling
+    This bounds the fiber and not the finished route, and one peer is enough to keep a
+    span: nothing here ties the span it keeps to the peer whose budget kept it, so the flow
+    may spend a span admitted on a distant peer's account reaching a near one whose budget
+    never covered it. That is why the routes are measured after the flow as well
+    (:func:`independent_routes`), and why this stays a first pass rather than the whole
+    test. Pruning first is still worth doing: it leaves the flow a maximum flow over the
+    fiber this tenant may use, which is what keeps the count a ceiling
     (see :func:`independent_route_ceiling`) rather than the size of some set.
 
-    Erring towards keeping a span is deliberate for the same reason. A ceiling that is too
-    low lowers the target a site is held to and silences the check on it, which is the
-    quiet pass :func:`diverse_path_ceilings` refuses to take elsewhere; a ceiling that is
-    slightly too high leaves a shortfall for validation to report out loud.
+    Erring towards keeping a span is deliberate. A ceiling that is too low lowers the target
+    a site is held to and silences the check on it, which is the quiet pass
+    :func:`diverse_path_ceilings` refuses to take elsewhere; a ceiling that is slightly too
+    high leaves a shortfall for validation to report out loud.
 
     A limit carrying no distances from ``node`` is refused rather than worked around. Every
     budget would be unmeasurable, every span would fail the test, and the site would score
@@ -240,6 +248,132 @@ def _routes_through(spent: dict[_Node, list[_Node]], source: _Node) -> list[tupl
     return routes
 
 
+def _span_miles(
+    adjacency: dict[str, list[tuple[str, float]]], left: str, right: str
+) -> float:
+    """The length of the span joining two cities, or infinity if the fiber has none."""
+    return next(
+        (weight for neighbor, weight in adjacency.get(left, []) if neighbor == right),
+        math.inf,
+    )
+
+
+def _route_miles(
+    route: tuple[str, ...], adjacency: dict[str, list[tuple[str, float]]]
+) -> float:
+    """How much cable a finished route runs on, span by span."""
+    return sum(
+        _span_miles(adjacency, left, right) for left, right in zip(route, route[1:])
+    )
+
+
+def _budget(node: str, peer: str, limit: StretchLimit) -> float:
+    """How far a route from ``node`` may run to reach ``peer``."""
+    return limit.stretch * limit.distances[node].get(peer, math.inf)
+
+
+def _withdrawable_span(
+    node: str,
+    route: tuple[str, ...],
+    adjacency: dict[str, list[tuple[str, float]]],
+    limit: StretchLimit,
+) -> tuple[str, str] | None:
+    """The span on ``route`` sitting furthest outside the budget of the peer it ends at.
+
+    A span from ``u`` to ``v`` can lie on some route from ``node`` to that peer within the
+    budget only if ``d(node,u) + len(u,v) + d(v,peer)`` fits inside it, which is the test
+    :func:`_admissible_adjacency` applies across every peer at once. Here the peer is
+    known, so the same arithmetic answers a sharper question, and the span that fails it by
+    the most is the one withdrawn.
+
+    Ties are broken towards the peer end of the route, and the fixtures where they arise
+    say why. A route that doubles back on itself is symmetrical about its middle, so the
+    span leaving ``node`` and the span arriving at the peer are equally far outside; the
+    one arriving is the more specific to this peer, while the one leaving is the site's
+    whole second way out and may be the only fiber reaching somewhere else entirely.
+
+    ``None`` when no single span can be shown impossible. A route can overrun while every
+    span on it looks usable, since each span is measured against the shortest way to and
+    from its own two ends rather than the way this route actually took, so there is nothing
+    to withdraw and the caller stops.
+    """
+    peer = route[-1]
+    budget = _budget(node, peer, limit)
+    from_node = limit.distances[node]
+    to_peer = limit.distances.get(peer, {})
+    worst: tuple[str, str] | None = None
+    excess = _TOLERANCE
+    for left, right in zip(route, route[1:]):
+        reach = from_node.get(left, math.inf)
+        onward = to_peer.get(right, math.inf)
+        if not math.isfinite(reach) or not math.isfinite(onward):
+            continue
+        outside = reach + _span_miles(adjacency, left, right) + onward - budget
+        if outside >= excess:
+            worst, excess = (left, right), outside
+    return worst
+
+
+def _without_span(
+    adjacency: dict[str, list[tuple[str, float]]], left: str, right: str
+) -> dict[str, list[tuple[str, float]]]:
+    """``adjacency`` with one span withdrawn, in both of its orientations.
+
+    A city left with no fiber at all is dropped rather than kept with an empty list, which
+    is the shape :func:`_admissible_adjacency` returns and what the flow expects.
+    """
+    withdrawn = {(left, right), (right, left)}
+    remaining = {
+        city: [
+            (neighbor, weight)
+            for neighbor, weight in neighbors
+            if (city, neighbor) not in withdrawn
+        ]
+        for city, neighbors in adjacency.items()
+    }
+    return {city: neighbors for city, neighbors in remaining.items() if neighbors}
+
+
+def _first_withdrawable(
+    node: str,
+    routes: list[tuple[str, ...]],
+    within: list[tuple[str, ...]],
+    adjacency: dict[str, list[tuple[str, float]]],
+    limit: StretchLimit,
+) -> tuple[str, str] | None:
+    """One span to withdraw, taken from the first overrunning route that offers one.
+
+    One span goes per pass rather than one per overrunning route, because the flow is
+    recomputed afterwards and the routes it comes back with may be different ones: a second
+    withdrawal decided against routes that no longer exist would be taking fiber away on the
+    strength of nothing.
+    """
+    for route in routes:
+        if route in within:
+            continue
+        withdrawn = _withdrawable_span(node, route, adjacency, limit)
+        if withdrawn is not None:
+            return withdrawn
+    return None
+
+
+def _proved_routes(
+    node: str,
+    backbone_ids: tuple[str, ...],
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> list[tuple[str, ...]]:
+    """One maximum flow out of ``node``, read back as the routes it spent its arcs on."""
+    residual, arcs = _unit_vertex_network(node, backbone_ids, adjacency)
+    source: _Node = ("out", node)
+    while True:
+        path = _augmenting_path(residual, source)
+        if path is None:
+            return _routes_through(_spent_arcs(residual, arcs), source)
+        for head, tail in zip(path, path[1:]):
+            residual[tail][head] -= 1
+            residual[head][tail] += 1
+
+
 def independent_routes(
     node: str,
     backbone_ids: tuple[str, ...],
@@ -260,25 +394,56 @@ def independent_routes(
     counting them.
 
     ``limit`` bounds how far a route may run against the direct distance to the peer it
-    ends at, and is applied to the fiber before the flow rather than to the routes after it
-    (see :func:`_admissible_adjacency`). Without it the flow reads no distance at all: a
-    span is one unit of a city's capacity whether it is four miles long or four thousand,
-    and the breadth-first augmenting search actively prefers the long one, since it takes
-    the route crossing the fewest cities each round and an ocean crossing is the shortest
-    such route between two coasts there is. Omitting it leaves that behaviour exactly,
-    which is what the graph-shaped callers with no tenant in hand rely on.
+    ends at. Without it the flow reads no distance at all: a span is one unit of a city's
+    capacity whether it is four miles long or four thousand, and the breadth-first
+    augmenting search actively prefers the long one, since it takes the route crossing the
+    fewest cities each round and an ocean crossing is the shortest such route between two
+    coasts there is. Omitting it leaves that behaviour exactly, which is what the
+    graph-shaped callers with no tenant in hand rely on.
+
+    With it, the fiber is pruned first (see :func:`_admissible_adjacency`) and then every
+    route the flow assembles is measured against the budget of the peer it actually reached.
+    The prune alone is not enough, because it keeps a span that fits any one peer's budget
+    and the flow may then spend that span reaching a different peer with a much smaller one.
+    Where a route overruns, the span furthest outside that peer's budget is withdrawn (see
+    :func:`_withdrawable_span`) and the flow is run again over what is left -- the withdrawn
+    span may still serve another peer on a later pass, so this narrows the search rather
+    than the fiber. It repeats until every route comes back inside its budget or no span can
+    be shown impossible, and what it returns is the largest set of within-budget routes any
+    pass produced.
+
+    Keeping the largest rather than the last is what stops the repair costing more than the
+    defect. A withdrawn span can be the only fiber reaching a genuinely distant peer as well
+    as the shortcut a near one was routed through, so a pass can come back with fewer honest
+    routes than the pass before it. A count slightly too high leaves a shortfall for
+    validation to report out loud; a count too low lowers the target and silences the check
+    on it, which is the worse of the two by a distance.
+
+    It is still not exact, and cannot be. Asking for the largest set of vertex-disjoint
+    routes that each respect a length bound is NP-hard, so no exact answer is available at
+    any price; this bounds the routes as well as the fiber, and still bounds them from
+    above.
     """
-    if limit is not None:
-        adjacency = _admissible_adjacency(node, backbone_ids, adjacency, limit)
-    residual, arcs = _unit_vertex_network(node, backbone_ids, adjacency)
-    source: _Node = ("out", node)
+    if limit is None:
+        return _proved_routes(node, backbone_ids, adjacency)
+    admissible = _admissible_adjacency(node, backbone_ids, adjacency, limit)
+    best: list[tuple[str, ...]] = []
     while True:
-        path = _augmenting_path(residual, source)
-        if path is None:
-            return _routes_through(_spent_arcs(residual, arcs), source)
-        for head, tail in zip(path, path[1:]):
-            residual[tail][head] -= 1
-            residual[head][tail] += 1
+        routes = _proved_routes(node, backbone_ids, admissible)
+        within = [
+            route
+            for route in routes
+            if _route_miles(route, admissible)
+            <= _budget(node, route[-1], limit) + _TOLERANCE
+        ]
+        if len(within) > len(best):
+            best = within
+        if len(within) == len(routes):
+            return best
+        withdrawn = _first_withdrawable(node, routes, within, admissible, limit)
+        if withdrawn is None:
+            return best
+        admissible = _without_span(admissible, *withdrawn)
 
 
 def independent_route_ceiling(
@@ -289,9 +454,9 @@ def independent_route_ceiling(
 ) -> int:
     """The most links ``node`` could hold that no single city's loss takes two of.
 
-    The number of routes :func:`independent_routes` finds, which is the max flow of the
-    unit-capacity network and so the size of the smallest set of cities whose loss would
-    cut ``node`` off from the rest of the backbone.
+    The number of routes :func:`independent_routes` finds. Unbounded that is the max flow of
+    the unit-capacity network, and so the size of the smallest set of cities whose loss
+    would cut ``node`` off from the rest of the backbone.
 
     A node the substrate does not carry, or one whose peers it cannot reach, scores zero:
     it can hold no independent link, which is the truth about it. The count never exceeds
@@ -299,7 +464,9 @@ def independent_route_ceiling(
 
     ``limit`` bounds how far the routes counted may run (see :func:`independent_routes`).
     A route the operator's bound refuses is not protection the site can be credited with,
-    so counting it would say a chokepointed site can hold links that it cannot.
+    so counting it would say a chokepointed site can hold links that it cannot. Under a
+    bound the number is the best set that search found rather than a proved maximum, and
+    the cut it corresponds to is over the fiber that search was left with.
     """
     return len(independent_routes(node, backbone_ids, adjacency, limit))
 

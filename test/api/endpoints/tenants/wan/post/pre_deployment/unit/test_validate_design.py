@@ -218,6 +218,31 @@ def test_the_report_lowers_nobody_when_the_fiber_meets_the_degree() -> None:
     assert _mesh_report(*_HEALTHY)["backbone_diverse_paths_ceiling_limited"] == []
 
 
+def test_the_report_gives_every_measured_node_its_count_and_its_target() -> None:
+    """Each node's ceiling is read beside the target it produced, lowered or not.
+
+    The list above names only the nodes the tool held below the configured degree, which is
+    what an operator acts on and not enough to check the number behind it. A reader outside
+    the build needs both to tell a site short of a link somebody can wire from a site short
+    of one the stretch bound refuses (GitHub issue #45).
+    """
+    report = _mesh_report(*_DEFICIENT, ceilings={"C3": 2, "C4": 4})
+    assert report["backbone_diverse_paths_ceilings"] == [
+        {"id": "C3", "name": "C3", "ceiling": 2, "target": 2},
+        {"id": "C4", "name": "C4", "ceiling": 4, "target": 3},
+    ]
+
+
+def test_the_report_measures_no_node_the_substrate_said_nothing_about() -> None:
+    """A node with no ceiling recorded owes the full degree and is not reported as measured.
+
+    Reporting it would have to invent a ceiling to sit beside the target, and no fiber in
+    the inputs is absence of evidence rather than a measurement of zero.
+    """
+    report = _mesh_report(*_DEFICIENT, ceilings={"C3": 2})
+    assert [entry["id"] for entry in report["backbone_diverse_paths_ceilings"]] == ["C3"]
+
+
 # The report of nodes holding more links than were asked for is driven by what put each
 # link there, which a hand-built mesh does not record, so it is exercised over designs that
 # do carry it -- see ``test_above_target_report.py``.

@@ -556,6 +556,48 @@ def crossing_datacenter_cities() -> frozenset[tuple[str, str]]:
     return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in CROSSING_ELIGIBLE)
 
 
+# The crossing graph with one of its peers moved seven thousand miles away, which is what
+# lets a bound applied span by span be met and a bound applied to the finished route be
+# broken (GitHub issue #45). ``sea`` is twenty miles from ``hil`` over ``pdx`` and seven
+# thousand from ``syd``, so syd's allowance is large enough to keep both ``tok`` spans and
+# hil's is nowhere near. Only ``pdx`` reaches ``syd``, so sea's two routes cannot both take
+# it and the second is left the crossing -- landing on ``hil``, at a hundred times what hil
+# allows. ``hil``--``syd`` closes the ring, so no single city's loss splits the fiber and
+# the search will seat all three.
+DISTANT_PEER_EDGES = physical_edges_from({
+    ("sea", "pdx"): 10.0,
+    ("pdx", "hil"): 10.0,
+    ("sea", "tok"): 1000.0,
+    ("tok", "hil"): 1000.0,
+    ("pdx", "syd"): 7000.0,
+    ("hil", "syd"): 7000.0,
+})
+DISTANT_PEER_IDS = ["sea", "hil", "syd", "pdx", "tok"]
+# The three peers are seatable; ``pdx`` and ``tok`` are transit, on the same terms as the
+# crossing graph above.
+DISTANT_PEER_ELIGIBLE = {"sea", "hil", "syd"}
+DISTANT_PEER_COORDS = {
+    "sea": (47.6, -122.3),
+    "pdx": (45.5, -122.7),
+    "hil": (45.5, -123.0),
+    "syd": (-33.9, 151.2),
+    "tok": (35.7, 139.7),
+}
+
+
+def distant_peer_vertices() -> list[Vertex]:
+    """The distant-peer graph's sites, each a carrier PoP at its fixture coordinates."""
+    return [
+        carrier_pop(vertex_id, *DISTANT_PEER_COORDS[vertex_id])
+        for vertex_id in DISTANT_PEER_IDS
+    ]
+
+
+def distant_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
+    """Only the three peers pass the gate, so pdx and tok stay transit."""
+    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in DISTANT_PEER_ELIGIBLE)
+
+
 def funnel_inputs() -> DesignInputs:
     """The disagreement graph as design inputs, for scoring one site at a time."""
     return design_inputs_from_edges(

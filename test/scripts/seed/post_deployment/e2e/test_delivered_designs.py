@@ -17,7 +17,7 @@ assertions, because the build was accepted and the status said ``ready``, which 
 how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
 200-mile target.
 
-The measurement itself is not here. Two of the seven questions below are answered by
+The measurement itself is not here. Two of the eight questions below are answered by
 recomputing a number from the published collections rather than by reading one back, and
 that recomputation lives in lib/python/test_published_designs/, where a unit tier can hold
 it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
@@ -27,7 +27,8 @@ exists to grade (GitHub issue #50). What that module does not do is measure thro
 ``synthesizer.coverage``: the report under test is what that module produced, so
 recomputing with it would only establish that it agrees with itself.
 
-The last test is the one that would have failed on the old DAF build. A design that ends
+``test_no_design_stopped_short_of_its_target_with_a_seat_left_to_spend`` is the one that
+would have failed on the old DAF build. A design that ends
 below its target has either spent every backbone seat its operator allowed or given up
 early, and only the second is a defect. Minuteman was the first kind: it pins six cities
 into a backbone capped at six, so the coverage pass had nothing left to seat and missed a
@@ -166,3 +167,26 @@ def test_no_published_link_is_routed_further_than_its_tenant_allows(
         if overrun_links(design)
     }
     assert overrun == {}
+
+
+def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """No live tenant reports a site holding fewer independent links than it was asked for.
+
+    A site is asked for the smaller of the tenant's own diverse-path number and the count of
+    ways out its fiber proves, and the mesh then lays what it can. A count proved over
+    routes the stretch bound forbids asks for a link the router will not draw, and the site
+    is reported short of it for the rest of the build's life -- a shortfall an operator
+    reads, investigates and cannot close, because the missing link is one the bound itself
+    refuses (GitHub issue #45).
+
+    Read straight out of the status rather than guarded for, because a build that published
+    no such finding is itself the failure this asks about: the shortfall appears nowhere in
+    the collections, so a status that has stopped reporting it has taken the question away
+    rather than answered it.
+    """
+    short = {
+        design["tenant"]: design["status"]["diverse_paths"]["short"]
+        for design in delivered_designs
+    }
+    assert {tenant: sites for tenant, sites in short.items() if sites} == {}

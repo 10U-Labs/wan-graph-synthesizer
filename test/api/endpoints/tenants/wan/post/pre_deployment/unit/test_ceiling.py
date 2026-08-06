@@ -136,6 +136,19 @@ def test_the_unbounded_ceiling_still_counts_the_crossing() -> None:
     ) == 2
 
 
+# The same Pacific fiber with a peer on the far side of the crossing. ``syd`` hangs off
+# ``tok`` and no overland fiber reaches it, so here the crossing is the shortest route to a
+# peer rather than a hundred times the shortest, and it is the fiber a repair must not
+# throw away while it is throwing away the detour above.
+_SOLE_CROSSING_ADJACENCY = build_adjacency(
+    {**_PACIFIC, **physical({("tok", "syd"): 1000.0})}
+)
+_SOLE_CROSSING_BACKBONE = ("eug", "hil", "sea", "syd")
+_SOLE_CROSSING_LIMIT = StretchLimit(
+    3.0, distances_from(_SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_BACKBONE)
+)
+
+
 def test_a_crossing_that_is_the_only_way_to_a_peer_is_kept() -> None:
     """The bound refuses a detour, not an ocean: the sole route to a peer is admissible.
 
@@ -144,19 +157,25 @@ def test_a_crossing_that_is_the_only_way_to_a_peer_is_kept() -> None:
     against the direct distance has nothing to say against it. Compare
     :func:`test_a_route_far_longer_than_the_direct_one_is_not_proved`, which is the same
     fiber with nothing on the far side of the crossing worth reaching.
-
-    That the crossing survives is all this asserts. Which peer the flow then spends it on
-    is not something a max flow promises -- it takes the fewest-city route each round and
-    any peer beyond ``tok`` is the same one city away -- so an assertion naming ``syd``
-    would be pinning an ordering rather than the bound.
     """
-    spans = {**_PACIFIC, **physical({("tok", "syd"): 1000.0})}
-    adjacency = build_adjacency(spans)
-    backbone = ("eug", "hil", "sea", "syd")
     routes = independent_routes(
-        "sea", backbone, adjacency, StretchLimit(3.0, distances_from(adjacency, backbone))
+        "sea", _SOLE_CROSSING_BACKBONE, _SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_LIMIT
     )
     assert [route for route in routes if "tok" in route] != []
+
+
+def test_a_site_whose_second_way_out_is_a_crossing_still_scores_two() -> None:
+    """Measuring the finished routes must not buy its accuracy by discarding them.
+
+    ``sea`` reaches ``syd`` across the ocean and reaches ``hil`` and ``eug`` overland, so
+    both of its ways out are usable and the honest count is two. A repair that answered an
+    overrunning route by withdrawing the crossing itself would score ``sea`` at one, lower
+    its target to match, and silence the check on it -- which is the quiet pass the count
+    exists to avoid, arrived at from the other side.
+    """
+    assert independent_route_ceiling(
+        "sea", _SOLE_CROSSING_BACKBONE, _SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_LIMIT
+    ) == 2
 
 
 def test_a_limit_missing_the_measured_site_is_refused() -> None:
@@ -170,3 +189,65 @@ def test_a_limit_missing_the_measured_site_is_refused() -> None:
     limit = StretchLimit(3.0, distances_from(_PACIFIC_ADJACENCY, ("eug", "hil")))
     with pytest.raises(ValueError, match="sea"):
         independent_routes("sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, limit)
+
+
+# Five spans, and the fewest that can hold the defect GitHub issue #45 reports. ``sea``
+# sits ten miles from ``pdx``, which is ten miles from the peer ``hil`` and seven thousand
+# from the peer ``syd``; ``sea`` also reaches ``tok`` a thousand miles off, and ``tok``
+# reaches ``hil`` a thousand miles beyond that. Both ``tok`` spans lie inside syd's
+# twenty-one-thousand-mile allowance and neither is anywhere near hil's sixty, so a check
+# reading spans keeps them and a check reading routes does not. Only ``pdx`` reaches
+# ``syd``, so one of sea's two routes must spend ``pdx`` and the other is left the
+# crossing -- which lands it on ``hil``, the peer whose allowance never covered it.
+_LEAK_ADJACENCY = build_adjacency(physical({
+    ("sea", "pdx"): 10.0, ("pdx", "hil"): 10.0, ("pdx", "syd"): 7000.0,
+    ("sea", "tok"): 1000.0, ("tok", "hil"): 1000.0,
+}))
+_LEAK_BACKBONE = ("hil", "sea", "syd")
+_LEAK_LIMIT = StretchLimit(3.0, distances_from(_LEAK_ADJACENCY, _LEAK_BACKBONE))
+
+
+def _overrunning(
+    node: str,
+    backbone_ids: tuple[str, ...],
+    adjacency: dict[str, list[tuple[str, float]]],
+    limit: StretchLimit,
+) -> list[tuple[tuple[str, ...], float]]:
+    """Each route proved out of ``node`` that runs past its own peer's allowance.
+
+    Each is paired with the multiple of the shortest route it ran, so a failure names the
+    route and says by how much rather than only that something was too long.
+    """
+    overrunning: list[tuple[tuple[str, ...], float]] = []
+    for route in independent_routes(node, backbone_ids, adjacency, limit):
+        miles = sum(
+            weight
+            for left, right in zip(route, route[1:])
+            for neighbor, weight in adjacency[left]
+            if neighbor == right
+        )
+        shortest = limit.distances[node][route[-1]]
+        if miles > limit.stretch * shortest:
+            overrunning.append((route, miles / shortest))
+    return overrunning
+
+
+def test_no_proved_route_runs_further_than_the_peer_it_ends_at_allows() -> None:
+    """sea's routes are held to the peers they reach, not to the peer that kept their fiber.
+
+    This is the assertion the whole of GitHub issue #45 reduces to. Before it, the route
+    ``sea -> tok -> hil`` came back proved: 2,000 miles of cable to cover the twenty ``sea``
+    is from ``hil`` overland, a hundred times an allowance of sixty, and every span of it
+    admissible because ``syd`` sits far enough away to justify them.
+    """
+    assert _overrunning("sea", _LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT) == []
+
+
+def test_the_site_whose_route_leaked_is_scored_at_the_one_it_can_use() -> None:
+    """sea holds one link, not the two the route through tok credited it with.
+
+    The count is what :func:`synthesizer.stages.finalize` holds a site to, so a repair
+    reaching only the routes would leave the number that sets the target still saying two
+    -- and an operator still reading a shortfall they cannot close.
+    """
+    assert diverse_path_ceilings(_LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT)["sea"] == 1
