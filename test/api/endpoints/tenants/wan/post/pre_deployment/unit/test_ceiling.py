@@ -207,41 +207,42 @@ _LEAK_BACKBONE = ("hil", "sea", "syd")
 _LEAK_LIMIT = StretchLimit(3.0, distances_from(_LEAK_ADJACENCY, _LEAK_BACKBONE))
 
 
-def _overrunning(
+def _stretches(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     limit: StretchLimit,
 ) -> dict[tuple[str, ...], float]:
-    """Each route proved out of ``node`` that runs past its own peer's allowance.
+    """Every route proved out of ``node``, by the multiple of the shortest route it ran.
 
-    Keyed by the route and valued at the multiple of the shortest route it ran, so a
-    failure names the route and says by how much rather than only that something was too
-    long.
+    All of them rather than only the ones that overrun, so the assertion reads as a whole
+    value and names any route that comes back along with how far it went. A route inside
+    its allowance scores at most the stretch the limit carries; the leak scored a hundred.
     """
-    overrunning: dict[tuple[str, ...], float] = {}
-    for route in independent_routes(node, backbone_ids, adjacency, limit):
-        miles = sum(
+    return {
+        route: sum(
             weight
             for left, right in zip(route, route[1:])
             for neighbor, weight in adjacency[left]
             if neighbor == right
-        )
-        shortest = limit.distances[node][route[-1]]
-        if miles > limit.stretch * shortest:
-            overrunning[route] = miles / shortest
-    return overrunning
+        ) / limit.distances[node][route[-1]]
+        for route in independent_routes(node, backbone_ids, adjacency, limit)
+    }
 
 
 def test_no_proved_route_runs_further_than_the_peer_it_ends_at_allows() -> None:
     """sea's routes are held to the peers they reach, not to the peer that kept their fiber.
 
     This is the assertion the whole of GitHub issue #45 reduces to. Before it, the route
-    ``sea -> tok -> hil`` came back proved: 2,000 miles of cable to cover the twenty ``sea``
-    is from ``hil`` overland, a hundred times an allowance of sixty, and every span of it
-    admissible because ``syd`` sits far enough away to justify them.
+    ``sea -> tok -> hil`` came back proved as well: 2,000 miles of cable to cover the twenty
+    ``sea`` is from ``hil`` overland, a hundred times an allowance of sixty, and every span
+    of it admissible because ``syd`` sits far enough away to justify them.
+
+    What comes back is the one route to ``syd``, which runs the shortest way there is.
     """
-    assert _overrunning("sea", _LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT) == {}
+    assert _stretches("sea", _LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT) == {
+        ("sea", "pdx", "syd"): 1.0
+    }
 
 
 def test_the_site_whose_route_leaked_is_scored_at_the_one_it_can_use() -> None:
