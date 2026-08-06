@@ -3,6 +3,137 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-tenants-wan-post-${{ github.ref }}
 jobs:
+  assert-no-inline-directives:
+    name: assert-no-inline-directives
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-inline-directives
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/lib/python
+          ${{ github.workspace }}/src/api/endpoints/tenants/wan/post/lambdas/synthesizer
+          ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
+          ${{ github.workspace }}/test/lib/python/test_published_designs
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_fixtures
+          ${{ github.workspace }}/test/lib/python/test_module_utils
+          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
+          ${{ github.workspace }}/test/lib/python/test_terraform_config
+  assert-no-linter-config-files:
+    name: assert-no-linter-config-files
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-linter-config-files
+      - name: Assert no linter config files
+        run: >-
+          assert-no-linter-config-files
+          --linters pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}
+  assert-one-assert-per-pytest:
+    name: assert-one-assert-per-pytest
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-one-assert-per-pytest
+      - name: Assert one assert per pytest
+        run: >-
+          assert-one-assert-per-pytest
+          --verbose
+          ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
+          ${{ github.workspace }}/test/lib/python/test_published_designs
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_fixtures
+          ${{ github.workspace }}/test/lib/python/test_module_utils
+          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
+          ${{ github.workspace }}/test/lib/python/test_terraform_config
+  copy-paste-source:
+    name: copy-paste-source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: npm install -g jscpd
+      - name: Detect copy-paste in source
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console
+          lib/python/ src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
+  copy-paste-tests:
+    name: copy-paste-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: npm install -g jscpd
+      - name: Detect copy-paste in tests
+        run: >-
+          jscpd --pattern "**/*.py"
+          --threshold 0 --reporters console
+          --ignore "test/**/pre_deployment/unit/test_handler.py"
+          test/api/endpoints/tenants/wan/post
+          test/lib/python/test_published_designs
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
+  lint-yaml:
+    name: lint-yaml
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install yamllint
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/api_endpoint_tenants_wan_post.yml
+  mypy-source:
+    name: mypy-source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install mypy boto3 boto3-stubs pytest pyyaml types-PyYAML
+      - name: Run mypy on source
+        run: >-
+          MYPYPATH=lib/python:src:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m mypy --strict --ignore-missing-imports
+          --explicit-package-bases src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
+  mypy-tests:
+    name: mypy-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install mypy boto3 boto3-stubs pytest pyyaml types-PyYAML
+      - name: Run mypy on tests
+        run: >-
+          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m mypy --strict --ignore-missing-imports
+          --explicit-package-bases test/api/endpoints/tenants/wan/post
+          test/lib/python/test_published_designs
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
   post-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
     name: post-deployment-integration-tests
@@ -38,9 +169,7 @@ jobs:
           --verbose
   pre-deployment-integration-tests:
     name: pre-deployment-integration-tests
-    needs:
-      - test-repo-libraries
-      - unit-tests
+    needs: test-repo-libraries
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -52,86 +181,13 @@ jobs:
           python3 -m pytest
           test/api/endpoints/tenants/wan/post/pre_deployment/integration/
           --verbose --pythonwarnings=error
-  reconciliation:
-    if: github.ref == 'refs/heads/main'
-    name: reconciliation
-    needs: pre-deployment-integration-tests
-    permissions:
-      contents: read
-      id-token: write
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          aws-region: us-east-2
-          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      - name: Set up OpenTofu
-        uses: opentofu/setup-opentofu@v2
-        with:
-          tofu_wrapper: false
-      - name: Reconcile the synthesizer stack to its declared state
-        run: |
-          tofu -chdir=src/api/endpoints/tenants/wan/post init -input=false
-          tofu -chdir=src/api/endpoints/tenants/wan/post apply -auto-approve -input=false
-  static-analysis:
-    name: static-analysis
+  pylint-source:
+    name: pylint-source
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: |
-          pip install \
-            assert-no-inline-directives \
-            assert-no-linter-config-files \
-            assert-one-assert-per-pytest \
-            boto3 boto3-stubs mypy pylint pytest pytest-cov pyyaml \
-            types-PyYAML yamllint
-          npm install -g jscpd
-      - name: Lint YAML
-        run: |
-          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
-          KEY='key-ordering: enable'
-          LL='line-length: disable'
-          NL='new-line-at-end-of-file: enable'
-          TR='truthy: {allowed-values: ["true", "false", "on"]}'
-          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
-          yamllint --strict \
-            --config-data \
-            "{extends: default, rules: {$RULES}}" \
-            .github/workflows/api_endpoint_tenants_wan_post.yml
-      - name: Assert no inline directives
-        run: >-
-          assert-no-inline-directives
-          --tools pylint,mypy,yamllint
-          --verbose
-          ${{ github.workspace }}/lib/python
-          ${{ github.workspace }}/src/api/endpoints/tenants/wan/post/lambdas/synthesizer
-          ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
-          ${{ github.workspace }}/test/lib/python/test_published_designs
-          ${{ github.workspace }}/test/lib/python/repo_utils
-          ${{ github.workspace }}/test/lib/python/test_fixtures
-          ${{ github.workspace }}/test/lib/python/test_module_utils
-          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
-          ${{ github.workspace }}/test/lib/python/test_terraform_config
-      - name: Assert no linter config files
-        run: >-
-          assert-no-linter-config-files
-          --linters pylint,mypy,yamllint
-          --verbose
-          ${{ github.workspace }}
-      - name: Assert one assert per pytest
-        run: >-
-          assert-one-assert-per-pytest
-          --verbose
-          ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
-          ${{ github.workspace }}/test/lib/python/test_published_designs
-          ${{ github.workspace }}/test/lib/python/repo_utils
-          ${{ github.workspace }}/test/lib/python/test_fixtures
-          ${{ github.workspace }}/test/lib/python/test_module_utils
-          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
-          ${{ github.workspace }}/test/lib/python/test_terraform_config
+        run: pip install pylint boto3 boto3-stubs pytest pyyaml types-PyYAML
       # This source lint disables pylint's broad-exception-caught (W0718) check.
       # post/lambdas/synthesizer/handler.py is the synthesizer Lambda that builds a tenant's
       # WAN, and it deliberately wraps the whole build in a catch-all
@@ -166,15 +222,13 @@ jobs:
           --disable=broad-exception-caught
           --max-attributes=8
           --fail-on=C,R,W --fail-under=10.0
-      - name: Run mypy on source
-        run: >-
-          MYPYPATH=lib/python:src:src/api/endpoints/tenants/wan/post/lambdas
-          python3 -m mypy --strict --ignore-missing-imports
-          --explicit-package-bases src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
-      - name: Detect copy-paste in source
-        run: >-
-          jscpd --pattern "**/*.py" --threshold 0 --reporters console
-          lib/python/ src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
+  pylint-tests:
+    name: pylint-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pylint boto3 boto3-stubs pytest pyyaml types-PyYAML
       - name: Run pylint on tests
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
@@ -187,37 +241,43 @@ jobs:
           test/lib/python/test_s3_store_mock
           test/lib/python/test_terraform_config
           --fail-on=C,R,W --fail-under=10.0
-      - name: Run mypy on tests
-        run: >-
-          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
-          python3 -m mypy --strict --ignore-missing-imports
-          --explicit-package-bases test/api/endpoints/tenants/wan/post
-          test/lib/python/test_published_designs
-          test/lib/python/repo_utils
-          test/lib/python/test_fixtures
-          test/lib/python/test_module_utils
-          test/lib/python/test_s3_store_mock
-          test/lib/python/test_terraform_config
-      - name: Detect copy-paste in tests
-        run: >-
-          jscpd --pattern "**/*.py"
-          --threshold 0 --reporters console
-          --ignore "test/**/pre_deployment/unit/test_handler.py"
-          test/api/endpoints/tenants/wan/post
-          test/lib/python/test_published_designs
-          test/lib/python/repo_utils
-          test/lib/python/test_fixtures
-          test/lib/python/test_module_utils
-          test/lib/python/test_s3_store_mock
-          test/lib/python/test_terraform_config
+  reconciliation:
+    if: github.ref == 'refs/heads/main'
+    name: reconciliation
+    needs:
+      - assert-no-inline-directives
+      - assert-no-linter-config-files
+      - assert-one-assert-per-pytest
+      - copy-paste-source
+      - copy-paste-tests
+      - lint-yaml
+      - mypy-source
+      - mypy-tests
+      - pre-deployment-integration-tests
+      - pylint-source
+      - pylint-tests
+      - test-repo-libraries
+      - unit-tests
+      - validate-stack
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v2
         with:
           tofu_wrapper: false
-      - name: Validate the synthesizer stack
+      - name: Reconcile the synthesizer stack to its declared state
         run: |
-          tofu -chdir=src/api/endpoints/tenants/wan/post init -backend=false -input=false
-          tofu -chdir=src/api/endpoints/tenants/wan/post validate
+          tofu -chdir=src/api/endpoints/tenants/wan/post init -input=false
+          tofu -chdir=src/api/endpoints/tenants/wan/post apply -auto-approve -input=false
   # The nine modules under lib/python/ are the fixtures, doubles, loaders and readers the
   # rest of the suite is written on top of, and this job is where they are the subject
   # rather than the setup. Without it a defect in one of them reaches the reader as a
@@ -240,15 +300,19 @@ jobs:
   # been checked and nothing would report that it had not. The modules are pure Python
   # exercised against literals, so running all nine costs little.
   #
-  # GitHub issue #56 proposes redrawing the needs: edges below so the jobs run
-  # concurrently. Whichever of the two lands second, these edges are the ones to keep:
-  # a run that carries on past a broken module spends its tofu apply and its
-  # post-deployment tier on results that will be thrown away, and a reader facing eleven
-  # red jobs has to be told which one to read, where one red job and ten skipped ones has
-  # already told them.
+  # GitHub issue #56 redrew the edges around this job. The eleven static-analysis checks
+  # are eleven jobs now and all start when the workflow does, and this job starts with them
+  # rather than behind them: a check costs seconds and produces nothing anyone waits on, so
+  # holding the shared modules behind one bought nothing. The edges out of this job
+  # survived. unit-tests and pre-deployment-integration-tests still wait on it, because a
+  # reader facing eleven red consumers has to be told which shared module broke them, where
+  # one red job and ten skipped ones has already told them. reconciliation waits on it too,
+  # along with every other gate in the workflow, because it runs tofu apply against live
+  # AWS: a tier's result can be disbelieved after the fact, an apply cannot be taken back,
+  # and a run that carries on past a broken module spends that apply and its post-deployment
+  # tier on results that will be thrown away.
   test-repo-libraries:
     name: test-repo-libraries
-    needs: static-analysis
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -323,6 +387,19 @@ jobs:
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
+  validate-stack:
+    name: validate-stack
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_wrapper: false
+      - name: Validate the synthesizer stack
+        run: |
+          tofu -chdir=src/api/endpoints/tenants/wan/post init -backend=false -input=false
+          tofu -chdir=src/api/endpoints/tenants/wan/post validate
 name: api_endpoint_tenants_wan_post
 on:
   push:

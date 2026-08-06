@@ -50,3 +50,4 @@ session tool's local memory only what is true of one machine alone.
 - [only-raw-map-commits-skip-the-tests](only-raw-map-commits-skip-the-tests.md) — a push touching only `data/raw/` skips every test tier; a config-only push no longer does
 - [where-a-test-runs-follows-what-starts-it](where-a-test-runs-follows-what-starts-it.md) — a test runs in the workflow the change it guards arrives on; API shape in the endpoint's workflow, rebuilt WANs in `seed`, and a shared module in every workflow that imports it
 - [shared-modules-are-tested-first](shared-modules-are-tested-first.md) — `test-repo-libraries` runs every module's tests under `test/lib/python/` ahead of every job whose tests import them
+- [every-check-is-its-own-job](every-check-is-its-own-job.md) — the eleven static-analysis checks are eleven jobs that start together, so one push reports every finding it has

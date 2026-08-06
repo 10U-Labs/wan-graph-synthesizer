@@ -3,6 +3,148 @@ concurrency:
   cancel-in-progress: false
   group: api-endpoint-carriers-${{ github.ref }}
 jobs:
+  assert-no-inline-directives:
+    name: assert-no-inline-directives
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-inline-directives
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/lib/python
+          ${{ github.workspace }}/src/api/endpoints/carriers/lambdas
+          ${{ github.workspace }}/test/api/endpoints/carriers
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_fixtures
+          ${{ github.workspace }}/test/lib/python/test_handler_contracts
+          ${{ github.workspace }}/test/lib/python/test_module_utils
+          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
+          ${{ github.workspace }}/test/lib/python/test_terraform_config
+          ${{ github.workspace }}/test/lib/python/test_terraform_drift
+  assert-no-linter-config-files:
+    name: assert-no-linter-config-files
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-linter-config-files
+      - name: Assert no linter config files
+        run: >-
+          assert-no-linter-config-files
+          --linters pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}
+  assert-one-assert-per-pytest:
+    name: assert-one-assert-per-pytest
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-one-assert-per-pytest
+      - name: Assert one assert per pytest
+        run: >-
+          assert-one-assert-per-pytest
+          --verbose
+          ${{ github.workspace }}/test/api/endpoints/carriers/conftest.py
+          ${{ github.workspace }}/test/api/endpoints/carriers/pre_deployment
+          ${{ github.workspace }}/test/api/endpoints/carriers/post_deployment
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_fixtures
+          ${{ github.workspace }}/test/lib/python/test_handler_contracts
+          ${{ github.workspace }}/test/lib/python/test_module_utils
+          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
+          ${{ github.workspace }}/test/lib/python/test_terraform_config
+          ${{ github.workspace }}/test/lib/python/test_terraform_drift
+  copy-paste-source:
+    name: copy-paste-source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: npm install -g jscpd
+      - name: Detect copy-paste in source
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console
+          src/api/endpoints/carriers/lambdas
+          lib/python/
+  copy-paste-tests:
+    name: copy-paste-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: npm install -g jscpd
+      - name: Detect copy-paste in tests
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0
+          --ignore "**/merge/**" --reporters console
+          test/api/endpoints/carriers/
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_handler_contracts
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
+          test/lib/python/test_terraform_drift
+  lint-yaml:
+    name: lint-yaml
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install yamllint
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/api_endpoint_carriers.yml
+  mypy-source:
+    name: mypy-source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install mypy boto3 boto3-stubs botocore-stubs pytest 'python-hcl2<8' pyyaml types-PyYAML
+      - name: Run mypy on source
+        run: >-
+          MYPYPATH=lib/python:src/api/endpoints/carriers/lambdas
+          python3 -m mypy --strict --explicit-package-bases
+          --ignore-missing-imports
+          src/api/endpoints/carriers/lambdas/handler.py
+          lib/python/
+  mypy-tests:
+    name: mypy-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install mypy boto3 boto3-stubs botocore-stubs pytest 'python-hcl2<8' pyyaml types-PyYAML
+      - name: Run mypy on tests
+        run: >-
+          MYPYPATH=lib/python:src/api/endpoints/carriers/lambdas
+          python3 -m mypy --strict --explicit-package-bases
+          --ignore-missing-imports
+          test/api/endpoints/carriers/conftest.py
+          test/api/endpoints/carriers/pre_deployment
+          test/api/endpoints/carriers/post_deployment
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_handler_contracts
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
+          test/lib/python/test_terraform_drift
   post-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
     name: post-deployment-integration-tests
@@ -32,9 +174,7 @@ jobs:
   pre-deployment-integration-tests:
     if: github.ref == 'refs/heads/main'
     name: pre-deployment-integration-tests
-    needs:
-      - test-repo-libraries
-      - unit-tests
+    needs: test-repo-libraries
     permissions:
       contents: read
       id-token: write
@@ -61,10 +201,64 @@ jobs:
           test/api/endpoints/carriers/pre_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose
+  pylint-source:
+    name: pylint-source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pylint boto3 boto3-stubs botocore-stubs pytest 'python-hcl2<8' pyyaml types-PyYAML
+      # lib/python/test_published_designs reads a published WAN from the API and measures
+      # it with the synthesizer's own distance helper, so scripts/ and the synthesizer are
+      # both on the path here: pylint reads every import it is asked to lint, and that
+      # module imports the API base and the sender from scripts/seed.py.
+      - name: Run pylint on source
+        run: >-
+          PYTHONPATH=lib/python:scripts:src/api/endpoints/carriers/lambdas:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pylint
+          src/api/endpoints/carriers/lambdas/handler.py
+          lib/python/
+          --fail-on=C,R,W --fail-under=10.0
+  pylint-tests:
+    name: pylint-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pylint boto3 boto3-stubs botocore-stubs pytest 'python-hcl2<8' pyyaml types-PyYAML
+      - name: Run pylint on tests
+        run: >-
+          PYTHONPATH=.:lib/python:src/api/endpoints/carriers/lambdas
+          python3 -m pylint --recursive=y
+          test/api/endpoints/carriers/conftest.py
+          test/api/endpoints/carriers/pre_deployment
+          test/api/endpoints/carriers/post_deployment
+          test/lib/python/repo_utils
+          test/lib/python/test_fixtures
+          test/lib/python/test_handler_contracts
+          test/lib/python/test_module_utils
+          test/lib/python/test_s3_store_mock
+          test/lib/python/test_terraform_config
+          test/lib/python/test_terraform_drift
+          --fail-on=C,R,W --fail-under=10.0
   reconciliation:
     if: github.ref == 'refs/heads/main'
     name: reconciliation
-    needs: pre-deployment-integration-tests
+    needs:
+      - assert-no-inline-directives
+      - assert-no-linter-config-files
+      - assert-one-assert-per-pytest
+      - copy-paste-source
+      - copy-paste-tests
+      - lint-yaml
+      - mypy-source
+      - mypy-tests
+      - pre-deployment-integration-tests
+      - pylint-source
+      - pylint-tests
+      - test-repo-libraries
+      - unit-tests
+      - validate-stack
     permissions:
       contents: read
       id-token: write
@@ -84,140 +278,6 @@ jobs:
         run: |
           tofu -chdir=src/api/endpoints/carriers init -input=false
           tofu -chdir=src/api/endpoints/carriers apply -auto-approve -input=false
-  static-analysis:
-    name: static-analysis
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install tools
-        run: |
-          pip install \
-            assert-no-inline-directives \
-            assert-no-linter-config-files \
-            assert-one-assert-per-pytest \
-            boto3 boto3-stubs botocore-stubs mypy pylint pytest \
-            'python-hcl2<8' pyyaml types-PyYAML yamllint
-          npm install -g jscpd
-      - name: Lint YAML
-        run: |
-          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
-          KEY='key-ordering: enable'
-          LL='line-length: disable'
-          NL='new-line-at-end-of-file: enable'
-          TR='truthy: {allowed-values: ["true", "false", "on"]}'
-          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
-          yamllint --strict \
-            --config-data \
-            "{extends: default, rules: {$RULES}}" \
-            .github/workflows/api_endpoint_carriers.yml
-      - name: Assert no inline directives
-        run: >-
-          assert-no-inline-directives
-          --tools pylint,mypy,yamllint
-          --verbose
-          ${{ github.workspace }}/lib/python
-          ${{ github.workspace }}/src/api/endpoints/carriers/lambdas
-          ${{ github.workspace }}/test/api/endpoints/carriers
-          ${{ github.workspace }}/test/lib/python/repo_utils
-          ${{ github.workspace }}/test/lib/python/test_fixtures
-          ${{ github.workspace }}/test/lib/python/test_handler_contracts
-          ${{ github.workspace }}/test/lib/python/test_module_utils
-          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
-          ${{ github.workspace }}/test/lib/python/test_terraform_config
-          ${{ github.workspace }}/test/lib/python/test_terraform_drift
-      - name: Assert no linter config files
-        run: >-
-          assert-no-linter-config-files
-          --linters pylint,mypy,yamllint
-          --verbose
-          ${{ github.workspace }}
-      - name: Assert one assert per pytest
-        run: >-
-          assert-one-assert-per-pytest
-          --verbose
-          ${{ github.workspace }}/test/api/endpoints/carriers/conftest.py
-          ${{ github.workspace }}/test/api/endpoints/carriers/pre_deployment
-          ${{ github.workspace }}/test/api/endpoints/carriers/post_deployment
-          ${{ github.workspace }}/test/lib/python/repo_utils
-          ${{ github.workspace }}/test/lib/python/test_fixtures
-          ${{ github.workspace }}/test/lib/python/test_handler_contracts
-          ${{ github.workspace }}/test/lib/python/test_module_utils
-          ${{ github.workspace }}/test/lib/python/test_s3_store_mock
-          ${{ github.workspace }}/test/lib/python/test_terraform_config
-          ${{ github.workspace }}/test/lib/python/test_terraform_drift
-      # lib/python/test_published_designs reads a published WAN from the API and measures
-      # it with the synthesizer's own distance helper, so scripts/ and the synthesizer are
-      # both on the path here: pylint reads every import it is asked to lint, and that
-      # module imports the API base and the sender from scripts/seed.py.
-      - name: Run pylint on source
-        run: >-
-          PYTHONPATH=lib/python:scripts:src/api/endpoints/carriers/lambdas:src/api/endpoints/tenants/wan/post/lambdas
-          python3 -m pylint
-          src/api/endpoints/carriers/lambdas/handler.py
-          lib/python/
-          --fail-on=C,R,W --fail-under=10.0
-      - name: Run mypy on source
-        run: >-
-          MYPYPATH=lib/python:src/api/endpoints/carriers/lambdas
-          python3 -m mypy --strict --explicit-package-bases
-          --ignore-missing-imports
-          src/api/endpoints/carriers/lambdas/handler.py
-          lib/python/
-      - name: Detect copy-paste in source
-        run: >-
-          jscpd --pattern "**/*.py" --threshold 0 --reporters console
-          src/api/endpoints/carriers/lambdas
-          lib/python/
-      - name: Run pylint on tests
-        run: >-
-          PYTHONPATH=.:lib/python:src/api/endpoints/carriers/lambdas
-          python3 -m pylint --recursive=y
-          test/api/endpoints/carriers/conftest.py
-          test/api/endpoints/carriers/pre_deployment
-          test/api/endpoints/carriers/post_deployment
-          test/lib/python/repo_utils
-          test/lib/python/test_fixtures
-          test/lib/python/test_handler_contracts
-          test/lib/python/test_module_utils
-          test/lib/python/test_s3_store_mock
-          test/lib/python/test_terraform_config
-          test/lib/python/test_terraform_drift
-          --fail-on=C,R,W --fail-under=10.0
-      - name: Run mypy on tests
-        run: >-
-          MYPYPATH=lib/python:src/api/endpoints/carriers/lambdas
-          python3 -m mypy --strict --explicit-package-bases
-          --ignore-missing-imports
-          test/api/endpoints/carriers/conftest.py
-          test/api/endpoints/carriers/pre_deployment
-          test/api/endpoints/carriers/post_deployment
-          test/lib/python/repo_utils
-          test/lib/python/test_fixtures
-          test/lib/python/test_handler_contracts
-          test/lib/python/test_module_utils
-          test/lib/python/test_s3_store_mock
-          test/lib/python/test_terraform_config
-          test/lib/python/test_terraform_drift
-      - name: Detect copy-paste in tests
-        run: >-
-          jscpd --pattern "**/*.py" --threshold 0
-          --ignore "**/merge/**" --reporters console
-          test/api/endpoints/carriers/
-          test/lib/python/repo_utils
-          test/lib/python/test_fixtures
-          test/lib/python/test_handler_contracts
-          test/lib/python/test_module_utils
-          test/lib/python/test_s3_store_mock
-          test/lib/python/test_terraform_config
-          test/lib/python/test_terraform_drift
-      - name: Set up OpenTofu
-        uses: opentofu/setup-opentofu@v2
-        with:
-          tofu_wrapper: false
-      - name: Validate the stack
-        run: |
-          tofu -chdir=src/api/endpoints/carriers init -backend=false -input=false
-          tofu -chdir=src/api/endpoints/carriers validate
   # The nine modules under lib/python/ are the fixtures, doubles, loaders and readers the
   # rest of the suite is written on top of, and this job is where they are the subject
   # rather than the setup. Without it a defect in one of them reaches the reader as a
@@ -240,15 +300,19 @@ jobs:
   # been checked and nothing would report that it had not. The modules are pure Python
   # exercised against literals, so running all nine costs little.
   #
-  # GitHub issue #56 proposes redrawing the needs: edges below so the jobs run
-  # concurrently. Whichever of the two lands second, these edges are the ones to keep:
-  # a run that carries on past a broken module spends its tofu apply and its
-  # post-deployment tier on results that will be thrown away, and a reader facing eleven
-  # red jobs has to be told which one to read, where one red job and ten skipped ones has
-  # already told them.
+  # GitHub issue #56 redrew the edges around this job. The eleven static-analysis checks
+  # are eleven jobs now and all start when the workflow does, and this job starts with them
+  # rather than behind them: a check costs seconds and produces nothing anyone waits on, so
+  # holding the shared modules behind one bought nothing. The edges out of this job
+  # survived. unit-tests and pre-deployment-integration-tests still wait on it, because a
+  # reader facing eleven red consumers has to be told which shared module broke them, where
+  # one red job and ten skipped ones has already told them. reconciliation waits on it too,
+  # along with every other gate in the workflow, because it runs tofu apply against live
+  # AWS: a tier's result can be disbelieved after the fact, an apply cannot be taken back,
+  # and a run that carries on past a broken module spends that apply and its post-deployment
+  # tier on results that will be thrown away.
   test-repo-libraries:
     name: test-repo-libraries
-    needs: static-analysis
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -323,6 +387,19 @@ jobs:
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
+  validate-stack:
+    name: validate-stack
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_wrapper: false
+      - name: Validate the stack
+        run: |
+          tofu -chdir=src/api/endpoints/carriers init -backend=false -input=false
+          tofu -chdir=src/api/endpoints/carriers validate
 name: api_endpoint_carriers
 on:
   push:

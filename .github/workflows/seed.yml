@@ -3,6 +3,54 @@ concurrency:
   cancel-in-progress: false
   group: seed
 jobs:
+  assert-no-inline-directives:
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
+    name: assert-no-inline-directives
+    needs: concluding-testing-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-inline-directives
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/lib/python ${{ github.workspace }}/scripts ${{ github.workspace }}/test/scripts
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_http_doubles
+  assert-no-linter-config-files:
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
+    name: assert-no-linter-config-files
+    needs: concluding-testing-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-linter-config-files
+      - name: Assert no linter config files
+        run: >-
+          assert-no-linter-config-files
+          --linters pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}
+  assert-one-assert-per-pytest:
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
+    name: assert-one-assert-per-pytest
+    needs: concluding-testing-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-one-assert-per-pytest
+      - name: Assert one assert per pytest
+        run: >-
+          assert-one-assert-per-pytest
+          --verbose
+          ${{ github.workspace }}/test/scripts/seed
+          ${{ github.workspace }}/test/lib/python/repo_utils
+          ${{ github.workspace }}/test/lib/python/test_http_doubles
   concluding-testing-necessary:
     if: ${{ !cancelled() && needs.determining-testing.outputs.testing-necessary == 'true' }}
     name: concluding-testing-necessary
@@ -35,6 +83,34 @@ jobs:
     steps:
       - name: No-op
         run: 'true'
+  copy-paste-source:
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
+    name: copy-paste-source
+    needs: concluding-testing-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: npm install -g jscpd
+      - name: Detect copy-paste in source
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console
+          scripts/seed.py lib/python/
+  copy-paste-tests:
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
+    name: copy-paste-tests
+    needs: concluding-testing-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: npm install -g jscpd
+      - name: Detect copy-paste in tests
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0
+          --reporters console test/scripts/seed/
+          test/lib/python/repo_utils
+          test/lib/python/test_http_doubles
   determining-testing:
     if: ${{ !failure() && !cancelled() }}
     name: determining-testing
@@ -135,11 +211,9 @@ jobs:
           --import-mode=importlib --confcutdir=test
           --verbose
   integration-tests:
-    if: ${{ !cancelled() && needs.unit-tests.result == 'success' }}
+    if: ${{ !cancelled() && needs.test-repo-libraries.result == 'success' }}
     name: integration-tests
-    needs:
-      - test-repo-libraries
-      - unit-tests
+    needs: test-repo-libraries
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -156,35 +230,15 @@ jobs:
           test/scripts/seed/pre_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
-  seeding:
-    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (needs.concluding-testing-unnecessary.result == 'success' || needs.integration-tests.result == 'success') }}
-    name: seeding
-    needs:
-      - concluding-testing-unnecessary
-      - integration-tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install tools
-        run: pip install pyyaml
-      - name: Push the git-authored inputs to the API
-        run: PYTHONPATH=lib/python python3 scripts/seed.py
-  static-analysis:
+  lint-yaml:
     if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
-    name: static-analysis
+    name: lint-yaml
     needs: concluding-testing-necessary
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: |
-          pip install \
-            assert-no-inline-directives \
-            assert-no-linter-config-files \
-            assert-one-assert-per-pytest \
-            boto3 boto3-stubs botocore-stubs mypy pylint pytest pyyaml \
-            'python-hcl2<8' types-PyYAML yamllint
-          npm install -g jscpd
+        run: pip install yamllint
       - name: Lint YAML
         run: |
           EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
@@ -197,27 +251,45 @@ jobs:
             --config-data \
             "{extends: default, rules: {$RULES}}" \
             .github/workflows/seed.yml
-      - name: Assert no inline directives
+  mypy-source:
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
+    name: mypy-source
+    needs: concluding-testing-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install mypy boto3 boto3-stubs botocore-stubs pytest pyyaml 'python-hcl2<8' types-PyYAML
+      - name: Run mypy on source
         run: >-
-          assert-no-inline-directives
-          --tools pylint,mypy,yamllint
-          --verbose
-          ${{ github.workspace }}/lib/python ${{ github.workspace }}/scripts ${{ github.workspace }}/test/scripts
-          ${{ github.workspace }}/test/lib/python/repo_utils
-          ${{ github.workspace }}/test/lib/python/test_http_doubles
-      - name: Assert no linter config files
+          MYPYPATH=lib/python:scripts
+          python3 -m mypy --strict --ignore-missing-imports
+          --explicit-package-bases scripts/seed.py lib/python/
+  mypy-tests:
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
+    name: mypy-tests
+    needs: concluding-testing-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install mypy boto3 boto3-stubs botocore-stubs pytest pyyaml 'python-hcl2<8' types-PyYAML
+      - name: Run mypy on tests
         run: >-
-          assert-no-linter-config-files
-          --linters pylint,mypy,yamllint
-          --verbose
-          ${{ github.workspace }}
-      - name: Assert one assert per pytest
-        run: >-
-          assert-one-assert-per-pytest
-          --verbose
-          ${{ github.workspace }}/test/scripts/seed
-          ${{ github.workspace }}/test/lib/python/repo_utils
-          ${{ github.workspace }}/test/lib/python/test_http_doubles
+          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m mypy --strict
+          --explicit-package-bases test/scripts/seed/
+          test/lib/python/repo_utils
+          test/lib/python/test_http_doubles
+  pylint-source:
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
+    name: pylint-source
+    needs: concluding-testing-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pylint boto3 boto3-stubs botocore-stubs pytest pyyaml 'python-hcl2<8' types-PyYAML
       # lib/python/test_published_designs reads a published WAN from the API and measures
       # it with the synthesizer's own distance helper, so scripts/ and the synthesizer are
       # both on the path here: pylint reads every import it is asked to lint, and that
@@ -228,15 +300,15 @@ jobs:
           python3 -m pylint
           scripts/seed.py lib/python/
           --fail-on=C,R,W --fail-under=10.0
-      - name: Run mypy on source
-        run: >-
-          MYPYPATH=lib/python:scripts
-          python3 -m mypy --strict --ignore-missing-imports
-          --explicit-package-bases scripts/seed.py lib/python/
-      - name: Detect copy-paste in source
-        run: >-
-          jscpd --pattern "**/*.py" --threshold 0 --reporters console
-          scripts/seed.py lib/python/
+  pylint-tests:
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
+    name: pylint-tests
+    needs: concluding-testing-necessary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pylint boto3 boto3-stubs botocore-stubs pytest pyyaml 'python-hcl2<8' types-PyYAML
       - name: Run pylint on tests
         run: >-
           PYTHONPATH=.:lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
@@ -245,19 +317,51 @@ jobs:
           test/lib/python/repo_utils
           test/lib/python/test_http_doubles
           --fail-on=C,R,W --fail-under=10.0
-      - name: Run mypy on tests
-        run: >-
-          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
-          python3 -m mypy --strict
-          --explicit-package-bases test/scripts/seed/
-          test/lib/python/repo_utils
-          test/lib/python/test_http_doubles
-      - name: Detect copy-paste in tests
-        run: >-
-          jscpd --pattern "**/*.py" --threshold 0
-          --reporters console test/scripts/seed/
-          test/lib/python/repo_utils
-          test/lib/python/test_http_doubles
+  seeding:
+    # Every gate in the workflow is named here as well as in needs:, because the ten checks
+    # and the three test jobs are independent of each other now and any one of them can be
+    # the only red job in the run. The other arm is the push that needs no testing at all,
+    # where determining-testing skipped all thirteen and concluding-testing-unnecessary is
+    # the only result there is to read.
+    if: >-
+      ${{ !cancelled() && github.ref == 'refs/heads/main'
+      && (needs.concluding-testing-unnecessary.result == 'success'
+      || (needs.assert-no-inline-directives.result == 'success'
+      && needs.assert-no-linter-config-files.result == 'success'
+      && needs.assert-one-assert-per-pytest.result == 'success'
+      && needs.copy-paste-source.result == 'success'
+      && needs.copy-paste-tests.result == 'success'
+      && needs.lint-yaml.result == 'success'
+      && needs.mypy-source.result == 'success'
+      && needs.mypy-tests.result == 'success'
+      && needs.pylint-source.result == 'success'
+      && needs.pylint-tests.result == 'success'
+      && needs.test-repo-libraries.result == 'success'
+      && needs.unit-tests.result == 'success'
+      && needs.integration-tests.result == 'success')) }}
+    name: seeding
+    needs:
+      - assert-no-inline-directives
+      - assert-no-linter-config-files
+      - assert-one-assert-per-pytest
+      - concluding-testing-unnecessary
+      - copy-paste-source
+      - copy-paste-tests
+      - integration-tests
+      - lint-yaml
+      - mypy-source
+      - mypy-tests
+      - pylint-source
+      - pylint-tests
+      - test-repo-libraries
+      - unit-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pyyaml
+      - name: Push the git-authored inputs to the API
+        run: PYTHONPATH=lib/python python3 scripts/seed.py
   # The nine modules under lib/python/ are the fixtures, doubles, loaders and readers the
   # rest of the suite is written on top of, and this job is where they are the subject
   # rather than the setup. Without it a defect in one of them reaches the reader as a
@@ -280,17 +384,22 @@ jobs:
   # been checked and nothing would report that it had not. The modules are pure Python
   # exercised against literals, so running all nine costs little.
   #
-  # GitHub issue #56 proposes redrawing the needs: edges below so the jobs run
-  # concurrently. Whichever of the two lands second, these edges are the ones to keep: a
-  # run that carries on past a broken module still POSTs the builds in seeding and then
-  # waits up to the 900 seconds of _BUILD_DEADLINE_SECONDS in
-  # test/scripts/seed/post_deployment/e2e/conftest.py for results that will be thrown
-  # away, and a reader facing eleven red jobs has to be told which one to read, where one
-  # red job and ten skipped ones has already told them.
+  # GitHub issue #56 redrew the edges around this job. The ten static-analysis checks are
+  # ten jobs now, each behind concluding-testing-necessary and each carrying a status-check
+  # `if` of its own, and this job sits behind that same gate rather than behind
+  # static-analysis: a check costs seconds and produces nothing anyone waits on, so holding
+  # the shared modules behind one bought nothing. The edges out of this job survived.
+  # unit-tests, integration-tests and e2e-tests still wait on it, because a reader facing
+  # eleven red consumers has to be told which shared module broke them, where one red job
+  # and ten skipped ones has already told them. seeding waits on it too, along with every
+  # other gate in the workflow, because it PUTs the git-authored inputs to the live API: a
+  # run that carries on past a broken module still POSTs the builds and then waits up to
+  # the 900 seconds of _BUILD_DEADLINE_SECONDS in
+  # test/scripts/seed/post_deployment/e2e/conftest.py for results that will be thrown away.
   test-repo-libraries:
-    if: ${{ !cancelled() && needs.static-analysis.result == 'success' }}
+    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: test-repo-libraries
-    needs: static-analysis
+    needs: concluding-testing-necessary
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
