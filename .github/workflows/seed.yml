@@ -4,10 +4,8 @@ concurrency:
   group: seed
 jobs:
   assert-no-inline-directives:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: assert-no-inline-directives
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -21,10 +19,8 @@ jobs:
           ${{ github.workspace }}/test/lib/python/repo_utils
           ${{ github.workspace }}/test/lib/python/test_http_doubles
   assert-no-linter-config-files:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: assert-no-linter-config-files
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -36,10 +32,8 @@ jobs:
           --verbose
           ${{ github.workspace }}
   assert-one-assert-per-pytest:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: assert-one-assert-per-pytest
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -55,7 +49,7 @@ jobs:
     if: ${{ !cancelled() && needs.determining-testing.outputs.testing-necessary == 'true' }}
     name: concluding-testing-necessary
     needs: determining-testing
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: No-op
         run: 'true'
@@ -63,31 +57,13 @@ jobs:
     if: ${{ !cancelled() && needs.determining-testing.outputs.testing-necessary == 'false' }}
     name: concluding-testing-unnecessary
     needs: determining-testing
-    runs-on: ubuntu-24.04
-    steps:
-      - name: No-op
-        run: 'true'
-  concluding-yamllint-necessary:
-    if: ${{ needs.determining-yamllint.outputs.yamllint-necessary == 'true' }}
-    name: concluding-yamllint-necessary
-    needs: determining-yamllint
-    runs-on: ubuntu-24.04
-    steps:
-      - name: No-op
-        run: 'true'
-  concluding-yamllint-unnecessary:
-    if: ${{ needs.determining-yamllint.outputs.yamllint-necessary == 'false' }}
-    name: concluding-yamllint-unnecessary
-    needs: determining-yamllint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: No-op
         run: 'true'
   copy-paste-source:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: copy-paste-source
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -97,10 +73,8 @@ jobs:
           jscpd --pattern "**/*.py" --threshold 0 --reporters console
           scripts/seed.py lib/python/
   copy-paste-tests:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: copy-paste-tests
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -112,14 +86,10 @@ jobs:
           test/lib/python/repo_utils
           test/lib/python/test_http_doubles
   determining-testing:
-    if: ${{ !failure() && !cancelled() }}
     name: determining-testing
-    needs:
-      - concluding-yamllint-unnecessary
-      - yamllint
     outputs:
       testing-necessary: ${{ steps.decide.outputs.testing-necessary }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
@@ -153,33 +123,6 @@ jobs:
             necessary=false
           fi
           echo "testing-necessary=$necessary" | tee -a "$GITHUB_OUTPUT"
-  determining-yamllint:
-    name: determining-yamllint
-    outputs:
-      yamllint-necessary: ${{ steps.decide.outputs.yamllint-necessary }}
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - id: decide
-        # A manual run carries no github.event.before, so it has no previous commit to
-        # diff against and the linting runs. Asking the event directly says so, rather
-        # than leaving it to an empty hash; see the same condition in determining-testing.
-        name: Decide whether YAML linting is necessary
-        run: |
-          base='${{ github.event.before }}'
-          head='${{ github.sha }}'
-          if [ '${{ github.event_name }}' = workflow_dispatch ] \
-              || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
-            necessary=true
-          elif git diff --name-only "$base" "$head" \
-              | grep -qE '^etc/|^\.github/workflows/seed\.yml$'; then
-            necessary=true
-          else
-            necessary=false
-          fi
-          echo "yamllint-necessary=$necessary" >> "$GITHUB_OUTPUT"
   # Whether each tenant's published network is the one its config in etc/ asked for. That
   # question belongs to this workflow and to no other: a push editing etc/ starts this one
   # alone, and seeding is what delivers the edit and rebuilds the WANs, so this is the only
@@ -198,7 +141,7 @@ jobs:
     needs:
       - seeding
       - test-repo-libraries
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -214,7 +157,7 @@ jobs:
     if: ${{ !cancelled() && needs.test-repo-libraries.result == 'success' }}
     name: integration-tests
     needs: test-repo-libraries
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -234,7 +177,7 @@ jobs:
     if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: lint-yaml
     needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -252,10 +195,8 @@ jobs:
             "{extends: default, rules: {$RULES}}" \
             .github/workflows/seed.yml
   mypy-source:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: mypy-source
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -266,10 +207,8 @@ jobs:
           python3 -m mypy --strict --ignore-missing-imports
           --explicit-package-bases scripts/seed.py lib/python/
   mypy-tests:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: mypy-tests
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -282,10 +221,8 @@ jobs:
           test/lib/python/repo_utils
           test/lib/python/test_http_doubles
   pylint-source:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: pylint-source
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -301,10 +238,8 @@ jobs:
           scripts/seed.py lib/python/
           --fail-on=C,R,W --fail-under=10.0
   pylint-tests:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: pylint-tests
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -320,22 +255,26 @@ jobs:
   seeding:
     # Every gate in the workflow is named here as well as in needs:, because the ten checks
     # and the three test jobs are independent of each other now and any one of them can be
-    # the only red job in the run. The other arm is the push that needs no testing at all,
-    # where determining-testing skipped all thirteen and concluding-testing-unnecessary is
-    # the only result there is to read.
+    # the only red job in the run. The nine checks that no longer sit behind
+    # concluding-testing-necessary run on every push, red or green, so they are and-ed in
+    # ahead of the two arms rather than inside one of them. The arms are the two ways a push
+    # can reach this job: determining-testing said testing was necessary and lint-yaml,
+    # test-repo-libraries and the two test jobs all passed, or it said testing was
+    # unnecessary, skipped those four, and concluding-testing-unnecessary is the only result
+    # there is to read.
     if: >-
       ${{ !cancelled() && github.ref == 'refs/heads/main'
-      && (needs.concluding-testing-unnecessary.result == 'success'
-      || (needs.assert-no-inline-directives.result == 'success'
+      && needs.assert-no-inline-directives.result == 'success'
       && needs.assert-no-linter-config-files.result == 'success'
       && needs.assert-one-assert-per-pytest.result == 'success'
       && needs.copy-paste-source.result == 'success'
       && needs.copy-paste-tests.result == 'success'
-      && needs.lint-yaml.result == 'success'
       && needs.mypy-source.result == 'success'
       && needs.mypy-tests.result == 'success'
       && needs.pylint-source.result == 'success'
       && needs.pylint-tests.result == 'success'
+      && (needs.concluding-testing-unnecessary.result == 'success'
+      || (needs.lint-yaml.result == 'success'
       && needs.test-repo-libraries.result == 'success'
       && needs.unit-tests.result == 'success'
       && needs.integration-tests.result == 'success')) }}
@@ -355,7 +294,7 @@ jobs:
       - pylint-tests
       - test-repo-libraries
       - unit-tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -385,10 +324,11 @@ jobs:
   # exercised against literals, so running all nine costs little.
   #
   # GitHub issue #56 redrew the edges around this job. The ten static-analysis checks are
-  # ten jobs now, each behind concluding-testing-necessary and each carrying a status-check
-  # `if` of its own, and this job sits behind that same gate rather than behind
-  # static-analysis: a check costs seconds and produces nothing anyone waits on, so holding
-  # the shared modules behind one bought nothing. The edges out of this job survived.
+  # ten jobs now rather than ten steps of one static-analysis job, and nine of them start
+  # when the workflow does, gated on nothing: a check costs seconds, produces nothing anyone
+  # waits on, and is worth running even on the push that needs no testing. lint-yaml is the
+  # tenth and still sits behind concluding-testing-necessary, as this job does. The edges
+  # out of this job survived.
   # unit-tests, integration-tests and e2e-tests still wait on it, because a reader facing
   # eleven red consumers has to be told which shared module broke them, where one red job
   # and ten skipped ones has already told them. seeding waits on it too, along with every
@@ -400,7 +340,7 @@ jobs:
     if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: test-repo-libraries
     needs: concluding-testing-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -456,7 +396,7 @@ jobs:
     if: ${{ !cancelled() && needs.test-repo-libraries.result == 'success' }}
     name: unit-tests
     needs: test-repo-libraries
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -477,8 +417,7 @@ jobs:
           --cov-fail-under=100
   yamllint:
     name: yamllint
-    needs: concluding-yamllint-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools

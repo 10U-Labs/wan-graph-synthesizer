@@ -5,7 +5,7 @@ concurrency:
 jobs:
   assert-no-inline-directives:
     name: assert-no-inline-directives
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -27,7 +27,7 @@ jobs:
           ${{ github.workspace }}/test/lib/python/test_terraform_drift
   assert-no-linter-config-files:
     name: assert-no-linter-config-files
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -40,7 +40,7 @@ jobs:
           ${{ github.workspace }}
   assert-one-assert-per-pytest:
     name: assert-one-assert-per-pytest
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -61,7 +61,7 @@ jobs:
           ${{ github.workspace }}/test/lib/python/test_terraform_drift
   copy-paste-source:
     name: copy-paste-source
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -73,7 +73,7 @@ jobs:
           lib/python/
   copy-paste-tests:
     name: copy-paste-tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -92,7 +92,7 @@ jobs:
           test/lib/python/test_terraform_drift
   lint-yaml:
     name: lint-yaml
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -111,7 +111,7 @@ jobs:
             .github/workflows/api_endpoint_data_centers.yml
   mypy-source:
     name: mypy-source
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -125,7 +125,7 @@ jobs:
           lib/python/
   mypy-tests:
     name: mypy-tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -154,7 +154,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Configure AWS credentials via OIDC
@@ -178,7 +178,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Configure AWS credentials via OIDC
@@ -203,7 +203,7 @@ jobs:
           --verbose
   pylint-source:
     name: pylint-source
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -221,7 +221,7 @@ jobs:
           --fail-on=C,R,W --fail-under=10.0
   pylint-tests:
     name: pylint-tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -262,7 +262,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Configure AWS credentials via OIDC
@@ -313,7 +313,7 @@ jobs:
   # tier on results that will be thrown away.
   test-repo-libraries:
     name: test-repo-libraries
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -368,7 +368,7 @@ jobs:
   unit-tests:
     name: unit-tests
     needs: test-repo-libraries
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
@@ -389,7 +389,7 @@ jobs:
           --cov-fail-under=100
   validate-stack:
     name: validate-stack
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Set up OpenTofu

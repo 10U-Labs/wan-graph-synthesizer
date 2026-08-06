@@ -12,7 +12,7 @@ jobs:
     # leaves both of them out.
     if: ${{ !cancelled() && needs.determining-markdownlint.outputs.markdownlint-necessary == 'true' }}
     needs: determining-markdownlint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: No-op
         run: 'true'
@@ -21,26 +21,26 @@ jobs:
     # concluding-markdownlint-necessary.
     if: ${{ !cancelled() && needs.determining-markdownlint.outputs.markdownlint-necessary == 'false' }}
     needs: determining-markdownlint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: No-op
         run: 'true'
   concluding-yamllint-necessary:
     if: ${{ needs.determining-yamllint.outputs.yamllint-necessary == 'true' }}
     needs: determining-yamllint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: No-op
         run: 'true'
   concluding-yamllint-unnecessary:
     if: ${{ needs.determining-yamllint.outputs.yamllint-necessary == 'false' }}
     needs: determining-yamllint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: No-op
         run: 'true'
   determining-changes:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
@@ -81,7 +81,7 @@ jobs:
     outputs:
       markdownlint-necessary: >-
         ${{ steps.decide.outputs.markdownlint-necessary }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -100,7 +100,7 @@ jobs:
     needs: determining-changes
     outputs:
       yamllint-necessary: ${{ steps.decide.outputs.yamllint-necessary }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -125,7 +125,7 @@ jobs:
       - concluding-yamllint-unnecessary
       - markdownlint
       - yamllint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: No-op
         run: 'true'
@@ -136,7 +136,7 @@ jobs:
     # when that conclusion succeeded, stay out when it was skipped.
     if: ${{ !cancelled() && needs.concluding-markdownlint-necessary.result == 'success' }}
     needs: concluding-markdownlint-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Restore pip cache
@@ -174,7 +174,7 @@ jobs:
         run: markdownlint '**/*.md' --disable MD013
   yamllint:
     needs: concluding-yamllint-necessary
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Restore pip cache

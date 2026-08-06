@@ -25,17 +25,27 @@ makes the determination visible in the log.
 
 Failure must block where a skip must pass, and the two need different
 guards. `!cancelled()` discards both signals, so a failed upstream still
-runs the job. `determining-testing` uses `if: ${{ !failure() &&
-!cancelled() }}`, which tolerates the skipped sibling but skips on a
-failed need. An upstream failure launders into skips by the time it
-reaches a convergence node, though, so `!failure()` cannot see it there.
-`seeding` therefore uses a positive gate — one arm reading
-`needs.concluding-testing-unnecessary.result == 'success'`, the other
-reading `== 'success'` off every gate in the workflow, `and`-ed together —
-and deploys only when a branch tail actually succeeded. A cascade of skips
-makes both arms false and `seeding` skips. That blocks a yamllint failure
-and a test failure alike, without `seeding` ever needing `yamllint`
-directly. The second arm names all thirteen gates one by one because the
-ten static-analysis checks and the three test jobs are independent of each
-other, so any one of them can be the only red job in the run — see
-[every-check-is-its-own-job](every-check-is-its-own-job.md).
+runs the job, and an upstream failure launders into skips by the time it
+reaches a convergence node, so `!failure()` cannot see it there. `seeding`
+therefore uses a positive gate reading `== 'success'` off every gate in
+the workflow, and deploys only when a branch tail actually succeeded. A
+cascade of skips makes it false and `seeding` skips.
+
+The gate names all thirteen jobs one by one, because the ten
+static-analysis checks and the three test jobs are independent of each
+other and any one of them can be the only red job in the run — see
+[every-check-is-its-own-job](every-check-is-its-own-job.md). Nine of the
+checks are gated on nothing and run on every push, so they are `and`-ed in
+flat. The other four — `lint-yaml`, `test-repo-libraries`, `unit-tests`
+and `integration-tests` — skip on a `data/raw/`-only push, so they sit in
+an arm against `needs.concluding-testing-unnecessary.result == 'success'`,
+which is the only result that push leaves behind.
+
+The `yamllint` job is outside all of this and blocks nothing. It once sat
+behind `concluding-yamllint-necessary`, which `determining-testing` needed
+under `if: ${{ !failure() && !cancelled() }}`, so a yamllint failure
+skipped `determining-testing` and cascaded into a skipped `seeding`. Those
+three jobs are gone and `determining-testing` needs nothing, so `yamllint`
+now runs beside the rest and a red one leaves `seeding` free to deploy.
+The five tenant configs in `etc/` are what only `yamllint` reads, so that
+is what a red one is likely to be about.
