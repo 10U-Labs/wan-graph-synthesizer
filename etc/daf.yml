@@ -8,41 +8,22 @@ backbone:
   forced:
     connections: []
     nodes:
-      - Albuquerque, NM
       - Ashburn, VA
-      - Atlanta, GA
       - Billings, MT
       - Boardman, OR
       - Boston, MA
       - Cheyenne, WY
       - Colorado Springs, CO
-      - Columbus, OH
-      - Dallas, TX
-      - Dayton, OH
-      - Denver, CO
-      - Fort Worth, TX
       - Grand Forks, ND
       - Great Falls, MT
       - Hillsboro, OR
-      - Houston, TX
-      - Jacksonville, FL
-      - Kansas City, MO
-      - Las Vegas, NV
       - Los Angeles, CA
       - McLean, VA
       - Minot, ND
-      - Montgomery, AL
       - New York, NY
-      - Omaha, NE
-      - Orlando, FL
-      - Phoenix, AZ
-      - Reno, NV
       - Salt Lake City, UT
-      - San Antonio, TX
       - San Jose, CA
       - Seattle, WA
-      - Tallahassee, FL
-      - Tulsa, OK
   max_path_stretch: 3
   node_count:
     max: 99
