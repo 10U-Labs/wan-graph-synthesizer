@@ -212,13 +212,14 @@ def _overrunning(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     limit: StretchLimit,
-) -> list[tuple[tuple[str, ...], float]]:
+) -> dict[tuple[str, ...], float]:
     """Each route proved out of ``node`` that runs past its own peer's allowance.
 
-    Each is paired with the multiple of the shortest route it ran, so a failure names the
-    route and says by how much rather than only that something was too long.
+    Keyed by the route and valued at the multiple of the shortest route it ran, so a
+    failure names the route and says by how much rather than only that something was too
+    long.
     """
-    overrunning: list[tuple[tuple[str, ...], float]] = []
+    overrunning: dict[tuple[str, ...], float] = {}
     for route in independent_routes(node, backbone_ids, adjacency, limit):
         miles = sum(
             weight
@@ -228,7 +229,7 @@ def _overrunning(
         )
         shortest = limit.distances[node][route[-1]]
         if miles > limit.stretch * shortest:
-            overrunning.append((route, miles / shortest))
+            overrunning[route] = miles / shortest
     return overrunning
 
 
@@ -240,7 +241,7 @@ def test_no_proved_route_runs_further_than_the_peer_it_ends_at_allows() -> None:
     is from ``hil`` overland, a hundred times an allowance of sixty, and every span of it
     admissible because ``syd`` sits far enough away to justify them.
     """
-    assert _overrunning("sea", _LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT) == []
+    assert _overrunning("sea", _LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT) == {}
 
 
 def test_the_site_whose_route_leaked_is_scored_at_the_one_it_can_use() -> None:
@@ -251,3 +252,38 @@ def test_the_site_whose_route_leaked_is_scored_at_the_one_it_can_use() -> None:
     -- and an operator still reading a shortfall they cannot close.
     """
     assert diverse_path_ceilings(_LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT)["sea"] == 1
+
+
+# A route that overruns while no single span on it can be shown impossible, which is where
+# withdrawing spans runs out. ``sea`` reaches ``hil`` in a hundred miles the long way round,
+# through ``pdx``, ``tac`` and ``eug`` in twenty-five-mile hops, and reaches it in four
+# hundred the short way, over the two-hundred-mile spans through ``tac``. Each of those two
+# spans is measured against the shortest way to and from its own ends -- fifty miles either
+# side, over the small hops -- so each comes to 250 against an allowance of 300 and neither
+# can be refused. The route they make together is 400.
+_UNWITHDRAWABLE_ADJACENCY = build_adjacency(physical({
+    ("sea", "pdx"): 25.0, ("pdx", "tac"): 25.0, ("tac", "eug"): 25.0, ("eug", "hil"): 25.0,
+    ("sea", "tac"): 200.0, ("tac", "hil"): 200.0,
+}))
+_UNWITHDRAWABLE_BACKBONE = ("hil", "sea")
+_UNWITHDRAWABLE_LIMIT = StretchLimit(
+    3.0, distances_from(_UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_BACKBONE)
+)
+
+
+def test_a_route_no_span_of_which_can_be_refused_is_dropped_rather_than_counted() -> None:
+    """An overrunning route nothing can be withdrawn from is not credited to the site.
+
+    The search takes the fewest-city route to each peer, which here is the four-hundred-mile
+    one, and neither of its spans can be shown impossible, so there is nothing to withdraw
+    and no second pass to find the hundred-mile route round the outside. ``sea`` scores zero
+    where the honest answer is one.
+
+    That is the method's limit rather than an oversight, and it is written down as a test
+    because a reader of the number needs to know the number can come out under. The site is
+    named in ``backbone_diverse_paths_ceiling_limited`` when it does, so a target the tool
+    lowered is read rather than inferred.
+    """
+    assert independent_route_ceiling(
+        "sea", _UNWITHDRAWABLE_BACKBONE, _UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_LIMIT
+    ) == 0

@@ -286,16 +286,21 @@ def _withdrawable_span(
     known, so the same arithmetic answers a sharper question, and the span that fails it by
     the most is the one withdrawn.
 
-    Ties are broken towards the peer end of the route, and the fixtures where they arise
-    say why. A route that doubles back on itself is symmetrical about its middle, so the
-    span leaving ``node`` and the span arriving at the peer are equally far outside; the
-    one arriving is the more specific to this peer, while the one leaving is the site's
-    whole second way out and may be the only fiber reaching somewhere else entirely.
+    The route is walked from the peer end back, so a tie is kept by the span nearest the
+    peer, and the fixtures where ties arise say why that is the one to take. A route that
+    doubles back on itself is symmetrical about its middle, so the span leaving ``node`` and
+    the span arriving at the peer sit equally far outside; the one arriving is the more
+    specific to this peer, while the one leaving is the site's whole second way out and may
+    be the only fiber reaching somewhere else entirely.
 
     ``None`` when no single span can be shown impossible. A route can overrun while every
     span on it looks usable, since each span is measured against the shortest way to and
     from its own two ends rather than the way this route actually took, so there is nothing
     to withdraw and the caller stops.
+
+    Every distance read here is finite. A peer the site cannot reach has no budget to
+    overrun, so its routes never arrive; and a city on a route to a peer is one that peer
+    reaches, over the same undirected fiber, so its row carries the city.
     """
     peer = route[-1]
     budget = _budget(node, peer, limit)
@@ -303,13 +308,14 @@ def _withdrawable_span(
     to_peer = limit.distances.get(peer, {})
     worst: tuple[str, str] | None = None
     excess = _TOLERANCE
-    for left, right in zip(route, route[1:]):
-        reach = from_node.get(left, math.inf)
-        onward = to_peer.get(right, math.inf)
-        if not math.isfinite(reach) or not math.isfinite(onward):
-            continue
-        outside = reach + _span_miles(adjacency, left, right) + onward - budget
-        if outside >= excess:
+    for left, right in reversed(list(zip(route, route[1:]))):
+        outside = (
+            from_node.get(left, math.inf)
+            + _span_miles(adjacency, left, right)
+            + to_peer.get(right, math.inf)
+            - budget
+        )
+        if outside > excess:
             worst, excess = (left, right), outside
     return worst
 
