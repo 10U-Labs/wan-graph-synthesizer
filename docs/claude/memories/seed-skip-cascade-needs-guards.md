@@ -31,21 +31,6 @@ therefore uses a positive gate reading `== 'success'` off every gate in
 the workflow, and deploys only when a branch tail actually succeeded. A
 cascade of skips makes it false and `seeding` skips.
 
-The gate names all thirteen jobs one by one, because the ten
-static-analysis checks and the three test jobs are independent of each
-other and any one of them can be the only red job in the run — see
-[every-check-is-its-own-job](every-check-is-its-own-job.md). Nine of the
-checks are gated on nothing and run on every push, so they are `and`-ed in
-flat. The other four — `lint-yaml`, `test-repo-libraries`, `unit-tests`
-and `integration-tests` — skip on a `data/raw/`-only push, so they sit in
-an arm against `needs.concluding-testing-unnecessary.result == 'success'`,
-which is the only result that push leaves behind.
+The gate names all twelve jobs one by one, because the nine static-analysis checks and the three test jobs are independent of each other and any one of them can be the only red job in the run — see [every-check-is-its-own-job](every-check-is-its-own-job.md). The nine checks are gated on nothing and run on every push, so they are `and`-ed in flat. The other three — `test-repo-libraries`, `unit-tests` and `integration-tests` — skip on a `data/raw/`-only push, so they sit in an arm against `needs.concluding-testing-unnecessary.result == 'success'`, which is the only result that push leaves behind.
 
-The `yamllint` job is outside all of this and blocks nothing. It once sat
-behind `concluding-yamllint-necessary`, which `determining-testing` needed
-under `if: ${{ !failure() && !cancelled() }}`, so a yamllint failure
-skipped `determining-testing` and cascaded into a skipped `seeding`. Those
-three jobs are gone and `determining-testing` needs nothing, so `yamllint`
-now runs beside the rest and a red one leaves `seeding` free to deploy.
-The five tenant configs in `etc/` are what only `yamllint` reads, so that
-is what a red one is likely to be about.
+No YAML linting stands between a push and the live API, and both of the ways it used to have gone. The `yamllint` job once sat behind `concluding-yamllint-necessary`, which `determining-testing` needed under `if: ${{ !failure() && !cancelled() }}`, so a yamllint failure skipped `determining-testing` and cascaded into a skipped `seeding`; those three jobs are gone and `determining-testing` needs nothing. `lint-yaml` was named in `seeding`'s `needs:` and `if:` directly, and it has been deleted — it ran `yamllint --strict` over `.github/workflows/seed.yml` with the same `--config-data` string the `yamllint` job uses on that file and the five tenant configs in `etc/`, so it found nothing the other job did not. What remains is one `yamllint` job that nothing waits on. It is the only job that reads `etc/afgsc.yml`, `etc/daf.yml`, `etc/dow.yml`, `etc/f_35.yml` and `etc/minuteman.yml`, which are the inputs `scripts/seed.py` publishes, so a red one is likely to be about a file `seeding` is about to PUT. Adding `- yamllint` to `seeding`'s `needs:` and `&& needs.yamllint.result == 'success'` to its `if` is what would restore the block.

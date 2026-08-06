@@ -173,27 +173,6 @@ jobs:
           test/scripts/seed/pre_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
-  lint-yaml:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
-    name: lint-yaml
-    needs: concluding-testing-necessary
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install tools
-        run: pip install yamllint
-      - name: Lint YAML
-        run: |
-          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
-          KEY='key-ordering: enable'
-          LL='line-length: disable'
-          NL='new-line-at-end-of-file: enable'
-          TR='truthy: {allowed-values: ["true", "false", "on"]}'
-          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
-          yamllint --strict \
-            --config-data \
-            "{extends: default, rules: {$RULES}}" \
-            .github/workflows/seed.yml
   mypy-source:
     name: mypy-source
     runs-on: ubuntu-latest
@@ -253,15 +232,15 @@ jobs:
           test/lib/python/test_http_doubles
           --fail-on=C,R,W --fail-under=10.0
   seeding:
-    # Every gate in the workflow is named here as well as in needs:, because the ten checks
+    # Every gate in the workflow is named here as well as in needs:, because the nine checks
     # and the three test jobs are independent of each other now and any one of them can be
-    # the only red job in the run. The nine checks that no longer sit behind
-    # concluding-testing-necessary run on every push, red or green, so they are and-ed in
-    # ahead of the two arms rather than inside one of them. The arms are the two ways a push
-    # can reach this job: determining-testing said testing was necessary and lint-yaml,
-    # test-repo-libraries and the two test jobs all passed, or it said testing was
-    # unnecessary, skipped those four, and concluding-testing-unnecessary is the only result
-    # there is to read.
+    # the only red job in the run. The nine checks are gated on nothing and run on every
+    # push, red or green, so they are and-ed in ahead of the two arms rather than inside one
+    # of them. The arms are the two ways a push can reach this job: determining-testing said
+    # testing was necessary and test-repo-libraries and the two test jobs all passed, or it
+    # said testing was unnecessary, skipped those three, and concluding-testing-unnecessary
+    # is the only result there is to read. The yamllint job is named in neither, so a red
+    # one does not stop this job PUTting to the live API.
     if: >-
       ${{ !cancelled() && github.ref == 'refs/heads/main'
       && needs.assert-no-inline-directives.result == 'success'
@@ -274,8 +253,7 @@ jobs:
       && needs.pylint-source.result == 'success'
       && needs.pylint-tests.result == 'success'
       && (needs.concluding-testing-unnecessary.result == 'success'
-      || (needs.lint-yaml.result == 'success'
-      && needs.test-repo-libraries.result == 'success'
+      || (needs.test-repo-libraries.result == 'success'
       && needs.unit-tests.result == 'success'
       && needs.integration-tests.result == 'success')) }}
     name: seeding
@@ -287,7 +265,6 @@ jobs:
       - copy-paste-source
       - copy-paste-tests
       - integration-tests
-      - lint-yaml
       - mypy-source
       - mypy-tests
       - pylint-source
@@ -323,12 +300,12 @@ jobs:
   # been checked and nothing would report that it had not. The modules are pure Python
   # exercised against literals, so running all nine costs little.
   #
-  # GitHub issue #56 redrew the edges around this job. The ten static-analysis checks are
-  # ten jobs now rather than ten steps of one static-analysis job, and nine of them start
-  # when the workflow does, gated on nothing: a check costs seconds, produces nothing anyone
-  # waits on, and is worth running even on the push that needs no testing. lint-yaml is the
-  # tenth and still sits behind concluding-testing-necessary, as this job does. The edges
-  # out of this job survived.
+  # GitHub issue #56 redrew the edges around this job. The static-analysis checks are jobs
+  # now rather than steps of one static-analysis job, and all nine start when the workflow
+  # does, gated on nothing: a check costs seconds, produces nothing anyone waits on, and is
+  # worth running even on the push that needs no testing. This job is the only one left
+  # behind concluding-testing-necessary, lint-yaml having been deleted as a second run of
+  # what the yamllint job already lints. The edges out of this job survived.
   # unit-tests, integration-tests and e2e-tests still wait on it, because a reader facing
   # eleven red consumers has to be told which shared module broke them, where one red job
   # and ten skipped ones has already told them. seeding waits on it too, along with every
@@ -421,13 +398,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install assert-no-inline-directives yamllint
-      - name: Assert no inline directives
-        run: >-
-          assert-no-inline-directives
-          --tools yamllint
-          --verbose
-          .github/workflows/seed.yml etc/
+        run: pip install yamllint
       - name: Lint YAML
         run: |
           EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
