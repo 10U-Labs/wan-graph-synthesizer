@@ -200,17 +200,17 @@ def _shortest_fiber_miles(
     pair with no shortest route to compare a link against, and the caller has nothing to
     say about it.
     """
-    settled: set[str] = set()
+    known: set[str] = set()
     queue: list[tuple[float, str]] = [(0.0, source)]
     while queue:
         run, city = heapq.heappop(queue)
         if city == target:
             return run
-        if city in settled:
+        if city in known:
             continue
-        settled.add(city)
+        known.add(city)
         for neighbor, miles in fiber.get(city, {}).items():
-            if neighbor not in settled:
+            if neighbor not in known:
                 heapq.heappush(queue, (run + miles, neighbor))
     return math.inf
 
