@@ -17,7 +17,7 @@ assertions, because the build was accepted and the status said ``ready``, which 
 how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
 200-mile target.
 
-The measurement itself is not here. Two of the eight questions below are answered by
+The measurement itself is not here. Three of the nine questions below are answered by
 recomputing a number from the published collections rather than by reading one back, and
 that recomputation lives in lib/python/test_published_designs/, where a unit tier can hold
 it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
@@ -40,7 +40,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from test_published_designs import overrun_links, worst_haul
+from test_published_designs import detoured_links, overrun_links, worst_haul
 
 
 def _published_cities(design: dict[str, Any]) -> set[str]:
@@ -167,6 +167,33 @@ def test_no_published_link_is_routed_further_than_its_tenant_allows(
         if overrun_links(design)
     }
     assert overrun == {}
+
+
+def test_no_published_link_wanders_past_the_fiber_its_own_network_carries(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """No backbone link runs far past the cheapest way over the fiber the design ordered.
+
+    The assertion above measures each link against the straight line between its two sites,
+    which is why it has to be loosened to six times the tenant's bound: real fiber does not
+    fly. This one measures it against fiber -- the published ``edges`` collection carries
+    every carrier span the design routed over, so the shortest way between the two sites is
+    recomputable from outside the build and the tenant's own ``max_path_stretch`` can be
+    applied to it without slack.
+
+    What it cannot ask is whether the *set* of routes out of a site is the shortest set that
+    holds that many independent links, which is what GitHub issue #57 is about: the proof
+    behind the mesh chose the routes crossing the fewest cities rather than the ones running
+    the least cable, and a set of needlessly long routes can pass here with every link in it
+    inside the bound. The routes proved and never drawn are not published at all. This is
+    the strongest statement available from outside, and it needs nothing added to what the
+    synthesizer publishes.
+    """
+    wandering = {
+        design["tenant"]: detoured_links(design)
+        for design in delivered_designs
+        if detoured_links(design)
+    }
+    assert wandering == {}
 
 
 def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(

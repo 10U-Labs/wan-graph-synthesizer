@@ -17,6 +17,14 @@ question: whether the count and the mesh agree. The count says how many links a 
 hold and the mesh lays them, and a site credited with a route the mesh may not lay is asked
 for a link nobody can wire -- a shortfall reported against the design that no cable closes.
 Neither unit is wrong on its own, so only a tier holding both can see it (GitHub issue #45).
+
+The third is ``fixtures.EXPRESS_EDGES``, and it asks how much cable the finished design
+orders. Every route the proof returns is drawn span for span, so the shortest set of
+independent routes only saves anything if nothing between the proof and the drawn link
+lengthens it again -- peer selection, the clearing heuristic and the resilience detours all
+sit in between, and the proof cannot see any of them. Here both ways of wiring the ring are
+allowed by the bound and hold the same number of independent links, so the mileage is the
+only thing separating them (GitHub issue #57).
 """
 
 from __future__ import annotations
@@ -74,6 +82,12 @@ DISTANT_PEER = _artifacts(
     fixtures.distant_peer_datacenter_cities(),
     3.0,
 )
+EXPRESS = _artifacts(
+    fixtures.express_vertices(),
+    fixtures.EXPRESS_EDGES,
+    fixtures.express_datacenter_cities(),
+    3.0,
+)
 
 
 def _routed_cities(artifacts: DesignArtifacts) -> set[str]:
@@ -84,6 +98,14 @@ def _routed_cities(artifacts: DesignArtifacts) -> set[str]:
         if use.purpose == "backbone_mesh"
         for city in use.path
     }
+
+
+def _mesh_miles(artifacts: DesignArtifacts) -> float:
+    """The cable every backbone-to-backbone link in a design runs on, added up."""
+    return sum(
+        use.distance_miles for use in artifacts.design.path_uses
+        if use.purpose == "backbone_mesh"
+    )
 
 
 def test_the_bounded_design_routes_no_link_through_the_crossing() -> None:
@@ -148,3 +170,24 @@ def test_the_distant_peer_ceiling_is_the_one_its_usable_fiber_carries() -> None:
         for entry in DISTANT_PEER.validation["backbone_diverse_paths_ceiling_limited"]
     }
     assert limited == {"sea": 1}
+
+
+def test_the_finished_design_orders_the_least_cable_its_fiber_can_be_wired_with() -> None:
+    """The ring design's three links run six miles in all, not the fifteen the express spans do.
+
+    The unit tier pins what the proof hands over; this pins that the mesh lays it. Between
+    the two sit the peer picks, the clearing heuristic and the resilience detours, and a
+    design that proved the ring and then drew an express span anyway would cost the operator
+    the whole saving while every other assertion here still passed.
+    """
+    assert _mesh_miles(EXPRESS) == 6.0
+
+
+def test_the_ring_design_holds_every_site_to_the_two_links_its_fiber_carries() -> None:
+    """Nobody comes up short, so the six miles bought the same protection fifteen would.
+
+    Without this the assertion above would pass on a design that saved its cable by wiring
+    fewer links, which is not a saving at all: a link not laid is protection not bought, and
+    the point of choosing the shorter set is that it costs the site none of its routes.
+    """
+    assert EXPRESS.validation["backbone_mesh_independence_deficient"] == []

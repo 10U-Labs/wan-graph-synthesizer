@@ -598,6 +598,48 @@ def distant_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
     return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in DISTANT_PEER_ELIGIBLE)
 
 
+# Three sites on a ring of one-mile spans, each also joined to the other two by an express
+# span of five. Every pair is two miles apart round the ring through one transit city and
+# five miles apart down the express span, so the express spans cross fewer cities and run
+# two and a half times the cable. Both ways of wiring the ring are the same two independent
+# links per site, and both sit inside a stretch bound of three, so nothing but the mileage
+# tells them apart: the ring comes to six miles of mesh and the express spans to fifteen
+# (GitHub issue #57).
+EXPRESS_EDGES = physical_edges_from({
+    ("sea", "pdx"): 1.0,
+    ("pdx", "hil"): 1.0,
+    ("hil", "alb"): 1.0,
+    ("alb", "eug"): 1.0,
+    ("eug", "tac"): 1.0,
+    ("tac", "sea"): 1.0,
+    ("sea", "hil"): 5.0,
+    ("hil", "eug"): 5.0,
+    ("eug", "sea"): 5.0,
+})
+EXPRESS_IDS = ["sea", "hil", "eug", "pdx", "alb", "tac"]
+# The three compared sites are seatable; ``pdx``, ``alb`` and ``tac`` are the transit the
+# ring routes through, never places a backbone node may sit.
+EXPRESS_ELIGIBLE = {"sea", "hil", "eug"}
+EXPRESS_COORDS = {
+    "sea": (47.6, -122.3),
+    "pdx": (45.5, -122.7),
+    "hil": (45.5, -123.0),
+    "alb": (44.6, -123.1),
+    "eug": (44.0, -123.1),
+    "tac": (46.0, -122.9),
+}
+
+
+def express_vertices() -> list[Vertex]:
+    """The ring graph's sites, each a carrier PoP at its fixture coordinates."""
+    return [carrier_pop(vertex_id, *EXPRESS_COORDS[vertex_id]) for vertex_id in EXPRESS_IDS]
+
+
+def express_datacenter_cities() -> frozenset[tuple[str, str]]:
+    """Only the three compared sites pass the gate, so the ring's transit stays transit."""
+    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in EXPRESS_ELIGIBLE)
+
+
 def funnel_inputs() -> DesignInputs:
     """The disagreement graph as design inputs, for scoring one site at a time."""
     return design_inputs_from_edges(

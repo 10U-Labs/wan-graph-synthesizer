@@ -12,6 +12,16 @@ short; the routes say what it is short of, and can be wired. So the flow is read
 paths (:func:`independent_routes`) and the ceiling is their number, rather than the paths
 being thrown away once they have been counted.
 
+Because they are wired, their length is part of the answer. A route this module returns is
+cable the design orders: ``synthesizer.backbone.backbone_mesh_paths`` hands them to
+``synthesizer.backbone.diverse_mesh_routes``, which draws the backbone-to-backbone links
+along them span for span. So the flow is a minimum-cost maximum flow, mileage on each arc:
+it returns the largest set of routes no one city's loss takes two of, and out of every set
+that size it returns the one running the least cable. Callers may rely on both halves.
+Counting cities instead is what put 220 miles of protection between Ashburn and New York
+on a 7,471-mile path through Paris (GitHub issue #44), and left roughly a tenth of the
+fiber the five tenants' proofs reach for reached for on nothing (GitHub issue #57).
+
 The ceiling is the point where the thing path diversity buys runs out. Below it a node is
 leaving built fiber unused; above it every further link must, by the max-flow min-cut
 theorem, re-cross a city the node already depends on -- a real cable with real capacity,
@@ -37,8 +47,8 @@ for the map.
 
 from __future__ import annotations
 
+import heapq
 import math
-from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -46,6 +56,11 @@ from dataclasses import dataclass
 # single unit of capacity, which is what makes a city usable by one route only.
 _Node = tuple[str, str]
 _Residual = dict[_Node, dict[_Node, int]]
+# What each arc of the residual network costs to send a unit down, in miles. A span's arc
+# carries the span's length; the arc splitting a city and the arc into the sink carry
+# nothing, being bookkeeping rather than cable. Every arc's reverse carries the negative,
+# so undoing an earlier choice refunds exactly what it cost.
+_Costs = dict[_Node, dict[_Node, float]]
 _Arc = tuple[_Node, _Node]
 
 _SINK: _Node = ("sink", "")
@@ -146,72 +161,125 @@ def _admissible_adjacency(
     return admissible
 
 
-def _add_capacity(residual: _Residual, tail: _Node, head: _Node, amount: int) -> None:
-    """Add a directed arc, seeding the reverse arc every augmenting search needs."""
-    forward = residual.setdefault(tail, {})
-    forward[head] = forward.get(head, 0) + amount
+def _add_capacity(
+    residual: _Residual, costs: _Costs, tail: _Node, head: _Node, miles: float
+) -> None:
+    """Add a directed arc of one unit, seeding the reverse arc every search needs.
+
+    The reverse arc starts empty and costs the negative of the forward one, so a later
+    round can send a unit back down it and be charged exactly what the earlier round paid.
+    """
+    residual.setdefault(tail, {})[head] = 1
     residual.setdefault(head, {}).setdefault(tail, 0)
+    costs.setdefault(tail, {})[head] = miles
+    costs.setdefault(head, {})[tail] = -miles
 
 
 def _unit_vertex_network(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-) -> tuple[_Residual, list[_Arc]]:
-    """The residual network whose max flow out of ``node`` is that node's ceiling.
+) -> tuple[_Residual, _Costs, list[_Arc]]:
+    """The residual network whose cheapest max flow out of ``node`` is that node's routes.
 
     Every city but ``node`` is split into an in and an out side joined by one unit, so a
     route may use it once; ``node`` itself is left unsplit, since all of its own spans are
-    available to it. Each substrate span becomes an arc in both directions, and every
-    other backbone node's out side feeds the sink -- so a unit of flow is one route from
-    ``node`` to a distinct peer, and units cannot share a city.
+    available to it. Each substrate span becomes an arc in both directions carrying the
+    span's mileage, and every other backbone node's out side feeds the sink -- so a unit of
+    flow is one route from ``node`` to a distinct peer, units cannot share a city, and what
+    a unit costs is the cable its route runs on.
 
     The arcs are returned alongside the network. Every one of them carries a single unit,
     so an arc with none of its capacity left is an arc the flow used, which is what lets
     the finished flow be read back as routes rather than only as a count.
     """
-    arcs: list[_Arc] = [
-        (("in", city), ("out", city)) for city in adjacency if city != node
+    spans: list[tuple[_Node, _Node, float]] = [
+        (("in", city), ("out", city), 0.0) for city in adjacency if city != node
     ]
-    arcs += [
-        (("out", city), ("in", neighbor))
+    spans += [
+        (("out", city), ("in", neighbor), weight)
         for city, neighbors in adjacency.items()
-        for neighbor, _weight in neighbors
+        for neighbor, weight in neighbors
     ]
-    arcs += [
-        (("out", peer), _SINK)
+    spans += [
+        (("out", peer), _SINK, 0.0)
         for peer in backbone_ids
         if peer != node and peer in adjacency
     ]
     residual: _Residual = {}
-    for tail, head in arcs:
-        _add_capacity(residual, tail, head, 1)
-    return residual, arcs
+    costs: _Costs = {}
+    for tail, head, miles in spans:
+        _add_capacity(residual, costs, tail, head, miles)
+    return residual, costs, [(tail, head) for tail, head, _miles in spans]
 
 
-def _augmenting_path(residual: _Residual, source: _Node) -> list[_Node] | None:
-    """One breadth-first path of unused capacity from ``source`` to the sink, or None.
+def _cheapest_runs(
+    residual: _Residual,
+    costs: _Costs,
+    potential: dict[_Node, float],
+    source: _Node,
+) -> tuple[dict[_Node, float], dict[_Node, _Node | None]]:
+    """How far the cheapest route to each node runs from ``source``, and how it got there.
 
-    Breadth-first so the shortest augmenting path is taken each round, which is what keeps
-    the number of rounds bounded by the flow itself (Edmonds--Karp).
+    A Dijkstra, which needs every arc to cost nothing less than zero, and the reverse arcs
+    a flow leaves behind cost less than zero by construction. ``potential`` is what repairs
+    that: each node carries what the cheapest route to it cost in the round before, and an
+    arc is walked at ``cost + potential(tail) - potential(head)``, which is never negative
+    once the potentials are the previous round's distances and is zero along every arc the
+    flow already uses. The distances come back in those repaired terms, and
+    :func:`_augmenting_path` is what folds them into the potentials for the next round.
+
+    Both ends of the walk are reported. A node reached is a node with unused capacity
+    leading to it, so a sink absent from the second map is a flow with nowhere left to go.
     """
+    distance: dict[_Node, float] = {source: 0.0}
     reached: dict[_Node, _Node | None] = {source: None}
-    queue: deque[_Node] = deque([source])
+    settled: set[_Node] = set()
+    queue: list[tuple[float, _Node]] = [(0.0, source)]
     while queue:
-        tail = queue.popleft()
+        spent, tail = heapq.heappop(queue)
+        if tail in settled:
+            continue
+        settled.add(tail)
         for head, capacity in residual.get(tail, {}).items():
-            if capacity <= 0 or head in reached:
+            if capacity <= 0 or head in settled:
                 continue
-            reached[head] = tail
-            if head == _SINK:
-                path = [head]
-                cursor: _Node | None = tail
-                while cursor is not None:
-                    path.append(cursor)
-                    cursor = reached[cursor]
-                return path
-            queue.append(head)
-    return None
+            step = spent + costs[tail][head] + potential[tail] - potential[head]
+            if head not in distance or step < distance[head]:
+                distance[head] = step
+                reached[head] = tail
+                heapq.heappush(queue, (step, head))
+    return distance, reached
+
+
+def _augmenting_path(
+    residual: _Residual,
+    costs: _Costs,
+    potential: dict[_Node, float],
+    source: _Node,
+) -> list[_Node] | None:
+    """The least-mileage path of unused capacity from ``source`` to the sink, or None.
+
+    Cheapest rather than shortest in hops, which is the whole of what makes the finished
+    flow the least cable of its size: sending each successive unit down the cheapest route
+    left to it leaves a flow no rearrangement of the same number of routes can better.
+
+    ``potential`` is brought up to date here, since the next round's Dijkstra cannot run
+    without it (see :func:`_cheapest_runs`). A node the walk did not reach keeps the
+    potential it had, which costs nothing: no arc with capacity left runs from a reached
+    node to an unreached one, or the walk would have reached it.
+    """
+    distance, reached = _cheapest_runs(residual, costs, potential, source)
+    for vertex, run in distance.items():
+        potential[vertex] += run
+    if _SINK not in reached:
+        return None
+    path = [_SINK]
+    cursor = reached[_SINK]
+    while cursor is not None:
+        path.append(cursor)
+        cursor = reached[cursor]
+    return path
 
 
 def _spent_arcs(residual: _Residual, arcs: list[_Arc]) -> dict[_Node, list[_Node]]:
@@ -368,11 +436,25 @@ def _proved_routes(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> list[tuple[str, ...]]:
-    """One maximum flow out of ``node``, read back as the routes it spent its arcs on."""
-    residual, arcs = _unit_vertex_network(node, backbone_ids, adjacency)
+    """The cheapest maximum flow out of ``node``, read back as the routes it spent.
+
+    One unit at a time, each sent down the least-mileage route still open to it, until no
+    unused capacity reaches the sink. The flow is therefore as large as any flow here can
+    be -- the count is unchanged by charging for mileage -- and the least cable of the
+    flows that size.
+
+    The rounds are bounded by the flow itself, which is bounded by the number of peers,
+    since every unit that leaves ``node`` ends at a peer's arc into the sink.
+    """
+    residual, costs, arcs = _unit_vertex_network(node, backbone_ids, adjacency)
     source: _Node = ("out", node)
+    # Every node starts owing nothing, which is a valid set of potentials because no arc
+    # costs less than zero until a round has sent a unit down one. The source is named
+    # alongside the network because a site the substrate carries no fiber for is absent
+    # from it, and the walk out of such a site still has to start somewhere.
+    potential: dict[_Node, float] = {vertex: 0.0 for vertex in (source, *residual)}
     while True:
-        path = _augmenting_path(residual, source)
+        path = _augmenting_path(residual, costs, potential, source)
         if path is None:
             return _routes_through(_spent_arcs(residual, arcs), source)
         for head, tail in zip(path, path[1:]):
@@ -386,7 +468,7 @@ def independent_routes(
     adjacency: dict[str, list[tuple[str, float]]],
     limit: StretchLimit | None = None,
 ) -> list[tuple[str, ...]]:
-    """The most routes from ``node`` that no single city's loss takes two of.
+    """The shortest set of the most routes from ``node`` no one city's loss takes two of.
 
     Each runs from ``node`` to a distinct peer, and no city carries two of them -- a max
     flow with unit vertex capacities (see :func:`_unit_vertex_network`), pushed one route
@@ -394,18 +476,26 @@ def independent_routes(
     spent. Every unit of capacity is one, so each augmenting path carries exactly one
     route.
 
+    Of the many sets that size, the one returned is the one running the least cable. Each
+    round takes the cheapest route left rather than the one crossing the fewest cities (see
+    :func:`_augmenting_path`), which makes the whole thing a minimum-cost maximum flow. How
+    many routes come back is unaffected: the flow is maximised first and priced second, so
+    a crossing that is the only way to one more peer is still taken however long it is.
+
     These are the links the node could hold, not the links it has. Where the mesh has left
     a node short of what its fiber allows, they are what it is short of, and wiring them is
     what closes the gap -- which is the reason this returns the routes rather than only
-    counting them.
+    counting them. It is also why their length is worth minimising: the mesh lays them
+    verbatim, so a route proved here is cable somebody buys.
 
     ``limit`` bounds how far a route may run against the direct distance to the peer it
-    ends at. Without it the flow reads no distance at all: a span is one unit of a city's
-    capacity whether it is four miles long or four thousand, and the breadth-first
-    augmenting search actively prefers the long one, since it takes the route crossing the
-    fewest cities each round and an ocean crossing is the shortest such route between two
-    coasts there is. Omitting it leaves that behaviour exactly, which is what the
-    graph-shaped callers with no tenant in hand rely on.
+    ends at, and is a separate question from which of the cheapest routes are taken. A
+    maximum flow maximises the number of routes before it minimises their mileage, so where
+    an ocean crossing is the only way to one more peer the cheapest set still holds it --
+    over the five tenants' maps the cheapest sets run eight to nine routes per tenant past
+    three times the direct distance, the worst of them Hillsboro to Seattle at 59.83 times.
+    Omitting the bound leaves those counted, which is what the graph-shaped callers with no
+    tenant in hand rely on.
 
     With it, the fiber is pruned first (see :func:`_admissible_adjacency`) and then every
     route the flow assembles is measured against the budget of the peer it actually reached.

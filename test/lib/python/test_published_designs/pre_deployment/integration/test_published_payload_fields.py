@@ -1,8 +1,9 @@
 """Contract: the helpers read a published network by names the synthesizer actually emits.
 
 The measuring helpers reach into a published document by name -- a node's id, name, kind
-and coordinates, a demand site's exemption flag, and a link's two endpoints, routed
-distance and path. Those names are a contract with ``synthesizer.collections``, which
+and coordinates, a demand site's exemption flag, a link's two endpoints, routed distance
+and path, and a span's two ends, length and whether it is carrier fiber or an access
+homing. Those names are a contract with ``synthesizer.collections``, which
 slices the design payload into the collections the store holds, and nothing holds the two
 sides against each other. A field renamed on the producing side surfaces today as a
 ``KeyError`` in the middle of a live post-deployment run, an hour and a deployment after
@@ -44,6 +45,10 @@ _PAYLOAD = design_payload(
 _NODE_FIELDS = ("id", "name", "kind", "coords")
 _SITE_FIELDS = (*_NODE_FIELDS, "exempt_from_distance_constraint")
 _LINK_FIELDS = ("source_id", "target_id", "distance_miles", "path")
+# ``edge_kind`` is what separates a span of carrier fiber from an access homing, and the
+# two are served in one collection. A reader that could not tell them apart would measure
+# a link against a route through a demand site's homing, which is not cable.
+_EDGE_FIELDS = ("source_id", "target_id", "distance_miles", "edge_kind")
 
 
 def _subjects() -> list[tuple[str, list[dict[str, Any]], tuple[str, ...]]]:
@@ -52,11 +57,12 @@ def _subjects() -> list[tuple[str, list[dict[str, Any]], tuple[str, ...]]]:
         ("backbone-nodes", published.backbone_nodes(_PAYLOAD), _NODE_FIELDS),
         ("tenant-nodes", published.tenant_nodes(_PAYLOAD), _SITE_FIELDS),
         ("backbone-links", published.backbone_links(_PAYLOAD), _LINK_FIELDS),
+        ("edges", published.edges(_PAYLOAD), _EDGE_FIELDS),
     ]
 
 
 def test_every_collection_the_helpers_read_has_a_record_in_it() -> None:
-    """The design under test publishes all three collections, so the contract below binds.
+    """The design under test publishes all four collections, so the contract below binds.
 
     Without this the field check passes on a payload carrying no links at all, which is
     the same shape of vacuous pass the helpers themselves can produce.

@@ -2,9 +2,10 @@
 
 The delivered-design layer reads what the deployed synthesizer published and judges it.
 This module is both halves of that job: the reader that asks the service for a tenant's
-network and for the state of its build, and the two measurements that cannot be answered
-by reading a number back -- what the worst haul of a published network really is, and
-whether any published link wanders further from the straight line than its tenant allows.
+network and for the state of its build, and the three measurements that cannot be answered
+by reading a number back -- what the worst haul of a published network really is, whether
+any published link wanders further from the straight line than its tenant allows, and
+whether any of them wanders further than the fiber it was routed over made necessary.
 
 The reading goes through the API and not through the S3 bucket the synthesizer writes to.
 The bucket holds only what the synthesizer chose to publish, which is three of the eight
@@ -28,7 +29,9 @@ cases a healthy network never produces (GitHub issue #50).
 
 from __future__ import annotations
 
+import heapq
 import json
+import math
 from typing import Any
 from urllib.error import HTTPError
 
@@ -40,6 +43,16 @@ from synthesizer.input_graph import Vertex, haversine_miles
 # link measured against the great-circle distance is allowed twice its tenant's bound.
 SINUOSITY = 2.0
 
+# Miles of slack absorbing the rounding in the published numbers. Every distance is served
+# to three decimal places, so a route summed span by span can differ from the one the
+# synthesizer measured by a thousandth of a mile a span; a tenth of a mile covers a route
+# of a hundred spans and is far too little to admit a detour.
+ROUNDING_SLACK = 0.1
+
+# The label the published edges collection gives a span of carrier fiber, as opposed to
+# the access homings served alongside it (see ``synthesizer.output.design_payload``).
+FIBER = "carrier_physical"
+
 # The states the service reports while it is still deciding what a tenant's network is.
 # The POST that starts a build records ``creating`` before it answers, and the synthesizer
 # records ``building`` when it picks the work up, so a tenant in neither state has a
@@ -47,7 +60,7 @@ SINUOSITY = 2.0
 UNFINISHED = frozenset({"creating", "building"})
 
 # The published collections this module reads, under the names the API serves them by.
-COLLECTIONS = ("backbone-nodes", "backbone-links", "tenant-nodes", "provider-nodes")
+COLLECTIONS = ("backbone-nodes", "backbone-links", "tenant-nodes", "provider-nodes", "edges")
 
 
 def request_paths(tenant: str) -> list[str]:
@@ -99,6 +112,7 @@ def published_design(api: str, tenant: str, config: dict[str, Any]) -> dict[str,
         "backbone": published.get("backbone-nodes", []),
         "demand": published.get("tenant-nodes", []) + published.get("provider-nodes", []),
         "links": published.get("backbone-links", []),
+        "edges": published.get("edges", []),
     }
 
 
@@ -158,3 +172,76 @@ def overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
         if direct > 0 and link["distance_miles"] > allowed * direct:
             overrun.append((" -> ".join(link["path"]), link["distance_miles"] / direct))
     return overrun
+
+
+def _published_fiber(design: dict[str, Any]) -> dict[str, dict[str, float]]:
+    """The carrier fiber a published network was routed over, span by span between sites.
+
+    The access homings served in the same collection are left out. A homing joins a demand
+    site to the backbone node it is served from rather than joining fiber to fiber, so a
+    route counted through one would be two hauls read as a span, and it would shorten the
+    way between two backbone nodes by cable no link could be laid along.
+    """
+    fiber: dict[str, dict[str, float]] = {}
+    for edge in design["edges"]:
+        if edge["edge_kind"] != FIBER:
+            continue
+        fiber.setdefault(edge["source_id"], {})[edge["target_id"]] = edge["distance_miles"]
+        fiber.setdefault(edge["target_id"], {})[edge["source_id"]] = edge["distance_miles"]
+    return fiber
+
+
+def _shortest_fiber_miles(
+    fiber: dict[str, dict[str, float]], source: str, target: str
+) -> float:
+    """The least cable joining two sites over ``fiber``, or infinity where none does.
+
+    Infinity rather than an error, because a pair the published fiber does not join is a
+    pair with no shortest route to compare a link against, and the caller has nothing to
+    say about it.
+    """
+    settled: set[str] = set()
+    queue: list[tuple[float, str]] = [(0.0, source)]
+    while queue:
+        run, city = heapq.heappop(queue)
+        if city == target:
+            return run
+        if city in settled:
+            continue
+        settled.add(city)
+        for neighbor, miles in fiber.get(city, {}).items():
+            if neighbor not in settled:
+                heapq.heappush(queue, (run + miles, neighbor))
+    return math.inf
+
+
+def detoured_links(design: dict[str, Any]) -> list[tuple[str, float]]:
+    """Every published backbone link routed further than its own fiber made necessary.
+
+    Each link is measured against the shortest way over the carrier fiber the published
+    network itself carries, which is the strongest statement about a routed link that can
+    be made from outside the build: an operator reading the collections can see the spans
+    the design ordered, so they can see whether a link joining two sites took the cheapest
+    of them or wandered.
+
+    It is a bound on each link on its own, and not the question the proof answers. What the
+    proof chooses is a *set* of routes out of one site that no city's loss takes two of, and
+    the shortest such set can hold a route longer than that pair's own shortest -- the
+    second way out has to avoid the first. So a set of needlessly long routes can pass here
+    while every link in it is inside the bound (GitHub issue #57). The unit and integration
+    tiers are what ask the sharper question; this catches the single link that wanders, and
+    needs nothing added to what is published to do it.
+
+    Sound whichever way the published fiber is short of the carrier's. The denominator is
+    the shortest route over the spans the design ordered, which is never shorter than the
+    shortest route over all the fiber the synthesizer had, so a link the synthesizer's own
+    bound allowed is allowed here too.
+    """
+    fiber = _published_fiber(design)
+    allowed = design["max_path_stretch"]
+    detoured = []
+    for link in design["links"]:
+        shortest = _shortest_fiber_miles(fiber, link["source_id"], link["target_id"])
+        if shortest > 0 and link["distance_miles"] > allowed * shortest + ROUNDING_SLACK:
+            detoured.append((" -> ".join(link["path"]), link["distance_miles"] / shortest))
+    return detoured

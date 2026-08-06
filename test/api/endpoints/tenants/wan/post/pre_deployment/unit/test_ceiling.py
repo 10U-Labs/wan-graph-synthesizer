@@ -21,6 +21,18 @@ from synthesizer.graphs import build_adjacency, distances_from
 physical = fixtures.physical_edges_from
 
 
+def _route_miles(
+    route: tuple[str, ...], adjacency: dict[str, list[tuple[str, float]]]
+) -> float:
+    """How much cable one proved route runs on, span by span."""
+    return sum(
+        weight
+        for left, right in zip(route, route[1:])
+        for neighbor, weight in adjacency[left]
+        if neighbor == right
+    )
+
+
 # Boston in miniature: three fiber spans leave ``bos``, but every route to the rest of
 # the backbone crosses ``alb`` or ``stm`` -- the third span doubles back to ``alb``. So
 # the fiber degree is three and the ceiling is two, which is the distinction the number
@@ -93,12 +105,50 @@ def test_the_counted_routes_share_no_intermediate_city() -> None:
     assert sorted(inner) == sorted(set(inner))
 
 
-# The Pacific in miniature, and the first fixture here whose spans are not all the same
-# length. ``sea`` reaches both of its peers overland through ``pdx``, ten miles a span, and
-# reaches them again through ``tok`` a thousand miles away. The overland routes share
-# ``pdx``, so a proof counting disjoint routes alone takes the ocean crossing as ``sea``'s
-# second way out -- and prefers it, since a breadth-first augmenting search takes the route
-# crossing the fewest cities and the crossing is the shortest such route there is.
+# Two ways to each peer, and the fewest-city one is the long one. ``sea`` reaches ``hil``
+# over a single express span of a hundred miles or over two one-mile spans through
+# ``pdx``, and reaches ``eug`` the same way through ``tac``. Both sets are two routes and
+# neither shares a city, so nothing but the cable tells them apart: the fewest-city set
+# runs 200 miles and the least-mileage set runs 4. It is the smallest fixture that can tell
+# a proof choosing by city count from one choosing by distance (GitHub issue #57).
+_EXPRESS_SPANS = build_adjacency(physical({
+    ("sea", "hil"): 100.0, ("sea", "eug"): 100.0,
+    ("sea", "pdx"): 1.0, ("pdx", "hil"): 1.0,
+    ("sea", "tac"): 1.0, ("tac", "eug"): 1.0,
+}))
+_EXPRESS_BACKBONE = ("eug", "hil", "sea")
+
+
+def test_the_routes_proved_are_the_shortest_set_of_that_size() -> None:
+    """sea's two ways out run four miles in all, not the two hundred the express spans do.
+
+    This is the assertion the whole of GitHub issue #57 reduces to. The routes are laid
+    verbatim by ``synthesizer.backbone.diverse_mesh_routes``, so the fiber this picks is
+    cable the design orders, and picking the express spans ordered fifty times as much of
+    it for exactly the same protection.
+    """
+    assert sum(
+        _route_miles(route, _EXPRESS_SPANS)
+        for route in independent_routes("sea", _EXPRESS_BACKBONE, _EXPRESS_SPANS)
+    ) == 4.0
+
+
+def test_taking_the_shortest_set_costs_the_site_none_of_its_routes() -> None:
+    """sea still holds two ways out, so choosing on mileage buys its cable with nothing.
+
+    A route lost is protection lost, and the ceiling is what
+    :func:`synthesizer.stages.finalize` holds a site to, so a cheaper set one route smaller
+    would lower the site's target and silence the check on it.
+    """
+    assert independent_route_ceiling("sea", _EXPRESS_BACKBONE, _EXPRESS_SPANS) == 2
+
+
+# The Pacific in miniature. ``sea`` reaches both of its peers overland through ``pdx``, ten
+# miles a span, and reaches them again through ``tok`` a thousand miles away. The overland
+# routes share ``pdx``, so ``sea``'s second way out to a distinct peer has to be the ocean
+# crossing whatever the proof costs its routes by -- a proof maximises how many routes it
+# finds before it minimises what they run on, which is why the bound below is still needed
+# and cannot be replaced by preferring short routes.
 _PACIFIC = physical({
     ("sea", "pdx"): 10.0, ("pdx", "hil"): 10.0, ("pdx", "eug"): 10.0,
     ("sea", "tok"): 1000.0, ("tok", "hil"): 1000.0, ("tok", "eug"): 1000.0,
@@ -140,8 +190,12 @@ def test_the_unbounded_ceiling_still_counts_the_crossing() -> None:
 # ``tok`` and no overland fiber reaches it, so here the crossing is the shortest route to a
 # peer rather than a hundred times the shortest, and it is the fiber a repair must not
 # throw away while it is throwing away the detour above.
+#
+# ``syd`` sits five hundred miles beyond ``tok`` rather than a thousand, so it is strictly
+# the cheapest thing across the ocean. Left at a thousand it would tie with ``hil`` and
+# ``eug``, and which peer the crossing landed on would be decided by nothing.
 _SOLE_CROSSING_ADJACENCY = build_adjacency(
-    {**_PACIFIC, **physical({("tok", "syd"): 1000.0})}
+    {**_PACIFIC, **physical({("tok", "syd"): 500.0})}
 )
 _SOLE_CROSSING_BACKBONE = ("eug", "hil", "sea", "syd")
 _SOLE_CROSSING_LIMIT = StretchLimit(
@@ -150,13 +204,16 @@ _SOLE_CROSSING_LIMIT = StretchLimit(
 
 
 def test_a_crossing_that_is_the_only_way_to_a_peer_is_kept() -> None:
-    """The bound refuses a detour, not an ocean: the sole route to a peer is admissible.
+    """The crossing is proved where it is the only way to a peer, cost it what it may.
 
-    ``syd`` hangs off ``tok`` and no overland fiber reaches it, so the crossing is the
-    shortest route to it rather than a hundred times the shortest, and a bound measured
-    against the direct distance has nothing to say against it. Compare
-    :func:`test_a_route_far_longer_than_the_direct_one_is_not_proved`, which is the same
-    fiber with nothing on the far side of the crossing worth reaching.
+    Two things could drop it and both would be wrong. The bound refuses a detour, not an
+    ocean: ``syd`` hangs off ``tok`` and no overland fiber reaches it, so the crossing is
+    the shortest route to it rather than a hundred times the shortest, and a bound measured
+    against the direct distance has nothing to say against it. And a proof that priced its
+    routes by mileage would avoid fifteen hundred miles of ocean given any alternative --
+    here there is none, and a route to one more peer is worth more than the cable it runs
+    on. Compare :func:`test_a_route_far_longer_than_the_direct_one_is_not_proved`, which is
+    the same fiber with nothing on the far side of the crossing worth reaching.
     """
     routes = independent_routes(
         "sea", _SOLE_CROSSING_BACKBONE, _SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_LIMIT
@@ -220,12 +277,7 @@ def _stretches(
     its allowance scores at most the stretch the limit carries; the leak scored a hundred.
     """
     return {
-        route: sum(
-            weight
-            for left, right in zip(route, route[1:])
-            for neighbor, weight in adjacency[left]
-            if neighbor == right
-        ) / limit.distances[node][route[-1]]
+        route: _route_miles(route, adjacency) / limit.distances[node][route[-1]]
         for route in independent_routes(node, backbone_ids, adjacency, limit)
     }
 
@@ -256,17 +308,21 @@ def test_the_site_whose_route_leaked_is_scored_at_the_one_it_can_use() -> None:
 
 
 # A route that overruns while no single span on it can be shown impossible, which is where
-# withdrawing spans runs out. ``sea`` reaches ``hil`` in a hundred miles the long way round,
-# through ``pdx``, ``tac`` and ``eug`` in twenty-five-mile hops, and reaches it in four
-# hundred the short way, over the two-hundred-mile spans through ``tac``. Each of those two
-# spans is measured against the shortest way to and from its own ends -- fifty miles either
-# side, over the small hops -- so each comes to 250 against an allowance of 300 and neither
-# can be refused. The route they make together is 400.
+# withdrawing spans runs out. ``sea`` has two ways out, ``pdx`` and ``tac``, and two peers,
+# ``hil`` 105 miles off through ``pdx`` and ``syd`` 7,025 miles off behind it. Only ``pdx``
+# and ``tac`` reach ``syd``, so the two routes take one way out each, and the cheapest pair
+# spends ``pdx`` on ``syd``: 7,025 miles plus the 400 that ``sea -> tac -> hil`` runs, against
+# 13,305 for the pair the other way round. That leaves ``hil`` reached over two 200-mile
+# spans against an allowance of 315. Neither span can be refused, each being measured
+# against the shortest way to and from its own ends -- 50 miles from ``sea`` to ``tac`` over
+# the small hops, 105 from ``tac`` back to ``hil`` -- so they come to 305 and 250 against
+# that same 315, while the route they make together comes to 400.
 _UNWITHDRAWABLE_ADJACENCY = build_adjacency(physical({
-    ("sea", "pdx"): 25.0, ("pdx", "tac"): 25.0, ("tac", "eug"): 25.0, ("eug", "hil"): 25.0,
+    ("sea", "pdx"): 25.0, ("pdx", "tac"): 25.0, ("pdx", "hil"): 80.0,
     ("sea", "tac"): 200.0, ("tac", "hil"): 200.0,
+    ("pdx", "syd"): 7000.0, ("tac", "syd"): 13000.0,
 }))
-_UNWITHDRAWABLE_BACKBONE = ("hil", "sea")
+_UNWITHDRAWABLE_BACKBONE = ("hil", "sea", "syd")
 _UNWITHDRAWABLE_LIMIT = StretchLimit(
     3.0, distances_from(_UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_BACKBONE)
 )
@@ -275,10 +331,10 @@ _UNWITHDRAWABLE_LIMIT = StretchLimit(
 def test_a_route_no_span_of_which_can_be_refused_is_dropped_rather_than_counted() -> None:
     """An overrunning route nothing can be withdrawn from is not credited to the site.
 
-    The search takes the fewest-city route to each peer, which here is the four-hundred-mile
-    one, and neither of its spans can be shown impossible, so there is nothing to withdraw
-    and no second pass to find the hundred-mile route round the outside. ``sea`` scores zero
-    where the honest answer is one.
+    Neither span of ``sea -> tac -> hil`` can be shown impossible, so there is nothing to
+    withdraw and no second pass to find the pair that would have worked -- ``sea -> pdx ->
+    hil`` at 105 miles beside ``sea -> tac -> syd`` at 13,200, both inside their peers'
+    allowances. ``sea`` scores one where the honest answer is two.
 
     That is the method's limit rather than an oversight, and it is written down as a test
     because a reader of the number needs to know the number can come out under. The site is
@@ -287,4 +343,4 @@ def test_a_route_no_span_of_which_can_be_refused_is_dropped_rather_than_counted(
     """
     assert independent_route_ceiling(
         "sea", _UNWITHDRAWABLE_BACKBONE, _UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_LIMIT
-    ) == 0
+    ) == 1

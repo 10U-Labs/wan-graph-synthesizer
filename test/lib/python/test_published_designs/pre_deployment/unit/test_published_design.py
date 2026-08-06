@@ -36,6 +36,10 @@ _NODE = {"id": "ash", "name": "Ashburn, VA", "kind": "PoP", "coords": [39.0, -77
 _SITE = {"id": "s1", "name": "Site", "kind": "Tenant site", "coords": [38.9, -77.0]}
 _REGION = {"id": "r1", "name": "us-east-1", "kind": "provider region", "coords": [39.0, -78.0]}
 _LINK = {"source_id": "ash", "target_id": "nyc", "distance_miles": 240.0, "path": ["ash", "nyc"]}
+_SPAN = {
+    "source_id": "ash", "target_id": "nyc", "distance_miles": 240.0,
+    "edge_kind": "carrier_physical",
+}
 _READY = {"status": "ready", "coverage": {"target_miles": 200, "met": True}}
 
 
@@ -58,7 +62,7 @@ def _answering(bodies: dict[str, Any], code: int = 200) -> Callable[..., FakeRes
 
 def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """A ``ready`` tenant carries its four collections and the five numbers git holds.
+    """A ``ready`` tenant carries its five collections and the five numbers git holds.
 
     The two demand collections arrive as one, since every site the coverage target applies
     to is measured the same way whether the tenant or a cloud provider owns it.
@@ -69,6 +73,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "tenants/daf/backbone-links": [_LINK],
         "tenants/daf/tenant-nodes": [_SITE],
         "tenants/daf/provider-nodes": [_REGION],
+        "tenants/daf/edges": [_SPAN],
     }))
     assert published_design(DEFAULT_API, "daf", _CONFIG) == {
         "tenant": "daf",
@@ -80,6 +85,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "backbone": [_NODE],
         "demand": [_SITE, _REGION],
         "links": [_LINK],
+        "edges": [_SPAN],
     }
 
 
@@ -94,7 +100,9 @@ def test_a_tenant_whose_build_has_not_published_is_read_with_no_network(
         "tenants/daf/wan": {"status": "building", "tenant": "daf"},
     }))
     design = published_design(DEFAULT_API, "daf", _CONFIG)
-    assert [design["backbone"], design["demand"], design["links"]] == [[], [], []]
+    assert [
+        design["backbone"], design["demand"], design["links"], design["edges"]
+    ] == [[], [], [], []]
 
 
 def test_a_build_the_service_refuses_to_serve_is_read_as_what_it_says_went_wrong(

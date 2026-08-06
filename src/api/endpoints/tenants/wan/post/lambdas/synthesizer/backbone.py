@@ -755,8 +755,11 @@ def backbone_mesh_paths(
     ``constraints.limit`` bounds how far the proof may route (see
     :func:`synthesizer.ceiling.independent_routes`). The proof is the reason it must be
     applied here rather than to the drawn links afterwards: these routes are laid verbatim,
-    so a route the proof finds is cable the design orders, and a proof reading no distance
-    at all will happily order an ocean crossing to protect a link across a state line.
+    so a route the proof finds is cable the design orders. The proof prices its own routes
+    by mileage and still needs the bound, because it maximises how many routes it finds
+    before it minimises what they cost: where an ocean crossing is the only way to one more
+    peer it is taken to protect a link across a state line, and the bound is what refuses
+    it.
     """
     adjacency = build_adjacency(physical_edges)
     proven = {
