@@ -86,7 +86,15 @@ jobs:
           test/lib/python/repo_utils
           test/lib/python/test_http_doubles
   determining-testing:
+    # This job needs test-repo-libraries, which is what puts the shared modules under
+    # lib/python/ ahead of every other job in the workflow. Nothing here reads them — the
+    # step below diffs the push — but the two concluding-* gates hang off this job and
+    # everything that tests or seeds hangs off those, so a red test-repo-libraries skips
+    # this job, skips both gates, and skips seeding with them. That holds on the
+    # data/raw/-only push too, where unit-tests and integration-tests skip and this edge is
+    # the only thing standing between a broken shared module and a PUT to the live API.
     name: determining-testing
+    needs: test-repo-libraries
     outputs:
       testing-necessary: ${{ steps.decide.outputs.testing-necessary }}
     runs-on: ubuntu-latest
@@ -154,9 +162,14 @@ jobs:
           --import-mode=importlib --confcutdir=test
           --verbose
   integration-tests:
-    if: ${{ !cancelled() && needs.test-repo-libraries.result == 'success' }}
+    if: >-
+      ${{ !cancelled()
+      && needs.concluding-testing-necessary.result == 'success'
+      && needs.test-repo-libraries.result == 'success' }}
     name: integration-tests
-    needs: test-repo-libraries
+    needs:
+      - concluding-testing-necessary
+      - test-repo-libraries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -234,13 +247,13 @@ jobs:
   seeding:
     # Every gate in the workflow is named here as well as in needs:, because the nine checks
     # and the three test jobs are independent of each other now and any one of them can be
-    # the only red job in the run. The nine checks are gated on nothing and run on every
-    # push, red or green, so they are and-ed in ahead of the two arms rather than inside one
-    # of them. The arms are the two ways a push can reach this job: determining-testing said
-    # testing was necessary and test-repo-libraries and the two test jobs all passed, or it
-    # said testing was unnecessary, skipped those three, and concluding-testing-unnecessary
-    # is the only result there is to read. The yamllint job is named in neither, so a red
-    # one does not stop this job PUTting to the live API.
+    # the only red job in the run. The nine checks and test-repo-libraries are gated on
+    # nothing and run on every push, red or green, so they are and-ed in ahead of the two
+    # arms rather than inside one of them. The arms are the two ways a push can reach this
+    # job: determining-testing said testing was necessary and unit-tests and
+    # integration-tests both passed, or it said testing was unnecessary, skipped those two,
+    # and concluding-testing-unnecessary is the only result there is to read. The yamllint
+    # job is named in neither, so a red one does not stop this job PUTting to the live API.
     if: >-
       ${{ !cancelled() && github.ref == 'refs/heads/main'
       && needs.assert-no-inline-directives.result == 'success'
@@ -252,9 +265,9 @@ jobs:
       && needs.mypy-tests.result == 'success'
       && needs.pylint-source.result == 'success'
       && needs.pylint-tests.result == 'success'
+      && needs.test-repo-libraries.result == 'success'
       && (needs.concluding-testing-unnecessary.result == 'success'
-      || (needs.test-repo-libraries.result == 'success'
-      && needs.unit-tests.result == 'success'
+      || (needs.unit-tests.result == 'success'
       && needs.integration-tests.result == 'success')) }}
     name: seeding
     needs:
@@ -303,20 +316,24 @@ jobs:
   # GitHub issue #56 redrew the edges around this job. The static-analysis checks are jobs
   # now rather than steps of one static-analysis job, and all nine start when the workflow
   # does, gated on nothing: a check costs seconds, produces nothing anyone waits on, and is
-  # worth running even on the push that needs no testing. This job is the only one left
-  # behind concluding-testing-necessary, lint-yaml having been deleted as a second run of
-  # what the yamllint job already lints. The edges out of this job survived.
-  # unit-tests, integration-tests and e2e-tests still wait on it, because a reader facing
-  # eleven red consumers has to be told which shared module broke them, where one red job
-  # and ten skipped ones has already told them. seeding waits on it too, along with every
-  # other gate in the workflow, because it PUTs the git-authored inputs to the live API: a
-  # run that carries on past a broken module still POSTs the builds and then waits up to
-  # the 900 seconds of _BUILD_DEADLINE_SECONDS in
+  # worth running even on the push that needs no testing. This job is gated on nothing
+  # either, and it is first: it carries no needs: and no if:, so it starts when the
+  # workflow does and runs whatever the push touched, including the data/raw/-only push
+  # where every other test job skips.
+  #
+  # Everything that tests or seeds is behind it. determining-testing needs this job, both
+  # concluding-* gates need determining-testing, and unit-tests, integration-tests and
+  # seeding are behind those, so one red job here skips the rest of the run. unit-tests and
+  # integration-tests name this job in their own needs: as well as
+  # concluding-testing-necessary, and e2e-tests names it beside seeding, rather than
+  # letting the edge arrive down the chain: a reader facing eleven red consumers has to be
+  # told which shared module broke them, where one red job and ten skipped ones has already
+  # told them. Deploying past a broken module costs more than a wrong report, too — seeding
+  # PUTs the git-authored inputs to the live API, POSTs the builds and then waits up to the
+  # 900 seconds of _BUILD_DEADLINE_SECONDS in
   # test/scripts/seed/post_deployment/e2e/conftest.py for results that will be thrown away.
   test-repo-libraries:
-    if: ${{ !cancelled() && needs.concluding-testing-necessary.result == 'success' }}
     name: test-repo-libraries
-    needs: concluding-testing-necessary
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -370,9 +387,14 @@ jobs:
           --cov-report=term-missing
           --cov-fail-under=100
   unit-tests:
-    if: ${{ !cancelled() && needs.test-repo-libraries.result == 'success' }}
+    if: >-
+      ${{ !cancelled()
+      && needs.concluding-testing-necessary.result == 'success'
+      && needs.test-repo-libraries.result == 'success' }}
     name: unit-tests
-    needs: test-repo-libraries
+    needs:
+      - concluding-testing-necessary
+      - test-repo-libraries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
