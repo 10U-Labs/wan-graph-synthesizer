@@ -377,6 +377,7 @@ def build_search_plan(
         strength_by_id,
         tuning=params.tuning,
         forced_links=forced_links,
+        seat_cap=params.max_backbone_count,
     )
 
 

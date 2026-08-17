@@ -503,6 +503,25 @@ def test_a_detour_is_still_added_to_a_pair_with_a_path_left_to_spend() -> None:
     ) != _BASE_ONE_PAIR
 
 
+# The hub triangle with all three of its pairs drawn, one route each. Every pair the loss of
+# ``h`` separates is joined already, so the pass has nowhere left to put a detour: the cities
+# it could route around are the cities it may not buy a second circuit to reach.
+_BASE_TRIANGLE = [*_BASE_HUB, PathUse("backbone_mesh", "a", "c", ("a", "c"), 1.0)]
+
+
+def test_no_detour_is_added_where_every_separated_pair_is_joined_already() -> None:
+    """``h`` stands as a cut city and is reported, rather than bought off with a circuit.
+
+    Three sites and two paths asked for is one route a pair, so a-b and b-c are both closed
+    to the pass and a-c is not separated by ``h`` at all. What the design cannot survive is
+    then what ``synthesizer.validation`` says it cannot survive (GitHub issue #59).
+    """
+    assert augment_physical_resilience(
+        _BASE_TRIANGLE, ("a", "b", "c"), _HUB_EDGES,
+        BackboneConstraints(number_of_diverse_paths=2, seat_cap=3),
+    ) == _BASE_TRIANGLE
+
+
 # Two sites and nothing else, joined two ways round that share no city. This is Two-Node in
 # miniature: one peer apiece, so a tenant asking for two paths is answered by two routes
 # over the one pair rather than by links to two peers.
@@ -513,13 +532,15 @@ _TWO_SITE_EDGES = physical({
 })
 
 
-def _two_site_paths(number_of_diverse_paths: int) -> list[PathUse]:
+def _two_site_paths(number_of_diverse_paths: int, seat_cap: int = 2) -> list[PathUse]:
     """Route the two-site backbone over fiber that joins it three disjoint ways."""
     adjacency = build_adjacency(_TWO_SITE_EDGES)
     distances, predecessors = all_pairs_shortest([pop("a"), pop("b")], adjacency)
     return backbone_mesh_paths(
         ("a", "b"), distances, predecessors, _TWO_SITE_EDGES,
-        BackboneConstraints(number_of_diverse_paths=number_of_diverse_paths),
+        BackboneConstraints(
+            number_of_diverse_paths=number_of_diverse_paths, seat_cap=seat_cap
+        ),
     )
 
 
@@ -536,6 +557,17 @@ def test_a_two_site_backbone_takes_the_shortest_of_the_routes_open_to_it() -> No
 def test_a_two_site_backbone_needs_no_detour_once_its_paths_are_drawn() -> None:
     """Two routes sharing no city already survive any one city's loss, so nothing is repaired."""
     assert [use.reason for use in _two_site_paths(2)] == [LINK_FOR_TARGET, LINK_FOR_TARGET]
+
+
+def test_a_backbone_seated_below_its_cap_is_still_drawn_one_path_a_pair() -> None:
+    """Two sites seated where the config allows six is a design short of sites, not of paths.
+
+    The seats the tenant allows are what say whether a site has other peers to reach, and a
+    tenant that allows six has bought a network where it does. A run that seats two of them
+    is a coverage question; joining the two it seated twice answers a different one nobody
+    asked (GitHub issue #59).
+    """
+    assert len(_two_site_paths(2, seat_cap=6)) == 1
 
 
 # Two backbone sites a short hop apart through ``m``, plus a thousand-mile pair of spans
@@ -557,6 +589,7 @@ def _clear_route(limit: BackupRouteLimit | None) -> tuple[str, ...]:
     """The route the mesh lays p-q when both ends already carry ``m``."""
     routes = diverse_mesh_routes(
         [("p", "s"), ("q", "s"), ("p", "q")],
+        ("p", "q", "s"),
         _OFFSHORE_CLEAR_DISTANCES[1],
         _OFFSHORE_CLEAR_ADJACENCY,
         BackboneConstraints(limit=limit),
@@ -606,13 +639,22 @@ def _routed(
     pairs: list[tuple[str, str]],
     edges: dict[tuple[str, str], PhysicalEdge],
     proven: dict[str, list[tuple[str, ...]]] | None = None,
+    seat_cap: int | None = None,
 ) -> list[tuple[str, str, tuple[str, ...]]]:
-    """Route the given mesh pairs over ``edges``, along ``proven`` wherever it covers one."""
+    """Route the given mesh pairs over ``edges``, along ``proven`` wherever it covers one.
+
+    The backbone is the sites the pairs name, and ``seat_cap`` is the seats the operator
+    allows, which is what decides how many routes one pair is drawn with.
+    """
     adjacency = build_adjacency(edges)
     ids = {vertex_id for pair in edges for vertex_id in pair}
     _distances, predecessors = all_pairs_shortest([pop(i) for i in sorted(ids)], adjacency)
     return diverse_mesh_routes(
-        pairs, predecessors, adjacency, BackboneConstraints(routes=proven or {})
+        pairs,
+        tuple(sorted({site for pair in pairs for site in pair})),
+        predecessors,
+        adjacency,
+        BackboneConstraints(routes=proven or {}, seat_cap=seat_cap),
     )
 
 
@@ -620,9 +662,13 @@ def _routes(
     pairs: list[tuple[str, str]],
     edges: dict[tuple[str, str], PhysicalEdge],
     proven: dict[str, list[tuple[str, ...]]] | None = None,
+    seat_cap: int | None = None,
 ) -> dict[tuple[str, str], tuple[str, ...]]:
     """Route the given mesh pairs over ``edges``, keyed by the pair they route."""
-    return {(left, right): path for left, right, path in _routed(pairs, edges, proven)}
+    return {
+        (left, right): path
+        for left, right, path in _routed(pairs, edges, proven, seat_cap)
+    }
 
 
 def test_the_first_link_of_a_node_takes_its_shortest_path() -> None:
@@ -705,10 +751,29 @@ def test_one_fiber_proved_from_both_ends_is_wired_once() -> None:
     assert len(_routed([("h", "q")], _SHARED_EGRESS_EDGES, proven)) == 1
 
 
-def test_two_ends_that_proved_different_fiber_are_both_wired() -> None:
-    """Each end's proof is what buys that end its own independent link, so neither is dropped."""
-    proven: dict[str, list[tuple[str, ...]]] = {"h": [("h", "g", "q")], **_Q_PROVED_THE_LONG_WAY}
-    assert len(_routed([("h", "q")], _SHARED_EGRESS_EDGES, proven)) == 2
+# The two ends of one pair proved different fiber: h the cheap way through g, q the long
+# way round through r. The two are what the tenant's seats decide between -- a backbone
+# with peers to spare joins the pair once, and one whose config seats only these two has
+# nowhere else to put the second path.
+_ENDS_DISAGREE: dict[str, list[tuple[str, ...]]] = {
+    "h": [("h", "g", "q")], **_Q_PROVED_THE_LONG_WAY,
+}
+
+
+def test_two_ends_that_proved_different_fiber_are_wired_once() -> None:
+    """Two sites that are joined are joined once, however many ways their fiber offers."""
+    assert len(_routed([("h", "q")], _SHARED_EGRESS_EDGES, _ENDS_DISAGREE, 6)) == 1
+
+
+def test_the_shorter_of_the_two_proved_ways_round_is_the_one_wired() -> None:
+    """Six miles through r buys the pair nothing the two through g do not, so g is wired."""
+    routes = _routes([("h", "q")], _SHARED_EGRESS_EDGES, _ENDS_DISAGREE, 6)
+    assert routes[("h", "q")] == ("h", "g", "q")
+
+
+def test_both_are_wired_where_the_seats_leave_the_pair_no_other_peer() -> None:
+    """Seated for two sites, the paths a tenant buys can only be routes over the one pair."""
+    assert len(_routed([("h", "q")], _SHARED_EGRESS_EDGES, _ENDS_DISAGREE, 2)) == 2
 
 
 def test_a_pair_no_proof_covers_is_still_routed_by_the_heuristic() -> None:
@@ -728,3 +793,58 @@ def test_backbone_mesh_paths_route_a_nodes_links_over_distinct_cities() -> None:
     )
     routed = {edge_key(use.source, use.target): set(use.path) - {"h"} for use in uses}
     assert not routed[edge_key("h", "p")] & routed[edge_key("h", "q")]
+
+
+# Three sites reaching each other over three shared hub cities, priced so that the cheapest
+# way out of one site is not the cheapest way back out of the other. That is what makes the
+# two ends of a pair prove different fiber to each other: each proof is the cheapest set of
+# routes out of its own site, and the two sites have different other peers to keep clear of.
+# Here a is cheap on h2 and dear on h1, b is the other way round, and c is cheap on both --
+# so a's routes are h1 to b and h2 to c, b's are h1 to a and h3 to c, and c's are h2 to a and
+# h1 to b. Only the pair b-c is proved twice, five miles through h3 and two through h1.
+_HUBBED_EDGES = physical({
+    ("a", "h1"): 4.0, ("a", "h2"): 1.0, ("a", "h3"): 8.0,
+    ("b", "h1"): 1.0, ("b", "h2"): 8.0, ("b", "h3"): 2.0,
+    ("c", "h1"): 1.0, ("c", "h2"): 2.0, ("c", "h3"): 3.0,
+})
+_HUBBED_SITES = ("a", "b", "c")
+
+
+def _hubbed_paths() -> list[PathUse]:
+    """Route the three-site backbone over the three hubs, two paths asked of each site."""
+    adjacency = build_adjacency(_HUBBED_EDGES)
+    ids = sorted({vertex_id for pair in _HUBBED_EDGES for vertex_id in pair})
+    distances, predecessors = all_pairs_shortest([pop(i) for i in ids], adjacency)
+    return backbone_mesh_paths(
+        _HUBBED_SITES, distances, predecessors, _HUBBED_EDGES,
+        BackboneConstraints(number_of_diverse_paths=2, seat_cap=3),
+    )
+
+
+def _hubbed_pair_paths() -> list[PathUse]:
+    """The routes drawn between b and c, the one pair whose ends proved different fiber."""
+    return [
+        use
+        for use in _hubbed_paths()
+        if edge_key(use.source, use.target) == edge_key("b", "c")
+    ]
+
+
+def test_a_pair_whose_two_ends_proved_different_fiber_is_drawn_once() -> None:
+    """b proved its way to c and c proved its way to b, and the two sites are one pair.
+
+    This is the shape no other fixture here can make. On a unit clique both ends prove the
+    same span and the two collapse into one route on their own, so the number a pair is
+    held to is never reached (GitHub issue #59).
+    """
+    assert len(_hubbed_pair_paths()) == 1
+
+
+def test_the_route_drawn_for_that_pair_is_the_shorter_of_the_two() -> None:
+    """Two miles through h1 rather than five through h3, since one circuit is what is bought."""
+    assert _hubbed_pair_paths()[0].path == ("b", "h1", "c")
+
+
+def test_the_three_sites_are_drawn_one_circuit_a_pair() -> None:
+    """Three pairs and three circuits: none joined twice, and none left unjoined."""
+    assert len(_hubbed_paths()) == 3

@@ -226,7 +226,14 @@ def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(
 
 def test_no_published_network_draws_a_pair_more_routes_than_its_tenant_bought(
         delivered_designs: list[dict[str, Any]]) -> None:
-    """No two backbone sites are joined by more routes than the tenant asked for paths.
+    """No two backbone sites are joined by more routes than the tenant's config allows.
+
+    A pair is allowed one route wherever the tenant's seats leave its sites other peers to
+    reach, which is five of the six; Two-Node is capped at two seats, so its one pair is
+    allowed the two paths it buys (see ``test_published_designs.overbuilt_pairs``). Measured
+    against the tenant's number alone, twenty-one pairs across DAF, F-35, AFGSC and
+    Minuteman were passing while they carried 17,013 route miles nobody ordered (GitHub
+    issue #59).
 
     The counterpart of the shortfall above, and the half that was missing. Every question
     this layer asked about routes asked it of one route at a time -- is this one inside the

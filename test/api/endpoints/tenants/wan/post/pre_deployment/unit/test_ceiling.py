@@ -108,6 +108,17 @@ def test_a_site_with_one_peer_is_still_held_to_one_route_when_one_is_asked() -> 
     assert independent_route_ceiling("s", RouteGround(_ONE_PEER, _TWIN_ROUTES, paths_wanted=1)) == 1
 
 
+def test_a_site_seated_below_the_seats_its_config_allows_takes_one_route_to_a_peer() -> None:
+    """A tenant that allows six seats has bought a network of peers, not a pair joined twice.
+
+    The seats the config allows are what say whether a site has another peer to reach, and
+    a run that seated two of six is a design short of sites. Counting the sites it seated
+    instead would have this site double up on the one peer in front of it (GitHub issue #59).
+    """
+    ground = RouteGround(_ONE_PEER, _TWIN_ROUTES, paths_wanted=2, seat_cap=6)
+    assert independent_route_ceiling("s", ground) == 1
+
+
 # Three ways from ``s`` to its only peer ``t``, sharing no city, at two, four and six miles.
 # A tenant asking for two is owed the two shortest and not the third.
 _THREE_WAYS = build_adjacency(physical({

@@ -266,8 +266,9 @@ def backbone_mesh_independence_deficient(
 
     Every backbone is asked, however few sites are in it. A backbone with fewer peers than
     paths asked for used to be waved through here, on the reasoning that a site cannot hold
-    more paths than it has peers to reach -- which stopped being true when a peer was
-    allowed to carry more than one route (see :func:`synthesizer.ceiling.routes_per_peer`).
+    more paths than it has peers to reach -- which stopped being true when a peer on a
+    backbone whose config caps its seats that low was allowed to carry more than one route
+    (see :func:`synthesizer.ceiling.routes_per_peer`).
     Two-Node is the backbone that reasoning waved through: two sites asking for two paths,
     published with five routes between them and never once measured (GitHub issue #58). A
     site whose fiber genuinely cannot carry the number is still not reported, because its
@@ -432,9 +433,10 @@ def above_target_nodes(
     empty list.
     """
     # The tenant's number flat. It once came down to the peers a site had to reach, since a
-    # site could take only one route to each; a site short of peers now doubles up on them
-    # instead (see :func:`synthesizer.ceiling.routes_per_peer`), so the routes it is
-    # entitled to are the number asked for wherever they end.
+    # site could take only one route to each; a site whose config allows too few seats for
+    # the paths it asks for now doubles up on a peer instead (see
+    # :func:`synthesizer.ceiling.routes_per_peer`), so the routes it is entitled to are the
+    # number asked for wherever they end.
     asked_for = targets.number_of_diverse_paths
     rows: list[dict[str, object]] = []
     for node in sorted(design.backbone_ids):

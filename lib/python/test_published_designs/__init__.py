@@ -179,10 +179,20 @@ def overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
 def overbuilt_pairs(design: dict[str, Any]) -> list[tuple[str, int]]:
     """Every pair of backbone sites drawn with more routes than the tenant asked for.
 
-    A tenant's number of diverse paths is how many routes it is buying between two of its
-    sites, so a pair carrying more than that is carrying cable nobody ordered. Reported as
-    the pair and the routes it holds, which is what names the overbuild to whoever reads
-    the failure.
+    Two sites that are joined are joined once. A second route between the same two sites is
+    a second circuit somebody orders every month, and it buys the network nothing the first
+    one did not: what makes a site's ways out independent is that they end at different
+    peers, so the money is better spent joining a peer the site does not reach yet.
+    Reported as the pair and the routes it holds, which is what names the overbuild to
+    whoever reads the failure.
+
+    A pair may hold more only where the tenant's own config leaves its sites too few peers
+    to reach. ``etc/two_node.yml`` caps its backbone at two seats, so each site has exactly
+    one peer and the two paths it buys can only be two routes to that peer. So the allowance
+    below shares the paths asked for out over the peers the cap allows, which is one route a
+    pair for the other five tenants and two for Two-Node (GitHub issue #59). It is worked out
+    here rather than read from the build, because a reader that took the build's word for how
+    many routes it was allowed would pass whatever the build drew.
 
     Counting a pair rather than measuring one route is the whole point of asking this from
     out here. Every route can be inside the backup route multiple and be the shortest way
@@ -198,7 +208,9 @@ def overbuilt_pairs(design: dict[str, Any]) -> list[tuple[str, int]]:
     for link in design["links"]:
         pair = tuple(sorted((link["source_id"], link["target_id"])))
         drawn[pair] = drawn.get(pair, 0) + 1
-    allowed = design["number_of_diverse_paths"]
+    seats, asked = design["seat_cap"], design["number_of_diverse_paths"]
+    peers = seats - 1 if seats else 0
+    allowed = max(1, -(-asked // peers)) if peers > 0 else 1
     return [
         (" <-> ".join(pair), count)
         for pair, count in sorted(drawn.items())

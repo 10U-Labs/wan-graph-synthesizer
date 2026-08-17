@@ -17,7 +17,12 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
-from synthesizer.ceiling import BackupRouteLimit, RouteGround, independent_routes
+from synthesizer.ceiling import (
+    BackupRouteLimit,
+    RouteGround,
+    independent_routes,
+    routes_per_peer,
+)
 from synthesizer.input_graph import PhysicalEdge, edge_key
 from synthesizer.graphs import (
     articulation_points,
@@ -238,6 +243,13 @@ class BackboneConstraints:
     # given a peer it reaches only by a detour nobody would buy. None leaves every route
     # admissible, which is the behaviour of every caller that has no tenant in hand
     limit: BackupRouteLimit | None = None
+    # the most backbone seats the tenant's config allows (``backbone.node_count.max`` in
+    # its ``etc/`` file). It decides how many routes one pair of sites is drawn with: one,
+    # unless the config allows too few seats for the paths asked for, which is a backbone
+    # capped at two sites (see :func:`synthesizer.ceiling.routes_per_peer`). None is an
+    # operator who capped nothing, and the backbone in hand then says how many peers there
+    # are
+    seat_cap: int | None = None
 
 
 @dataclass(frozen=True)
@@ -497,15 +509,15 @@ def _resilience_detour(
 
 
 def _pairs_at_their_limit(
-    uses: list[PathUse], number_of_diverse_paths: int
+    uses: list[PathUse], routes_per_pair: int
 ) -> frozenset[tuple[str, str]]:
-    """The backbone pairs already carrying every route their tenant asked them for."""
+    """The backbone pairs already carrying every route their tenant allows the pair."""
     drawn: dict[tuple[str, str], int] = {}
     for use in uses:
         pair = edge_key(use.source, use.target)
         drawn[pair] = drawn.get(pair, 0) + 1
     return frozenset(
-        pair for pair, count in drawn.items() if count >= number_of_diverse_paths
+        pair for pair, count in drawn.items() if count >= routes_per_pair
     )
 
 
@@ -534,16 +546,23 @@ def augment_physical_resilience(
     honest report: the fiber here cannot survive that city's loss, and saying so is worth
     more than a cable on the map that would never be ordered.
 
-    ``constraints.number_of_diverse_paths`` stops the pass drawing a pair more routes than
-    the tenant asked it for. Each round relieves one city and rides the same fiber for the
+    The routes one pair is allowed stop the pass drawing it any more than that (see
+    :func:`synthesizer.ceiling.routes_per_peer`), which is one route wherever there are peers
+    enough to reach instead. Each round relieves one city and rides the same fiber for the
     rest of the way, so a corridor with several chokepoints takes one route per chokepoint if
     nothing holds the pass back -- Ashburn, VA to Salt Lake City, UT crosses eight and took
-    four extra routes and 5,633 miles of haul for them (GitHub issue #58). A pair given the
-    paths it asked for is protected by the routes it was drawn with, and a chokepoint those
-    routes leave standing is a shortfall to report rather than a reason to buy a fifth
-    circuit.
+    four extra routes and 5,633 miles of haul for them (GitHub issue #58). A pair holding the
+    routes it is allowed is protected by them, and a chokepoint they leave standing is a
+    shortfall to report rather than a reason to buy another circuit.
+
+    The pass still has somewhere to go when every drawn pair is at its limit: a pair of
+    sites the cut city separates that is not joined at all holds no route yet, so relieving
+    the city by joining two sites that were not neighbours is the repair left to it.
     """
     removed_pairs = constraints.removed_pairs
+    per_pair = routes_per_peer(
+        constraints.seat_cap, len(backbone_ids), constraints.number_of_diverse_paths
+    )
     ground = _DetourSubstrate(
         set(backbone_ids), removed_pairs, build_adjacency(physical_edges),
         physical_edges, constraints.limit,
@@ -553,9 +572,7 @@ def augment_physical_resilience(
     for use in uses:
         spans |= path_edge_keys(use.path)
     while True:
-        blocked = removed_pairs | _pairs_at_their_limit(
-            uses, constraints.number_of_diverse_paths
-        )
+        blocked = removed_pairs | _pairs_at_their_limit(uses, per_pair)
         detour = _resilience_detour(spans, ground, blocked)
         if detour is None:
             break
@@ -685,20 +702,25 @@ def _proven_paths_for(
 ) -> list[tuple[str, ...]]:
     """The proved paths between ``left`` and ``right``, oriented from ``left``, or empty.
 
-    Each endpoint may have proved its own way to the other, and the two need not agree. Both
-    are kept when they differ, because each is what buys *its own* site an independent link:
-    a site's paths are counted by which cities would take them down, and the path the far
-    end proved may share a city with this end's other links.
+    Each endpoint may have proved its own way to the other, and the two need not agree,
+    because each proof is the cheapest set of routes out of *its own* site and the two sites
+    have different other peers to keep clear of.
 
     A path and its reverse are the same fiber, so they collapse to one.
 
-    ``count`` is the tenant's own number of diverse paths and no more than that many come
-    back, fewest miles first. A pair the fiber can join half a dozen ways is not a reason to
-    build half a dozen circuits: each is a real route somebody orders, and how many are
-    worth having is the operator's decision rather than the ground's. This is the same rule
-    GitHub issue #40 settled for how a site picks peers, applied to how many routes one pair
-    is drawn with, and it is what holds a two-site backbone to the two paths it asked for
-    rather than to every disjoint route between them.
+    ``count`` is how many routes this pair is allowed and no more than that many come back,
+    fewest miles first. It is one wherever there are peers enough for a site to answer its
+    number by reaching different ones, which is every tenant but one whose config caps the
+    backbone at two sites (see :func:`synthesizer.ceiling.routes_per_peer`). A pair joined
+    twice is a second circuit somebody orders every month for two sites that are already
+    joined, and the money buys nothing the far end of either route can use: what makes a
+    site's ways out independent is that they end at different peers.
+
+    So where the two ends disagree the shorter route is drawn and the longer is not. That
+    can leave the site whose route was dropped riding one city for two of its links, and the
+    honest answer to that is the shortfall ``synthesizer.validation`` reports and the detour
+    :func:`augment_physical_resilience` draws between two sites not yet joined -- not a
+    second circuit between two that already are (GitHub issue #59).
     """
     found: list[tuple[str, ...]] = []
     for near, far in ((left, right), (right, left)):
@@ -713,6 +735,7 @@ def _proven_paths_for(
 
 def diverse_mesh_routes(
     pairs: list[tuple[str, str]],
+    backbone_ids: tuple[str, ...],
     all_predecessors: dict[str, dict[str, str]],
     adjacency: dict[str, list[tuple[str, float]]],
     constraints: BackboneConstraints = BackboneConstraints(),
@@ -750,10 +773,12 @@ def diverse_mesh_routes(
     the proof is already bounded where it is computed, so a route reaching this function has
     passed the same test over the same fiber.
 
-    ``constraints.number_of_diverse_paths`` bounds how many routes one pair is drawn with
-    (see :func:`_proven_paths_for`). The proof counts what the fiber can carry, which on a
-    two-site backbone can be several routes between the one pair, and this is where the
-    tenant's number decides how many of them are built.
+    How many routes one pair is drawn with is decided here (see :func:`_proven_paths_for`),
+    and it is one unless there are too few peers for a site to answer its number over
+    distinct ones -- which ``backbone_ids`` and ``constraints.seat_cap`` between them say
+    (see :func:`synthesizer.ceiling.routes_per_peer`). The proof counts what the fiber can
+    carry, which between one pair of sites can be several routes, and this is where how many
+    of them are built is decided.
     """
     carried: dict[str, set[str]] = {}
     routes: list[tuple[str, str, tuple[str, ...]]] = []
@@ -764,12 +789,12 @@ def diverse_mesh_routes(
         for node in (left, right):
             carried.setdefault(node, set()).update(set(path) - {node})
 
+    per_pair = routes_per_peer(
+        constraints.seat_cap, len(backbone_ids), constraints.number_of_diverse_paths
+    )
     unproved: list[tuple[str, str]] = []
     for left, right in pairs:
-        paths = _proven_paths_for(
-            left, right, constraints.routes, adjacency,
-            constraints.number_of_diverse_paths,
-        )
+        paths = _proven_paths_for(left, right, constraints.routes, adjacency, per_pair)
         if not paths:
             unproved.append((left, right))
         for path in paths:
@@ -819,7 +844,8 @@ def backbone_mesh_paths(
     """
     adjacency = build_adjacency(physical_edges)
     ground = RouteGround(
-        backbone_ids, adjacency, constraints.limit, constraints.number_of_diverse_paths
+        backbone_ids, adjacency, constraints.limit,
+        constraints.number_of_diverse_paths, constraints.seat_cap,
     )
     proven = {
         node: independent_routes(node, ground)
@@ -836,7 +862,7 @@ def backbone_mesh_paths(
             reasons[edge_key(left, right)].requested_by,
         )
         for left, right, path in diverse_mesh_routes(
-            sorted(reasons), all_predecessors, adjacency, constraints
+            sorted(reasons), backbone_ids, all_predecessors, adjacency, constraints
         )
     ]
     return augment_physical_resilience(

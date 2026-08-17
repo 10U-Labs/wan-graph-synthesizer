@@ -19,6 +19,10 @@ class _SearchPlan:
 
     ``backbone_candidates`` are the eligible PoPs ranked by strength.
     ``forced_links`` carries the operator's resolved pins for routing.
+    ``seat_cap`` is the most backbone sites the operator allows, which decides how many
+    routes one pair of sites is drawn with (see
+    :func:`synthesizer.ceiling.routes_per_peer`). It is a design choice rather than a dial,
+    so it comes off ``DesignParams.max_backbone_count`` rather than out of ``tuning``.
 
     The nodes the diverse path count is not asked of are not here: the exemption acts in
     validation, which the handler reaches directly, and selection treats every node
@@ -29,6 +33,7 @@ class _SearchPlan:
     strength_by_id: dict[str, float]
     tuning: Tuning = field(default_factory=Tuning)  # the dials this plan was built from
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
+    seat_cap: int | None = None  # backbone seats the operator allows; None caps nothing
 
     @property
     def required_backbone(self) -> frozenset[str]:

@@ -204,6 +204,7 @@ def routed_path_uses(
         limit=BackupRouteLimit(
             plan.tuning.backbone_max_backup_route_multiple, inputs.all_distances
         ),
+        seat_cap=plan.seat_cap,
     )
     return backbone_mesh_paths(
         backbone_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints

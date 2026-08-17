@@ -497,38 +497,55 @@ def _proved_routes(
 class RouteGround:
     """What a site's ways out are proved against: the peers to reach and the fiber to use.
 
-    The four travel together everywhere a route is proved or counted -- which peers are in
+    The five travel together everywhere a route is proved or counted -- which peers are in
     the backbone decides where a route may end, the fiber decides how it gets there, the
-    operator's bound decides how far it may run, and the tenant's number decides whether a
-    peer may take more than one. Bundling them says so, and keeps the three entry points
-    below to the site being asked about and the ground it stands on.
+    operator's bound decides how far it may run, and the tenant's number beside the seats
+    its config allows decides whether a peer may take more than one. Bundling them says so,
+    and keeps the three entry points below to the site being asked about and the ground it
+    stands on.
 
     ``limit`` of ``None`` leaves every route admissible, which is the behaviour of the
     callers with no tenant in hand -- the backbone search ranking candidate sites, which is
     asking what a site's fiber can do rather than what this tenant is buying.
+
+    ``seat_cap`` is the most backbone sites the tenant's config allows, which is
+    ``backbone.node_count.max`` in its ``etc/`` file. ``None`` is an operator who capped
+    nothing, and a caller with no tenant in hand; the sites in ``backbone_ids`` are then
+    what says how many peers there are (see :func:`routes_per_peer`).
     """
 
     backbone_ids: tuple[str, ...]
     adjacency: dict[str, list[tuple[str, float]]]
     limit: BackupRouteLimit | None = None
     paths_wanted: int = 1
+    seat_cap: int | None = None
 
 
-def routes_per_peer(node: str, backbone_ids: tuple[str, ...], paths_wanted: int) -> int:
+def routes_per_peer(seat_cap: int | None, seats: int, paths_wanted: int) -> int:
     """How many routes one peer may take, given how many paths the site was asked for.
 
     A site takes one route to each of as many peers as it can reach, which is what a way
     out of a site is: losing a peer costs the site that way out and no other. Only when
-    the backbone holds fewer peers than the tenant asked for paths does a peer take a
+    there are fewer peers to reach than the site was asked for paths does a peer take a
     second route, and then it takes no more of them than sharing the shortfall out evenly
     requires.
 
-    Two-Node is the whole of why this is not always one. Its backbone is Ashburn, VA and
-    Salt Lake City, UT, so each site has exactly one peer and a tenant asking for two paths
-    can only be answered by two routes to it.
+    Two-Node is the whole of why this is not always one. ``etc/two_node.yml`` caps its
+    backbone at two seats, so each site has exactly one peer and a tenant asking for two
+    paths can only be answered by two routes to it.
+
+    The seats the operator allows are what count them, not the seats a run filled, wherever
+    the operator has said: ``seat_cap`` is ``backbone.node_count.max`` from the tenant's
+    ``etc/`` file. The two differ whenever a design seats fewer sites than its cap, and it
+    is the config that says what kind of network is being bought -- a tenant that allows
+    ninety-nine sites has bought a network where a site reaches other peers, whatever one
+    run seated, so reading the run instead would let a pair of its sites be joined twice
+    (GitHub issue #59). ``seat_cap`` of ``None`` is an operator who capped nothing, and a
+    caller with no tenant in hand; ``seats`` is then the whole of what is known about how
+    many peers there are.
     """
-    peers = sum(1 for peer in backbone_ids if peer != node)
-    return max(1, -(-paths_wanted // peers)) if peers else 1
+    peers = (seat_cap if seat_cap is not None else seats) - 1
+    return max(1, -(-paths_wanted // peers)) if peers > 0 else 1
 
 
 def independent_routes(node: str, ground: RouteGround) -> list[tuple[str, ...]]:
@@ -540,11 +557,12 @@ def independent_routes(node: str, ground: RouteGround) -> list[tuple[str, ...]]:
     augmenting path carries exactly one route.
 
     ``ground.paths_wanted`` is how many paths the tenant asked this site for, and decides
-    only whether a peer may take more than one route (see :func:`routes_per_peer`). Where
-    the backbone holds at least that many peers it changes nothing: the routes run to
-    distinct peers, which is the answer this function has always given. Where it holds
-    fewer -- a two-site backbone asked for two paths -- the peers take the shortfall between
-    them, and the routes to one peer share that peer and no other city.
+    beside ``ground.seat_cap`` only whether a peer may take more than one route (see
+    :func:`routes_per_peer`). Where the config allows at least that many peers it changes
+    nothing: the routes run to distinct peers, which is the answer this function has always
+    given. Where it allows fewer -- a backbone capped at two sites asked for two paths --
+    the peers take the shortfall between them, and the routes to one peer share that peer
+    and no other city.
 
     It is not a cap on what comes back. This counts what the fiber can carry, and how many
     of them the mesh then draws is the tenant's number applied by
@@ -596,7 +614,7 @@ def independent_routes(node: str, ground: RouteGround) -> list[tuple[str, ...]]:
     """
     backbone_ids, adjacency = ground.backbone_ids, ground.adjacency
     limit = ground.limit
-    per_peer = routes_per_peer(node, backbone_ids, ground.paths_wanted)
+    per_peer = routes_per_peer(ground.seat_cap, len(backbone_ids), ground.paths_wanted)
     if limit is None:
         return _proved_routes(node, backbone_ids, adjacency, per_peer)
     admissible = _admissible_adjacency(node, backbone_ids, adjacency, limit)

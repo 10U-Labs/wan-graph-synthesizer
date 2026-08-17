@@ -92,6 +92,7 @@ def finalize(
                 distances_from(adjacency, design.backbone_ids),
             ),
             params.tuning.backbone_number_of_diverse_paths,
+            params.max_backbone_count,
         )),
     )
     validation = validate_design(

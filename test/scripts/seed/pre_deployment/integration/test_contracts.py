@@ -346,10 +346,12 @@ def _ceiling_bounds(
     brought both cities back into the count.
 
     Having fewer pins than the number asked for is no longer a reason to leave a city out.
-    A peer may carry more than one route where the backbone is short of peers (see
-    ``synthesizer.ceiling.routes_per_peer``), so the tenant's number is passed in and a
-    two-pin tenant asking for two paths is measured on whether its fiber joins the two
-    cities two ways rather than skipped for having pinned only two. Two-Node is that tenant.
+    A peer may carry more than one route where the tenant's own seats leave its sites too
+    few peers to reach (see ``synthesizer.ceiling.routes_per_peer``), so the tenant's number
+    and its seat cap are both passed in and a two-seat tenant asking for two paths is
+    measured on whether its fiber joins the two cities two ways rather than skipped for
+    having pinned only two. Two-Node is that tenant, and the seat cap is what the build
+    reads, so measuring without it would hold a city to a bound the design never applies.
 
     What keeps a pin honest while it is the only one is the synthesizer itself, which seats
     a pin only where the carrier graph gives it two links (``compute_eligible_backbone_ids``)
@@ -379,7 +381,9 @@ def _ceiling_bounds(
             city_id = by_name.get(city)
             if city_id is None or _route_endpoints(city_id, pinned) < 1:
                 continue
-            ground = RouteGround(pinned, adjacency, limit, asked)
+            ground = RouteGround(
+                pinned, adjacency, limit, asked, backbone["node_count"]["max"]
+            )
             bound = independent_route_ceiling(city_id, ground)
             bounds.append((tenant, city, bound, asked))
     return bounds
