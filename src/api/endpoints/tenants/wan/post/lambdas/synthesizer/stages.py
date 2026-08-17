@@ -91,6 +91,7 @@ def finalize(
                 params.tuning.backbone_max_backup_route_multiple,
                 distances_from(adjacency, design.backbone_ids),
             ),
+            params.tuning.backbone_number_of_diverse_paths,
         ),
     )
     validation = validate_design(

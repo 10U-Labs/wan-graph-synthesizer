@@ -14,7 +14,7 @@ backbone:
   node_count:
     max: 2
     min: 2
-  number_of_diverse_paths: 1
+  number_of_diverse_paths: 2
   prohibited:
     connections: []
     nodes: []

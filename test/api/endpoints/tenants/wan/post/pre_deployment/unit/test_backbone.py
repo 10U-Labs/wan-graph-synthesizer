@@ -469,6 +469,70 @@ def test_a_detour_inside_the_bound_is_still_added() -> None:
     ) != _BASE_HUB
 
 
+# One pair, one route drawn through the hub ``h``, and a second way round through ``x`` that
+# the pass would take if nothing held it back. The cap is counted per pair, so this is the
+# fixture that shows it: the only pair there is is the one already at its number.
+_ONE_PAIR_EDGES = physical({
+    ("a", "h"): 1.0, ("h", "b"): 1.0, ("a", "x"): 2.0, ("x", "b"): 2.0,
+})
+_BASE_ONE_PAIR = [PathUse("backbone_mesh", "a", "b", ("a", "h", "b"), 2.0)]
+
+
+def test_no_detour_is_added_to_a_pair_already_holding_the_paths_it_asked_for() -> None:
+    """A pair given its number is protected by the routes it has, whatever cities they leave cut.
+
+    Each detour relieves one city and rides the same fiber for the rest of the way, so an
+    unbounded pass buys one route per chokepoint: Ashburn, VA to Salt Lake City, UT crosses
+    eight and took four extra routes for them (GitHub issue #58). Here the pair holds the
+    one route it asked for, so ``h`` stands and validation is what reports it.
+    """
+    assert augment_physical_resilience(
+        _BASE_ONE_PAIR, ("a", "b"), _ONE_PAIR_EDGES, frozenset(), None, 1
+    ) == _BASE_ONE_PAIR
+
+
+def test_a_detour_is_still_added_to_a_pair_with_a_path_left_to_spend() -> None:
+    """The cap refuses a route for being one too many, not for being a detour."""
+    assert augment_physical_resilience(
+        _BASE_ONE_PAIR, ("a", "b"), _ONE_PAIR_EDGES, frozenset(), None, 2
+    ) != _BASE_ONE_PAIR
+
+
+# Two sites and nothing else, joined two ways round that share no city. This is Two-Node in
+# miniature: one peer apiece, so a tenant asking for two paths is answered by two routes
+# over the one pair rather than by links to two peers.
+_TWO_SITE_EDGES = physical({
+    ("a", "north"): 1.0, ("north", "b"): 1.0,
+    ("a", "south"): 2.0, ("south", "b"): 2.0,
+    ("a", "long"): 9.0, ("long", "b"): 9.0,
+})
+
+
+def _two_site_paths(number_of_diverse_paths: int) -> list[PathUse]:
+    """Route the two-site backbone over fiber that joins it three disjoint ways."""
+    adjacency = build_adjacency(_TWO_SITE_EDGES)
+    distances, predecessors = all_pairs_shortest([pop("a"), pop("b")], adjacency)
+    return backbone_mesh_paths(
+        ("a", "b"), distances, predecessors, _TWO_SITE_EDGES,
+        BackboneConstraints(number_of_diverse_paths=number_of_diverse_paths),
+    )
+
+
+def test_a_two_site_backbone_is_drawn_with_the_paths_it_asked_for() -> None:
+    """Two asked for over fiber offering three, so two routes are built and the third is not."""
+    assert len(_two_site_paths(2)) == 2
+
+
+def test_a_two_site_backbone_takes_the_shortest_of_the_routes_open_to_it() -> None:
+    """The nine-mile way round is the one left unbuilt, not either of the shorter two."""
+    assert sorted(use.path[1] for use in _two_site_paths(2)) == ["north", "south"]
+
+
+def test_a_two_site_backbone_needs_no_detour_once_its_paths_are_drawn() -> None:
+    """Two routes sharing no city already survive any one city's loss, so nothing is repaired."""
+    assert [use.reason for use in _two_site_paths(2)] == [LINK_FOR_TARGET, LINK_FOR_TARGET]
+
+
 # Two backbone sites a short hop apart through ``m``, plus a thousand-mile pair of spans
 # through ``x`` that clears it. Both sites reach ``s`` through ``m`` and nowhere else, so
 # routing that link first is what leaves each of them already riding ``m`` when the p-q

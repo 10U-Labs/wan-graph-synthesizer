@@ -72,8 +72,59 @@ _TWIN_ROUTES = build_adjacency(physical({
 
 
 def test_two_routes_to_one_peer_count_once() -> None:
-    """Disjoint routes to the same peer both fail with that peer, so the ceiling is one."""
+    """Disjoint routes to the same peer both fail with that peer, so the ceiling is one.
+
+    ``s`` has ``u`` to reach as well, so a second route to ``t`` buys it nothing a way out
+    to ``u`` would not buy better. A site with no other peer to reach is the case where the
+    answer changes, and it is the two tests below.
+    """
     assert independent_route_ceiling("s", ("s", "t", "u"), _TWIN_ROUTES) == 1
+
+
+# The same twin routes with the backbone cut down to the pair they join. ``s`` has one peer
+# and no way to two paths except two routes to it, which is Two-Node: a backbone of Ashburn,
+# VA and Salt Lake City, UT and a tenant asking for two (GitHub issue #58).
+_ONE_PEER = ("s", "t")
+
+
+def test_a_site_with_one_peer_holds_the_paths_it_was_asked_for() -> None:
+    """Two paths asked for and one peer to reach, so that peer carries both of them."""
+    assert independent_route_ceiling("s", _ONE_PEER, _TWIN_ROUTES, None, 2) == 2
+
+
+def test_the_routes_to_one_peer_share_no_city_but_that_peer() -> None:
+    """Sharing the destination is what they are for; sharing anything else is not."""
+    inner = [
+        city
+        for route in independent_routes("s", _ONE_PEER, _TWIN_ROUTES, None, 2)
+        for city in route[1:-1]
+    ]
+    assert sorted(inner) == sorted(set(inner))
+
+
+def test_a_site_with_one_peer_is_still_held_to_one_route_when_one_is_asked() -> None:
+    """The doubling up answers the tenant's number; it is not what the fiber allows."""
+    assert independent_route_ceiling("s", _ONE_PEER, _TWIN_ROUTES, None, 1) == 1
+
+
+# Three ways from ``s`` to its only peer ``t``, sharing no city, at two, four and six miles.
+# A tenant asking for two is owed the two shortest and not the third.
+_THREE_WAYS = build_adjacency(physical({
+    ("s", "near"): 1.0, ("near", "t"): 1.0,
+    ("s", "mid"): 2.0, ("mid", "t"): 2.0,
+    ("s", "far"): 3.0, ("far", "t"): 3.0,
+}))
+
+
+def test_no_more_routes_to_one_peer_are_proved_than_were_asked_for() -> None:
+    """Three ways to the one peer and two asked for, so the third is left unproved."""
+    assert independent_route_ceiling("s", _ONE_PEER, _THREE_WAYS, None, 2) == 2
+
+
+def test_the_routes_proved_to_one_peer_are_the_shortest_of_them() -> None:
+    """The six-mile way round is the one left out, not either of the two shorter ones."""
+    routes = independent_routes("s", _ONE_PEER, _THREE_WAYS, None, 2)
+    assert sorted(route[1] for route in routes) == ["mid", "near"]
 
 
 def test_an_unreachable_node_has_no_ceiling_at_all() -> None:

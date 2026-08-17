@@ -177,14 +177,32 @@ def routed_failure_cities(path_uses: list[PathUse], node: str) -> list[frozenset
     """Per mesh link at ``node`` in ``path_uses``, the cities whose loss would take it down.
 
     Every city the link's routed path visits except ``node`` itself: a transit city, and
-    the peer at the far end, which is a city too. Two routes for the same pair both carry
-    that pair's peer, so a detour never reads as a second independent link to it.
+    the peer at the far end, which is a city too.
 
     Taking the routes rather than a whole design is what lets the mesh be measured while it
     is still being built, before there is a design to hand.
     """
+    return [cities for _peer, cities in routed_links(path_uses, node)]
+
+
+def routed_links(
+    path_uses: list[PathUse], node: str
+) -> list[tuple[str, frozenset[str]]]:
+    """Per mesh link at ``node``, the peer it reaches and the cities that would take it down.
+
+    The peer travels beside the cities because the two answer different halves of one
+    question. Two links that share a city normally fail together, so they are one way out of
+    the site rather than two -- unless the city they share is the peer both of them end at,
+    in which case they are two routes to one peer and the shared city is the destination
+    itself. Losing it costs the site those routes and nothing else, which is what a way out
+    is. Only :func:`routed_independent_degree` needs to tell the two apart, and it cannot
+    from the cities alone.
+    """
     return [
-        frozenset(use.path) - {node}
+        (
+            use.target if use.source == node else use.source,
+            frozenset(use.path) - {node},
+        )
         for use in path_uses
         if use.purpose == "backbone_mesh" and node in (use.source, use.target)
     ]
@@ -195,13 +213,21 @@ def mesh_link_failure_cities(design: Design, node: str) -> list[frozenset[str]]:
     return routed_failure_cities(design.path_uses, node)
 
 
-def _all_disjoint(failure_cities: tuple[frozenset[str], ...]) -> bool:
-    """Whether no city appears in two of these links' failure sets."""
-    seen: set[str] = set()
-    for cities in failure_cities:
-        if seen & cities:
+def _all_disjoint(links: tuple[tuple[str, frozenset[str]], ...]) -> bool:
+    """Whether no two of these links would be taken down by the loss of one city.
+
+    A city in two links' failure sets fails both, so the two are one way out of the site.
+    The exception is the peer two links both end at: a site with one peer and two routes to
+    it loses both when that peer goes, and has lost the destination rather than its
+    protection. Those two are the two paths a two-site backbone is asked for, and charging
+    them for the city they exist to reach would make the number unreachable.
+    """
+    for (near_peer, near), (far_peer, far) in combinations(links, 2):
+        shared = near & far
+        if near_peer == far_peer:
+            shared -= {near_peer}
+        if shared:
             return False
-        seen |= cities
     return True
 
 
@@ -210,10 +236,12 @@ def routed_independent_degree(path_uses: list[PathUse], node: str) -> int:
 
     A node's nominal degree counts lines on a diagram. This counts links that fail
     independently, which is the number the configured degree is asking for: the largest
-    set of the node's links whose failure cities are pairwise disjoint. Searched largest
-    first over a handful of links, so the exhaustive walk stays cheap.
+    set of the node's links no one city's loss takes two of (see :func:`_all_disjoint`,
+    which is where two routes to one peer are told apart from two links through one transit
+    city). Searched largest first over a handful of links, so the exhaustive walk stays
+    cheap.
     """
-    links = routed_failure_cities(path_uses, node)
+    links = routed_links(path_uses, node)
     for size in range(len(links), 0, -1):
         if any(_all_disjoint(combo) for combo in combinations(links, size)):
             return size
@@ -234,8 +262,16 @@ def backbone_mesh_independence_deficient(
 
     The city-diversity counterpart of :func:`backbone_mesh_deficient`: a node can hold its
     full nominal degree and still fall below it when one transit city goes, because two of
-    its links cross that city. With ``targets.number_of_diverse_paths`` or fewer backbone nodes the
-    target cannot be met at all, so the list is empty.
+    its links cross that city.
+
+    Every backbone is asked, however few sites are in it. A backbone with fewer peers than
+    paths asked for used to be waved through here, on the reasoning that a site cannot hold
+    more paths than it has peers to reach -- which stopped being true when a peer was
+    allowed to carry more than one route (see :func:`synthesizer.ceiling.routes_per_peer`).
+    Two-Node is the backbone that reasoning waved through: two sites asking for two paths,
+    published with five routes between them and never once measured (GitHub issue #58). A
+    site whose fiber genuinely cannot carry the number is still not reported, because its
+    ceiling brings its own target down (see :func:`node_mesh_target`).
 
     The target is per node (see :func:`node_mesh_target`), which is what separates a
     shortfall the ground imposes from a shortfall the tool caused. A node whose every route
@@ -248,8 +284,6 @@ def backbone_mesh_independence_deficient(
     only the nominal one would leave the operator with the same report they asked to be rid
     of -- and this is the count the build refuses on.
     """
-    if len(design.backbone_ids) <= targets.number_of_diverse_paths:
-        return []
     return [
         {
             "id": backbone_id,
@@ -397,7 +431,11 @@ def above_target_nodes(
     gives a node more of its own than the number asked, so the reasons below are never an
     empty list.
     """
-    asked_for = min(targets.number_of_diverse_paths, len(design.backbone_ids) - 1)
+    # The tenant's number flat. It once came down to the peers a site had to reach, since a
+    # site could take only one route to each; a site short of peers now doubles up on them
+    # instead (see :func:`synthesizer.ceiling.routes_per_peer`), so the routes it is
+    # entitled to are the number asked for wherever they end.
+    asked_for = targets.number_of_diverse_paths
     rows: list[dict[str, object]] = []
     for node in sorted(design.backbone_ids):
         links = node_mesh_links(design, node)

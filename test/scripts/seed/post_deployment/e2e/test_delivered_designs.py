@@ -17,7 +17,7 @@ assertions, because the build was accepted and the status said ``ready``, which 
 how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
 200-mile target.
 
-The measurement itself is not here. Three of the nine questions below are answered by
+The measurement itself is not here. Four of the ten questions below are answered by
 recomputing a number from the published collections rather than by reading one back, and
 that recomputation lives in lib/python/test_published_designs/, where a unit tier can hold
 it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
@@ -40,7 +40,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from test_published_designs import detoured_links, overrun_links, worst_haul
+from test_published_designs import (
+    detoured_links,
+    overbuilt_pairs,
+    overrun_links,
+    worst_haul,
+)
 
 
 def _published_cities(design: dict[str, Any]) -> set[str]:
@@ -217,3 +222,27 @@ def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(
         for design in delivered_designs
     }
     assert {tenant: sites for tenant, sites in short.items() if sites} == {}
+
+
+def test_no_published_network_draws_a_pair_more_routes_than_its_tenant_bought(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """No two backbone sites are joined by more routes than the tenant asked for paths.
+
+    The counterpart of the shortfall above, and the half that was missing. Every question
+    this layer asked about routes asked it of one route at a time -- is this one inside the
+    bound, is this one the shortest way over the fiber -- so a network could hold any number
+    of them and answer yes every time. Two-Node did: five routes between Ashburn, VA and
+    Salt Lake City, UT, each of them sound on its own, 5,633 miles of haul nobody ordered,
+    and not one published measurement with anything to say about it (GitHub issue #58).
+
+    Asked against the number in ``etc/`` rather than the one the build reported, because the
+    question is whether the network an operator has is the network their config asks for.
+    A build published before they last moved the number is measured against what they want
+    now, which is the finding.
+    """
+    overbuilt = {
+        design["tenant"]: overbuilt_pairs(design)
+        for design in delivered_designs
+        if overbuilt_pairs(design)
+    }
+    assert overbuilt == {}

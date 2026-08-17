@@ -334,17 +334,22 @@ def _ceiling_bounds(
     A city the carrier files hold no point for is left out, since there is no graph to
     measure it on and a silent zero would read as a proven limit.
 
-    A city with fewer places to route to than its tenant asks for is left out for the same
-    reason. ``independent_route_ceiling`` never counts more routes than there are other
-    backbone nodes, so where the pins do not supply that many endpoints the bound is below
-    the number asked before any fiber is read, and comparing the two would report the count
-    of pins rather than anything about the city. No tenant is left out today. Two-Node was,
-    while it pinned Ashburn, VA alone and asked for one diverse path, which left a route out
-    of Ashburn nowhere to end and the bound at zero; pinning Salt Lake City, UT beside it
-    gave that route a place to end and brought both cities back into the count. What keeps
-    such a pin honest while it is the only one is the synthesizer itself, which seats a pin
-    only where the carrier graph gives it two links (``compute_eligible_backbone_ids``) and
-    refuses one sitting in a fiber pocket too small for the backbone it was asked for
+    A city with no other pin to route to at all is left out for the same reason: every route
+    counted here ends at one of the tenant's pins, so a city that is the only pin leaves a
+    route out of it nowhere to go and the bound reads zero however much fiber leaves the
+    city. That is a fact about the config rather than about the ground. Two-Node was in that
+    position while it pinned Ashburn, VA alone, and pinning Salt Lake City, UT beside it
+    brought both cities back into the count.
+
+    Having fewer pins than the number asked for is no longer a reason to leave a city out.
+    A peer may carry more than one route where the backbone is short of peers (see
+    ``synthesizer.ceiling.routes_per_peer``), so the tenant's number is passed in and a
+    two-pin tenant asking for two paths is measured on whether its fiber joins the two
+    cities two ways rather than skipped for having pinned only two. Two-Node is that tenant.
+
+    What keeps a pin honest while it is the only one is the synthesizer itself, which seats
+    a pin only where the carrier graph gives it two links (``compute_eligible_backbone_ids``)
+    and refuses one sitting in a fiber pocket too small for the backbone it was asked for
     (``forced_backbone_resilience_error``).
 
     The tenant's own backup route multiple is applied, because the real run applies it: a
@@ -368,9 +373,9 @@ def _ceiling_bounds(
         )
         for city in cities(backbone):
             city_id = by_name.get(city)
-            if city_id is None or _route_endpoints(city_id, pinned) < asked:
+            if city_id is None or _route_endpoints(city_id, pinned) < 1:
                 continue
-            bound = independent_route_ceiling(city_id, pinned, adjacency, limit)
+            bound = independent_route_ceiling(city_id, pinned, adjacency, limit, asked)
             bounds.append((tenant, city, bound, asked))
     return bounds
 
@@ -413,18 +418,19 @@ def test_every_pinned_city_can_carry_the_diversity_its_tenant_asks_for() -> None
     short, and neither file can say on its own: the config names the cities, the carrier
     files say what their fiber does.
 
-    Measured over the merged carriers today, seven pinned cities sit exactly on the number
-    their tenant asks for and the rest are above it -- DAF's Boston, AFGSC's Tacoma, and
-    DOW's Boardman, Umatilla and Tucson, each with two routes out that share no city, and
-    Two-Node's Ashburn and Salt Lake City, which ask for one and have the single route
-    between them, 1843.1 miles of fiber against 1815.7 direct. The bound counts only routes
-    to the tenant's other pins, so the real run, which seats more sites and adds spans, can
-    only do better.
+    Measured over the merged carriers today, twelve of the eighty-four pinned cities sit
+    exactly on the number their tenant asks for and the other seventy-two are above it --
+    Boston, MA under four tenants, New York, NY under two, AFGSC's Tacoma, WA and DoW's
+    Boardman, OR, Tucson, AZ and Umatilla, OR, each with two routes out that share no city,
+    and Two-Node's Ashburn, VA and Salt Lake City, UT, joined by two routes sharing nothing
+    but their two ends, 1,843.1 and 2,041.1 miles against 1,815.7 direct. The bound counts
+    only routes to the tenant's other pins, so the real run, which seats more sites and adds
+    spans, can only do better.
 
-    A tenant whose pins leave a city fewer endpoints than it asks for is not measured here
-    (see :func:`_ceiling_bounds`), because the bound would then report how many cities the
-    tenant pinned rather than what any of their fiber can carry. No tenant is in that
-    position today; Two-Node was, until it pinned a second city.
+    A tenant that pins one city is not measured here (see :func:`_ceiling_bounds`), because
+    a route out of it would have nowhere to end and the bound would report the count of pins
+    rather than anything about the fiber. No tenant is in that position today; Two-Node was,
+    until it pinned a second city.
     """
     assert [
         (tenant, city, bound, asked)

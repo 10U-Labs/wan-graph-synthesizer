@@ -2,10 +2,11 @@
 
 The delivered-design layer reads what the deployed synthesizer published and judges it.
 This module is both halves of that job: the reader that asks the service for a tenant's
-network and for the state of its build, and the three measurements that cannot be answered
+network and for the state of its build, and the four measurements that cannot be answered
 by reading a number back -- what the worst haul of a published network really is, whether
-any published link wanders further from the straight line than its tenant allows, and
-whether any of them wanders further than the fiber it was routed over made necessary.
+any published link wanders further from the straight line than its tenant allows, whether
+any of them wanders further than the fiber it was routed over made necessary, and whether
+any pair of sites was drawn with more routes between them than the tenant bought.
 
 The reading goes through the API and not through the S3 bucket the synthesizer writes to.
 The bucket holds only what the synthesizer chose to publish, which is three of the eight
@@ -106,6 +107,7 @@ def published_design(api: str, tenant: str, config: dict[str, Any]) -> dict[str,
         "tenant": tenant,
         "target_miles": backbone["coverage_target_miles"],
         "max_backup_route_multiple": backbone["max_backup_route_multiple"],
+        "number_of_diverse_paths": backbone["number_of_diverse_paths"],
         "seat_cap": backbone["node_count"]["max"],
         "forced": backbone.get("forced", {}).get("nodes", []),
         "status": state,
@@ -172,6 +174,36 @@ def overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
         if direct > 0 and link["distance_miles"] > allowed * direct:
             overrun.append((" -> ".join(link["path"]), link["distance_miles"] / direct))
     return overrun
+
+
+def overbuilt_pairs(design: dict[str, Any]) -> list[tuple[str, int]]:
+    """Every pair of backbone sites drawn with more routes than the tenant asked for.
+
+    A tenant's number of diverse paths is how many routes it is buying between two of its
+    sites, so a pair carrying more than that is carrying cable nobody ordered. Reported as
+    the pair and the routes it holds, which is what names the overbuild to whoever reads
+    the failure.
+
+    Counting a pair rather than measuring one route is the whole point of asking this from
+    out here. Every route can be inside the backup route multiple and be the shortest way
+    over its own fiber -- which is what :func:`overrun_links` and :func:`detoured_links`
+    ask -- while there are simply too many of them. Two-Node was published with five routes
+    between Ashburn, VA and Salt Lake City, UT, all five of them individually sound, and no
+    published measurement had anything to say about it (GitHub issue #58).
+
+    The two ends are ordered before they are counted, so a pair served under either name is
+    the one pair it is.
+    """
+    drawn: dict[tuple[str, str], int] = {}
+    for link in design["links"]:
+        pair = tuple(sorted((link["source_id"], link["target_id"])))
+        drawn[pair] = drawn.get(pair, 0) + 1
+    allowed = design["number_of_diverse_paths"]
+    return [
+        (" <-> ".join(pair), count)
+        for pair, count in sorted(drawn.items())
+        if count > allowed
+    ]
 
 
 def _published_fiber(design: dict[str, Any]) -> dict[str, dict[str, float]]:

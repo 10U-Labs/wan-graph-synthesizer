@@ -38,11 +38,14 @@ came across rather than the most there are (see :func:`independent_routes`). It 
 answer and not a proved one, and where it errs low the node is named in the design's report
 rather than quietly held to less.
 
-Two details the count turns on. A route is charged for the peer it ends at as well as the
-cities it crosses, since a peer is a city too -- so two disjoint routes to one peer count
-once. And the ceiling depends on which nodes are in the backbone, because it counts
-routes to the *other backbone nodes*; it is computed per candidate backbone set, not once
-for the map.
+Two details the count turns on. A route is normally charged for the peer it ends at as well
+as the cities it crosses, since a peer is a city too -- so two disjoint routes to one peer
+count once, and a site with peers to spare is not credited with a way out it does not have.
+The exception is a backbone holding fewer peers than the tenant asked for paths, where
+several routes to one peer are the only answer there is and are counted as the paths they
+are (see :func:`routes_per_peer`). And the ceiling depends on which nodes are in the
+backbone, because it counts routes to the *other backbone nodes*; it is computed per
+candidate backbone set, not once for the map.
 """
 
 from __future__ import annotations
@@ -61,7 +64,11 @@ _Residual = dict[_Node, dict[_Node, int]]
 # nothing, being bookkeeping rather than cable. Every arc's reverse carries the negative,
 # so undoing an earlier choice refunds exactly what it cost.
 _Costs = dict[_Node, dict[_Node, float]]
-_Arc = tuple[_Node, _Node]
+# One arc of the residual network: where it runs from, where it runs to, and how many
+# units it was given. The units are carried because an arc a peer takes several routes
+# through starts with more than one, so "used" is what it has spent rather than whether
+# it has anything left.
+_Arc = tuple[_Node, _Node, int]
 
 _SINK: _Node = ("sink", "")
 
@@ -163,14 +170,14 @@ def _admissible_adjacency(
 
 
 def _add_capacity(
-    residual: _Residual, costs: _Costs, tail: _Node, head: _Node, miles: float
+    residual: _Residual, costs: _Costs, tail: _Node, head: _Node, miles: float, units: int
 ) -> None:
-    """Add a directed arc of one unit, seeding the reverse arc every search needs.
+    """Add a directed arc of ``units``, seeding the reverse arc every search needs.
 
     The reverse arc starts empty and costs the negative of the forward one, so a later
     round can send a unit back down it and be charged exactly what the earlier round paid.
     """
-    residual.setdefault(tail, {})[head] = 1
+    residual.setdefault(tail, {})[head] = units
     residual.setdefault(head, {}).setdefault(tail, 0)
     costs.setdefault(tail, {})[head] = miles
     costs.setdefault(head, {})[tail] = -miles
@@ -180,38 +187,53 @@ def _unit_vertex_network(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
+    routes_per_peer: int = 1,
 ) -> tuple[_Residual, _Costs, list[_Arc]]:
     """The residual network whose cheapest max flow out of ``node`` is that node's routes.
 
     Every city but ``node`` is split into an in and an out side joined by one unit, so a
     route may use it once; ``node`` itself is left unsplit, since all of its own spans are
     available to it. Each substrate span becomes an arc in both directions carrying the
-    span's mileage, and every other backbone node's out side feeds the sink -- so a unit of
-    flow is one route from ``node`` to a distinct peer, units cannot share a city, and what
-    a unit costs is the cable its route runs on.
+    span's mileage, and every other backbone node feeds the sink -- so a unit of flow is
+    one route from ``node`` to a peer, units cannot share a city, and what a unit costs is
+    the cable its route runs on.
 
-    The arcs are returned alongside the network. Every one of them carries a single unit,
-    so an arc with none of its capacity left is an arc the flow used, which is what lets
+    ``routes_per_peer`` is how many routes one peer may take, and is above one only where
+    the backbone holds fewer peers than the tenant asked for paths. At one the network is
+    the plain one described above: a peer is split like any other city, so a route to a far
+    peer that crosses a nearer one spends that peer's single unit and the site cannot then
+    hold a route of its own to it.
+
+    Above one the peers stop being split and become termini only. Several routes may end at
+    one peer, which is what the site is short of peers for, and none may cross a peer on the
+    way to another -- that route would fail with every route ending there, so counting it
+    beside them would credit the site with a way out it does not have.
+
+    The arcs are returned alongside the network with the units each was given, so an arc
+    with less capacity left than it started with is one the flow used, which is what lets
     the finished flow be read back as routes rather than only as a count.
     """
-    spans: list[tuple[_Node, _Node, float]] = [
-        (("in", city), ("out", city), 0.0) for city in adjacency if city != node
+    peers = {peer for peer in backbone_ids if peer != node and peer in adjacency}
+    termini_only = routes_per_peer > 1
+    spans: list[tuple[_Node, _Node, float, int]] = [
+        (("in", city), ("out", city), 0.0, 1)
+        for city in adjacency
+        if city != node and not (termini_only and city in peers)
     ]
     spans += [
-        (("out", city), ("in", neighbor), weight)
+        (("out", city), ("in", neighbor), weight, 1)
         for city, neighbors in adjacency.items()
         for neighbor, weight in neighbors
     ]
     spans += [
-        (("out", peer), _SINK, 0.0)
-        for peer in backbone_ids
-        if peer != node and peer in adjacency
+        (("in" if termini_only else "out", peer), _SINK, 0.0, routes_per_peer)
+        for peer in sorted(peers)
     ]
     residual: _Residual = {}
     costs: _Costs = {}
-    for tail, head, miles in spans:
-        _add_capacity(residual, costs, tail, head, miles)
-    return residual, costs, [(tail, head) for tail, head, _miles in spans]
+    for tail, head, miles, units in spans:
+        _add_capacity(residual, costs, tail, head, miles, units)
+    return residual, costs, [(tail, head, units) for tail, head, _miles, units in spans]
 
 
 def _cheapest_runs(
@@ -284,14 +306,16 @@ def _augmenting_path(
 
 
 def _spent_arcs(residual: _Residual, arcs: list[_Arc]) -> dict[_Node, list[_Node]]:
-    """Where the flow went: the heads each tail sent its unit to, keyed by tail.
+    """Where the flow went: the heads each tail sent units to, keyed by tail.
 
-    Every arc was given a single unit, so one with nothing left is one the flow used.
+    An arc appears once per unit it spent, which is the units it was given less the
+    capacity it has left. Almost every arc was given one, so almost every one that spent
+    anything appears exactly once; a peer taking several routes is the exception the count
+    is written for.
     """
     spent: dict[_Node, list[_Node]] = {}
-    for tail, head in arcs:
-        if residual[tail][head] == 0:
-            spent.setdefault(tail, []).append(head)
+    for tail, head, units in arcs:
+        spent.setdefault(tail, []).extend([head] * (units - residual[tail][head]))
     return spent
 
 
@@ -299,20 +323,23 @@ def _routes_through(spent: dict[_Node, list[_Node]], source: _Node) -> list[tupl
     """Split the finished flow into one city route per unit that left ``source``.
 
     The walk cannot branch or double back, which is what makes this a plain traversal
-    rather than a search. Every city but the source is split around a single unit, so a
-    city the flow enters has exactly one way out of it, and no city can appear on two
-    routes or twice on one. Each unit leaving the source therefore runs to the sink, and
-    there are as many of them as the flow is worth.
+    rather than a search. Every transit city is split around a single unit, so a city the
+    flow enters has exactly one way out of it and no city can appear on two routes or twice
+    on one. A peer taking several routes is the one city several units reach, and every one
+    of them leaves it for the sink, so the walk still cannot pick wrongly there.
+
+    Each unit is taken off the tail it arrived on as the walk spends it, which is what
+    keeps two units through one peer from both following the first way out.
     """
     routes: list[tuple[str, ...]] = []
-    for first in spent.get(source, []):
+    while spent.get(source):
         cities = [source[1]]
-        cursor = first
+        cursor = spent[source].pop(0)
         while cursor != _SINK:
             side, city = cursor
             if side == "in":
                 cities.append(city)
-            cursor = spent[cursor][0]
+            cursor = spent[cursor].pop(0)
         routes.append(tuple(cities))
     return routes
 
@@ -436,6 +463,7 @@ def _proved_routes(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
+    routes_per_peer: int = 1,
 ) -> list[tuple[str, ...]]:
     """The cheapest maximum flow out of ``node``, read back as the routes it spent.
 
@@ -444,10 +472,13 @@ def _proved_routes(
     be -- the count is unchanged by charging for mileage -- and the least cable of the
     flows that size.
 
-    The rounds are bounded by the flow itself, which is bounded by the number of peers,
-    since every unit that leaves ``node`` ends at a peer's arc into the sink.
+    The rounds are bounded by the flow itself, which is bounded by the number of peers
+    times ``routes_per_peer``, since every unit that leaves ``node`` ends at a peer's arc
+    into the sink and each of those arcs holds that many.
     """
-    residual, costs, arcs = _unit_vertex_network(node, backbone_ids, adjacency)
+    residual, costs, arcs = _unit_vertex_network(
+        node, backbone_ids, adjacency, routes_per_peer
+    )
     source: _Node = ("out", node)
     # Every node starts owing nothing, which is a valid set of potentials because no arc
     # costs less than zero until a round has sent a unit down one. The source is named
@@ -463,19 +494,47 @@ def _proved_routes(
             residual[head][tail] += 1
 
 
+def routes_per_peer(node: str, backbone_ids: tuple[str, ...], paths_wanted: int) -> int:
+    """How many routes one peer may take, given how many paths the site was asked for.
+
+    A site takes one route to each of as many peers as it can reach, which is what a way
+    out of a site is: losing a peer costs the site that way out and no other. Only when
+    the backbone holds fewer peers than the tenant asked for paths does a peer take a
+    second route, and then it takes no more of them than sharing the shortfall out evenly
+    requires.
+
+    Two-Node is the whole of why this is not always one. Its backbone is Ashburn, VA and
+    Salt Lake City, UT, so each site has exactly one peer and a tenant asking for two paths
+    can only be answered by two routes to it.
+    """
+    peers = sum(1 for peer in backbone_ids if peer != node)
+    return max(1, -(-paths_wanted // peers)) if peers else 1
+
+
 def independent_routes(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     limit: BackupRouteLimit | None = None,
+    paths_wanted: int = 1,
 ) -> list[tuple[str, ...]]:
     """The shortest set of the most routes from ``node`` no one city's loss takes two of.
 
-    Each runs from ``node`` to a distinct peer, and no city carries two of them -- a max
-    flow with unit vertex capacities (see :func:`_unit_vertex_network`), pushed one route
-    at a time until no unused capacity reaches the sink, then read back off the arcs it
-    spent. Every unit of capacity is one, so each augmenting path carries exactly one
-    route.
+    Each runs from ``node`` to a peer, and no city carries two of them -- a max flow with
+    unit vertex capacities (see :func:`_unit_vertex_network`), pushed one route at a time
+    until no unused capacity reaches the sink, then read back off the arcs it spent. Each
+    augmenting path carries exactly one route.
+
+    ``paths_wanted`` is how many paths the tenant asked this site for, and decides only
+    whether a peer may take more than one route (see :func:`routes_per_peer`). Where the
+    backbone holds at least that many peers it changes nothing: the routes run to distinct
+    peers, which is the answer this function has always given. Where it holds fewer -- a
+    two-site backbone asked for two paths -- the peers take the shortfall between them,
+    and the routes to one peer share that peer and no other city.
+
+    It is not a cap on what comes back. This counts what the fiber can carry, and how many
+    of them the mesh then draws is the tenant's number applied by
+    :func:`synthesizer.backbone.backbone_mesh_paths`.
 
     Of the many sets that size, the one returned is the one running the least cable. Each
     round takes the cheapest route left rather than the one crossing the fewest cities (see
@@ -521,12 +580,13 @@ def independent_routes(
     any price; this bounds the routes as well as the fiber, and still bounds them from
     above.
     """
+    per_peer = routes_per_peer(node, backbone_ids, paths_wanted)
     if limit is None:
-        return _proved_routes(node, backbone_ids, adjacency)
+        return _proved_routes(node, backbone_ids, adjacency, per_peer)
     admissible = _admissible_adjacency(node, backbone_ids, adjacency, limit)
     best: list[tuple[str, ...]] = []
     while True:
-        routes = _proved_routes(node, backbone_ids, admissible)
+        routes = _proved_routes(node, backbone_ids, admissible, per_peer)
         within = [
             route
             for route in routes
@@ -548,6 +608,7 @@ def independent_route_ceiling(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     limit: BackupRouteLimit | None = None,
+    paths_wanted: int = 1,
 ) -> int:
     """The most links ``node`` could hold that no single city's loss takes two of.
 
@@ -564,14 +625,21 @@ def independent_route_ceiling(
     so counting it would say a chokepointed site can hold links that it cannot. Under a
     bound the number is the best set that search found rather than a proved maximum, and
     the cut it corresponds to is over the fiber that search was left with.
+
+    ``paths_wanted`` lets a peer carry more than one route where the backbone holds too few
+    peers to answer the tenant any other way (see :func:`independent_routes`). Without it a
+    two-site backbone scores one however much diverse fiber joins the two, and a target
+    taken from that ceiling asks each site for the single unprotected circuit it already
+    has.
     """
-    return len(independent_routes(node, backbone_ids, adjacency, limit))
+    return len(independent_routes(node, backbone_ids, adjacency, limit, paths_wanted))
 
 
 def diverse_path_ceilings(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     limit: BackupRouteLimit | None = None,
+    paths_wanted: int = 1,
 ) -> dict[str, int]:
     """Each backbone node's ceiling, computed over the substrate they all sit on.
 
@@ -591,9 +659,13 @@ def diverse_path_ceilings(
     rather than left out. The two say different things: the substrate carries that site and
     the answer about it is that nothing it can reach is worth reaching, which is a finding
     and not a silence.
+
+    ``paths_wanted`` is the tenant's own number, passed through so a site on a backbone
+    with too few peers is scored on the routes it could really hold rather than on the one
+    route per peer a larger backbone would give it (see :func:`independent_routes`).
     """
     return {
-        node: independent_route_ceiling(node, backbone_ids, adjacency, limit)
+        node: independent_route_ceiling(node, backbone_ids, adjacency, limit, paths_wanted)
         for node in backbone_ids
         if node in adjacency
     }

@@ -130,9 +130,26 @@ def test_diverse_path_count_of_a_node_with_no_links_is_zero() -> None:
     assert diverse_path_count(meshed_design([], ("a",)), "a") == 0
 
 
-def test_diverse_path_count_counts_a_detour_to_one_peer_once() -> None:
-    """Two routes to the same peer are one link: losing the peer city takes both."""
+def test_diverse_path_count_counts_two_routes_to_the_only_peer_as_two() -> None:
+    """A two-site backbone gets its two paths as two routes to the one peer there is.
+
+    Losing ``b`` takes both, and takes the destination with them: the site has lost what it
+    was reaching for rather than the protection on the way. Counting these once is what left
+    Two-Node published with five routes and reported as meeting a target of one
+    (GitHub issue #58).
+    """
     design = meshed_design([("a", "x", "b"), ("a", "y", "b")], ("a", "b"))
+    assert diverse_path_count(design, "a") == 2
+
+
+def test_diverse_path_count_counts_a_link_crossing_a_peer_with_that_peers_link_once() -> None:
+    """A direct link to b and a link crossing b both fall with b, so they are one way out.
+
+    The peer two links share is theirs to share only when both of them end there. Here one
+    ends at ``b`` and the other passes through it on the way to ``c``, so ``b`` is a transit
+    city on the second and the pair is no more independent than any other pair sharing one.
+    """
+    design = meshed_design([("a", "b"), ("a", "b", "c")], ("a", "b", "c"))
     assert diverse_path_count(design, "a") == 1
 
 
@@ -217,11 +234,22 @@ def test_independence_deficient_still_names_a_node_under_its_own_ceiling() -> No
 
 
 @pytest.mark.parametrize("degree", [2, 3, 4])
-def test_independence_deficient_is_empty_when_the_backbone_is_too_small(
+def test_independence_deficient_still_asks_a_backbone_no_larger_than_the_degree(
     degree: int,
 ) -> None:
-    """A backbone no larger than the degree cannot meet it, so nothing is reported."""
+    """A small backbone is measured too, since its sites double up on peers to make the number.
+
+    This used to return empty on the reasoning that a site cannot hold more paths than it
+    has peers to reach. A peer may now carry more than one route, so the reasoning no longer
+    holds and the check that rested on it waved Two-Node through unmeasured
+    (GitHub issue #58). Every site here holds no link at all, so every one of them is short.
+    """
     backbone = "abcd"[:degree]
     design = meshed_design([], tuple(backbone))
     vertices = fixtures.carrier_pops_by_id(backbone)
-    assert backbone_mesh_independence_deficient(design, vertices, MeshTargets(degree)) == []
+    assert [
+        row["id"]
+        for row in backbone_mesh_independence_deficient(
+            design, vertices, MeshTargets(degree)
+        )
+    ] == list(backbone)
