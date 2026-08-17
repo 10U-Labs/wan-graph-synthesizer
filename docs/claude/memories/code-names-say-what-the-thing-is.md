@@ -1,0 +1,17 @@
+# Code names say what the thing is
+
+A name in the code is read far more often than it is written, and almost always by somebody who has not opened its definition and is not going to. So a class, function, variable or field is named such that a reader meeting it for the first time can say what it holds or what it does, in ordinary words, from the name alone. A name that only makes sense once its docstring has been read is a name doing no work, and the docstring is then carrying the whole cost of the choice every time anyone reads a line that mentions it.
+
+Name the thing the thing is. A class holding the sites in the backbone, the joins the operator pruned, the carrier fiber and the backup limit is named for those, not for the role it plays in somebody's mental picture of the calculation. `_DetourSubstrate` at `backbone.py:455` is the failure to avoid: nothing in the repository is a substrate, the word says only that other things stand on it, and a reader who greps for it learns nothing they did not already know from the line they were reading. `RouteGround` at `ceiling.py:497` is the same shape. Both have careful docstrings explaining what they really are, which is the evidence that the names do not.
+
+Abstract filler nouns are where this usually goes wrong: substrate, ground, context, handle, use, spec, info, data, manager, helper, wrapper. They can be attached to anything, so they distinguish nothing. Where a class genuinely bundles several things because they travel together, name it for what the bundle is for — the inputs a search reads, the limits a tenant set, the fiber a design ordered — in words a network engineer would use without being taught them.
+
+Plain English also means no computer-science vocabulary where a network word exists. This repository designs backbones. Its readers are network engineers. Prefer the word they already have, and take the words for the parts of a backbone from [say-peers-and-paths](say-peers-and-paths.md), which also bans route, circuit, span, cable and chokepoint as words for them — in identifiers as well as in prose.
+
+Abbreviations are allowed only where the abbreviation is the ordinary form. `PoP`, `WAN` and `id` are ordinary. `cfg`, `res`, `tmp`, `idx`, `pt` and single letters are not, except as a loop variable whose whole life is two lines. Length is not the cost being minimised; a name six characters longer that removes a question is a saving.
+
+Two checks that catch most of it. First, read the name in a sentence saying what it is — "this is the fiber a detour search reads" — and ask whether the name would have produced that sentence in the reader's head. Second, look at whether the docstring's first line is doing the naming; if the name plus the first line say the same thing, the name is right, and if the first line is a correction, the name is wrong.
+
+This applies to new code as it is written and to old code as it is touched. The rename of what is already on disk is GitHub issue #61, which carries the mapping.
+
+This was written on 2026-08-17, after a session settled the vocabulary for prose and the user asked for the same standard in the code: names must be intuitive and self-explanatory, not obscure. Naming things by their exact names when writing *about* the repository is the neighbouring rule, in [write-the-exact-name](write-the-exact-name.md); leading with what a thing is for, before its identifier, is [lead-with-what-it-is-for](lead-with-what-it-is-for.md).

@@ -27,6 +27,7 @@ session tool's local memory only what is true of one machine alone.
 - [write-the-exact-name](write-the-exact-name.md) — name the file, function and line everywhere, in chat as much as in issues; never a coined collective noun
 - [lead-with-what-it-is-for](lead-with-what-it-is-for.md) — say what the thing is and what it costs before the first identifier, and cut the details that change nothing
 - [say-peers-and-paths](say-peers-and-paths.md) — one word per thing: path, peer, fiber segment, single point of failure, backbone node, access node — and never route, circuit, span, cable or chokepoint
+- [code-names-say-what-the-thing-is](code-names-say-what-the-thing-is.md) — a class, function or variable is named so a first-time reader knows what it holds without opening it; no filler nouns
 - [say-shorter-not-cheaper](say-shorter-not-cheaper.md) — the repository records miles and no money at all, so a path is shorter, never cheaper
 - [an-issue-states-one-solution](an-issue-states-one-solution.md) — a `Proposed Solution` names one change; a fork is asked about before the issue is filed, never published as an either
 
