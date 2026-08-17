@@ -1,22 +1,24 @@
-"""Unit tests for the published pairs carrying more routes than their tenant bought.
+"""Unit tests for the published routes between a pair of sites that buy neither of them a path.
 
-The helper counts the routes a published network draws between each pair of backbone sites
-and reports the pairs above the tenant's number of diverse paths. Nothing outside the build
-could ask this before, and the reason to ask it is that every other published measurement
-judges one route at a time: a network can hold five routes between two sites with every one
-of them the shortest way over its own fiber and inside the backup route multiple, which is
-what Two-Node published (GitHub issue #58).
+The helper reads a published network and reports the pairs of backbone sites holding a route
+nobody needed. Nothing outside the build could ask this before, and the reason to ask it is
+that every other published measurement judges one route at a time: a network can hold five
+routes between two sites with every one of them the shortest way over its own fiber and
+inside the backup route multiple, which is what Two-Node published (GitHub issue #58).
 
-The tenant below buys two paths and its config allows six backbone seats, so its sites have
-peers to reach and each pair of them is allowed one route. The seats are what move that
-number: a tenant seated for two has one peer apiece and the two paths it buys can only be
-two routes over the one pair, which is the second half of every case below. Routes are named
-by their two ends only, since the helper counts them and reads no path.
+What makes a second route between two sites worth its monthly cost is that a single city's
+loss would not take it along with the first. So each case below is a published network drawn
+one way or the other, and what separates the ones reported from the ones passed over is
+whether setting the longest route between a pair aside costs one of its two ends a way out
+it was asked for.
 
-A pair served under either order of its two ends is one pair, and the case is tested
-because the published collections give no undertaking about which end is the source: a
-helper counting the two orders apart would report a sound network as sound for the wrong
-reason and miss the overbuild that is split between them.
+The tenant buys two paths throughout. Sites and cities are named the same in these fixtures,
+since the published links list the cities a route crosses by name and the pair by id.
+
+A pair served under either order of its two ends is one pair, and the case is tested because
+the published collections give no undertaking about which end is the source: a helper
+counting the two orders apart would report a sound network as sound for the wrong reason and
+miss the overbuild that is split between them.
 """
 
 from __future__ import annotations
@@ -26,54 +28,93 @@ from typing import Any
 from test_published_designs import overbuilt_pairs
 
 
-def _design(
-    pairs: list[tuple[str, str]], allowed: int = 2, seats: int = 6
-) -> dict[str, Any]:
-    """A published network drawing one route between each pair given, in the order given."""
+def _link(source: str, target: str, *transit: str) -> dict[str, Any]:
+    """One published route between two sites, crossing the transit cities given.
+
+    Priced by the cities it crosses, so a route round by two cities is the longer of two and
+    the one the helper sets aside.
+    """
     return {
-        "number_of_diverse_paths": allowed,
-        "seat_cap": seats,
-        "links": [{"source_id": source, "target_id": target} for source, target in pairs],
+        "source_id": source,
+        "target_id": target,
+        "path": [source, *transit, target],
+        "distance_miles": 100.0 * (len(transit) + 1),
     }
 
 
-def test_a_pair_drawn_with_more_routes_than_bought_is_reported_with_its_count() -> None:
-    """Three routes where one was allowed, named by the pair carrying them."""
-    design = _design([("west", "east")] * 3)
-    assert overbuilt_pairs(design) == [("east <-> west", 3)]
+def _design(links: list[dict[str, Any]], allowed: int = 2) -> dict[str, Any]:
+    """A published network drawing the routes given, between the sites they name."""
+    sites = sorted({link[end] for link in links for end in ("source_id", "target_id")})
+    return {
+        "number_of_diverse_paths": allowed,
+        "backbone": [{"id": site, "name": site} for site in sites],
+        "links": links,
+    }
 
 
-def test_a_pair_joined_twice_where_the_seats_leave_other_peers_is_reported() -> None:
-    """Six seats means peers to reach, so the second circuit between two of them is surplus."""
-    assert overbuilt_pairs(_design([("west", "east")] * 2)) == [("east <-> west", 2)]
+# West and east are joined twice and each of them reaches north as well, so setting either
+# of the two routes aside still leaves both ends two ways out that share no city.
+_SPARE_ROUTE = [
+    _link("west", "east", "m1"),
+    _link("west", "east", "m2"),
+    _link("west", "north", "m3"),
+    _link("east", "north", "m4"),
+]
 
 
-def test_a_pair_joined_twice_where_the_seats_leave_no_other_peer_is_not_reported() -> None:
-    """Seated for two, a tenant buying two paths can only buy two routes over the one pair."""
-    assert not overbuilt_pairs(_design([("west", "east")] * 2, seats=2))
+def test_a_pair_holding_a_route_neither_end_needs_is_reported_with_its_count() -> None:
+    """Both ends keep the two paths they bought without it, so nobody needed the second."""
+    assert overbuilt_pairs(_design(_SPARE_ROUTE)) == [("east <-> west", 2)]
+
+
+def test_a_pair_whose_second_route_is_a_ways_out_is_not_reported() -> None:
+    """Two sites and nobody else: without the second route each holds one path of two."""
+    design = _design([_link("west", "east", "m1"), _link("west", "east", "m2")])
+    assert not overbuilt_pairs(design)
+
+
+def test_a_second_route_crossing_the_same_city_as_the_first_is_reported() -> None:
+    """It fails with the first, so it is a circuit bought and no protection gained."""
+    design = _design([
+        _link("west", "east", "m1"),
+        _link("west", "east", "m1", "x"),
+        _link("west", "north", "m3"),
+        _link("east", "north", "m4"),
+    ])
+    assert overbuilt_pairs(design) == [("east <-> west", 2)]
 
 
 def test_a_pair_joined_once_is_not_reported() -> None:
     """One circuit between two sites is what joining them costs, whatever else is going on."""
-    assert not overbuilt_pairs(_design([("west", "east")]))
+    assert not overbuilt_pairs(_design([_link("west", "east", "m1")]))
 
 
 def test_routes_served_under_either_order_of_the_two_ends_count_as_one_pair() -> None:
     """Three routes split across both orders are three routes between one pair."""
-    design = _design([("west", "east"), ("east", "west"), ("west", "east")])
+    design = _design([
+        _link("west", "east", "m1"),
+        _link("east", "west", "m2"),
+        _link("west", "east", "m5"),
+        _link("west", "north", "m3"),
+        _link("east", "north", "m4"),
+    ])
     assert overbuilt_pairs(design) == [("east <-> west", 3)]
 
 
 def test_routes_between_different_pairs_are_counted_apart() -> None:
     """Two pairs at one route each is two sound pairs, not one pair at two."""
-    assert not overbuilt_pairs(
-        _design([("west", "east"), ("west", "north")])
-    )
+    design = _design([_link("west", "east", "m1"), _link("west", "north", "m3")])
+    assert not overbuilt_pairs(design)
 
 
 def test_every_overbuilt_pair_is_reported_not_only_the_first() -> None:
     """A network overbuilt in two places has both named, in order of the pair."""
-    design = _design([("west", "east")] * 3 + [("north", "south")] * 3)
+    design = _design([
+        *_SPARE_ROUTE,
+        _link("north", "south", "m6"),
+        _link("north", "south", "m7"),
+        _link("west", "south", "m8"),
+    ])
     assert [pair for pair, _count in overbuilt_pairs(design)] == [
         "east <-> west", "north <-> south"
     ]

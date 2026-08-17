@@ -33,6 +33,7 @@ from __future__ import annotations
 import heapq
 import json
 import math
+from itertools import combinations
 from typing import Any
 from urllib.error import HTTPError
 
@@ -176,46 +177,110 @@ def overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
     return overrun
 
 
+def _ways_out(
+    links: list[dict[str, Any]], site: str, names: dict[str, str]
+) -> list[tuple[str, frozenset[str]]]:
+    """Per published link at ``site``, the peer it ends at and the cities that would take it.
+
+    Both are in city names rather than ids, because the cities a route crosses are what the
+    published link lists and the destination has to be comparable with them.
+    """
+    return [
+        (
+            names[link["target_id"] if link["source_id"] == site else link["source_id"]],
+            frozenset(link["path"]) - {names[site]},
+        )
+        for link in links
+        if site in (link["source_id"], link["target_id"])
+    ]
+
+
+def _fail_apart(ways: tuple[tuple[str, frozenset[str]], ...]) -> bool:
+    """Whether no one city's loss would take two of these ways out of a site at once.
+
+    A city in two of the failure sets fails both, so the two are one way out. The peer two
+    of them end at is the exception: a site with two routes to one peer loses the
+    destination when that peer goes, not its protection between here and there.
+    """
+    return all(
+        not ((near & far) - ({peer} if peer == other else frozenset()))
+        for (peer, near), (other, far) in combinations(ways, 2)
+    )
+
+
+def independent_ways_out(
+    links: list[dict[str, Any]], site: str, names: dict[str, str]
+) -> int:
+    """How many of ``site``'s published links no single city's loss takes two of.
+
+    The largest set of them that fail apart, searched exhaustively over the handful of links
+    a backbone site holds. It is the same question ``synthesizer.validation`` asks of a
+    design being built, asked again out here of the network that was published, because a
+    reader with no access to the build has to work out for themselves whether a second
+    circuit between two sites bought anything.
+    """
+    ways = _ways_out(links, site, names)
+    return max(
+        (
+            size
+            for size in range(1, len(ways) + 1)
+            if any(_fail_apart(combo) for combo in combinations(ways, size))
+        ),
+        default=0,
+    )
+
+
 def overbuilt_pairs(design: dict[str, Any]) -> list[tuple[str, int]]:
-    """Every pair of backbone sites drawn with more routes than the tenant asked for.
+    """Every pair of backbone sites joined by a route that buys neither of them anything.
 
     Two sites that are joined are joined once. A second route between the same two sites is
-    a second circuit somebody orders every month, and it buys the network nothing the first
-    one did not: what makes a site's ways out independent is that they end at different
-    peers, so the money is better spent joining a peer the site does not reach yet.
-    Reported as the pair and the routes it holds, which is what names the overbuild to
-    whoever reads the failure.
+    a second circuit somebody orders every month, and it is worth having only where it is a
+    way out that a single city's loss would not take along with the first -- which is what a
+    site's number of diverse paths is asking for. Reported as the pair and the routes it
+    holds, which is what names the overbuild to whoever reads the failure.
 
-    A pair may hold more only where the tenant's own config leaves its sites too few peers
-    to reach. ``etc/two_node.yml`` caps its backbone at two seats, so each site has exactly
-    one peer and the two paths it buys can only be two routes to that peer. So the allowance
-    below shares the paths asked for out over the peers the cap allows, which is one route a
-    pair for the other five tenants and two for Two-Node (GitHub issue #59). It is worked out
-    here rather than read from the build, because a reader that took the build's word for how
-    many routes it was allowed would pass whatever the build drew.
+    So the test is not a count. The longest route between the pair is set aside and both
+    ends are measured without it: where each of them still holds as many independently
+    failing links as its tenant asked for -- or as many as it held with the route, when its
+    fiber cannot reach the number at all -- the circuit is one nobody needed. Twenty-one
+    pairs across DAF, F-35, AFGSC and Minuteman were of that kind, 17,013 route miles of
+    them (GitHub issue #59), while Two-Node's one pair is not: its sites have each other and
+    nobody else, so the second route is the second path it buys.
 
-    Counting a pair rather than measuring one route is the whole point of asking this from
-    out here. Every route can be inside the backup route multiple and be the shortest way
-    over its own fiber -- which is what :func:`overrun_links` and :func:`detoured_links`
-    ask -- while there are simply too many of them. Two-Node was published with five routes
-    between Ashburn, VA and Salt Lake City, UT, all five of them individually sound, and no
-    published measurement had anything to say about it (GitHub issue #58).
+    Measuring rather than counting is what keeps this honest both ways. An allowance worked
+    out from the config would have to guess which fiber leaves a site no other way out, and
+    reading the reason the build wrote on the link would be taking the build's word for
+    whether its own circuit was worth buying.
+
+    Asking it from out here at all is the point. Every route can be inside the backup route
+    multiple and be the shortest way over its own fiber -- which is what :func:`overrun_links`
+    and :func:`detoured_links` ask -- while there are simply too many of them. Two-Node was
+    published with five routes between Ashburn, VA and Salt Lake City, UT, all five of them
+    individually sound, and no published measurement had anything to say about it (GitHub
+    issue #58).
 
     The two ends are ordered before they are counted, so a pair served under either name is
     the one pair it is.
     """
-    drawn: dict[tuple[str, str], int] = {}
+    drawn: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for link in design["links"]:
         pair = tuple(sorted((link["source_id"], link["target_id"])))
-        drawn[pair] = drawn.get(pair, 0) + 1
-    seats, asked = design["seat_cap"], design["number_of_diverse_paths"]
-    peers = seats - 1 if seats else 0
-    allowed = max(1, -(-asked // peers)) if peers > 0 else 1
-    return [
-        (" <-> ".join(pair), count)
-        for pair, count in sorted(drawn.items())
-        if count > allowed
-    ]
+        drawn.setdefault(pair, []).append(link)
+    names = {node["id"]: node["name"] for node in design["backbone"]}
+    asked = design["number_of_diverse_paths"]
+    overbuilt: list[tuple[str, int]] = []
+    for pair, routes in sorted(drawn.items()):
+        if len(routes) < 2:
+            continue
+        spare = max(routes, key=lambda route: route["distance_miles"])
+        kept = [link for link in design["links"] if link is not spare]
+        if not any(
+            independent_ways_out(kept, end, names)
+            < min(asked, independent_ways_out(design["links"], end, names))
+            for end in pair
+        ):
+            overbuilt.append((" <-> ".join(pair), len(routes)))
+    return overbuilt
 
 
 def _published_fiber(design: dict[str, Any]) -> dict[str, dict[str, float]]:
