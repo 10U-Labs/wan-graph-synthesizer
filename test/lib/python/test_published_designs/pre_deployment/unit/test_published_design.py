@@ -27,7 +27,7 @@ from test_published_designs import published_design
 _CONFIG: dict[str, Any] = {
     "backbone": {
         "coverage_target_miles": 200,
-        "max_path_stretch": 3.0,
+        "max_backup_route_multiple": 3.0,
         "node_count": {"max": 6},
         "forced": {"nodes": ["Ashburn, VA"]},
     },
@@ -78,7 +78,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
     assert published_design(DEFAULT_API, "daf", _CONFIG) == {
         "tenant": "daf",
         "target_miles": 200,
-        "max_path_stretch": 3.0,
+        "max_backup_route_multiple": 3.0,
         "seat_cap": 6,
         "forced": ["Ashburn, VA"],
         "status": _READY,

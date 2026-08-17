@@ -202,7 +202,7 @@ def routed_path_uses(
         number_of_diverse_paths=plan.tuning.backbone_number_of_diverse_paths,
         forced_pairs=forced_backbone_pairs(backbone_set, plan.forced_links),
         limit=StretchLimit(
-            plan.tuning.backbone_max_path_stretch, inputs.all_distances
+            plan.tuning.backbone_max_backup_route_multiple, inputs.all_distances
         ),
     )
     return backbone_mesh_paths(

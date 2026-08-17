@@ -106,10 +106,10 @@ def _required_int(data: dict[str, Any], key: str) -> int:
 def _required_ratio(data: dict[str, Any], key: str) -> float:
     """Return a required ratio config value, rejecting an absent, non-numeric or flat one.
 
-    ``backbone_max_path_stretch`` has no default, on the same terms as the two redundancy
-    degrees and the coverage target: how much detour a protect path may take is an
-    engineering decision about the network being bought, and a tenant that has not made it
-    must not have one made on its behalf.
+    ``backbone_max_backup_route_multiple`` has no default, on the same terms as the two
+    redundancy degrees and the coverage target: how much detour a protect path may take is
+    an engineering decision about the network being bought, and a tenant that has not made
+    it must not have one made on its behalf.
 
     A ratio rather than a mileage, so a fraction is meaningful here where it is not on the
     coverage target -- the number multiplies a distance instead of standing in for one, and
@@ -254,8 +254,8 @@ def _memory_share(settings: dict[str, Any], default: float) -> float:
 def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
     """Resolve the tuning and settings configuration into a :class:`Tuning`.
 
-    The operator's requirements -- the two degrees, the coverage target and the path
-    stretch bound -- come from ``tuning``, which the assembler builds from the ``knobs``
+    The operator's requirements -- the two degrees, the coverage target and the backup
+    route multiple -- come from ``tuning``, which the assembler builds from the ``knobs``
     resource and the two degree resources. The implementation dials come from
     ``settings``, and only from there: a value left behind under ``knobs`` is not read,
     so it falls back to the dataclass default rather than quietly continuing to steer
@@ -272,7 +272,9 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
             tuning, "backbone_coverage_target_miles"
         ),
         access_backbone_links=_required_int(tuning, "access_backbone_links"),
-        backbone_max_path_stretch=_required_ratio(tuning, "backbone_max_path_stretch"),
+        backbone_max_backup_route_multiple=_required_ratio(
+            tuning, "backbone_max_backup_route_multiple"
+        ),
         search_memory_budget=SearchMemoryBudget(
             memory_share=_memory_share(settings, base.search_memory_budget.memory_share),
             bytes_per_combination=settings.get(

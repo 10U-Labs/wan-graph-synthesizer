@@ -88,7 +88,7 @@ def finalize(
             design.backbone_ids,
             adjacency,
             StretchLimit(
-                params.tuning.backbone_max_path_stretch,
+                params.tuning.backbone_max_backup_route_multiple,
                 distances_from(adjacency, design.backbone_ids),
             ),
         ),

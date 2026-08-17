@@ -282,7 +282,7 @@ def grow_backbone_for_coverage(
             backbone_ids,
             inputs.adjacency,
             target_miles,
-            StretchLimit(params.tuning.backbone_max_path_stretch, inputs.all_distances),
+            StretchLimit(params.tuning.backbone_max_backup_route_multiple, inputs.all_distances),
         )
         backbone_ids = tuple(sorted((*backbone_ids, best_id)))
         grown = build_design_for_backbone(backbone_ids, inputs, plan)

@@ -158,7 +158,7 @@ def test_the_ready_status_carries_the_target_the_design_was_measured_against(
     assert status["coverage"]["target_miles"] == 600
 
 
-def test_the_ready_status_carries_the_stretch_bound_the_build_ran_under(
+def test_the_ready_status_carries_the_backup_route_multiple_the_build_ran_under(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The bound the links were routed under travels with the network they were drawn for.
@@ -169,7 +169,7 @@ def test_the_ready_status_carries_the_stretch_bound_the_build_ran_under(
     """
     objects = _run(synthesizer, monkeypatch)
     status = json.loads(objects["tenants/f-35/wan-status.json"])
-    assert status["max_path_stretch"] == 3.0
+    assert status["max_backup_route_multiple"] == 3.0
 
 
 def test_the_ready_status_carries_what_each_site_was_asked_for(

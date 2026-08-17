@@ -523,7 +523,7 @@ def funnel_datacenter_cities() -> frozenset[tuple[str, str]]:
 # overland routes share ``pdx``, so a proof counting only disjoint routes takes the
 # crossing as a second way out and the mesh is wired along it -- two thousand miles of
 # cable standing in for twenty. It is the one fixture whose spans differ by orders of
-# magnitude, which is what the stretch bound is measured against.
+# magnitude, which is what the backup route multiple is measured against.
 CROSSING_EDGES = physical_edges_from({
     ("sea", "pdx"): 10.0,
     ("pdx", "hil"): 10.0,
@@ -602,9 +602,9 @@ def distant_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
 # span of five. Every pair is two miles apart round the ring through one transit city and
 # five miles apart down the express span, so the express spans cross fewer cities and run
 # two and a half times the cable. Both ways of wiring the ring are the same two independent
-# links per site, and both sit inside a stretch bound of three, so nothing but the mileage
-# tells them apart: the ring comes to six miles of mesh and the express spans to fifteen
-# (GitHub issue #57).
+# links per site, and both sit inside a backup route multiple of three, so nothing but the
+# mileage tells them apart: the ring comes to six miles of mesh and the express spans to
+# fifteen (GitHub issue #57).
 EXPRESS_EDGES = physical_edges_from({
     ("sea", "pdx"): 1.0,
     ("pdx", "hil"): 1.0,

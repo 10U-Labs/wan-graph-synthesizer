@@ -3,7 +3,7 @@
 ``scripts/seed.py`` PUTs every ``etc/*.yml`` to the API and then POSTs one build per
 tenant. This is that journey read back the way a caller reads it: each tenant's published
 status and its backbone, demand and links collections, measured against the
-``target_miles``, ``max_path_stretch``, ``seat_cap`` and pinned cities its own config sets.
+``target_miles``, ``max_backup_route_multiple``, ``seat_cap`` and pinned cities its own config sets.
 What fails here is as often a config asking for something its other settings rule out as it
 is a defect in the synthesizer -- GitHub issue #42 was closed by moving a target in
 etc/minuteman.yml, with no code changed at all.
@@ -156,7 +156,7 @@ def test_no_published_link_is_routed_further_than_its_tenant_allows(
     Measured against the great-circle distance rather than the shortest fiber route, since
     the published collections carry no substrate to route over and rebuilding one here would
     reimplement the router this layer exists to check from the outside. Great-circle is the
-    shorter denominator, so the ratio it yields overstates the real stretch and the bound is
+    shorter denominator, so the ratio it yields overstates the real multiple and the bound is
     loosened by ``SINUOSITY`` to stay sound. That leaves it far looser than what the
     synthesizer enforces -- six times the direct distance rather than three -- and it still
     catches every route the defect produced, the nearest of which ran twelve times.
@@ -177,7 +177,7 @@ def test_no_published_link_wanders_past_the_fiber_its_own_network_carries(
     which is why it has to be loosened to six times the tenant's bound: real fiber does not
     fly. This one measures it against fiber -- the published ``edges`` collection carries
     every carrier span the design routed over, so the shortest way between the two sites is
-    recomputable from outside the build and the tenant's own ``max_path_stretch`` can be
+    recomputable from outside the build and the tenant's own ``max_backup_route_multiple`` can be
     applied to it without slack.
 
     What it cannot ask is whether the *set* of routes out of a site is the shortest set that
@@ -202,10 +202,10 @@ def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(
 
     A site is asked for the smaller of the tenant's own diverse-path number and the count of
     ways out its fiber proves, and the mesh then lays what it can. A count proved over
-    routes the stretch bound forbids asks for a link the router will not draw, and the site
-    is reported short of it for the rest of the build's life -- a shortfall an operator
-    reads, investigates and cannot close, because the missing link is one the bound itself
-    refuses (GitHub issue #45).
+    routes the backup route multiple forbids asks for a link the router will not draw, and
+    the site is reported short of it for the rest of the build's life -- a shortfall an
+    operator reads, investigates and cannot close, because the missing link is one the
+    bound itself refuses (GitHub issue #45).
 
     Read straight out of the status rather than guarded for, because a build that published
     no such finding is itself the failure this asks about: the shortfall appears nowhere in

@@ -1,6 +1,6 @@
 """Integration test: how far a whole synthesis will route a link to make it diverse.
 
-The unit tier can show the proof refuses a route past the operator's stretch bound. It
+The unit tier can show the proof refuses a route past the operator's backup route multiple. It
 cannot show the refusal survives the pipeline: peer selection, the routing heuristic that
 covers every link the proof does not, and the resilience augmentation that adds detours
 around cut cities all sit between a proved route and a drawn link, and any of them could
@@ -40,9 +40,9 @@ def _artifacts(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     datacenter_cities: frozenset[tuple[str, str]],
-    stretch: float,
+    multiple: float,
 ) -> DesignArtifacts:
-    """The design the whole pipeline settles on over one graph at one stretch bound.
+    """The design the whole pipeline settles on over one graph at one backup route multiple.
 
     All three sites are seated, so the question is only how their links are routed and what
     each is held to. The convergence promotion is off and there are no demand vertices, so
@@ -58,19 +58,19 @@ def _artifacts(
             datacenter_cities=datacenter_cities,
             promote_high_degree_convergences=False,
             tuning=Tuning(
-                backbone_number_of_diverse_paths=2, backbone_max_path_stretch=stretch
+                backbone_number_of_diverse_paths=2, backbone_max_backup_route_multiple=multiple
             ),
         ),
     )
 
 
-def _crossing(stretch: float) -> DesignArtifacts:
+def _crossing(multiple: float) -> DesignArtifacts:
     """The crossing graph at one bound, which is the only thing that varies between runs."""
     return _artifacts(
         fixtures.crossing_vertices(),
         fixtures.CROSSING_EDGES,
         fixtures.crossing_datacenter_cities(),
-        stretch,
+        multiple,
     )
 
 

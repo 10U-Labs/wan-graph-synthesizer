@@ -45,7 +45,7 @@ def _design(source: str, target: str, distance: float) -> dict[str, Any]:
     """A published network of that fiber carrying one routed link between two ids."""
     return {
         "edges": _EDGES,
-        "max_path_stretch": 3.0,
+        "max_backup_route_multiple": 3.0,
         "links": [
             {
                 "source_id": source,

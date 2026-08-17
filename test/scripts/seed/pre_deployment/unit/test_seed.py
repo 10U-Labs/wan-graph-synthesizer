@@ -53,7 +53,7 @@ backbone:
         target: Nellis, NV
     nodes:
       - Luke, AZ
-  max_path_stretch: 2.5
+  max_backup_route_multiple: 2.5
   node_count:
     max: 3
     min: 3
@@ -524,17 +524,17 @@ def test_push_tenants_builds_the_knobs_document_from_the_coverage_target(
     assert bodies["tenants/f-35/knobs"]["backbone_coverage_target_miles"] == 500
 
 
-def test_push_tenants_builds_the_knobs_document_from_the_path_stretch_bound(
+def test_push_tenants_builds_the_knobs_document_from_the_backup_route_multiple(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
-    """push_tenants spells the stored knobs key out from the block's stretch bound.
+    """push_tenants spells the stored knobs key out from the block's backup route multiple.
 
-    A fractional bound in the fixture, since the config layer accepts one where it refuses
+    A fractional multiple in the fixture, since the config layer accepts one where it refuses
     a fractional coverage target: the number multiplies a distance rather than standing in
     for one.
     """
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/knobs"]["backbone_max_path_stretch"] == 2.5
+    assert bodies["tenants/f-35/knobs"]["backbone_max_backup_route_multiple"] == 2.5
 
 
 def test_push_tenants_puts_the_settings_document(

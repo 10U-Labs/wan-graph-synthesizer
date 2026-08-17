@@ -11,14 +11,14 @@ from synthesizer.config import AppConfig, app_config_from_parts, config_from_dat
 from synthesizer.model import NamedLink, OperatorLinks
 
 
-# The two redundancy degrees, the coverage target and the path stretch bound are required
-# (no default); inject them so each test can focus on the field under test without
-# restating them.
+# The two redundancy degrees, the coverage target and the backup route multiple are
+# required (no default); inject them so each test can focus on the field under test
+# without restating them.
 _REQUIRED_TUNING = {
     "backbone_number_of_diverse_paths": 3,
     "access_backbone_links": 2,
     "backbone_coverage_target_miles": 600,
-    "backbone_max_path_stretch": 3,
+    "backbone_max_backup_route_multiple": 3,
 }
 
 
@@ -494,15 +494,15 @@ def test_non_number_coverage_target_is_rejected() -> None:
         _config({"tuning": {"backbone_coverage_target_miles": "far"}})
 
 
-def test_reads_tuning_max_path_stretch() -> None:
-    """A tuning backbone_max_path_stretch value is read into the design params."""
+def test_reads_tuning_max_backup_route_multiple() -> None:
+    """A tuning backbone_max_backup_route_multiple value is read into the design params."""
     assert _config(
-        {"tuning": {"backbone_max_path_stretch": 4}}
-    ).params.tuning.backbone_max_path_stretch == 4.0
+        {"tuning": {"backbone_max_backup_route_multiple": 4}}
+    ).params.tuning.backbone_max_backup_route_multiple == 4.0
 
 
-def test_missing_max_path_stretch_is_rejected() -> None:
-    """A config whose tuning omits the required path stretch bound is rejected."""
+def test_missing_max_backup_route_multiple_is_rejected() -> None:
+    """A config whose tuning omits the required backup route multiple is rejected."""
     with pytest.raises(ValueError):
         config_from_data(
             {
@@ -516,19 +516,19 @@ def test_missing_max_path_stretch_is_rejected() -> None:
         )
 
 
-def test_non_number_max_path_stretch_is_rejected() -> None:
-    """A path stretch bound that is not a number is rejected."""
+def test_non_number_max_backup_route_multiple_is_rejected() -> None:
+    """A backup route multiple that is not a number is rejected."""
     with pytest.raises(ValueError):
-        _config({"tuning": {"backbone_max_path_stretch": "three times"}})
+        _config({"tuning": {"backbone_max_backup_route_multiple": "three times"}})
 
 
-def test_boolean_max_path_stretch_is_rejected() -> None:
-    """A path stretch bound given as a bool (an int subclass) is rejected."""
+def test_boolean_max_backup_route_multiple_is_rejected() -> None:
+    """A backup route multiple given as a bool (an int subclass) is rejected."""
     with pytest.raises(ValueError):
-        _config({"tuning": {"backbone_max_path_stretch": True}})
+        _config({"tuning": {"backbone_max_backup_route_multiple": True}})
 
 
-def test_max_path_stretch_of_one_is_rejected() -> None:
+def test_max_backup_route_multiple_of_one_is_rejected() -> None:
     """A bound of exactly one is rejected: it admits only the shortest route.
 
     A protect path takes a detour by definition, so a bound that leaves no room for one
@@ -536,14 +536,14 @@ def test_max_path_stretch_of_one_is_rejected() -> None:
     almost certainly not meant to forbid path diversity outright.
     """
     with pytest.raises(ValueError):
-        _config({"tuning": {"backbone_max_path_stretch": 1}})
+        _config({"tuning": {"backbone_max_backup_route_multiple": 1}})
 
 
-def test_fractional_max_path_stretch_is_accepted() -> None:
+def test_fractional_max_backup_route_multiple_is_accepted() -> None:
     """A fractional bound is kept: a ratio has resolution a whole-mile target does not."""
     assert _config(
-        {"tuning": {"backbone_max_path_stretch": 2.5}}
-    ).params.tuning.backbone_max_path_stretch == 2.5
+        {"tuning": {"backbone_max_backup_route_multiple": 2.5}}
+    ).params.tuning.backbone_max_backup_route_multiple == 2.5
 
 
 def test_fractional_coverage_target_is_rejected() -> None:
@@ -582,7 +582,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "access-homing-degree": {"degree": 2},
         "backbone-placement": {"restrict": True},
         "convergence-promotion": {"promote": True},
-        "knobs": {"backbone_coverage_target_miles": 600, "backbone_max_path_stretch": 3},
+        "knobs": {"backbone_coverage_target_miles": 600, "backbone_max_backup_route_multiple": 3},
         "label": {"label": "Minuteman"},
     }
     parts.update(overrides)
@@ -610,7 +610,7 @@ def test_app_config_from_parts_ignores_a_dial_left_in_knobs() -> None:
     """A dial an operator left behind under knobs no longer steers the search."""
     parts = _parts(knobs={
         "backbone_coverage_target_miles": 600,
-        "backbone_max_path_stretch": 3,
+        "backbone_max_backup_route_multiple": 3,
         "compass_octants": 4,
     })
     assert app_config_from_parts(parts).params.tuning.compass_sector_count == 8
@@ -685,13 +685,13 @@ def test_app_config_from_parts_refuses_the_old_mesh_degree_resource() -> None:
 
 def test_app_config_from_parts_requires_coverage_target() -> None:
     """A knobs document omitting the coverage target is rejected by the assembler."""
-    parts = _parts(knobs={"backbone_max_path_stretch": 3})
+    parts = _parts(knobs={"backbone_max_backup_route_multiple": 3})
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 
 
-def test_app_config_from_parts_requires_max_path_stretch() -> None:
-    """A knobs document omitting the path stretch bound is rejected by the assembler."""
+def test_app_config_from_parts_requires_max_backup_route_multiple() -> None:
+    """A knobs document omitting the backup route multiple is rejected by the assembler."""
     parts = _parts(knobs={"backbone_coverage_target_miles": 600})
     with pytest.raises(ValueError):
         app_config_from_parts(parts)

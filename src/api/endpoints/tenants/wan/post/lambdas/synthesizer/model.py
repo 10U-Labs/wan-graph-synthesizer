@@ -96,8 +96,8 @@ class Tuning:
     at the config layer (its field default here is a construction fallback only,
     kept because dataclass field ordering forces one); it lives in the ``knobs``
     resource rather than its own, since it describes the network an operator wants.
-    ``backbone_max_path_stretch`` is required on the same terms and lives in the same
-    resource for the same reason: how far a protect path may run against the direct
+    ``backbone_max_backup_route_multiple`` is required on the same terms and lives in the
+    same resource for the same reason: how far a protect path may run against the direct
     route between its two sites is a statement about the network being bought, not a
     dial on how the search finds it.
     The remaining fields (``compass_sector_count``, ``search_memory_budget``) describe how the
@@ -117,7 +117,7 @@ class Tuning:
     # run; a ratio rather than a mileage, so it means the same thing to a 200-mile link
     # and a 2,000-mile one, and fractional because a ratio has resolution that a target
     # compared against a great-circle haul does not
-    backbone_max_path_stretch: float = 3.0
+    backbone_max_backup_route_multiple: float = 3.0
     # how much memory the backbone enumeration may spend
     search_memory_budget: SearchMemoryBudget = field(default_factory=SearchMemoryBudget)
 

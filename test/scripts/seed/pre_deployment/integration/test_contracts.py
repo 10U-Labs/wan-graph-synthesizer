@@ -129,10 +129,10 @@ def _declared_coverage_targets() -> dict[str, int]:
     }
 
 
-def _declared_path_stretch_bounds() -> dict[str, float]:
-    """Each tenant's path stretch bound, read from the backbone block of its own config."""
+def _declared_backup_route_multiples() -> dict[str, float]:
+    """Each tenant's backup route multiple, read from the backbone block of its own config."""
     return {
-        tenant: backbone["max_path_stretch"]
+        tenant: backbone["max_backup_route_multiple"]
         for tenant, backbone in _backbone_blocks().items()
     }
 
@@ -159,19 +159,20 @@ def test_pipeline_writes_each_tenant_the_coverage_target_its_config_declares(
         _declared_coverage_targets()
 
 
-def test_pipeline_writes_each_tenant_the_path_stretch_bound_its_config_declares(
+def test_pipeline_writes_each_tenant_the_backup_route_multiple_its_config_declares(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Each knobs document carries the stretch bound its config declares, under the stored key.
+    """Each knobs document carries the multiple its config declares, under the stored key.
 
     The same two-spellings problem as the coverage target, and the same reason it cannot be
-    checked in either file alone: the config names it ``backbone.max_path_stretch`` and the
-    synthesizer reads ``backbone_max_path_stretch``. A tenant whose bound never arrives is
-    a failed build rather than a design that quietly routes the long way, since the
-    synthesizer requires the key, but the failure would name the store and not this seam.
+    checked in either file alone: the config names it ``backbone.max_backup_route_multiple``
+    and the synthesizer reads ``backbone_max_backup_route_multiple``. A tenant whose
+    multiple never arrives is a failed build rather than a design that quietly routes the
+    long way, since the synthesizer requires the key, but the failure would name the store
+    and not this seam.
     """
     _seed(urlopen_recorder, monkeypatch)
-    assert _knob(urlopen_recorder, "backbone_max_path_stretch") == \
-        _declared_path_stretch_bounds()
+    assert _knob(urlopen_recorder, "backbone_max_backup_route_multiple") == \
+        _declared_backup_route_multiples()
 
 
 def test_pipeline_writes_no_knob_the_synthesizer_does_not_read(
@@ -186,7 +187,7 @@ def test_pipeline_writes_no_knob_the_synthesizer_does_not_read(
     assert {
         frozenset(document)
         for document in _written_by_tenant(urlopen_recorder, "knobs").values()
-    } == {frozenset({"backbone_coverage_target_miles", "backbone_max_path_stretch"})}
+    } == {frozenset({"backbone_coverage_target_miles", "backbone_max_backup_route_multiple"})}
 
 
 def test_pipeline_writes_every_tenant_the_regions_of_the_file_its_config_names(
@@ -346,7 +347,7 @@ def _ceiling_bounds(
     refuses one sitting in a fiber pocket too small for the backbone it was asked for
     (``forced_backbone_resilience_error``).
 
-    The tenant's own path stretch bound is applied, because the real run applies it: a
+    The tenant's own backup route multiple is applied, because the real run applies it: a
     ceiling measured over fiber the design may not use is not a floor under the real one
     but a number above it, and a tenant could clear this contract on routes its build would
     refuse. Adding pins can only admit more spans, since a span is withheld only when no
@@ -362,7 +363,7 @@ def _ceiling_bounds(
         # A row per peer and per city measured: an exempt city need not be a pin, and the
         # bound is measured from it as well as to it.
         limit = StretchLimit(
-            float(backbone["max_path_stretch"]),
+            float(backbone["max_backup_route_multiple"]),
             distances_from(adjacency, {*pinned, *measured}),
         )
         for city in cities(backbone):

@@ -105,7 +105,7 @@ def published_design(api: str, tenant: str, config: dict[str, Any]) -> dict[str,
     return {
         "tenant": tenant,
         "target_miles": backbone["coverage_target_miles"],
-        "max_path_stretch": backbone["max_path_stretch"],
+        "max_backup_route_multiple": backbone["max_backup_route_multiple"],
         "seat_cap": backbone["node_count"]["max"],
         "forced": backbone.get("forced", {}).get("nodes", []),
         "status": state,
@@ -161,7 +161,7 @@ def overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
     every link returns the empty list a sound network returns.
     """
     coords = {node["id"]: vertex(node) for node in design["backbone"]}
-    allowed = SINUOSITY * design["max_path_stretch"]
+    allowed = SINUOSITY * design["max_backup_route_multiple"]
     overrun = []
     for link in design["links"]:
         source = coords.get(link["source_id"])
@@ -238,7 +238,7 @@ def detoured_links(design: dict[str, Any]) -> list[tuple[str, float]]:
     bound allowed is allowed here too.
     """
     fiber = _published_fiber(design)
-    allowed = design["max_path_stretch"]
+    allowed = design["max_backup_route_multiple"]
     detoured = []
     for link in design["links"]:
         shortest = _shortest_fiber_miles(fiber, link["source_id"], link["target_id"])

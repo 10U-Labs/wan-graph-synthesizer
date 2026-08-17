@@ -41,7 +41,7 @@ def _design(source: str, target: str, distance: float) -> dict[str, Any]:
             "distance_miles": distance,
             "path": [source, target],
         }],
-        "max_path_stretch": 3.0,
+        "max_backup_route_multiple": 3.0,
     }
 
 
