@@ -4,11 +4,12 @@ access:
     connections: []
   homing_degree: 2
 backbone:
-  coverage_target_miles: 850
+  coverage_target_miles: 1090
   forced:
     connections: []
     nodes:
       - Ashburn, VA
+      - Salt Lake City, UT
   max_path_stretch: 3
   node_count:
     max: 2
