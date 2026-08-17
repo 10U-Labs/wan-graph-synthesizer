@@ -13,6 +13,7 @@ from synthesizer.backbone import (
     augment_physical_resilience,
     backbone_mesh_paths,
     diverse_mesh_routes,
+    restore_diverse_paths,
     select_backbone_mesh_pairs,
     within_limit,
 )
@@ -870,3 +871,42 @@ def test_the_route_put_back_says_what_it_is_there_for() -> None:
     (see :data:`synthesizer.model.LINK_FOR_SITE_DIVERSITY`).
     """
     assert _pair_paths(_hub_only_backbone(), "b", "c")[-1].reason == LINK_FOR_SITE_DIVERSITY
+
+
+# One site whose three links were drawn along fiber it did not prove: ``a`` proved a way out
+# through each of h1, h2 and h3, and holds instead a route to b that rides h1 the long way
+# round, a route to c through h2 and a route to d that rides h2 as well. So it is short --
+# the h2 pair count as one way out -- and the two routes it proved that were not drawn are
+# not equally worth putting back. The one to b crosses h1, which the link it already holds
+# to b crosses too, so buying it changes nothing a city's loss would take.
+_SHORT_SITE_EDGES = physical({
+    ("a", "h1"): 1.0, ("h1", "b"): 1.0, ("h1", "x"): 1.0, ("x", "b"): 1.0,
+    ("a", "h2"): 1.0, ("h2", "c"): 1.0, ("h2", "y"): 1.0, ("y", "d"): 1.0,
+    ("a", "h3"): 5.0, ("h3", "d"): 5.0,
+})
+_SHORT_SITE_PROVED: dict[str, list[tuple[str, ...]]] = {
+    "a": [("a", "h1", "b"), ("a", "h2", "c"), ("a", "h3", "d")],
+}
+_SHORT_SITE_USES = [
+    PathUse("backbone_mesh", "a", "b", ("a", "h1", "x", "b"), 3.0),
+    PathUse("backbone_mesh", "a", "c", ("a", "h2", "c"), 2.0),
+    PathUse("backbone_mesh", "a", "d", ("a", "h2", "y", "d"), 3.0),
+]
+
+
+def _short_site_restored() -> list[PathUse]:
+    """The three links a holds, plus whatever putting a proved route back is worth."""
+    return restore_diverse_paths(
+        _SHORT_SITE_USES, _SHORT_SITE_EDGES,
+        BackboneConstraints(number_of_diverse_paths=3, routes=_SHORT_SITE_PROVED),
+    )
+
+
+def test_a_route_that_would_not_raise_the_count_is_not_put_back() -> None:
+    """Two miles through h1 to a peer already reached through h1 buys nothing, so it is not."""
+    assert ("a", "h1", "b") not in [use.path for use in _short_site_restored()]
+
+
+def test_the_route_that_does_raise_the_count_is_put_back_though_it_costs_more() -> None:
+    """Ten miles through h3 is five times the other and is the only one that is a way out."""
+    assert _short_site_restored()[-1].path == ("a", "h3", "d")
