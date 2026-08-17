@@ -1,0 +1,21 @@
+# An issue states one solution
+
+An issue is the instruction to whoever picks it up, and it has to be workable on its own. Its `Proposed Solution` names one change: this function, this file, this algorithm, this test. Not two options to weigh, not a menu with a recommendation, and never a question the reader is left holding. If the section ends with something still to decide, the issue is not finished and should not be filed.
+
+The trade-off behind an "either" is usually real. Settling it is what makes the issue worth filing, and the place to settle it is before the issue exists, in the conversation where the measurements are fresh and the person who can decide is present. An issue is read weeks later by somebody who was not in that conversation and cannot reconstruct it. Filing the question instead of the answer moves the hardest part of the work onto them and calls it a deliverable.
+
+So when a draft reaches a genuine fork, stop and ask which branch, then write the one that was chosen. The ask moves in front of the filing rather than into the body of it. Asking costs one turn; filing an undecided issue costs the decision being made later by whoever is in a hurry, or made twice.
+
+Definitive does not mean silent about what was rejected. Naming the alternative and saying why it lost is worth writing, because it stops the same ground being covered again: "replace `augment_physical_resilience` with a minimum-weight branching, not an iterative rounding of the linear-programming relaxation, because the synthesizer Lambda has no third-party dependency today and rounding needs a solver" is one solution with its reasoning shown. "Either the branching or the rounding, and here is the case for each" is two, and it is the reader who ends up choosing. The difference is whether the sentence has a verb the reader can act on.
+
+Issue #60 is the incident for this rule. It was filed on 2026-08-17 with two open questions at the end of its `Proposed Solution` — how much of `backbone_mesh_paths` is replaced, and whether a linear-programming solver is acceptable in the synthesizer Lambda — on the reasoning that an either belongs to the user. That reasoning was half right and applied in the wrong place: the questions did need the user, and the answer was to ask them before filing and write down what came back, not to publish the fork.
+
+The older half of this rule still holds for issues already on disk. Where a filed `Proposed Solution` says "either X or Y", do not pick, however clearly the text leans toward one and even when it calls one the smaller change; ask which one before editing a file, and before there is a draft, because a draft turns the question into a request to approve what is already done.
+
+Issue #47 is why that half exists. Its `Proposed Solution` opened by saying the delivered-design tests should move into `.github/workflows/seed.yml`, in a job needing `seeding`, and closed with "Either the deploy moves into `seed.yml` ahead of `seeding`, or `seeding` moves into `api_endpoint_tenants_wan_post.yml` after `reconciliation`. The second is the smaller change and keeps deploy and seed in one order." Those two are incompatible, and the second was taken on the strength of the issue calling it smaller.
+
+It was the wrong one, and the reason is the whole point of the issue. A push touching `etc/` alone starts `seed.yml` and nothing else — that is the shape of every `backbone` setting change, including #46. With the tests in `api_endpoint_tenants_wan_post.yml`, that push seeded, rebuilt all five WANs, and nothing measured any of them. The fix closed the guessing hole and left the tier unreachable for exactly the pushes it exists for, and a third commit was needed to run the file now at `test/scripts/seed/post_deployment/e2e/test_delivered_designs.py` in `seed.yml` after `seeding`, where it belonged.
+
+The division the user stated afterwards is worth keeping: tests in an endpoint's own workflow are about how that API behaves and how its deployment is shaped; whether a WAN was actually rebuilt from a change to `etc/` belongs to `seed.yml`, because `seed.yml` is the workflow that change starts. See [where-a-test-runs-follows-what-starts-it](where-a-test-runs-follows-what-starts-it.md).
+
+The sections an issue has and the order they come in are in [how-issues-are-written](how-issues-are-written.md).

@@ -16,4 +16,4 @@ A test over shared machinery runs in every workflow whose own tests import it. T
 
 One consequence of the split is accepted rather than overlooked. A synthesizer change deploys in `api_endpoint_tenants_wan_post.yml` but is not measured against a rebuild until the next push that touches something `seed.yml` triggers on; moving `reconciliation` into `seed.yml` was offered as the alternative and declined.
 
-See [an-either-is-a-question-for-the-user](an-either-is-a-question-for-the-user.md) for how the wrong half of this was chosen the first time.
+See [an-issue-states-one-solution](an-issue-states-one-solution.md) for how the wrong half of this was chosen the first time.

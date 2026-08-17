@@ -7,9 +7,11 @@ An issue about the program has six sections, in this order, and every issue abou
 - **Why Integration Tests Did Not Catch It** — the same, for the tier that checks two units agreeing.
 - **Why E2E Tests Did Not Catch It** — the same, for the tier that makes a caller's journey against the deployed program and judges it on what the caller receives.
 - **Which Unit, Integration, or E2E regression tests would prevent this from happening again?** — the tests to write, each named by the tier it belongs to and the assertion it makes.
-- **Proposed Solution** — what to change.
+- **Proposed Solution** — the one change to make.
 
 An issue about anything else has two sections, **Problem** and **Proposed Solution**, and owes no tests at all.
+
+One change, not a choice between two. Whoever picks the issue up is free to do something else, but they should not have to decide anything before they can start, so a fork found while drafting is asked about and settled before the issue is filed — see [an-issue-states-one-solution](an-issue-states-one-solution.md).
 
 The closing section is called "Proposed Solution" and not "Solution". It is what the issue proposes, and whoever picks the issue up is free to do something else; the name says so before they have read a word of it. Issues #35 and #37 through #55 were all written with `## Solution` while the reminder at :09 of `.claude/skills/autopilot/SKILL.md` asked for `Proposed Solution`, and this file was the one that was wrong. The seven open on 2026-08-02 — #45, #46, #47, #49, #52, #53 and #56 — were rewritten that day and carry `## Proposed Solution`. Fourteen closed ones still carry `## Solution` and stay as they are: a closed issue is a record of what was written, and nobody is going to act on its heading.
 
