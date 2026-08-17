@@ -556,6 +556,67 @@ def crossing_datacenter_cities() -> frozenset[tuple[str, str]]:
     return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in CROSSING_ELIGIBLE)
 
 
+# Three backbone sites reaching one another over three shared hub cities, priced so the
+# cheapest way out of one site is not the cheapest way back out of another. That is what
+# makes the two ends of a pair prove different fiber to each other: each proof is the
+# cheapest set of routes out of its own site, and the two sites have different other peers
+# to keep clear of. ``a`` is cheap through ``h2`` and dear through ``h1``, ``b`` is the
+# other way round, and ``c`` is cheap through both -- so a proves h1 to b and h2 to c, b
+# proves h1 to a and h3 to c, and c proves h2 to a and h1 to b. Only the pair b-c is proved
+# twice: five miles the way b proved it and two the way c did.
+SHARED_HUB_SPANS = {
+    ("a", "h1"): 400.0, ("a", "h2"): 100.0, ("a", "h3"): 800.0,
+    ("b", "h1"): 100.0, ("b", "h2"): 800.0, ("b", "h3"): 200.0,
+    ("c", "h1"): 100.0, ("c", "h2"): 200.0, ("c", "h3"): 300.0,
+}
+SHARED_HUB_EDGES = physical_edges_from(SHARED_HUB_SPANS)
+# The same three sites with a fourth, ``d``, joined to ``b`` and to ``c`` over fiber of its
+# own. It is what leaves ``b`` a way out that no hub carries: joined once, b's links to a
+# and to c both ride ``h1``, and the circuit to d is its second independently failing link.
+# Without d there is no such fiber and the pair b-c is joined twice instead.
+SHARED_HUB_PEER_EDGES = physical_edges_from({
+    **SHARED_HUB_SPANS,
+    ("b", "d1"): 100.0, ("d1", "d"): 300.0,
+    ("c", "d2"): 100.0, ("d2", "d"): 300.0,
+})
+SHARED_HUB_SITES = ("a", "b", "c")
+SHARED_HUB_PEER_SITES = ("a", "b", "c", "d")
+SHARED_HUB_PEER_IDS = ("a", "b", "c", "d", "h1", "h2", "h3", "d1", "d2")
+
+
+def shared_hub_peer_vertices() -> list[Vertex]:
+    """The four-site graph's cities, spread along a line so no two share coordinates."""
+    return [
+        carrier_pop(vertex_id, 38.0, -115.0 + 2.0 * index)
+        for index, vertex_id in enumerate(SHARED_HUB_PEER_IDS)
+    ]
+
+
+def shared_hub_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
+    """Only the four sites pass the gate, so no hub or corridor city takes a seat."""
+    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in SHARED_HUB_PEER_SITES)
+
+
+def shared_hub_peer_artifacts(asked_for: int = 2) -> DesignArtifacts:
+    """The design the whole pipeline settles on over the four-site graph.
+
+    Every site is seated and the seats are capped at the four, so the tenant's config says
+    each site has peers to reach and every pair of them is allowed one route.
+    """
+    return run_design(
+        shared_hub_peer_vertices(),
+        SHARED_HUB_PEER_EDGES,
+        DesignParams(
+            min_backbone_count=len(SHARED_HUB_PEER_SITES),
+            max_backbone_count=len(SHARED_HUB_PEER_SITES),
+            forced_backbone_names=SHARED_HUB_PEER_SITES,
+            datacenter_cities=shared_hub_peer_datacenter_cities(),
+            promote_high_degree_convergences=False,
+            tuning=Tuning(backbone_number_of_diverse_paths=asked_for),
+        ),
+    )
+
+
 # The crossing graph with one of its peers moved seven thousand miles away, which is what
 # lets a bound applied span by span be met and a bound applied to the finished route be
 # broken (GitHub issue #45). ``sea`` is twenty miles from ``hil`` over ``pdx`` and seven

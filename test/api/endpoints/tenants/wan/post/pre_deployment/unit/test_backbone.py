@@ -6,7 +6,7 @@ from collections.abc import Iterable
 
 import fixtures
 from synthesizer.input_graph import PhysicalEdge, edge_key
-from synthesizer.model import LINK_FOR_TARGET, PathUse
+from synthesizer.model import LINK_FOR_SITE_DIVERSITY, LINK_FOR_TARGET, PathUse
 from synthesizer.backbone import (
     BackboneConstraints,
     LinkReason,
@@ -659,33 +659,27 @@ def _routed(
 
 
 def _routes(
-    pairs: list[tuple[str, str]],
-    edges: dict[tuple[str, str], PhysicalEdge],
-    proven: dict[str, list[tuple[str, ...]]] | None = None,
-    seat_cap: int | None = None,
+    routed: list[tuple[str, str, tuple[str, ...]]]
 ) -> dict[tuple[str, str], tuple[str, ...]]:
-    """Route the given mesh pairs over ``edges``, keyed by the pair they route."""
-    return {
-        (left, right): path
-        for left, right, path in _routed(pairs, edges, proven, seat_cap)
-    }
+    """The routed links of :func:`_routed`, keyed by the pair each one routes."""
+    return {(left, right): path for left, right, path in routed}
 
 
 def test_the_first_link_of_a_node_takes_its_shortest_path() -> None:
     """With nothing yet to route clear of, a link takes the cheapest path it has."""
-    routes = _routes([("h", "p"), ("h", "q")], _SHARED_EGRESS_EDGES)
+    routes = _routes(_routed([("h", "p"), ("h", "q")], _SHARED_EGRESS_EDGES))
     assert routes[("h", "p")] == ("h", "g", "p")
 
 
 def test_a_second_link_routes_clear_of_the_first_links_transit_city() -> None:
     """h's second link takes the long way round rather than cross g a second time."""
-    routes = _routes([("h", "p"), ("h", "q")], _SHARED_EGRESS_EDGES)
+    routes = _routes(_routed([("h", "p"), ("h", "q")], _SHARED_EGRESS_EDGES))
     assert routes[("h", "q")] == ("h", "r", "q")
 
 
 def test_a_link_with_no_clear_route_falls_back_to_its_shortest_path() -> None:
     """Where the fiber offers no alternative the link is still wired, through g."""
-    routes = _routes([("h", "p"), ("h", "q")], _ONLY_EGRESS_EDGES)
+    routes = _routes(_routed([("h", "p"), ("h", "q")], _ONLY_EGRESS_EDGES))
     assert routes[("h", "q")] == ("h", "g", "q")
 
 
@@ -700,7 +694,7 @@ _ONE_SIDED_EDGES = physical({
 
 def test_a_link_clears_one_end_when_it_cannot_clear_both() -> None:
     """Unable to clear m's cities, the link still clears t's rather than crossing them."""
-    routes = _routes([("a", "t"), ("a", "m"), ("m", "t")], _ONE_SIDED_EDGES)
+    routes = _routes(_routed([("a", "t"), ("a", "m"), ("m", "t")], _ONE_SIDED_EDGES))
     assert routes[("m", "t")] == ("m", "r", "c", "j", "t")
 
 
@@ -715,13 +709,13 @@ _TWO_WAY_EDGES = physical({
 
 def test_the_cheaper_of_two_one_sided_routes_wins() -> None:
     """With one end clearable either way, the link takes the shorter of the two routes."""
-    routes = _routes([("u", "x"), ("v", "y"), ("x", "y")], _TWO_WAY_EDGES)
+    routes = _routes(_routed([("u", "x"), ("v", "y"), ("x", "y")], _TWO_WAY_EDGES))
     assert routes[("x", "y")] == ("x", "q", "y")
 
 
 def test_links_of_unrelated_nodes_do_not_constrain_each_other() -> None:
     """A city another node's link crosses is no reason to route this one around it."""
-    routes = _routes([("g", "p"), ("h", "q")], _SHARED_EGRESS_EDGES)
+    routes = _routes(_routed([("g", "p"), ("h", "q")], _SHARED_EGRESS_EDGES))
     assert routes[("h", "q")] == ("h", "g", "q")
 
 
@@ -735,13 +729,13 @@ _Q_PROVED_THE_LONG_WAY: dict[str, list[tuple[str, ...]]] = {"q": [("q", "r", "h"
 
 def test_a_link_is_wired_along_the_route_its_node_proved() -> None:
     """h proved a way round through r, so its link takes it rather than the cheaper g."""
-    routes = _routes([("h", "q")], _SHARED_EGRESS_EDGES, _H_PROVED_THE_LONG_WAY)
+    routes = _routes(_routed([("h", "q")], _SHARED_EGRESS_EDGES, _H_PROVED_THE_LONG_WAY))
     assert routes[("h", "q")] == ("h", "r", "q")
 
 
 def test_a_route_proved_from_the_far_end_is_wired_pointing_at_this_one() -> None:
     """The proof belongs to q and the link runs h to q, so the path is turned to match."""
-    routes = _routes([("h", "q")], _SHARED_EGRESS_EDGES, _Q_PROVED_THE_LONG_WAY)
+    routes = _routes(_routed([("h", "q")], _SHARED_EGRESS_EDGES, _Q_PROVED_THE_LONG_WAY))
     assert routes[("h", "q")] == ("h", "r", "q")
 
 
@@ -767,7 +761,7 @@ def test_two_ends_that_proved_different_fiber_are_wired_once() -> None:
 
 def test_the_shorter_of_the_two_proved_ways_round_is_the_one_wired() -> None:
     """Six miles through r buys the pair nothing the two through g do not, so g is wired."""
-    routes = _routes([("h", "q")], _SHARED_EGRESS_EDGES, _ENDS_DISAGREE, 6)
+    routes = _routes(_routed([("h", "q")], _SHARED_EGRESS_EDGES, _ENDS_DISAGREE, 6))
     assert routes[("h", "q")] == ("h", "g", "q")
 
 
@@ -778,7 +772,7 @@ def test_both_are_wired_where_the_seats_leave_the_pair_no_other_peer() -> None:
 
 def test_a_pair_no_proof_covers_is_still_routed_by_the_heuristic() -> None:
     """A pin or a join has no proof behind it and is wired the way it always was."""
-    routes = _routes([("h", "p")], _SHARED_EGRESS_EDGES, _H_PROVED_THE_LONG_WAY)
+    routes = _routes(_routed([("h", "p")], _SHARED_EGRESS_EDGES, _H_PROVED_THE_LONG_WAY))
     assert routes[("h", "p")] == ("h", "g", "p")
 
 
@@ -795,39 +789,37 @@ def test_backbone_mesh_paths_route_a_nodes_links_over_distinct_cities() -> None:
     assert not routed[edge_key("h", "p")] & routed[edge_key("h", "q")]
 
 
-# Three sites reaching each other over three shared hub cities, priced so that the cheapest
-# way out of one site is not the cheapest way back out of the other. That is what makes the
-# two ends of a pair prove different fiber to each other: each proof is the cheapest set of
-# routes out of its own site, and the two sites have different other peers to keep clear of.
-# Here a is cheap on h2 and dear on h1, b is the other way round, and c is cheap on both --
-# so a's routes are h1 to b and h2 to c, b's are h1 to a and h3 to c, and c's are h2 to a and
-# h1 to b. Only the pair b-c is proved twice, five miles through h3 and two through h1.
-_HUBBED_EDGES = physical({
-    ("a", "h1"): 4.0, ("a", "h2"): 1.0, ("a", "h3"): 8.0,
-    ("b", "h1"): 1.0, ("b", "h2"): 8.0, ("b", "h3"): 2.0,
-    ("c", "h1"): 1.0, ("c", "h2"): 2.0, ("c", "h3"): 3.0,
-})
-_HUBBED_SITES = ("a", "b", "c")
-
-
-def _hubbed_paths() -> list[PathUse]:
-    """Route the three-site backbone over the three hubs, two paths asked of each site."""
-    adjacency = build_adjacency(_HUBBED_EDGES)
-    ids = sorted({vertex_id for pair in _HUBBED_EDGES for vertex_id in pair})
+# Three sites over three shared hub cities, where the two ends of the pair b-c each proved
+# their own way to the other (see ``fixtures.SHARED_HUB_SPANS``), and the same three with a
+# fourth site joined to two of them over fiber of its own. The pair is what the two graphs
+# decide between: with a fourth site to reach, b has a way out that no hub carries and the
+# pair is joined once; without one, the second route to c is the only fiber left that fails
+# on its own, and joining the pair twice is what the tenant's two paths are buying.
+def _shared_hub_paths(
+    edges: dict[tuple[str, str], PhysicalEdge], sites: tuple[str, ...]
+) -> list[PathUse]:
+    """Route one of the two shared-hub backbones, two paths asked of each site."""
+    adjacency = build_adjacency(edges)
+    ids = sorted({vertex_id for pair in edges for vertex_id in pair})
     distances, predecessors = all_pairs_shortest([pop(i) for i in ids], adjacency)
     return backbone_mesh_paths(
-        _HUBBED_SITES, distances, predecessors, _HUBBED_EDGES,
-        BackboneConstraints(number_of_diverse_paths=2, seat_cap=3),
+        sites, distances, predecessors, edges,
+        BackboneConstraints(number_of_diverse_paths=2, seat_cap=len(sites)),
     )
 
 
-def _hubbed_pair_paths() -> list[PathUse]:
-    """The routes drawn between b and c, the one pair whose ends proved different fiber."""
+def _pair_paths(uses: list[PathUse], left: str, right: str) -> list[PathUse]:
+    """The routes drawn between one pair of sites, in the order they were drawn."""
     return [
-        use
-        for use in _hubbed_paths()
-        if edge_key(use.source, use.target) == edge_key("b", "c")
+        use for use in uses if edge_key(use.source, use.target) == edge_key(left, right)
     ]
+
+
+def _peer_backbone() -> list[PathUse]:
+    """The four-site backbone, where b reaches d over fiber no hub carries."""
+    return _shared_hub_paths(
+        fixtures.SHARED_HUB_PEER_EDGES, fixtures.SHARED_HUB_PEER_SITES
+    )
 
 
 def test_a_pair_whose_two_ends_proved_different_fiber_is_drawn_once() -> None:
@@ -837,14 +829,44 @@ def test_a_pair_whose_two_ends_proved_different_fiber_is_drawn_once() -> None:
     same span and the two collapse into one route on their own, so the number a pair is
     held to is never reached (GitHub issue #59).
     """
-    assert len(_hubbed_pair_paths()) == 1
+    assert len(_pair_paths(_peer_backbone(), "b", "c")) == 1
 
 
 def test_the_route_drawn_for_that_pair_is_the_shorter_of_the_two() -> None:
-    """Two miles through h1 rather than five through h3, since one circuit is what is bought."""
-    assert _hubbed_pair_paths()[0].path == ("b", "h1", "c")
+    """Two hundred miles through h1 rather than five hundred through h3."""
+    assert _pair_paths(_peer_backbone(), "b", "c")[0].path == ("b", "h1", "c")
 
 
-def test_the_three_sites_are_drawn_one_circuit_a_pair() -> None:
-    """Three pairs and three circuits: none joined twice, and none left unjoined."""
-    assert len(_hubbed_paths()) == 3
+def test_the_four_sites_are_drawn_one_circuit_a_pair() -> None:
+    """Five pairs and five circuits: none joined twice, and none left unjoined."""
+    assert len(_peer_backbone()) == 5
+
+
+def _hub_only_backbone() -> list[PathUse]:
+    """The three-site backbone, where every way out of every site is one of the three hubs."""
+    return _shared_hub_paths(fixtures.SHARED_HUB_EDGES, fixtures.SHARED_HUB_SITES)
+
+
+def test_a_pair_is_drawn_twice_where_the_fiber_leaves_a_site_nothing_else() -> None:
+    """Drawn once, b's links to a and to c both ride h1, and b asked for two ways out.
+
+    Every peer b has is joined to it already, so the second circuit to c is the only thing
+    left that a single city's loss does not take with the first. Refusing it would refuse
+    the design, which is what the count of routes a pair may hold cannot be allowed to do.
+    """
+    assert len(_pair_paths(_hub_only_backbone(), "b", "c")) == 2
+
+
+def test_the_route_put_back_is_the_one_that_site_proved() -> None:
+    """b proved its way to c through h3, and that is the way out h1 cannot take with it."""
+    assert _pair_paths(_hub_only_backbone(), "b", "c")[-1].path == ("b", "h3", "c")
+
+
+def test_the_route_put_back_says_what_it_is_there_for() -> None:
+    """A second circuit between two sites is not a link b reached for, and says so.
+
+    An operator reading a network larger than the one they asked for is owed the reason
+    beside every extra circuit, and this one has its own: the fiber left b no other way out
+    (see :data:`synthesizer.model.LINK_FOR_SITE_DIVERSITY`).
+    """
+    assert _pair_paths(_hub_only_backbone(), "b", "c")[-1].reason == LINK_FOR_SITE_DIVERSITY

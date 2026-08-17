@@ -2,7 +2,7 @@
 
 The number of diverse paths is the number a site gets, so a site above it is the exception
 and every link taking it there is somebody else's requirement rather than the tool being
-generous with an operator's cable. There are exactly four such requirements, and the report
+generous with an operator's cable. There are exactly five such requirements, and the report
 has to name which one, because a count on its own leaves a reader to guess why the network
 they were handed is bigger than the one they ordered.
 
@@ -21,6 +21,7 @@ from synthesizer.model import (
     LINK_FOR_CITY_DETOUR,
     LINK_FOR_CONNECTIVITY,
     LINK_FOR_PIN,
+    LINK_FOR_SITE_DIVERSITY,
     LINK_FOR_TARGET,
     Design,
     DesignMetrics,
@@ -75,17 +76,19 @@ def test_a_site_holding_exactly_what_it_asked_for_is_not_reported() -> None:
         (LINK_FOR_TARGET, ("d",), "peer_target"),
         (LINK_FOR_CONNECTIVITY, (), "network_connectivity"),
         (LINK_FOR_CITY_DETOUR, (), "city_detour"),
+        (LINK_FOR_SITE_DIVERSITY, (), "site_diversity"),
     ],
 )
 def test_a_link_past_the_target_names_the_requirement_that_put_it_there(
     reason: str, requested_by: tuple[str, ...], reported: str
 ) -> None:
-    """Each of the four grounds for exceeding a target is reported as that ground.
+    """Each of the five grounds for exceeding a target is reported as that ground.
 
     An operator pinned it; a peer needed this site to reach its own target and a link has
-    two ends; it holds the backbone together as one network; or it is a detour keeping one
-    city off the only path. A link on none of these grounds is not built at all, which is
-    what makes naming the ground worth doing.
+    two ends; it holds the backbone together as one network; it is a second route to a peer
+    this site is joined to already, where its fiber offered no other way out; or it is a
+    detour keeping one city off the only path. A link on none of these grounds is not built
+    at all, which is what makes naming the ground worth doing.
     """
     rows = _above_target(_link("d", reason, requested_by))
     assert rows[0]["unrequested_links"] == [{"peer": "d", "reason": reported}]

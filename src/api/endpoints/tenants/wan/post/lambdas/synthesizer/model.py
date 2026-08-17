@@ -29,20 +29,23 @@ class AccessEdge:
 
 # Why a backbone mesh link is in the design. A site is wired for exactly the number of
 # diverse paths its tenant asked for, so any link it holds beyond that number is one
-# somebody else's requirement put there, and these are the only four things that can have.
+# somebody else's requirement put there, and these are the only five things that can have.
 # Carrying the cause on the link is what lets the report name it rather than leave an
 # operator to infer from a count why their network is larger than they asked for.
 LINK_FOR_TARGET = "site_target"  # a site reached for it to meet its own target
 LINK_FOR_PIN = "operator_pin"  # the operator wrote it into etc/*.yml
 LINK_FOR_CONNECTIVITY = "network_connectivity"  # it holds the backbone together as one
 LINK_FOR_CITY_DETOUR = "city_detour"  # it stops one city's loss splitting the backbone
+# a second route to a peer a site is joined to already, drawn only where the site's fiber
+# offers it no other way out that a single city's loss would not take with its first
+LINK_FOR_SITE_DIVERSITY = "site_diversity"
 
 
 @dataclass(frozen=True)
 class PathUse:
     """A routed path over the physical graph for one design purpose.
 
-    ``reason`` is why a ``backbone_mesh`` link exists, one of the four constants above.
+    ``reason`` is why a ``backbone_mesh`` link exists, one of the five constants above.
     ``requested_by`` names the sites that reached for it and is empty unless ``reason`` is
     ``LINK_FOR_TARGET`` -- a link has two ends, and which end asked for it is exactly what
     separates a site's own link from one it is holding for a peer.

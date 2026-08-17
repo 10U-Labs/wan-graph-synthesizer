@@ -37,9 +37,11 @@ from synthesizer.model import (
     LINK_FOR_CITY_DETOUR,
     LINK_FOR_CONNECTIVITY,
     LINK_FOR_PIN,
+    LINK_FOR_SITE_DIVERSITY,
     LINK_FOR_TARGET,
     PathUse,
 )
+from synthesizer.validation import routed_independent_degree
 
 # Slack in miles when a routed length is compared against its budget, absorbing the
 # rounding of a sum of great-circle distances. Five millimetres, so it can admit nothing a
@@ -284,10 +286,11 @@ def select_backbone_mesh_pairs(
     choice, and the reason each one is there is returned beside it. A node may end above
     its target because the operator pinned a link, because a peer needed this node to reach
     its own target and a link has two ends, because the link holds the backbone together as
-    one network, or because it is a detour keeping one city off the only path (that last
-    one is added later, when the links are routed -- see
-    :func:`augment_physical_resilience`). A link that would exist only because the ground
-    was generous is on none of those grounds and is not built.
+    one network, because it is a second route to a peer the node is joined to already and
+    its fiber offers no other way out (see :func:`restore_diverse_paths`), or because it is
+    a detour keeping one city off the only path (the last two are added later, when the
+    links are routed -- see :func:`augment_physical_resilience`). A link that would exist
+    only because the ground was generous is on none of those grounds and is not built.
 
     Peers are measured over the carrier graph in ``all_distances``. Any pair in
     ``removed_pairs`` -- an operator-pruned backbone-backbone link from ``etc/*.yml`` -- is
@@ -717,10 +720,9 @@ def _proven_paths_for(
     site's ways out independent is that they end at different peers.
 
     So where the two ends disagree the shorter route is drawn and the longer is not. That
-    can leave the site whose route was dropped riding one city for two of its links, and the
-    honest answer to that is the shortfall ``synthesizer.validation`` reports and the detour
-    :func:`augment_physical_resilience` draws between two sites not yet joined -- not a
-    second circuit between two that already are (GitHub issue #59).
+    can leave the site whose route was dropped riding one city for two of its links, and
+    :func:`restore_diverse_paths` is what answers it: the route goes back only where the
+    fiber offers the site nothing else that fails on its own (GitHub issue #59).
     """
     found: list[tuple[str, ...]] = []
     for near, far in ((left, right), (right, left)):
@@ -807,6 +809,63 @@ def diverse_mesh_routes(
     return routes
 
 
+def restore_diverse_paths(
+    uses: list[PathUse],
+    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    constraints: BackboneConstraints = BackboneConstraints(),
+) -> list[PathUse]:
+    """Join a pair twice where that is the last thing buying a site the paths it asked for.
+
+    A pair of sites is joined once, and where its two ends proved different fiber the
+    shorter route is the one built (see :func:`_proven_paths_for`). The site whose route was
+    dropped is given the other end's instead, and that route can ride a city one of its
+    other links already rides -- so a site that proved two ways out no one city's loss takes
+    together can end up holding one.
+
+    Usually there is somewhere better for the money. A site short of ways out wants a peer
+    it does not reach yet, and selection is what gives it one. This pass is for the fiber
+    that offers none: three sites reaching one another over a single transit city and one
+    crossing (``fixtures.CROSSING_EDGES``) leaves every site already joined to every other,
+    so the only route left that fails on its own runs to a peer this site is joined to
+    already. A second circuit between that pair is then exactly what the tenant's number of
+    diverse paths is buying, and refusing it would refuse the design.
+
+    So a dropped route is put back, cheapest first, while the site holds fewer independently
+    failing links than it asked for and while putting one back is what raises the count. A
+    site already holding its number gets nothing, which is what keeps this from undoing the
+    trim: over the six published networks not one site needs a route back, and the
+    twenty-one pairs joined twice for no gain stay joined once (GitHub issue #59).
+
+    What a site asked for is bounded by what its own fiber proved, so a site whose ceiling
+    is one is not chased past it -- that shortfall is the ground's, and
+    :func:`synthesizer.validation.backbone_mesh_independence_deficient` is where it belongs.
+    """
+    restored = list(uses)
+    for site in sorted(constraints.routes):
+        proved = constraints.routes[site]
+        target = min(constraints.number_of_diverse_paths, len(proved))
+        joined = {edge_key(use.source, use.target) for use in restored}
+        laid = {use.path for use in restored} | {use.path[::-1] for use in restored}
+        dropped = sorted(
+            (
+                route for route in proved
+                if route not in laid and edge_key(site, route[-1]) in joined
+            ),
+            key=lambda route: (path_geometry_miles(route, physical_edges), route),
+        )
+        for route in dropped:
+            held = routed_independent_degree(restored, site)
+            if held >= target:
+                break
+            candidate = PathUse(
+                "backbone_mesh", site, route[-1], route,
+                path_geometry_miles(route, physical_edges), LINK_FOR_SITE_DIVERSITY,
+            )
+            if routed_independent_degree([*restored, candidate], site) > held:
+                restored.append(candidate)
+    return restored
+
+
 def backbone_mesh_paths(
     backbone_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
@@ -832,6 +891,12 @@ def backbone_mesh_paths(
     says how many of them it takes. The two are deliberately separate: a proof that finds
     ten ways out of a city is a fact about the fiber, not an instruction to buy ten
     circuits.
+
+    Three passes then follow the routing, in the order the money should be spent: a pair is
+    joined once, a site short of ways out is given a second route to a peer it is joined to
+    only where the fiber offers it nothing better (see :func:`restore_diverse_paths`), and a
+    city carrying the whole network is relieved by joining two sites that were not joined at
+    all (see :func:`augment_physical_resilience`).
 
     ``constraints.limit`` bounds how far the proof may route (see
     :func:`synthesizer.ceiling.independent_routes`). The proof is the reason it must be
@@ -866,5 +931,6 @@ def backbone_mesh_paths(
         )
     ]
     return augment_physical_resilience(
-        uses, backbone_ids, physical_edges, constraints
+        restore_diverse_paths(uses, physical_edges, constraints),
+        backbone_ids, physical_edges, constraints,
     )
