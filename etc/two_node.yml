@@ -1,0 +1,30 @@
+---
+access:
+  forced:
+    connections: []
+  homing_degree: 2
+backbone:
+  coverage_target_miles: 800
+  forced:
+    connections: []
+    nodes: []
+  max_path_stretch: 3
+  node_count:
+    max: 2
+    min: 2
+  number_of_diverse_paths: 1
+  prohibited:
+    connections: []
+    nodes: []
+  promote_high_degree_convergences: false
+  restrict_to_data_centers: false
+inputs:
+  forced: data/vertices/forced/inexistent.csv
+  locations:
+    Two-Node: data/vertices/tenants/two_node.csv
+  providers: data/vertices/providers/providers.csv
+label: Two-Node
+settings:
+  backbone_search_memory_share: 0.6
+  bytes_per_backbone_combination: 160
+  compass_sector_count: 8
