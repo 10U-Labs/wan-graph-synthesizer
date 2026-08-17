@@ -399,5 +399,8 @@ def test_a_route_no_span_of_which_can_be_refused_is_dropped_rather_than_counted(
     lowered is read rather than inferred.
     """
     assert independent_route_ceiling(
-        "sea", _UNWITHDRAWABLE_BACKBONE, _UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_LIMIT
+        "sea",
+        RouteGround(
+            _UNWITHDRAWABLE_BACKBONE, _UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_LIMIT
+        ),
     ) == 1

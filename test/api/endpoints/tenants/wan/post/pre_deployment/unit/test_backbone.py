@@ -559,7 +559,7 @@ def _clear_route(limit: BackupRouteLimit | None) -> tuple[str, ...]:
         [("p", "s"), ("q", "s"), ("p", "q")],
         _OFFSHORE_CLEAR_DISTANCES[1],
         _OFFSHORE_CLEAR_ADJACENCY,
-        limit=limit,
+        BackboneConstraints(limit=limit),
     )
     return next(path for left, right, path in routes if (left, right) == ("p", "q"))
 
@@ -612,7 +612,7 @@ def _routed(
     ids = {vertex_id for pair in edges for vertex_id in pair}
     _distances, predecessors = all_pairs_shortest([pop(i) for i in sorted(ids)], adjacency)
     return diverse_mesh_routes(
-        pairs, predecessors, adjacency, BackboneConstraints(routes=proven)
+        pairs, predecessors, adjacency, BackboneConstraints(routes=proven or {})
     )
 
 
