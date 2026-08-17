@@ -304,6 +304,16 @@ def _pinned_ids(backbone: dict[str, Any], by_name: dict[str, str]) -> tuple[str,
     return tuple(by_name[name] for name in _pinned_cities(backbone) if name in by_name)
 
 
+def _route_endpoints(city_id: str, pinned: tuple[str, ...]) -> int:
+    """How many places a route out of ``city_id`` has to end at, for the bound below.
+
+    The bound counts routes to the tenant's pinned cities, so the pins are the only
+    endpoints there are, and a city that is itself a pin cannot route to itself. A tenant
+    that pins one city therefore leaves a route out of it nowhere to go.
+    """
+    return len(pinned) - (1 if city_id in pinned else 0)
+
+
 def _ceiling_bounds(
     cities: Callable[[dict[str, Any]], list[str]],
 ) -> list[tuple[str, str, int, int]]:
@@ -323,6 +333,18 @@ def _ceiling_bounds(
     A city the carrier files hold no point for is left out, since there is no graph to
     measure it on and a silent zero would read as a proven limit.
 
+    A city with fewer places to route to than its tenant asks for is left out for the same
+    reason. ``independent_route_ceiling`` never counts more routes than there are other
+    backbone nodes, so where the pins do not supply that many endpoints the bound is below
+    the number asked before any fiber is read, and comparing the two would report the count
+    of pins rather than anything about the city. Two-Node is the tenant this applies to: it
+    pins Ashburn, VA alone and asks for one diverse path, which leaves a route out of
+    Ashburn nowhere to end and the bound at zero over fiber running thirteen ways. What
+    keeps such a pin honest is the synthesizer itself, which seats a pin only where the
+    carrier graph gives it two links (``compute_eligible_backbone_ids``) and refuses one
+    sitting in a fiber pocket too small for the backbone it was asked for
+    (``forced_backbone_resilience_error``).
+
     The tenant's own path stretch bound is applied, because the real run applies it: a
     ceiling measured over fiber the design may not use is not a floor under the real one
     but a number above it, and a tenant could clear this contract on routes its build would
@@ -335,6 +357,7 @@ def _ceiling_bounds(
     for tenant, backbone in sorted(_backbone_blocks().items()):
         pinned = _pinned_ids(backbone, by_name)
         measured = [by_name[city] for city in cities(backbone) if city in by_name]
+        asked = backbone["number_of_diverse_paths"]
         # A row per peer and per city measured: an exempt city need not be a pin, and the
         # bound is measured from it as well as to it.
         limit = StretchLimit(
@@ -342,11 +365,11 @@ def _ceiling_bounds(
             distances_from(adjacency, {*pinned, *measured}),
         )
         for city in cities(backbone):
-            if city in by_name:
-                bound = independent_route_ceiling(
-                    by_name[city], pinned, adjacency, limit
-                )
-                bounds.append((tenant, city, bound, backbone["number_of_diverse_paths"]))
+            city_id = by_name.get(city)
+            if city_id is None or _route_endpoints(city_id, pinned) < asked:
+                continue
+            bound = independent_route_ceiling(city_id, pinned, adjacency, limit)
+            bounds.append((tenant, city, bound, asked))
     return bounds
 
 
@@ -393,6 +416,11 @@ def test_every_pinned_city_can_carry_the_diversity_its_tenant_asks_for() -> None
     DOW's Boardman, Umatilla and Tucson, each with two routes out that share no city. The
     bound counts only routes to the tenant's other pins, so the real run, which seats more
     sites and adds spans, can only do better.
+
+    A tenant whose pins leave a city fewer endpoints than it asks for is not measured here
+    (see :func:`_ceiling_bounds`), because the bound would then report how many cities the
+    tenant pinned rather than what any of their fiber can carry. Two-Node is that tenant,
+    with one pin and one diverse path asked for.
     """
     assert [
         (tenant, city, bound, asked)
