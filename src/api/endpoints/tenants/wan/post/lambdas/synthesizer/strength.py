@@ -113,8 +113,8 @@ def diverse_path_bounds(
     grown backbone (see :func:`synthesizer.coverage.candidate_mesh_ceiling`), because it
     weighs a handful of candidates rather than millions of sets.
 
-    The tenant's path stretch bound is deliberately not applied here, and the reason is the
-    same one that makes this bound affordable. It counts routes to every other candidate,
+    The tenant's backup route multiple is deliberately not applied here, and the reason is
+    the same one that makes this bound affordable. It counts routes to every other candidate,
     so every city on the map is a peer a route may legitimately end at -- and a route that
     ends where it was going is not a detour, whatever its length. A crossing to a landing
     point is measured against the direct distance to that same landing point and comes out

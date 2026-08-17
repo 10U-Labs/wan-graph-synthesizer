@@ -16,8 +16,8 @@ def distances_from(
 ) -> dict[str, dict[str, float]]:
     """Shortest-path distances to every city, from each of ``sources``.
 
-    One Dijkstra per source. Enough for the stretch bound, which needs the distance from
-    the site being measured and from each of its peers and nothing else, so the callers
+    One Dijkstra per source. Enough for the backup route limit, which needs the distance
+    from the site being measured and from each of its peers and nothing else, so the callers
     that already hold all-pairs distances pass those straight in rather than paying for
     this. A source the substrate does not carry gets a row holding only itself, which is
     what Dijkstra returns for it and reads correctly as reaching nothing.

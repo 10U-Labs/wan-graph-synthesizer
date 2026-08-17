@@ -17,7 +17,7 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
-from synthesizer.ceiling import StretchLimit, independent_routes
+from synthesizer.ceiling import BackupRouteLimit, independent_routes
 from synthesizer.input_graph import PhysicalEdge, edge_key
 from synthesizer.graphs import (
     articulation_points,
@@ -236,7 +236,7 @@ class BackboneConstraints:
     # two heuristics that route everything the proof does not cover, so a node cannot be
     # given a peer it reaches only by a detour nobody would buy. None leaves every route
     # admissible, which is the behaviour of every caller that has no tenant in hand
-    limit: StretchLimit | None = None
+    limit: BackupRouteLimit | None = None
 
 
 @dataclass(frozen=True)
@@ -436,15 +436,15 @@ class _DetourSubstrate:
 
     The augmentation routes one detour at a time and only the span union moves between
     rounds; the sites in the backbone, the joins the operator pruned, the carrier fiber
-    and the stretch bound are the same on every one of them. Bundling them says so, and
-    keeps the search's own argument list to the union it is actually iterating on.
+    and the backup route limit are the same on every one of them. Bundling them says so,
+    and keeps the search's own argument list to the union it is actually iterating on.
     """
 
     backbone_set: set[str]
     removed_pairs: frozenset[tuple[str, str]]
     adjacency: dict[str, list[tuple[str, float]]]
     physical_edges: dict[tuple[str, str], PhysicalEdge]
-    limit: StretchLimit | None = None
+    limit: BackupRouteLimit | None = None
 
 
 def _resilience_detour(
@@ -487,7 +487,7 @@ def augment_physical_resilience(
     backbone_ids: tuple[str, ...],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     removed_pairs: frozenset[tuple[str, str]],
-    limit: StretchLimit | None = None,
+    limit: BackupRouteLimit | None = None,
 ) -> list[PathUse]:
     """Add detour routes until the backbone's physical spans survive any single city loss.
 
@@ -502,8 +502,9 @@ def augment_physical_resilience(
     join); the search gate keeps such sets from winning, and validation reports the truth
     either way.
 
-    ``limit`` makes a detour past the operator's stretch bound one of the unusable ones. A
-    city stays a cut rather than being relieved by a route nobody would build, which is the
+    ``limit`` makes a detour past the operator's backup route multiple one of the unusable
+    ones. A city stays a cut rather than being relieved by a route nobody would build, which
+    is the
     honest report: the fiber here cannot survive that city's loss, and saying so is worth
     more than a cable on the map that would never be ordered.
     """
@@ -560,9 +561,10 @@ def within_limit(
     left: str,
     right: str,
     miles: float,
-    limit: StretchLimit | None,
+    limit: BackupRouteLimit | None,
 ) -> bool:
-    """Whether a routed ``left``-to-``right`` link is inside the operator's stretch bound.
+    """Whether a routed ``left``-to-``right`` link is inside the operator's backup route
+    multiple.
 
     An empty route is never inside it, since there is no route to be inside anything. With
     no limit every route passes, which is the behaviour of every caller with no tenant in
@@ -580,7 +582,7 @@ def within_limit(
     direct = limit.distances.get(left, {}).get(right, math.inf)
     if not math.isfinite(direct):
         return True
-    return miles <= limit.stretch * direct + _LIMIT_TOLERANCE
+    return miles <= limit.multiple * direct + _LIMIT_TOLERANCE
 
 
 def _clearest_route(
@@ -588,7 +590,7 @@ def _clearest_route(
     right: str,
     carried: dict[str, set[str]],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: StretchLimit | None = None,
+    limit: BackupRouteLimit | None = None,
 ) -> tuple[str, ...]:
     """The route clearing as many of the endpoints' carried cities as the fiber allows.
 
@@ -667,7 +669,7 @@ def diverse_mesh_routes(
     all_predecessors: dict[str, dict[str, str]],
     adjacency: dict[str, list[tuple[str, float]]],
     proven: Mapping[str, list[tuple[str, ...]]] | None = None,
-    limit: StretchLimit | None = None,
+    limit: BackupRouteLimit | None = None,
 ) -> list[tuple[str, str, tuple[str, ...]]]:
     """Route every mesh link, keeping one node's links clear of each other's cities.
 

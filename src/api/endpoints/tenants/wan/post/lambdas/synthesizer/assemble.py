@@ -30,7 +30,7 @@ from synthesizer.forced import (
 )
 from synthesizer.graphs import path_edge_keys
 from synthesizer.backbone import BackboneConstraints, backbone_mesh_paths
-from synthesizer.ceiling import StretchLimit
+from synthesizer.ceiling import BackupRouteLimit
 from synthesizer.search_plan import _SearchPlan
 
 
@@ -201,7 +201,7 @@ def routed_path_uses(
         removed_backbone_pairs(backbone_set, plan.forced_links),
         number_of_diverse_paths=plan.tuning.backbone_number_of_diverse_paths,
         forced_pairs=forced_backbone_pairs(backbone_set, plan.forced_links),
-        limit=StretchLimit(
+        limit=BackupRouteLimit(
             plan.tuning.backbone_max_backup_route_multiple, inputs.all_distances
         ),
     )

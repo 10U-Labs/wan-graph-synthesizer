@@ -7,7 +7,7 @@ The synthesizer composes these over the JSON-loaded graph:
 
 from __future__ import annotations
 
-from synthesizer.ceiling import StretchLimit, diverse_path_ceilings
+from synthesizer.ceiling import BackupRouteLimit, diverse_path_ceilings
 from synthesizer.graphs import build_adjacency, distances_from
 from synthesizer.input_graph import PhysicalEdge, Vertex
 from synthesizer.model import Design, DesignParams, MeshTargets, ValidationReport
@@ -87,7 +87,7 @@ def finalize(
         ceilings=diverse_path_ceilings(
             design.backbone_ids,
             adjacency,
-            StretchLimit(
+            BackupRouteLimit(
                 params.tuning.backbone_max_backup_route_multiple,
                 distances_from(adjacency, design.backbone_ids),
             ),

@@ -11,7 +11,7 @@ import pytest
 
 import fixtures
 from synthesizer.ceiling import (
-    StretchLimit,
+    BackupRouteLimit,
     independent_route_ceiling,
     independent_routes,
     diverse_path_ceilings,
@@ -157,11 +157,11 @@ _PACIFIC_ADJACENCY = build_adjacency(_PACIFIC)
 _PACIFIC_BACKBONE = ("eug", "hil", "sea")
 # 2,000 miles of cable to cover the twenty ``sea`` is from either peer overland, so the
 # crossing runs a hundred times the direct route and a bound of three refuses it.
-_PACIFIC_LIMIT = StretchLimit(3.0, distances_from(_PACIFIC_ADJACENCY, _PACIFIC_BACKBONE))
+_PACIFIC_LIMIT = BackupRouteLimit(3.0, distances_from(_PACIFIC_ADJACENCY, _PACIFIC_BACKBONE))
 
 
 def test_a_route_far_longer_than_the_direct_one_is_not_proved() -> None:
-    """No route out of sea is laid through tok once the stretch bound is applied."""
+    """No route out of sea is laid through tok once the backup route multiple is applied."""
     routes = independent_routes(
         "sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, _PACIFIC_LIMIT
     )
@@ -198,7 +198,7 @@ _SOLE_CROSSING_ADJACENCY = build_adjacency(
     {**_PACIFIC, **physical({("tok", "syd"): 500.0})}
 )
 _SOLE_CROSSING_BACKBONE = ("eug", "hil", "sea", "syd")
-_SOLE_CROSSING_LIMIT = StretchLimit(
+_SOLE_CROSSING_LIMIT = BackupRouteLimit(
     3.0, distances_from(_SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_BACKBONE)
 )
 
@@ -243,7 +243,7 @@ def test_a_limit_missing_the_measured_site_is_refused() -> None:
     the site's target to match, on the strength of a caller's omission rather than the
     substrate. It is named so the caller can see which row is missing.
     """
-    limit = StretchLimit(3.0, distances_from(_PACIFIC_ADJACENCY, ("eug", "hil")))
+    limit = BackupRouteLimit(3.0, distances_from(_PACIFIC_ADJACENCY, ("eug", "hil")))
     with pytest.raises(ValueError, match="sea"):
         independent_routes("sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, limit)
 
@@ -261,20 +261,20 @@ _LEAK_ADJACENCY = build_adjacency(physical({
     ("sea", "tok"): 1000.0, ("tok", "hil"): 1000.0,
 }))
 _LEAK_BACKBONE = ("hil", "sea", "syd")
-_LEAK_LIMIT = StretchLimit(3.0, distances_from(_LEAK_ADJACENCY, _LEAK_BACKBONE))
+_LEAK_LIMIT = BackupRouteLimit(3.0, distances_from(_LEAK_ADJACENCY, _LEAK_BACKBONE))
 
 
-def _stretches(
+def _multiples(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: StretchLimit,
+    limit: BackupRouteLimit,
 ) -> dict[tuple[str, ...], float]:
     """Every route proved out of ``node``, by the multiple of the shortest route it ran.
 
     All of them rather than only the ones that overrun, so the assertion reads as a whole
     value and names any route that comes back along with how far it went. A route inside
-    its allowance scores at most the stretch the limit carries; the leak scored a hundred.
+    its allowance scores at most the multiple the limit carries; the leak scored a hundred.
     """
     return {
         route: _route_miles(route, adjacency) / limit.distances[node][route[-1]]
@@ -292,7 +292,7 @@ def test_no_proved_route_runs_further_than_the_peer_it_ends_at_allows() -> None:
 
     What comes back is the one route to ``syd``, which runs the shortest way there is.
     """
-    assert _stretches("sea", _LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT) == {
+    assert _multiples("sea", _LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT) == {
         ("sea", "pdx", "syd"): 1.0
     }
 
@@ -323,7 +323,7 @@ _UNWITHDRAWABLE_ADJACENCY = build_adjacency(physical({
     ("pdx", "syd"): 7000.0, ("tac", "syd"): 13000.0,
 }))
 _UNWITHDRAWABLE_BACKBONE = ("hil", "sea", "syd")
-_UNWITHDRAWABLE_LIMIT = StretchLimit(
+_UNWITHDRAWABLE_LIMIT = BackupRouteLimit(
     3.0, distances_from(_UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_BACKBONE)
 )
 

@@ -224,7 +224,7 @@ def test_the_report_gives_every_measured_node_its_count_and_its_target() -> None
     The list above names only the nodes the tool held below the configured degree, which is
     what an operator acts on and not enough to check the number behind it. A reader outside
     the build needs both to tell a site short of a link somebody can wire from a site short
-    of one the stretch bound refuses (GitHub issue #45).
+    of one the backup route multiple refuses (GitHub issue #45).
     """
     report = _mesh_report(*_DEFICIENT, ceilings={"C3": 2, "C4": 4})
     assert report["backbone_diverse_paths_ceilings"] == [

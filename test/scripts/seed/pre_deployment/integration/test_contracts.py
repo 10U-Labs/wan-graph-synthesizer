@@ -26,7 +26,7 @@ import yaml
 import seed
 from repo_utils import REPO_ROOT
 from seed import _carrier_cities, _city_key, _mapping_rows, _rows, _slug
-from synthesizer.ceiling import StretchLimit, independent_route_ceiling
+from synthesizer.ceiling import BackupRouteLimit, independent_route_ceiling
 from synthesizer.codec import load_regions, load_sites, load_substrate
 from synthesizer.graphs import build_adjacency, distances_from
 from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
@@ -362,7 +362,7 @@ def _ceiling_bounds(
         asked = backbone["number_of_diverse_paths"]
         # A row per peer and per city measured: an exempt city need not be a pin, and the
         # bound is measured from it as well as to it.
-        limit = StretchLimit(
+        limit = BackupRouteLimit(
             float(backbone["max_backup_route_multiple"]),
             distances_from(adjacency, {*pinned, *measured}),
         )

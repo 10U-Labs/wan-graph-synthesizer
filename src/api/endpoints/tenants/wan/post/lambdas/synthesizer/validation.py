@@ -44,8 +44,8 @@ def node_mesh_target(node: str, targets: MeshTargets) -> int:
     with it a target lowered past a shortfall worth reporting. Unbounded, the ceiling could
     not do this: a set of links with pairwise disjoint failure cities is a feasible flow in
     the network it maximises over, so the flow can never come out under them. A ceiling
-    measured against the operator's stretch bound is a search among the routes that bound
-    allows rather than a maximum over all of them (see
+    measured against the operator's backup route multiple is a search among the routes that
+    multiple allows rather than a maximum over all of them (see
     :func:`synthesizer.ceiling.independent_routes`), and no exact search is available at any
     price, so it can now sit one under. That it happened is not silent: a node the ceiling
     holds below the configured degree is reported by name in
@@ -293,8 +293,8 @@ def diverse_path_ceilings_reported(
     :func:`ceiling_limited_nodes` reports only the nodes the ceiling lowered, which is what
     an operator needs to see and not enough for a reader outside the build to check the
     lowering. The two numbers together are what say a node short of its target was short of
-    a link its fiber could have carried, rather than of one the stretch bound forbids -- and
-    the second of those is not a defect anybody can close.
+    a link its fiber could have carried, rather than of one the backup route multiple
+    forbids -- and the second of those is not a defect anybody can close.
 
     A node the substrate said nothing about has no ceiling and so never appears here either;
     it owes the full configured degree and the tool decided nothing about it to report.

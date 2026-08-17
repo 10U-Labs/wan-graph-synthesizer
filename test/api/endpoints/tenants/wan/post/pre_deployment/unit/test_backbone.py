@@ -16,7 +16,7 @@ from synthesizer.backbone import (
     select_backbone_mesh_pairs,
     within_limit,
 )
-from synthesizer.ceiling import StretchLimit
+from synthesizer.ceiling import BackupRouteLimit
 from synthesizer.synthesize import all_pairs_shortest
 from synthesizer.graphs import (
     build_adjacency,
@@ -449,7 +449,7 @@ _OFFSHORE_EDGES = physical({
     ("a", "h"): 1.0, ("b", "h"): 1.0, ("c", "h"): 1.0,
     ("a", "x"): 1000.0, ("b", "x"): 1000.0, ("c", "x"): 1000.0,
 })
-_OFFSHORE_LIMIT = StretchLimit(
+_OFFSHORE_LIMIT = BackupRouteLimit(
     3.0, distances_from(build_adjacency(_OFFSHORE_EDGES), ("a", "b", "c"))
 )
 
@@ -463,7 +463,7 @@ def test_a_detour_beyond_the_bound_is_not_added() -> None:
 
 def test_a_detour_inside_the_bound_is_still_added() -> None:
     """The bound refuses a detour for its length, not for being a detour."""
-    limit = StretchLimit(3.0, distances_from(build_adjacency(_HUB_EDGES), ("a", "b", "c")))
+    limit = BackupRouteLimit(3.0, distances_from(build_adjacency(_HUB_EDGES), ("a", "b", "c")))
     assert augment_physical_resilience(
         _BASE_HUB, ("a", "b", "c"), _HUB_EDGES, frozenset(), limit
     ) != _BASE_HUB
@@ -484,7 +484,7 @@ _OFFSHORE_CLEAR_DISTANCES = all_pairs_shortest(
 )
 
 
-def _clear_route(limit: StretchLimit | None) -> tuple[str, ...]:
+def _clear_route(limit: BackupRouteLimit | None) -> tuple[str, ...]:
     """The route the mesh lays p-q when both ends already carry ``m``."""
     routes = diverse_mesh_routes(
         [("p", "s"), ("q", "s"), ("p", "q")],
@@ -498,7 +498,7 @@ def _clear_route(limit: StretchLimit | None) -> tuple[str, ...]:
 def test_a_clearing_route_beyond_the_bound_falls_back_to_the_shortest_path() -> None:
     """p-q takes the two-mile route through m rather than the two-thousand-mile one."""
     assert _clear_route(
-        StretchLimit(3.0, distances_from(_OFFSHORE_CLEAR_ADJACENCY, ("p", "q")))
+        BackupRouteLimit(3.0, distances_from(_OFFSHORE_CLEAR_ADJACENCY, ("p", "q")))
     ) == ("p", "m", "q")
 
 
@@ -516,7 +516,7 @@ def test_a_pair_the_fiber_cannot_join_has_no_bound_to_break() -> None:
     answer rather than refusing every route on a measurement that does not exist.
     """
     islands = build_adjacency(physical({("a", "b"): 1.0, ("c", "d"): 1.0}))
-    limit = StretchLimit(3.0, distances_from(islands, ("a", "c")))
+    limit = BackupRouteLimit(3.0, distances_from(islands, ("a", "c")))
     assert within_limit(("a", "b", "c"), "a", "c", 500.0, limit)
 
 

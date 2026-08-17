@@ -31,9 +31,9 @@ it needs no operator input to be the right place to stop, and why it bounds
 whose failure cities are pairwise disjoint *is* a feasible integral flow here, so no way of
 choosing peers can beat the cut.
 
-Under the operator's stretch bound that argument holds one step less far. Only the routes
-the bound allows may be counted, and the largest set of disjoint routes that each respect a
-length bound is NP-hard to find, so the number is the best such set this module's search
+Under the operator's backup route multiple that argument holds one step less far. Only the
+routes the bound allows may be counted, and the largest set of disjoint routes that each
+respect a length bound is NP-hard to find, so the number is the best such set this search
 came across rather than the most there are (see :func:`independent_routes`). It is a close
 answer and not a proved one, and where it errs low the node is named in the design's report
 rather than quietly held to less.
@@ -71,18 +71,19 @@ _TOLERANCE = 1e-6
 
 
 @dataclass(frozen=True)
-class StretchLimit:
+class BackupRouteLimit:
     """How far a route may run against the direct distance between its two ends.
 
-    ``stretch`` multiplies the shortest route between a site and the peer a route ends at,
+    ``multiple`` multiplies the shortest route between a site and the peer a route ends at,
     giving that route its budget: a protect path takes a detour, and this says how much of
-    one the operator is buying. ``distances`` supplies the shortest-path rows the test
-    needs -- one for the site being measured and one for each of its peers, which the
-    callers holding all-pairs distances already have (see
-    :func:`synthesizer.graphs.distances_from` for the ones that do not).
+    one the operator is buying. It is the tenant's own
+    ``backbone.max_backup_route_multiple``, carried in from the config unchanged.
+    ``distances`` supplies the shortest-path rows the test needs -- one for the site being
+    measured and one for each of its peers, which the callers holding all-pairs distances
+    already have (see :func:`synthesizer.graphs.distances_from` for the ones that do not).
     """
 
-    stretch: float
+    multiple: float
     distances: Mapping[str, Mapping[str, float]]
 
 
@@ -90,7 +91,7 @@ def _admissible_adjacency(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: StretchLimit,
+    limit: BackupRouteLimit,
 ) -> dict[str, list[tuple[str, float]]]:
     """``adjacency`` less the spans no route from ``node`` inside the bound could use.
 
@@ -127,12 +128,12 @@ def _admissible_adjacency(
     """
     if node not in limit.distances:
         raise ValueError(
-            f"stretch limit carries no distances from '{node}', so no route out of it can "
-            "be measured; pass a row for every site the bound is applied to"
+            f"backup route limit carries no distances from '{node}', so no route out of it "
+            "can be measured; pass a row for every site the bound is applied to"
         )
     from_node = limit.distances[node]
     budgets = [
-        (peer, limit.stretch * from_node[peer])
+        (peer, limit.multiple * from_node[peer])
         for peer in backbone_ids
         if peer != node and math.isfinite(from_node.get(peer, math.inf))
     ]
@@ -335,16 +336,16 @@ def _route_miles(
     )
 
 
-def _budget(node: str, peer: str, limit: StretchLimit) -> float:
+def _budget(node: str, peer: str, limit: BackupRouteLimit) -> float:
     """How far a route from ``node`` may run to reach ``peer``."""
-    return limit.stretch * limit.distances[node].get(peer, math.inf)
+    return limit.multiple * limit.distances[node].get(peer, math.inf)
 
 
 def _withdrawable_span(
     node: str,
     route: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: StretchLimit,
+    limit: BackupRouteLimit,
 ) -> tuple[str, str] | None:
     """The span on ``route`` sitting furthest outside the budget of the peer it ends at.
 
@@ -413,7 +414,7 @@ def _first_withdrawable(
     routes: list[tuple[str, ...]],
     within: list[tuple[str, ...]],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: StretchLimit,
+    limit: BackupRouteLimit,
 ) -> tuple[str, str] | None:
     """One span to withdraw, taken from the first overrunning route that offers one.
 
@@ -466,7 +467,7 @@ def independent_routes(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: StretchLimit | None = None,
+    limit: BackupRouteLimit | None = None,
 ) -> list[tuple[str, ...]]:
     """The shortest set of the most routes from ``node`` no one city's loss takes two of.
 
@@ -546,7 +547,7 @@ def independent_route_ceiling(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: StretchLimit | None = None,
+    limit: BackupRouteLimit | None = None,
 ) -> int:
     """The most links ``node`` could hold that no single city's loss takes two of.
 
@@ -570,7 +571,7 @@ def independent_route_ceiling(
 def diverse_path_ceilings(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: StretchLimit | None = None,
+    limit: BackupRouteLimit | None = None,
 ) -> dict[str, int]:
     """Each backbone node's ceiling, computed over the substrate they all sit on.
 

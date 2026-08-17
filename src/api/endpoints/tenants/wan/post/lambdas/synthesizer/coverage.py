@@ -20,7 +20,7 @@ from typing import TypedDict
 from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.model import Design, DesignInputs, DesignParams
 from synthesizer.assemble import build_design_for_backbone, evaluate_backbone
-from synthesizer.ceiling import StretchLimit, independent_route_ceiling
+from synthesizer.ceiling import BackupRouteLimit, independent_route_ceiling
 from synthesizer.search_plan import _SearchPlan
 
 logger = logging.getLogger(__name__)
@@ -139,7 +139,7 @@ def candidate_mesh_ceiling(
     candidate_id: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: StretchLimit | None = None,
+    limit: BackupRouteLimit | None = None,
 ) -> int:
     """How many independently failing links ``candidate_id`` could hold once it joins.
 
@@ -166,7 +166,7 @@ def best_coverage_candidate(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     target_miles: float,
-    limit: StretchLimit | None = None,
+    limit: BackupRouteLimit | None = None,
 ) -> str:
     """Which improving candidate to seat: the best connected of those that satisfy coverage.
 
@@ -282,7 +282,9 @@ def grow_backbone_for_coverage(
             backbone_ids,
             inputs.adjacency,
             target_miles,
-            StretchLimit(params.tuning.backbone_max_backup_route_multiple, inputs.all_distances),
+            BackupRouteLimit(
+                params.tuning.backbone_max_backup_route_multiple, inputs.all_distances
+            ),
         )
         backbone_ids = tuple(sorted((*backbone_ids, best_id)))
         grown = build_design_for_backbone(backbone_ids, inputs, plan)
