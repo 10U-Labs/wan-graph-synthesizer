@@ -26,7 +26,7 @@ session tool's local memory only what is true of one machine alone.
 - [how-issues-are-written](how-issues-are-written.md) — six fixed sections for the program, two for everything else, plain English, telecom vocabulary
 - [write-the-exact-name](write-the-exact-name.md) — name the file, function and line everywhere, in chat as much as in issues; never a coined collective noun
 - [lead-with-what-it-is-for](lead-with-what-it-is-for.md) — say what the thing is and what it costs before the first identifier, and cut the details that change nothing
-- [say-peers-and-paths](say-peers-and-paths.md) — a backbone is described in peers and paths, never in cables or routes, and a site's peers are not its diverse paths
+- [say-peers-and-paths](say-peers-and-paths.md) — one word per thing: path, peer, fiber segment, single point of failure, backbone node, access node — and never route, circuit, span, cable or chokepoint
 - [an-either-is-a-question-for-the-user](an-either-is-a-question-for-the-user.md) — an issue offering alternatives is asked about before anything is written, never decided
 
 ## Tests
