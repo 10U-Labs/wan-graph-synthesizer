@@ -12,6 +12,7 @@ import pytest
 import fixtures
 from synthesizer.ceiling import (
     BackupRouteLimit,
+    RouteGround,
     independent_route_ceiling,
     independent_routes,
     diverse_path_ceilings,
@@ -46,7 +47,7 @@ _TWO_CUT_BACKBONE = ("bos", "n1", "n2")
 
 def test_the_ceiling_is_the_number_of_cuts_not_of_fiber_spans() -> None:
     """Three spans leave bos, but all routes cross alb or stm, so its ceiling is two."""
-    assert independent_route_ceiling("bos", _TWO_CUT_BACKBONE, _TWO_CUTS) == 2
+    assert independent_route_ceiling("bos", RouteGround(_TWO_CUT_BACKBONE, _TWO_CUTS)) == 2
 
 
 # The same shape with one chokepoint instead of two: every route out of ``bos`` crosses
@@ -59,7 +60,7 @@ _ONE_CUT = build_adjacency(physical({
 
 def test_a_node_behind_one_chokepoint_has_a_ceiling_of_one() -> None:
     """Two spans leave bos and both routes cross alb, so one city takes everything."""
-    assert independent_route_ceiling("bos", ("bos", "n1", "n2"), _ONE_CUT) == 1
+    assert independent_route_ceiling("bos", RouteGround(("bos", "n1", "n2"), _ONE_CUT)) == 1
 
 
 # Two internally-disjoint routes from ``s`` reach the same peer ``t``, and the only other
@@ -78,7 +79,7 @@ def test_two_routes_to_one_peer_count_once() -> None:
     to ``u`` would not buy better. A site with no other peer to reach is the case where the
     answer changes, and it is the two tests below.
     """
-    assert independent_route_ceiling("s", ("s", "t", "u"), _TWIN_ROUTES) == 1
+    assert independent_route_ceiling("s", RouteGround(("s", "t", "u"), _TWIN_ROUTES)) == 1
 
 
 # The same twin routes with the backbone cut down to the pair they join. ``s`` has one peer
@@ -89,14 +90,14 @@ _ONE_PEER = ("s", "t")
 
 def test_a_site_with_one_peer_holds_the_paths_it_was_asked_for() -> None:
     """Two paths asked for and one peer to reach, so that peer carries both of them."""
-    assert independent_route_ceiling("s", _ONE_PEER, _TWIN_ROUTES, None, 2) == 2
+    assert independent_route_ceiling("s", RouteGround(_ONE_PEER, _TWIN_ROUTES, paths_wanted=2)) == 2
 
 
 def test_the_routes_to_one_peer_share_no_city_but_that_peer() -> None:
     """Sharing the destination is what they are for; sharing anything else is not."""
     inner = [
         city
-        for route in independent_routes("s", _ONE_PEER, _TWIN_ROUTES, None, 2)
+        for route in independent_routes("s", RouteGround(_ONE_PEER, _TWIN_ROUTES, paths_wanted=2))
         for city in route[1:-1]
     ]
     assert sorted(inner) == sorted(set(inner))
@@ -104,7 +105,7 @@ def test_the_routes_to_one_peer_share_no_city_but_that_peer() -> None:
 
 def test_a_site_with_one_peer_is_still_held_to_one_route_when_one_is_asked() -> None:
     """The doubling up answers the tenant's number; it is not what the fiber allows."""
-    assert independent_route_ceiling("s", _ONE_PEER, _TWIN_ROUTES, None, 1) == 1
+    assert independent_route_ceiling("s", RouteGround(_ONE_PEER, _TWIN_ROUTES, paths_wanted=1)) == 1
 
 
 # Three ways from ``s`` to its only peer ``t``, sharing no city, at two, four and six miles.
@@ -118,29 +119,31 @@ _THREE_WAYS = build_adjacency(physical({
 
 def test_no_more_routes_to_one_peer_are_proved_than_were_asked_for() -> None:
     """Three ways to the one peer and two asked for, so the third is left unproved."""
-    assert independent_route_ceiling("s", _ONE_PEER, _THREE_WAYS, None, 2) == 2
+    assert independent_route_ceiling("s", RouteGround(_ONE_PEER, _THREE_WAYS, paths_wanted=2)) == 2
 
 
 def test_the_routes_proved_to_one_peer_are_the_shortest_of_them() -> None:
     """The six-mile way round is the one left out, not either of the two shorter ones."""
-    routes = independent_routes("s", _ONE_PEER, _THREE_WAYS, None, 2)
+    routes = independent_routes("s", RouteGround(_ONE_PEER, _THREE_WAYS, paths_wanted=2))
     assert sorted(route[1] for route in routes) == ["mid", "near"]
 
 
 def test_an_unreachable_node_has_no_ceiling_at_all() -> None:
     """A node the substrate does not carry can hold no link, so its ceiling is zero."""
-    assert independent_route_ceiling("nowhere", ("nowhere", "n1", "n2"), _ONE_CUT) == 0
+    assert independent_route_ceiling("nowhere", RouteGround(("nowhere", "n1", "n2"), _ONE_CUT)) == 0
 
 
 def test_the_ceilings_are_computed_for_every_backbone_node() -> None:
     """The per-node pass answers for each backbone node, not just the one asked about."""
-    assert diverse_path_ceilings(_TWO_CUT_BACKBONE, _TWO_CUTS) == {"bos": 2, "n1": 2, "n2": 2}
+    assert diverse_path_ceilings(RouteGround(_TWO_CUT_BACKBONE, _TWO_CUTS)) == {
+        "bos": 2, "n1": 2, "n2": 2
+    }
 
 
 # The count is only ever as good as the routes behind it, and something has to be able to
 # wire them: a node the mesh leaves short is repaired by taking the very routes counted
 # here, so these check the count can be shown its working rather than only asserted.
-_BOS_ROUTES = independent_routes("bos", _TWO_CUT_BACKBONE, _TWO_CUTS)
+_BOS_ROUTES = independent_routes("bos", RouteGround(_TWO_CUT_BACKBONE, _TWO_CUTS))
 
 
 def test_the_counted_routes_run_from_the_node_to_distinct_peers() -> None:
@@ -180,7 +183,7 @@ def test_the_routes_proved_are_the_shortest_set_of_that_size() -> None:
     """
     assert sum(
         _route_miles(route, _EXPRESS_SPANS)
-        for route in independent_routes("sea", _EXPRESS_BACKBONE, _EXPRESS_SPANS)
+        for route in independent_routes("sea", RouteGround(_EXPRESS_BACKBONE, _EXPRESS_SPANS))
     ) == 4.0
 
 
@@ -191,7 +194,7 @@ def test_taking_the_shortest_set_costs_the_site_none_of_its_routes() -> None:
     :func:`synthesizer.stages.finalize` holds a site to, so a cheaper set one route smaller
     would lower the site's target and silence the check on it.
     """
-    assert independent_route_ceiling("sea", _EXPRESS_BACKBONE, _EXPRESS_SPANS) == 2
+    assert independent_route_ceiling("sea", RouteGround(_EXPRESS_BACKBONE, _EXPRESS_SPANS)) == 2
 
 
 # The Pacific in miniature. ``sea`` reaches both of its peers overland through ``pdx``, ten
@@ -214,7 +217,7 @@ _PACIFIC_LIMIT = BackupRouteLimit(3.0, distances_from(_PACIFIC_ADJACENCY, _PACIF
 def test_a_route_far_longer_than_the_direct_one_is_not_proved() -> None:
     """No route out of sea is laid through tok once the backup route multiple is applied."""
     routes = independent_routes(
-        "sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, _PACIFIC_LIMIT
+        "sea", RouteGround(_PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, _PACIFIC_LIMIT)
     )
     assert not [route for route in routes if "tok" in route]
 
@@ -226,14 +229,14 @@ def test_the_ceiling_counts_usable_routes_rather_than_merely_disjoint_ones() -> 
     inflation that credits a site with protection its fiber cannot deliver.
     """
     assert independent_route_ceiling(
-        "sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, _PACIFIC_LIMIT
+        "sea", RouteGround(_PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, _PACIFIC_LIMIT)
     ) == 1
 
 
 def test_the_unbounded_ceiling_still_counts_the_crossing() -> None:
     """Omitting the limit leaves the old behaviour exactly, which is what the callers rely on."""
     assert independent_route_ceiling(
-        "sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY
+        "sea", RouteGround(_PACIFIC_BACKBONE, _PACIFIC_ADJACENCY)
     ) == 2
 
 
@@ -267,7 +270,8 @@ def test_a_crossing_that_is_the_only_way_to_a_peer_is_kept() -> None:
     the same fiber with nothing on the far side of the crossing worth reaching.
     """
     routes = independent_routes(
-        "sea", _SOLE_CROSSING_BACKBONE, _SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_LIMIT
+        "sea",
+        RouteGround(_SOLE_CROSSING_BACKBONE, _SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_LIMIT),
     )
     assert [route for route in routes if "tok" in route] != []
 
@@ -282,7 +286,8 @@ def test_a_site_whose_second_way_out_is_a_crossing_still_scores_two() -> None:
     exists to avoid, arrived at from the other side.
     """
     assert independent_route_ceiling(
-        "sea", _SOLE_CROSSING_BACKBONE, _SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_LIMIT
+        "sea",
+        RouteGround(_SOLE_CROSSING_BACKBONE, _SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_LIMIT),
     ) == 2
 
 
@@ -296,7 +301,7 @@ def test_a_limit_missing_the_measured_site_is_refused() -> None:
     """
     limit = BackupRouteLimit(3.0, distances_from(_PACIFIC_ADJACENCY, ("eug", "hil")))
     with pytest.raises(ValueError, match="sea"):
-        independent_routes("sea", _PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, limit)
+        independent_routes("sea", RouteGround(_PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, limit))
 
 
 # Five spans, and the fewest that can hold the defect GitHub issue #45 reports. ``sea``
@@ -329,7 +334,7 @@ def _multiples(
     """
     return {
         route: _route_miles(route, adjacency) / limit.distances[node][route[-1]]
-        for route in independent_routes(node, backbone_ids, adjacency, limit)
+        for route in independent_routes(node, RouteGround(backbone_ids, adjacency, limit))
     }
 
 
@@ -355,7 +360,8 @@ def test_the_site_whose_route_leaked_is_scored_at_the_one_it_can_use() -> None:
     reaching only the routes would leave the number that sets the target still saying two
     -- and an operator still reading a shortfall they cannot close.
     """
-    assert diverse_path_ceilings(_LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT)["sea"] == 1
+    ground = RouteGround(_LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT)
+    assert diverse_path_ceilings(ground)["sea"] == 1
 
 
 # A route that overruns while no single span on it can be shown impossible, which is where

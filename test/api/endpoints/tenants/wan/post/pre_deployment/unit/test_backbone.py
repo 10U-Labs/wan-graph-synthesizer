@@ -416,7 +416,9 @@ def _augmented_spans(
 ) -> set[tuple[str, str]]:
     """The physical spans the augmented backbone rides over."""
     spans: set[tuple[str, str]] = set()
-    for use in augment_physical_resilience(base, backbone_ids, edges, removed):
+    for use in augment_physical_resilience(
+        base, backbone_ids, edges, BackboneConstraints(removed)
+    ):
         spans |= path_edge_keys(use.path)
     return spans
 
@@ -429,17 +431,17 @@ def test_augment_physical_resilience_makes_a_cut_city_survivable() -> None:
 
 def test_augment_physical_resilience_stops_when_no_detour_exists() -> None:
     """A hub-only carrier graph offers no city-avoiding alternate, so the base is left as is."""
-    assert augment_physical_resilience(_BASE_HUB, ("a", "b", "c"), _HUB_ONLY, frozenset()) == (
-        _BASE_HUB
-    )
+    assert augment_physical_resilience(
+        _BASE_HUB, ("a", "b", "c"), _HUB_ONLY
+    ) == _BASE_HUB
 
 
 def test_augment_physical_resilience_skips_pruned_detour_pairs() -> None:
     """When every backbone cross pair is operator-pruned, no detour is added."""
     pruned = frozenset({edge_key("a", "b"), edge_key("a", "c"), edge_key("b", "c")})
-    assert augment_physical_resilience(_BASE_HUB, ("a", "b", "c"), _HUB_EDGES, pruned) == (
-        _BASE_HUB
-    )
+    assert augment_physical_resilience(
+        _BASE_HUB, ("a", "b", "c"), _HUB_EDGES, BackboneConstraints(pruned)
+    ) == _BASE_HUB
 
 
 # The same hub, with the alternates moved a thousand miles offshore: the only way around
@@ -457,7 +459,8 @@ _OFFSHORE_LIMIT = BackupRouteLimit(
 def test_a_detour_beyond_the_bound_is_not_added() -> None:
     """The cut city stands rather than being relieved by a route nobody would buy."""
     assert augment_physical_resilience(
-        _BASE_HUB, ("a", "b", "c"), _OFFSHORE_EDGES, frozenset(), _OFFSHORE_LIMIT
+        _BASE_HUB, ("a", "b", "c"), _OFFSHORE_EDGES,
+        BackboneConstraints(limit=_OFFSHORE_LIMIT),
     ) == _BASE_HUB
 
 
@@ -465,7 +468,7 @@ def test_a_detour_inside_the_bound_is_still_added() -> None:
     """The bound refuses a detour for its length, not for being a detour."""
     limit = BackupRouteLimit(3.0, distances_from(build_adjacency(_HUB_EDGES), ("a", "b", "c")))
     assert augment_physical_resilience(
-        _BASE_HUB, ("a", "b", "c"), _HUB_EDGES, frozenset(), limit
+        _BASE_HUB, ("a", "b", "c"), _HUB_EDGES, BackboneConstraints(limit=limit)
     ) != _BASE_HUB
 
 
@@ -487,14 +490,16 @@ def test_no_detour_is_added_to_a_pair_already_holding_the_paths_it_asked_for() -
     one route it asked for, so ``h`` stands and validation is what reports it.
     """
     assert augment_physical_resilience(
-        _BASE_ONE_PAIR, ("a", "b"), _ONE_PAIR_EDGES, frozenset(), None, 1
+        _BASE_ONE_PAIR, ("a", "b"), _ONE_PAIR_EDGES,
+        BackboneConstraints(number_of_diverse_paths=1),
     ) == _BASE_ONE_PAIR
 
 
 def test_a_detour_is_still_added_to_a_pair_with_a_path_left_to_spend() -> None:
     """The cap refuses a route for being one too many, not for being a detour."""
     assert augment_physical_resilience(
-        _BASE_ONE_PAIR, ("a", "b"), _ONE_PAIR_EDGES, frozenset(), None, 2
+        _BASE_ONE_PAIR, ("a", "b"), _ONE_PAIR_EDGES,
+        BackboneConstraints(number_of_diverse_paths=2),
     ) != _BASE_ONE_PAIR
 
 
@@ -606,7 +611,9 @@ def _routed(
     adjacency = build_adjacency(edges)
     ids = {vertex_id for pair in edges for vertex_id in pair}
     _distances, predecessors = all_pairs_shortest([pop(i) for i in sorted(ids)], adjacency)
-    return diverse_mesh_routes(pairs, predecessors, adjacency, proven)
+    return diverse_mesh_routes(
+        pairs, predecessors, adjacency, BackboneConstraints(routes=proven)
+    )
 
 
 def _routes(

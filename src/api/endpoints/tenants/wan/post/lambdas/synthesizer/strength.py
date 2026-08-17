@@ -19,7 +19,7 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from synthesizer.ceiling import independent_route_ceiling
+from synthesizer.ceiling import RouteGround, independent_route_ceiling
 from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.model import DesignInputs
 from synthesizer.graphs import reconstruct_path
@@ -125,7 +125,8 @@ def diverse_path_bounds(
     and it is applied at both.
     """
     sites = tuple(sorted(candidate_ids))
-    per_site = {site: independent_route_ceiling(site, sites, adjacency) for site in sites}
+    ground = RouteGround(sites, adjacency)
+    per_site = {site: independent_route_ceiling(site, ground) for site in sites}
     return DiversePathBounds(per_site, max((*per_site.values(), 1)))
 
 

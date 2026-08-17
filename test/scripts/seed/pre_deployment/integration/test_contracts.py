@@ -26,7 +26,11 @@ import yaml
 import seed
 from repo_utils import REPO_ROOT
 from seed import _carrier_cities, _city_key, _mapping_rows, _rows, _slug
-from synthesizer.ceiling import BackupRouteLimit, independent_route_ceiling
+from synthesizer.ceiling import (
+    BackupRouteLimit,
+    RouteGround,
+    independent_route_ceiling,
+)
 from synthesizer.codec import load_regions, load_sites, load_substrate
 from synthesizer.graphs import build_adjacency, distances_from
 from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
@@ -375,7 +379,8 @@ def _ceiling_bounds(
             city_id = by_name.get(city)
             if city_id is None or _route_endpoints(city_id, pinned) < 1:
                 continue
-            bound = independent_route_ceiling(city_id, pinned, adjacency, limit, asked)
+            ground = RouteGround(pinned, adjacency, limit, asked)
+            bound = independent_route_ceiling(city_id, ground)
             bounds.append((tenant, city, bound, asked))
     return bounds
 

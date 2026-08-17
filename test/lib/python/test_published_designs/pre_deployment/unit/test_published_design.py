@@ -29,6 +29,7 @@ _CONFIG: dict[str, Any] = {
         "coverage_target_miles": 200,
         "max_backup_route_multiple": 3.0,
         "node_count": {"max": 6},
+        "number_of_diverse_paths": 2,
         "forced": {"nodes": ["Ashburn, VA"]},
     },
 }
@@ -62,7 +63,7 @@ def _answering(bodies: dict[str, Any], code: int = 200) -> Callable[..., FakeRes
 
 def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """A ``ready`` tenant carries its five collections and the five numbers git holds.
+    """A ``ready`` tenant carries its five collections and the six things git holds.
 
     The two demand collections arrive as one, since every site the coverage target applies
     to is measured the same way whether the tenant or a cloud provider owns it.
@@ -79,6 +80,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "tenant": "daf",
         "target_miles": 200,
         "max_backup_route_multiple": 3.0,
+        "number_of_diverse_paths": 2,
         "seat_cap": 6,
         "forced": ["Ashburn, VA"],
         "status": _READY,

@@ -20,7 +20,7 @@ from typing import TypedDict
 from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.model import Design, DesignInputs, DesignParams
 from synthesizer.assemble import build_design_for_backbone, evaluate_backbone
-from synthesizer.ceiling import BackupRouteLimit, independent_route_ceiling
+from synthesizer.ceiling import BackupRouteLimit, RouteGround, independent_route_ceiling
 from synthesizer.search_plan import _SearchPlan
 
 logger = logging.getLogger(__name__)
@@ -157,7 +157,8 @@ def candidate_mesh_ceiling(
     the bound belongs to the ranking as much as to the routing.
     """
     return independent_route_ceiling(
-        candidate_id, tuple(sorted((*backbone_ids, candidate_id))), adjacency, limit
+        candidate_id,
+        RouteGround(tuple(sorted((*backbone_ids, candidate_id))), adjacency, limit),
     )
 
 
