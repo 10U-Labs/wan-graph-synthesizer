@@ -95,9 +95,12 @@ Name things by their names, everywhere — chat replies as much as issues, pull 
 
 Lead with what the thing is for. Every paragraph opens with a plain sentence saying what the thing is and what it does, in words that need no file open, and the identifiers come after it — a name before that sentence is a demand, because the reader cannot yet tell why they are being told about it. Say what a defect costs in ordinary words near the top rather than in the seventh paragraph. Then cut: a detail stays where it changes what somebody would do and moves later or goes where it does not, so a correct table of eight config keys still reads as a wall when it arrives before the reader knows why eight keys matter. Order for the reader, who has not opened the files and will not open them while reading, rather than for yourself, who knew the shape before writing a word. Cutting a correct detail is not vagueness; replacing it with a coined noun is.
 
+Say peers and paths. A peer is another backbone site this one has a circuit to; a path is one route between two sites, crossing whatever cities the fiber makes it cross. Those two words answer almost every question about a backbone, and "cable" answers none of them: cable is a real thing at one scale only, a single span between two adjacent points, so "Ashburn has four cables" leaves a reader unable to tell whether four spans, four paths or four circuits were meant. Peers and diverse paths are two different things and conflating them hides defects — `number_of_diverse_paths` is spent as peer slots by `select_backbone_mesh_pairs`, how many routes one pair is drawn with is `synthesizer.ceiling.routes_per_peer`, and a site's diverse paths are the links out of it no single city's loss takes two of (GitHub issue #59).
+
 Longer:
 [write-the-exact-name](docs/claude/memories/write-the-exact-name.md),
-[lead-with-what-it-is-for](docs/claude/memories/lead-with-what-it-is-for.md).
+[lead-with-what-it-is-for](docs/claude/memories/lead-with-what-it-is-for.md),
+[say-peers-and-paths](docs/claude/memories/say-peers-and-paths.md).
 
 ## Issues
 
