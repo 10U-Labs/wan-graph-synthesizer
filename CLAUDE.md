@@ -97,10 +97,13 @@ Lead with what the thing is for. Every paragraph opens with a plain sentence say
 
 Say peers and paths. A peer is another backbone node this one has a path to; a path is one way from one site to another, crossing whatever cities the fiber makes it cross, and it is also the thing an operator orders and pays for every month. Those two words answer almost every question about a backbone, and each of them has one word only: not route, not circuit, not cable, and not span. A synonym splits one thing into two, so a reader told a pair holds two paths cannot tell whether the two circuits in the next paragraph are the same two or two more. One length of fiber between two adjacent points is a fiber segment (`PhysicalEdge`); a city that every path out of a site crosses is a single point of failure, said in full rather than called a chokepoint. Every place on the map is a site, of which there are two kinds — a backbone node is seated in the backbone tier, an access node is a tenant site or provider region homing into it — and the sentence says which kind whenever it turns on the difference. The identifiers keep whatever they are called, `synthesizer.ceiling.routes_per_peer` included, and are written exactly as they are spelled; it is the prose around them that follows this. Peers and diverse paths are two different things and conflating them hides defects — `number_of_diverse_paths` is spent as peer slots by `select_backbone_mesh_pairs`, how many paths one pair is drawn with is `synthesizer.ceiling.routes_per_peer`, and a site's diverse paths are the links out of it no single city's loss takes two of (GitHub issue #59).
 
+Say shorter, not cheaper. Nothing here records money — no price, no tariff, no monthly charge, no currency in `src/`, `lib/`, `etc/` or `data/` — and every number the synthesizer compares or publishes is a distance in miles: `PhysicalEdge.distance_miles`, `path_geometry_miles`, `target_miles`, `worst_haul_miles`, and `max_backup_route_multiple`, which is one mileage over another. "The cheapest path" claims a comparison of prices that never happened, and sends the reader looking for where the prices are configured. Say shorter, or the fewest fiber miles. That an operator pays for every path they hold is a fact about operators and is worth saying, because it is why an unneeded path is a defect; comparing two paths by price is not, and a saving is stated in miles with the figure. `synthesizer.ceiling` is the exception that stays: its minimum-cost maximum flow measures cost in miles and says so at `ceiling.py:62`.
+
 Longer:
 [write-the-exact-name](docs/claude/memories/write-the-exact-name.md),
 [lead-with-what-it-is-for](docs/claude/memories/lead-with-what-it-is-for.md),
-[say-peers-and-paths](docs/claude/memories/say-peers-and-paths.md).
+[say-peers-and-paths](docs/claude/memories/say-peers-and-paths.md),
+[say-shorter-not-cheaper](docs/claude/memories/say-shorter-not-cheaper.md).
 
 ## Issues
 
