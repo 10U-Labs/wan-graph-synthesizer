@@ -11,13 +11,23 @@ The one program with no answer is the same two columns under a floor of three. N
 bought twice, so two whole segments hold two, and a row asking for more than that is a row
 no design could ever meet -- which the module raises by name rather than returning, because
 a design built on a silent zero would be fiber nobody can order.
+
+A program can also be written a few rows at a time, because the search that writes the rows
+does not know them when it starts. That is a second way of asking the same question and it
+has to come back with the same answer, so the last case here asks it both ways and holds the
+two together.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from synthesizer.linear_program import SegmentProgram, SegmentRow, solve
+from synthesizer.linear_program import (
+    GrowingSegmentProgram,
+    SegmentProgram,
+    SegmentRow,
+    solve,
+)
 
 # The two columns every program below is written over: ten miles and one mile.
 _TWO_COLUMNS = (10.0, 1.0)
@@ -83,3 +93,54 @@ def test_a_floor_no_amount_of_buying_could_reach_is_raised_by_name() -> None:
     """
     with pytest.raises(ValueError, match="capped against the fiber"):
         _answer((SegmentRow((_LONG, _SHORT), 3.0),))
+
+
+# The same three rows, which the two cases below put to the solver in one go and in two
+# batches: one unit spread over both columns, a whole segment of the short one, and half of
+# the long one. The answer is six miles, holding half of the long column and all of the
+# short one.
+_SPREAD = SegmentRow((_LONG, _SHORT), 1.0)
+_ALL_OF_SHORT = SegmentRow((_SHORT,), 1.0)
+_HALF_OF_LONG = SegmentRow((_LONG,), 0.5)
+_EVERY_ROW = (_SPREAD, _ALL_OF_SHORT, _HALF_OF_LONG)
+
+
+def test_rows_written_a_batch_at_a_time_answer_as_the_same_rows_written_at_once() -> None:
+    """One row, an answer, then two more rows, and the end of it is the whole program's answer.
+
+    This is what lets a whole search run on one solver. The search solves, looks at the
+    answer for a requirement it misses, writes that down and solves again, hundreds of times
+    over: DAF needs 645 passes and AFGSC 1,382. Building a new solver for each of them and
+    re-solving from nothing is where a national build spent almost all of its fifteen
+    minutes -- 96.2% of Two-Node's fiber choice and 91.9% of Minuteman's (GitHub issue #63).
+
+    Carrying one solver through is only safe if it answers what a solver handed the finished
+    program answers, and it is asserted rather than assumed because the whole of the fiber
+    choice now stands on it. Both the miles and what each column holds are compared, since
+    an objective that matches over holdings that do not would buy different fiber for the
+    same number of miles.
+    """
+    growing = GrowingSegmentProgram(_TWO_COLUMNS)
+    growing.add_rows((_SPREAD,))
+    growing.solve()
+    growing.add_rows((_ALL_OF_SHORT, _HALF_OF_LONG))
+    batched = growing.solve()
+    assert (batched.miles, *batched.held) == pytest.approx(_answer(_EVERY_ROW))
+
+
+def test_a_column_let_go_of_is_no_longer_held_whole_and_the_answer_comes_back_down() -> None:
+    """The long column is held whole, then let go, and the answer returns to six miles.
+
+    A round of buying asks what the fewest miles are given the segments it has already
+    settled on, so those are held at a whole segment while it runs. The floor published with
+    the finished design may take none of that for granted -- it is the fewest miles any
+    design meeting the requirements could run, whatever this particular search happened to
+    buy -- so every column is let go before it is computed. A column that stayed held would
+    put the search's own choices into the number the design is judged against.
+    """
+    growing = GrowingSegmentProgram(_TWO_COLUMNS)
+    growing.add_rows(_EVERY_ROW)
+    growing.hold_whole(frozenset({_LONG}))
+    growing.solve()
+    growing.hold_nothing()
+    assert growing.solve().miles == pytest.approx(6.0)

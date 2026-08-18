@@ -766,3 +766,36 @@ TWO_POCKET_EDGES = physical_edges_from(
     }
 )
 TWO_POCKET_IDS = ["a", "b", "c", "d", "e", "f"]
+
+
+# --- the fiber choice's separation search: a map that takes hundreds of passes -----------
+
+# Twelve cities of carrier fiber, five of them backbone seats, priced in whole miles. The
+# fiber choice writes its requirements down as an answer violates them, and on this map that
+# takes 26 passes before the answer meets every requirement there is. That is what the
+# fixture is for: a cap of 24 passes stood in ``synthesizer.survivable`` until GitHub issue
+# #63, and every graph the suite had before this one is answered by the first solve or the
+# one after it, so no test could reach a search that runs long enough for a cap to bind.
+#
+# Left to finish, the search buys seven segments running 159 miles, which is exactly the
+# floor it publishes -- there is no shorter design meeting the same requirements. Stopped at
+# 24 passes it buys thirteen segments running 291 against that same floor, and the design
+# drawn over them orders 176 miles of fiber an operator pays for every month.
+MANY_PASS_SEGMENTS = {
+    ("a", "c"): 32.0, ("a", "e"): 22.0, ("a", "f"): 18.0, ("a", "g"): 25.0,
+    ("b", "c"): 36.0, ("b", "h"): 30.0, ("b", "i"): 22.0,
+    ("c", "e"): 22.0, ("c", "h"): 7.0, ("c", "i"): 25.0, ("c", "j"): 28.0,
+    ("d", "f"): 36.0, ("d", "j"): 22.0, ("d", "k"): 7.0, ("d", "l"): 11.0,
+    ("e", "f"): 39.0, ("e", "g"): 25.0, ("e", "h"): 21.0, ("e", "i"): 25.0,
+    ("f", "j"): 25.0, ("f", "k"): 34.0,
+    ("h", "i"): 18.0, ("h", "j"): 35.0,
+    ("j", "k"): 16.0, ("j", "l"): 32.0,
+    ("k", "l"): 18.0,
+}
+# The five seats, and the seven cities the fiber crosses that carry a path without taking a
+# seat. Every seat has two ways out on this fiber, so none of them is lowered to what the
+# carrier can carry and the finished design is one no site is short in.
+MANY_PASS_SITES = ("c", "d", "j", "k", "l")
+MANY_PASS_TRANSIT = ("a", "b", "e", "f", "g", "h", "i")
+# What the search buys once it is allowed to finish, and the miles those segments run.
+MANY_PASS_MILES = 159.0

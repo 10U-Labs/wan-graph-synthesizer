@@ -96,8 +96,16 @@ def _matrix(rows: tuple[SegmentRow, ...]) -> tuple[list[int], list[int]]:
     return starts, indices
 
 
-def solve(program: SegmentProgram) -> SegmentChoice:
-    """The fewest miles the rows allow, and how much of each segment that answer holds.
+def _quiet_solver(program: SegmentProgram) -> Any:
+    """A solver holding this program and printing nothing, ready to be run."""
+    solver: Any = _SOLVER()
+    solver.setOptionValue("output_flag", False)
+    solver.passModel(_model(program))
+    return solver
+
+
+def _answer(solver: Any) -> SegmentChoice:
+    """What the solver reached: the fewest miles, and how much of each segment that holds.
 
     A program with no answer at all is a defect rather than a finding: every row records a
     separation the fiber in hand could close by buying more of the segments that cross it,
@@ -105,10 +113,6 @@ def solve(program: SegmentProgram) -> SegmentChoice:
     It is raised by name rather than returned, because a design built on a silent zero
     would be fiber nobody can order.
     """
-    solver: Any = _SOLVER()
-    solver.setOptionValue("output_flag", False)
-    solver.passModel(_model(program))
-    solver.run()
     if solver.getModelStatus() != highspy.HighsModelStatus.kOptimal:
         raise ValueError(
             "No fiber holding meets every requirement asked of it; the requirements were "
@@ -118,3 +122,69 @@ def solve(program: SegmentProgram) -> SegmentChoice:
         float(solver.getObjectiveValue()),
         tuple(float(held) for held in solver.getSolution().col_value),
     )
+
+
+def solve(program: SegmentProgram) -> SegmentChoice:
+    """The fewest miles the rows allow, and how much of each segment that answer holds."""
+    solver = _quiet_solver(program)
+    solver.run()
+    return _answer(solver)
+
+
+class GrowingSegmentProgram:
+    """One solver kept alive while a search writes its rows, instead of one solver a row.
+
+    A search does not know its own requirements when it starts. It solves, looks at the
+    answer for a requirement that answer misses, writes that down, and solves again, so the
+    program grows by a few rows at a time and is solved hundreds of times before it
+    settles. Handing the whole of it to a new solver on every pass throws away the answer
+    the pass before had already reached and re-solves from nothing, which is where almost
+    all of a build's time went: 96.2% of Two-Node's fiber choice and 91.9% of Minuteman's,
+    against 3.7% and 8.0% for the separation search that the passes exist to run (GitHub
+    issue #63).
+
+    This holds the columns once and takes the rows as they are found, so each pass starts
+    from where the last one finished. The answers are the same answers; what changes is
+    that a national map's fiber choice fits inside the fifteen minutes AWS allows a Lambda.
+    """
+
+    def __init__(self, miles: tuple[float, ...]) -> None:
+        """Open a program over these fiber segments with nothing yet asked of them."""
+        self._solver = _quiet_solver(SegmentProgram(miles, frozenset(), ()))
+        self._whole: set[int] = set()
+
+    def add_rows(self, rows: tuple[SegmentRow, ...]) -> None:
+        """Write these requirements into the program the solver is already holding."""
+        if not rows:
+            return
+        starts, indices = _matrix(rows)
+        self._solver.addRows(
+            len(rows),
+            [row.floor for row in rows],
+            [highspy.kHighsInf] * len(rows),
+            len(indices),
+            starts[:-1],
+            indices,
+            [_WHOLE] * len(indices),
+        )
+
+    def hold_whole(self, columns: frozenset[int]) -> None:
+        """Hold these columns at a whole segment each, as a round that bought them asks."""
+        for column in sorted(columns - self._whole):
+            self._solver.changeColBounds(column, _WHOLE, _WHOLE)
+        self._whole |= columns
+
+    def hold_nothing(self) -> None:
+        """Let every column back down to none of it, which is what a floor is measured over.
+
+        A floor under the whole problem may take nothing about this particular search for
+        granted, so the segments its rounds bought stop being held before it is computed.
+        """
+        for column in sorted(self._whole):
+            self._solver.changeColBounds(column, 0.0, _WHOLE)
+        self._whole.clear()
+
+    def solve(self) -> SegmentChoice:
+        """Run on from the answer the last pass reached, and read back what it holds."""
+        self._solver.run()
+        return _answer(self._solver)

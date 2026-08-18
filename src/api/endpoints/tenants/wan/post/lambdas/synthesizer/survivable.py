@@ -47,13 +47,7 @@ from dataclasses import dataclass, replace
 from synthesizer.ceiling import BackupPathLimit
 from synthesizer.flow_cuts import Separation, SeparationQuestion, weakest_separation
 from synthesizer.input_graph import PhysicalEdge
-from synthesizer.linear_program import SegmentChoice, SegmentProgram, SegmentRow, solve
-
-# How many times a program is re-solved to look for requirements its answer still misses
-# before a round settles for what it has. Each pass costs one solve and one search per
-# requirement, and the passes stop on their own as soon as a pass finds nothing; the cap is
-# there so a program whose answer keeps moving by fractions cannot hold a build open.
-_SEPARATION_PASSES = 24
+from synthesizer.linear_program import GrowingSegmentProgram, SegmentChoice, SegmentRow
 
 # What counts as holding a segment outright. Half of it is the share Jain's half-integrality
 # result guarantees some segment reaches, and taking those is what makes the finished choice
@@ -133,13 +127,15 @@ class _Search:
 
     The rows only ever grow: a separation the fiber could not survive at one point in the
     search is a separation no later answer may ignore, so every row found is carried into
-    every later solve.
+    every later solve. ``written`` is which of them the program is already holding, since
+    the same separation is found again and again as the answer moves and a row a second
+    time constrains nothing while costing a solve and a search on every later pass.
     """
 
     order: list[tuple[str, str]]
     column: dict[tuple[str, str], int]
-    miles: tuple[float, ...]
-    rows: list[SegmentRow]
+    program: GrowingSegmentProgram
+    written: set[tuple[tuple[int, ...], float]]
     bought: frozenset[tuple[str, str]]
 
 
@@ -300,6 +296,25 @@ def _shares(
     return dict(zip(order, choice.held))
 
 
+def _write(search: _Search, rows: list[SegmentRow]) -> bool:
+    """Write down every one of these rows the program is not already holding.
+
+    Whether anything was written is what tells a pass it has learned something. The same
+    separation is found from one answer after another -- 92 of the 134 rows this repository's
+    many-pass fixture finds are ones it has already written, and Minuteman's national search
+    writes 6,376 rows of which 1,740 are distinct -- and a row the program already holds
+    constrains it no further while costing a solve and a search on every later pass.
+    """
+    fresh = []
+    for row in rows:
+        already = (row.columns, row.floor)
+        if already not in search.written:
+            search.written.add(already)
+            fresh.append(row)
+    search.program.add_rows(tuple(fresh))
+    return bool(fresh)
+
+
 def _solve_search(search: _Search, fix: bool) -> SegmentChoice:
     """Solve the program as it stands, with what has been bought held outright or not.
 
@@ -308,8 +323,13 @@ def _solve_search(search: _Search, fix: bool) -> SegmentChoice:
     published floor needs, since a floor under the whole problem may take nothing about
     this particular search for granted.
     """
-    bought = frozenset(search.column[segment] for segment in search.bought) if fix else frozenset()
-    return solve(SegmentProgram(search.miles, bought, tuple(search.rows)))
+    if fix:
+        search.program.hold_whole(
+            frozenset(search.column[segment] for segment in search.bought)
+        )
+    else:
+        search.program.hold_nothing()
+    return search.program.solve()
 
 
 def _tighten(search: _Search, requirements: list[_Requirement]) -> SegmentChoice:
@@ -318,15 +338,24 @@ def _tighten(search: _Search, requirements: list[_Requirement]) -> SegmentChoice
     There is one requirement for every way of separating a site from its peers, far too
     many to write out, so they are written down as an answer violates them: solve with the
     rows so far, search each requirement over the shares that came back, add what that
-    found, and solve again. It settles as soon as a pass finds nothing, which is the point
-    at which the answer meets every requirement there is and not only the ones on paper.
+    found, and solve again. It ends when the answer meets every requirement there is and
+    not only the ones on paper, which is what its caller then buys fiber on the strength of.
+
+    Stopping anywhere short of that buys fiber to meet requirements the answer was never
+    held to. A cap of 24 passes used to stand here, and every one of the six tenants needs
+    hundreds -- 645 for DAF, 1,382 for AFGSC -- so 36 of Two-Node's 37 rounds spent the cap
+    and rounded an answer that still missed three requirements, leaving it holding 17 fiber
+    segments and 871.542 miles more than a design meeting the same requirements needs
+    (GitHub issue #63).
+
+    The search ends of its own accord in two ways and both are needed. A pass that finds no
+    shortfall has met everything. A pass that finds only separations already written down
+    has nothing left to tell the program, so solving again would return the same answer for
+    ever; there are finitely many rows and every other pass writes one, so this terminates.
     """
-    passes = _SEPARATION_PASSES
     choice = _solve_search(search, fix=True)
     shortfalls = _shortfalls(requirements, _shares(choice, search.order))
-    while shortfalls and passes:
-        passes -= 1
-        search.rows.extend(_rows(shortfalls, search.column))
+    while shortfalls and _write(search, _rows(shortfalls, search.column)):
         choice = _solve_search(search, fix=True)
         shortfalls = _shortfalls(requirements, _shares(choice, search.order))
     return choice
@@ -371,14 +400,14 @@ def choose_fiber(inputs: FiberInputs) -> FiberChoice:
     search = _Search(
         order,
         {segment: index for index, segment in enumerate(order)},
-        tuple(fiber[segment] for segment in order),
-        [],
+        GrowingSegmentProgram(tuple(fiber[segment] for segment in order)),
+        set(),
         frozenset(),
     )
     while True:
         shortfalls = _shortfalls(requirements, _held(fiber, search.bought))
         if not shortfalls:
             break
-        search.rows.extend(_rows(shortfalls, search.column))
+        _write(search, _rows(shortfalls, search.column))
         search.bought |= _round_up(search, _tighten(search, requirements))
     return FiberChoice(search.bought, _solve_search(search, fix=False).miles)

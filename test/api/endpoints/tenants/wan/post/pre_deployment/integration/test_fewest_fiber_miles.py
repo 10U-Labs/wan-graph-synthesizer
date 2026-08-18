@@ -14,6 +14,15 @@ only design there is. Four sites needing two ways out apiece come to eight ends,
 segment carries two, so no design holds fewer than four segments; the four shortest are the
 ring, at four hundred miles.
 
+The ring cannot reach every way this goes wrong, because its answer is settled by the first
+solve the search runs. ``synthesizer.survivable`` writes its requirements down as an answer
+violates them, and a limit of 24 passes on that used to stand in the module: on a graph
+answered in one pass a limit of any size is invisible, and on the six real maps, which need
+between 645 and 1,382 passes, it stopped every search early and bought fiber on an answer
+that still missed requirements (GitHub issue #63). So a second graph runs here, twelve cities
+of carrier fiber with five backbone seats, whose search takes 26 passes. Left to finish it
+delivers the 159 miles of its own floor; stopped at 24 it delivered 176.
+
 The second assertion is the guarantee the fiber choice carries, stated rather than assumed.
 ``synthesizer.survivable`` chooses the fiber by iterative rounding of a linear-programming
 relaxation, and publishes that relaxation's own answer as the floor under the whole problem
@@ -23,6 +32,8 @@ defect fails here, which is a thing an approximation cannot otherwise report abo
 """
 
 from __future__ import annotations
+
+import pytest
 
 import fixtures
 
@@ -75,3 +86,49 @@ def test_the_delivered_design_runs_no_further_than_twice_that_floor() -> None:
 def test_every_site_still_holds_the_two_ways_out_it_was_bought() -> None:
     """Four hundred miles is only a saving if it costs no site a way out, and it costs none."""
     assert ARTIFACTS.validation["backbone_mesh_independence_deficient"] == []
+
+
+# Twelve cities of carrier fiber, five of them backbone seats and seven of them cities the
+# fiber crosses. Unlike the ring above, this graph's search needs 26 passes to settle, which
+# is what makes it the one fixture here that notices a search stopping early.
+MANY_PASS_ARTIFACTS = fixtures.design_over_segments(
+    fixtures.MANY_PASS_SITES,
+    fixtures.MANY_PASS_SEGMENTS,
+    _ASKED_FOR,
+    transit_ids=fixtures.MANY_PASS_TRANSIT,
+)
+
+
+def test_a_design_whose_search_takes_many_passes_orders_the_fewest_miles_there_are() -> None:
+    """159 miles delivered over a graph that needs 26 passes to work out what to buy.
+
+    Pinned, because the number is what moves when the search stops early: cut off at 24
+    passes this same graph delivered 176 miles, fiber the operator holds and pays for every
+    month having bought nothing with it.
+    """
+    assert MANY_PASS_ARTIFACTS.design.metrics.physical_miles == fixtures.MANY_PASS_MILES
+
+
+def test_that_design_orders_exactly_the_floor_it_publishes_rather_than_twice_it() -> None:
+    """The design and the fewest miles any design meeting its requirements could run agree.
+
+    Asserted as an equality rather than as the factor of two the method guarantees, because
+    a factor of two is too loose to catch this: cut off at 24 passes the same graph delivered
+    176 miles against a floor of 159, which is 1.107 times it and comfortably inside the
+    guarantee. The six real maps are where the factor of two does bite -- Two-Node published
+    2.078 times its floor -- and no graph small enough to run in this tier reproduces that.
+    Landing on the floor exactly says something stronger than being near it: there is no
+    shorter design.
+    """
+    assert MANY_PASS_ARTIFACTS.design.metrics.physical_miles == pytest.approx(
+        MANY_PASS_ARTIFACTS.design.metrics.backbone_lower_bound_miles
+    )
+
+
+def test_every_seat_on_that_design_holds_the_two_ways_out_it_was_bought() -> None:
+    """Fewer miles is only a saving if it costs no site a way out, and it costs none here.
+
+    The cheapest way to run few miles is to buy fiber that leaves a site short, so the
+    mileage above means nothing without this beside it.
+    """
+    assert MANY_PASS_ARTIFACTS.validation["backbone_mesh_independence_deficient"] == []

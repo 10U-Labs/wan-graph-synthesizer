@@ -9,6 +9,12 @@ part changed -- a long chord nothing needs, a chain that leaves a site behind on
 triangles held apart by a single segment, a pair with two ways round it -- so that each
 test turns on one part of the choice and the fixture beside it says which.
 
+One graph here is not shaped by hand, and it is the last. The choice is made by writing a
+requirement down as an answer violates it and solving again, and every graph above settles
+in a pass or two, so none of them can tell a search that finished from one that was cut off
+part-way. Twelve cities of carrier fiber with five backbone seats takes 26 passes, which is
+what makes it the fixture that notices (GitHub issue #63).
+
 The floor published with the choice is asserted as a number only where the graph forces the
 number, and as an inequality over every fixture at the end. No design meeting the same
 requirements can run fewer miles than the floor, and a floor above the fiber actually bought
@@ -23,7 +29,15 @@ import fixtures
 from synthesizer.ceiling import BackupPathLimit
 from synthesizer.graphs import build_adjacency, distances_from
 from synthesizer.input_graph import PhysicalEdge
-from synthesizer.survivable import FiberChoice, FiberInputs, admissible_fiber, choose_fiber
+from synthesizer.survivable import (
+    FiberChoice,
+    FiberInputs,
+    _held,
+    _requirements,
+    _shortfalls,
+    admissible_fiber,
+    choose_fiber,
+)
 
 physical = fixtures.physical_edges_from
 
@@ -247,6 +261,52 @@ def test_the_segment_the_first_answer_missed_is_bought_once_it_is_written_down()
     assert ("c", "d") in _TRIANGLES_CHOICE.segments
 
 
+# Twelve cities of carrier fiber with five backbone seats, the one graph here whose search
+# runs long enough to be cut short. Every fixture above is answered by the first solve or
+# the one after it, so none of them could ever reach a limit on how many passes the search
+# may take; this one takes 26. See ``fixtures.MANY_PASS_SEGMENTS``.
+_MANY_PASS = physical(fixtures.MANY_PASS_SEGMENTS)
+_MANY_PASS_INPUTS = FiberInputs(
+    fixtures.MANY_PASS_SITES, _MANY_PASS, _all_distances(_MANY_PASS), _WAYS_OUT, 1
+)
+_MANY_PASS_CHOICE = _chosen(_MANY_PASS, fixtures.MANY_PASS_SITES)
+_MANY_PASS_FIBER = admissible_fiber(_MANY_PASS_INPUTS)
+
+
+def test_a_search_that_runs_long_enough_buys_the_shortest_design_there_is() -> None:
+    """This map's choice runs the 159 miles of its own floor, so nothing shorter meets it.
+
+    The floor is the fewest miles any design meeting these requirements could run, so a
+    choice that lands on it is not close to the shortest design -- it is the shortest
+    design. Reaching it takes 26 passes of writing down a requirement the answer missed and
+    solving again.
+
+    A limit of 24 passes stood in the module until GitHub issue #63 and stopped this search
+    short of that. What it bought instead was thirteen segments running 291 miles against
+    the same floor of 159 -- 132 miles of fiber the tenant pays for every month and gets
+    nothing for. Every one of the six real tenants needed hundreds of passes, 645 for DAF
+    and 1,382 for AFGSC, so all six were bought this way.
+    """
+    assert _bought_miles(_MANY_PASS_CHOICE, _MANY_PASS) == pytest.approx(
+        _MANY_PASS_CHOICE.lower_bound_miles
+    )
+
+
+def test_the_fiber_a_long_search_settles_on_meets_every_requirement_asked_of_it() -> None:
+    """Nothing is left short by the fiber this map's search bought, on the fiber alone.
+
+    The miles above say the choice is the shortest one there is; this says it is a choice at
+    all. Both are needed, because the cheapest way to run few miles is to buy fiber that
+    leaves a site short, and a design is measured for that only much later, by
+    ``synthesizer.validation.backbone_mesh_independence_deficient``, on a report an operator
+    reads rather than on the fiber the design stands on.
+    """
+    assert _shortfalls(
+        _requirements(_MANY_PASS_INPUTS, _MANY_PASS_FIBER),
+        _held(_MANY_PASS_FIBER, _MANY_PASS_CHOICE.segments),
+    ) == []
+
+
 # Every choice above beside the fiber it was made over, so the guarantee the whole module
 # exists for can be stated once against all of them.
 _CASES: tuple[tuple[str, FiberChoice, dict[tuple[str, str], PhysicalEdge]], ...] = (
@@ -255,6 +315,7 @@ _CASES: tuple[tuple[str, FiberChoice, dict[tuple[str, str], PhysicalEdge]], ...]
     ("chain", _CHAIN_CHOICE, _CHAIN),
     ("two triangles", _TRIANGLES_CHOICE, _TWO_TRIANGLES),
     ("pair with two ways round", _TWIN_CHOICE, _TWIN_WAYS),
+    ("twelve cities and five seats", _MANY_PASS_CHOICE, _MANY_PASS),
 )
 
 

@@ -38,6 +38,7 @@ deliver). DAF, at 34 seats against a cap of 99, had no such excuse.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from test_published_designs import (
@@ -48,6 +49,32 @@ from test_published_designs import (
     removable_paths,
     worst_haul,
 )
+
+
+def _tenants_outside(
+    delivered_designs: list[dict[str, Any]],
+    allowed: Callable[[float, float], bool],
+) -> dict[str, tuple[float, float]]:
+    """Every finished network whose ordered fiber miles sit outside what its floor allows.
+
+    ``lower_bound_miles`` is the fewest miles any design meeting that tenant's requirements
+    could run, and the two questions asked of it below -- not too far above it, not below it
+    at all -- are the same measurement read in opposite directions. Each finding names the
+    tenant, the miles it ordered and the floor it ordered them against.
+
+    A tenant whose build has not finished has no floor to be held to, so it is left out
+    rather than compared against nothing.
+    """
+    measured = {
+        design["tenant"]: (ordered_fiber_miles(design), design["lower_bound_miles"])
+        for design in delivered_designs
+        if design["lower_bound_miles"] is not None
+    }
+    return {
+        tenant: (miles, floor)
+        for tenant, (miles, floor) in measured.items()
+        if not allowed(miles, floor)
+    }
 
 
 def _published_cities(design: dict[str, Any]) -> set[str]:
@@ -302,17 +329,28 @@ def test_no_published_network_runs_more_than_twice_the_fewest_miles_it_could_hav
     well formed from every other angle -- which is how 54 paths buying nobody a diverse
     path stayed invisible from out here. This is where it shows, and the finding names the
     tenant, the miles it ordered and the floor it ordered them against.
-
-    A tenant whose build has not finished has no floor to be held to, so it is left out
-    rather than compared against nothing.
     """
-    measured = {
-        design["tenant"]: (ordered_fiber_miles(design), design["lower_bound_miles"])
-        for design in delivered_designs
-        if design["lower_bound_miles"] is not None
-    }
-    assert {
-        tenant: (miles, floor)
-        for tenant, (miles, floor) in measured.items()
-        if miles > 2 * floor
-    } == {}
+    assert _tenants_outside(delivered_designs, lambda miles, floor: miles <= 2 * floor) == {}
+
+
+def test_no_published_network_runs_fewer_miles_than_the_floor_it_publishes(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """Every published network ordered at least the fiber miles it says no design can go below.
+
+    ``lower_bound_miles`` is the fewest miles any design meeting that tenant's requirements
+    could run, so a design below it is not a design that came in under target -- it is
+    arithmetic that has come apart, and the only thing it can mean is that the design does
+    not meet the requirements it was built for. An operator reading such a network has been
+    handed one that does not do what they asked, with nothing on it saying so.
+
+    This is the direction the assertion above does not test, and the two are not
+    interchangeable. That one fires when a design runs too long, and it caught Two-Node at
+    2.078 times its floor. Both numbers come out of the same search, so a search cut off
+    early reports a floor too low and, for two of the six tenants, a design too small as
+    well, and the two wrong numbers agree with each other: F-35 published 6,664.009 miles
+    against a floor of 6,359.323, a ratio of 1.048 that passes comfortably, while the floor a
+    finished search reports for it is 7,772.795 -- so the published design sat 1,108.786
+    miles below the fewest miles any working design could hold, and nothing out here said a
+    word (GitHub issue #63).
+    """
+    assert _tenants_outside(delivered_designs, lambda miles, floor: miles >= floor) == {}
