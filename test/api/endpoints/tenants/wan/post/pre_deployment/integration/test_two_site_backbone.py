@@ -25,7 +25,7 @@ backbone stays the two sites the case is about.
 from __future__ import annotations
 
 import fixtures
-from synthesizer.model import LINK_FOR_TARGET, DesignParams, Tuning
+from synthesizer.model import LINK_FOR_TARGET
 
 _SITES = ("a", "b")
 _ASKED_FOR = 2
@@ -35,23 +35,9 @@ _SEGMENTS = {
     ("a", "south"): 200.0, ("south", "b"): 200.0,
     ("a", "long"): 900.0, ("long", "b"): 900.0,
 }
-_CITIES = ("a", "b", "north", "south", "long")
-ARTIFACTS = fixtures.run_design(
-    [
-        fixtures.carrier_pop(city, 38.0, -115.0 + 2.0 * index)
-        for index, city in enumerate(_CITIES)
-    ],
-    fixtures.physical_edges_from(_SEGMENTS),
-    DesignParams(
-        min_backbone_count=2,
-        max_backbone_count=2,
-        forced_backbone_names=_SITES,
-        datacenter_cities=frozenset((site, "XX") for site in _SITES),
-        promote_high_degree_convergences=False,
-        tuning=Tuning(backbone_number_of_diverse_paths=_ASKED_FOR),
-    ),
-)
-_MESH = [use for use in ARTIFACTS.design.path_uses if use.purpose == "backbone_mesh"]
+_TRANSIT = ("north", "south", "long")
+ARTIFACTS = fixtures.design_over_segments(_SITES, _SEGMENTS, _ASKED_FOR, _TRANSIT)
+_MESH = fixtures.mesh_paths(ARTIFACTS)
 
 
 def test_the_backbone_is_the_two_sites() -> None:

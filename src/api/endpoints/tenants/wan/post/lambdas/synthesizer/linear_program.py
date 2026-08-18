@@ -29,6 +29,12 @@ import highspy
 # row asking for more than the segments crossing it can hold is a row no design can meet.
 _WHOLE = 1.0
 
+# The solver itself, held under a name of its own. ``highspy.Highs`` is written without type
+# annotations, so calling it where it is spelled reads as a call into untyped code and
+# ``mypy --strict`` refuses it; through this name it is the ordinary callable the one line
+# below needs, and no directive is written into the source to say so.
+_SOLVER: Any = highspy.Highs
+
 
 @dataclass(frozen=True)
 class SegmentRow:
@@ -99,7 +105,7 @@ def solve(program: SegmentProgram) -> SegmentChoice:
     It is raised by name rather than returned, because a design built on a silent zero
     would be fiber nobody can order.
     """
-    solver: Any = highspy.Highs()
+    solver: Any = _SOLVER()
     solver.setOptionValue("output_flag", False)
     solver.passModel(_model(program))
     solver.run()

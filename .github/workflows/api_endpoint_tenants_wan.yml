@@ -320,7 +320,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install boto3 pytest pytest-cov 'python-hcl2<8' pyyaml
+        run: pip install boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
       # Each module is named in a --cov of its own rather than lib/python covered as a
       # whole, so the next module to arrive without tests fails here instead of being
       # carried by its neighbours' numbers (GitHub issue #52).

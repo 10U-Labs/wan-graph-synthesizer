@@ -124,13 +124,18 @@ def test_a_backbone_with_no_fiber_at_all_buys_nothing_and_is_floored_at_nothing(
     assert _NO_FIBER == FiberChoice(frozenset(), 0.0)
 
 
-def test_a_backbone_with_no_sites_asks_nothing_of_the_fiber_in_front_of_it() -> None:
-    """Fiber on offer and nobody to serve, so nothing is required and nothing is bought.
+def test_a_backbone_with_no_sites_buys_none_of_the_fiber_in_front_of_it() -> None:
+    """Fiber on offer and nobody to serve, so nothing is required and nothing is bought."""
+    assert not _NO_SITES.segments
 
-    The floor still comes back, computed over a program carrying every requirement written
-    down -- here none of them -- which is zero miles rather than the mileage on offer.
+
+def test_a_backbone_with_no_sites_is_floored_at_nothing_rather_than_at_what_is_on_offer() -> None:
+    """The floor is what the requirements cost, and no site here asks for anything.
+
+    It still comes back, computed over a program carrying every requirement written down --
+    here none of them -- so it is zero miles rather than the mileage the map offers.
     """
-    assert (_NO_SITES.segments, _NO_SITES.lower_bound_miles) == (frozenset(), pytest.approx(0.0))
+    assert _NO_SITES.lower_bound_miles == pytest.approx(0.0)
 
 
 # A four-site ring, one mile a segment. Each site has two segments and is owed two ways out,

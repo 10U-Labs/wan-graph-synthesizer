@@ -25,9 +25,8 @@ from itertools import combinations
 from typing import cast
 
 import fixtures
-from fixtures import run_design
 from synthesizer.backbone import _needed
-from synthesizer.model import LINK_FOR_TARGET, DesignParams, Tuning
+from synthesizer.model import LINK_FOR_TARGET
 from synthesizer.validation import backbone_mesh_pairs
 
 _SITES = tuple(f"S{index}" for index in range(6))
@@ -38,21 +37,10 @@ _SEGMENTS = {
     (_SITES[left], _SITES[right]): 100.0 * (right - left)
     for left, right in combinations(range(len(_SITES)), 2)
 }
-ARTIFACTS = run_design(
-    [
-        fixtures.carrier_pop(site, 38.0, -115.0 + 2.0 * index)
-        for index, site in enumerate(_SITES)
-    ],
-    fixtures.physical_edges_from(_SEGMENTS),
-    DesignParams(
-        min_backbone_count=2,
-        forced_backbone_names=_SITES,
-        datacenter_cities=frozenset((site, "XX") for site in _SITES),
-        promote_high_degree_convergences=False,
-        tuning=Tuning(backbone_number_of_diverse_paths=_ASKED_FOR),
-    ),
+ARTIFACTS = fixtures.design_over_segments(
+    _SITES, _SEGMENTS, _ASKED_FOR, min_backbone_count=2
 )
-_MESH = [use for use in ARTIFACTS.design.path_uses if use.purpose == "backbone_mesh"]
+_MESH = fixtures.mesh_paths(ARTIFACTS)
 
 
 def test_the_design_does_not_wire_the_full_mesh() -> None:

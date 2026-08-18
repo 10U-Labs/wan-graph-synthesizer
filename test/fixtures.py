@@ -222,6 +222,53 @@ def run_design(
     return DesignArtifacts(vertices, physical_edges, design, validation)
 
 
+def mesh_paths(artifacts: DesignArtifacts) -> list[DesignPath]:
+    """The backbone paths of a finished design, without the access paths homing into it.
+
+    A design carries both, and almost every assertion about a backbone is about the first
+    kind alone. Read here rather than in each test file because four of them ask for it in
+    the same words.
+    """
+    return [use for use in artifacts.design.path_uses if use.purpose == "backbone_mesh"]
+
+
+def design_over_segments(
+    site_ids: tuple[str, ...],
+    segments: dict[tuple[str, str], float],
+    number_of_diverse_paths: int,
+    transit_ids: tuple[str, ...] = (),
+    min_backbone_count: int | None = None,
+) -> DesignArtifacts:
+    """Run the whole pipeline over a segment map written by hand, every site in the backbone.
+
+    Several integration tests in this suite work the same way: name a few sites, price the
+    fiber between them, force every one of them into the backbone and ask for a number of
+    diverse paths. Written down once because only the map and the number change between
+    them, and three copies of the same parameters is what the copy-paste gate is for.
+
+    ``transit_ids`` are cities the fiber crosses that no provider has a cage in, so they can
+    carry a path without taking a backbone seat. ``min_backbone_count`` is how few sites the
+    search may settle for and defaults to all of them.
+    """
+    cities = site_ids + transit_ids
+    fewest = len(site_ids) if min_backbone_count is None else min_backbone_count
+    return run_design(
+        [
+            carrier_pop(city, 38.0, -115.0 + 2.0 * index)
+            for index, city in enumerate(cities)
+        ],
+        physical_edges_from(segments),
+        DesignParams(
+            min_backbone_count=fewest,
+            max_backbone_count=len(site_ids),
+            forced_backbone_names=site_ids,
+            datacenter_cities=frozenset((site, "XX") for site in site_ids),
+            promote_high_degree_convergences=False,
+            tuning=Tuning(backbone_number_of_diverse_paths=number_of_diverse_paths),
+        ),
+    )
+
+
 def ring_artifacts() -> DesignArtifacts:
     """Run the synthesizer over the in-memory ring and bundle the artifacts."""
     vertices, edges = _ring_inputs()

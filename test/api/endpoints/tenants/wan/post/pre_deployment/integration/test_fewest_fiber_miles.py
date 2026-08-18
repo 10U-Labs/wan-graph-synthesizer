@@ -25,7 +25,6 @@ defect fails here, which is a thing an approximation cannot otherwise report abo
 from __future__ import annotations
 
 import fixtures
-from synthesizer.model import DesignParams, Tuning
 
 _SITES = ("w", "x", "y", "z")
 _ASKED_FOR = 2
@@ -36,22 +35,8 @@ _SEGMENTS = {
     ("w", "x"): 100.0, ("x", "y"): 100.0, ("y", "z"): 100.0, ("z", "w"): 100.0,
     ("w", "y"): 250.0, ("x", "z"): 250.0,
 }
-ARTIFACTS = fixtures.run_design(
-    [
-        fixtures.carrier_pop(site, 38.0, -115.0 + 2.0 * index)
-        for index, site in enumerate(_SITES)
-    ],
-    fixtures.physical_edges_from(_SEGMENTS),
-    DesignParams(
-        min_backbone_count=len(_SITES),
-        max_backbone_count=len(_SITES),
-        forced_backbone_names=_SITES,
-        datacenter_cities=frozenset((site, "XX") for site in _SITES),
-        promote_high_degree_convergences=False,
-        tuning=Tuning(backbone_number_of_diverse_paths=_ASKED_FOR),
-    ),
-)
-_MESH = [use for use in ARTIFACTS.design.path_uses if use.purpose == "backbone_mesh"]
+ARTIFACTS = fixtures.design_over_segments(_SITES, _SEGMENTS, _ASKED_FOR)
+_MESH = fixtures.mesh_paths(ARTIFACTS)
 
 
 def test_the_delivered_design_orders_the_four_hundred_miles_the_ring_costs() -> None:

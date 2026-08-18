@@ -246,7 +246,7 @@ _ISLAND_PIN = _drawn(("a", "c"), _ISLANDS, BackboneConstraints(
 
 def test_a_backbone_the_fiber_never_joins_is_drawn_with_no_paths() -> None:
     """Two sites on separate fiber have no ways out to draw, pinned to each other or not."""
-    assert _ISLAND_PIN.paths == []
+    assert not _ISLAND_PIN.paths
 
 
 def test_a_backbone_the_fiber_never_joins_is_floored_at_nothing() -> None:

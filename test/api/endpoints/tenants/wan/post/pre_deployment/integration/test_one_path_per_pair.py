@@ -34,7 +34,7 @@ from synthesizer.input_graph import edge_key
 
 _ASKED_FOR = 2
 ARTIFACTS = fixtures.shared_hub_peer_artifacts()
-_MESH = [use for use in ARTIFACTS.design.path_uses if use.purpose == "backbone_mesh"]
+_MESH = fixtures.mesh_paths(ARTIFACTS)
 
 
 def _paths_per_pair() -> dict[tuple[str, str], int]:
