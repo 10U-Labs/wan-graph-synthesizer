@@ -7,7 +7,7 @@ description: Start or stop the standing reminders that keep an autonomous issue-
 
 Seven recurring reminders, one per standing rule, that fire back into this session while it works through open issues on its own. Each rule gets its own reminder so that no rule can be quietly dropped from a merged block of text, and the fire times are staggered across the ten-minute period so they arrive one at a time rather than as a wall.
 
-The argument selects the mode: `start <issue-number>` or `stop`.
+The argument is the sub-command: `start <issue-number>` or `stop`.
 
 `CronCreate`, `CronList` and `CronDelete` are deferred tools: the session is told their names but not their schemas, so a call made before the schema is fetched fails with `InputValidationError` and creates nothing. Fetch them first with `ToolSearch`, query `select:CronCreate,CronList,CronDelete`: `start` calls `CronCreate`, `stop` calls `CronList` and `CronDelete`.
 
