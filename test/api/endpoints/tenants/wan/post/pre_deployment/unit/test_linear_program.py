@@ -14,14 +14,21 @@ a design built on a silent zero would be fiber nobody can order.
 
 A program can also be written a few rows at a time, because the search that writes the rows
 does not know them when it starts. That is a second way of asking the same question and it
-has to come back with the same answer, so the last case here asks it both ways and holds the
-two together.
+has to come back with the same answer, so one case here asks it both ways and holds the two
+together.
+
+The last cases are about a pass that does not answer. A solver carried through hundreds of
+passes can start a pass from a basis that has gone bad and then never finish it, which cost
+DOW its whole network (GitHub issue #70), so a pass is given up on and asked again with that
+basis thrown away. Two columns settle in microseconds however they are asked, so the only
+way to reach that from here is to allow a pass no time at all.
 """
 
 from __future__ import annotations
 
 import pytest
 
+from synthesizer import linear_program
 from synthesizer.linear_program import (
     GrowingSegmentProgram,
     SegmentProgram,
@@ -158,3 +165,47 @@ def test_writing_no_rows_at_all_leaves_the_program_answering_as_it_did() -> None
     growing.add_rows(_EVERY_ROW)
     growing.add_rows(())
     assert growing.solve().miles == pytest.approx(6.0)
+
+
+def _out_of_time_at_once(monkeypatch: pytest.MonkeyPatch) -> GrowingSegmentProgram:
+    """The three-row program, on a search that allows a pass no time to answer in.
+
+    An allowance of nothing is the only way to reach the retry from a test. A pass gives up
+    when it has run longer than the search allows it, and the two columns here are answered
+    in tens of microseconds however the solver goes about it, so no allowance a test could
+    write would be reached by the work itself. At nothing, the first attempt is over before
+    it starts and every pass takes the path the retry is for.
+    """
+    monkeypatch.setattr(linear_program, "_SECONDS_A_PASS_MAY_RUN", 0.0)
+    growing = GrowingSegmentProgram(_TWO_COLUMNS)
+    growing.add_rows(_EVERY_ROW)
+    return growing
+
+
+def test_a_pass_that_gives_up_is_asked_again_and_comes_back_with_the_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A pass that runs out of time still answers six miles, which is the program's answer.
+
+    The whole of a national build turns on this. DOW's fiber search runs 4,478 passes and
+    one of them -- the 713th, over 624 segments and 5,879 rows -- never comes back at all:
+    the solver has been carried through every pass before it and the basis it starts from
+    has gone bad. The program itself is easy, and a solver handed it fresh answers in 0.682
+    seconds. So the tenant was recorded as ``failed`` and published no network, on a design
+    that is there to be built, for want of asking one question twice (GitHub issue #70).
+    """
+    assert _out_of_time_at_once(monkeypatch).solve().miles == pytest.approx(6.0)
+
+
+def test_a_pass_that_gives_up_holds_the_same_fiber_a_pass_that_did_not_would(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Half the long column and all of the short one, which is what the rows ask for.
+
+    The miles are asserted beside this and are not enough on their own, because a retry that
+    answered a different question could reach the same total over different segments and buy
+    the operator fiber the search never chose. It also says the give-up is not mistaken for
+    the one case ``_answer`` raises on: a row nothing could ever meet is a defect in whoever
+    wrote it, and a pass that merely wants asking again is not.
+    """
+    assert _out_of_time_at_once(monkeypatch).solve().held == pytest.approx((0.5, 1.0))

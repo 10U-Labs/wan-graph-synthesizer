@@ -35,6 +35,15 @@ _WHOLE = 1.0
 # below needs, and no directive is written into the source to say so.
 _SOLVER: Any = highspy.Highs
 
+# How long one pass of a search may run before it is given up on and asked again. A pass
+# reaching this is not a hard program: it is a solver that has been carried through hundreds
+# of passes and is starting from a basis that has gone bad. DOW's search took 94.6 seconds
+# over one such pass without answering, where the same program put to a solver that has seen
+# nothing answered in 0.682 (GitHub issue #70). No pass that answers at all has ever taken
+# longer than 0.15 seconds, so a second separates the two cases with room to spare while
+# being twenty-eight times the 36 milliseconds an ordinary pass of that search costs.
+_SECONDS_A_PASS_MAY_RUN = 1.0
+
 
 @dataclass(frozen=True)
 class SegmentRow:
@@ -185,6 +194,28 @@ class GrowingSegmentProgram:
         self._whole.clear()
 
     def solve(self) -> SegmentChoice:
-        """Run on from the answer the last pass reached, and read back what it holds."""
+        """Run on from the answer the last pass reached, and read back what it holds.
+
+        A pass that has not answered within ``_SECONDS_A_PASS_MAY_RUN`` is given up on and
+        asked again with the basis it was carrying thrown away, which is the whole of the
+        retry. The rows and the column bounds survive ``clearSolver``, so nothing the search
+        has written is lost and the pass after this one warms from where this one finishes.
+
+        Starting over on a solver that has seen nothing would answer the same question at
+        the same price -- 0.682 seconds against 0.678 for dropping the basis -- and would
+        also mean handing over every row the search has written, 5,879 of them where DOW
+        stalls and more by the end. So the solver in hand is kept and only its basis goes.
+
+        ``highspy`` measures ``time_limit`` against everything one solver has ever run
+        rather than against a single run, which is why the limit is set from
+        ``getRunTime()`` each pass instead of to a fixed number of seconds.
+        """
+        self._solver.setOptionValue(
+            "time_limit", self._solver.getRunTime() + _SECONDS_A_PASS_MAY_RUN
+        )
         self._solver.run()
+        if self._solver.getModelStatus() == highspy.HighsModelStatus.kTimeLimit:
+            self._solver.setOptionValue("time_limit", highspy.kHighsInf)
+            self._solver.clearSolver()
+            self._solver.run()
         return _answer(self._solver)

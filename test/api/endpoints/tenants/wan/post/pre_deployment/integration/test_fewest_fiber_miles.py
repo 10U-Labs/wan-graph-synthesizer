@@ -36,6 +36,8 @@ from __future__ import annotations
 import pytest
 
 import fixtures
+from synthesizer import linear_program
+from synthesizer.model import DesignArtifacts
 
 _SITES = ("w", "x", "y", "z")
 _ASKED_FOR = 2
@@ -88,15 +90,23 @@ def test_every_site_still_holds_the_two_ways_out_it_was_bought() -> None:
     assert ARTIFACTS.validation["backbone_mesh_independence_deficient"] == []
 
 
-# Twelve cities of carrier fiber, five of them backbone seats and seven of them cities the
-# fiber crosses. Unlike the ring above, this graph's search needs 26 passes to settle, which
-# is what makes it the one fixture here that notices a search stopping early.
-MANY_PASS_ARTIFACTS = fixtures.design_over_segments(
-    fixtures.MANY_PASS_SITES,
-    fixtures.MANY_PASS_SEGMENTS,
-    _ASKED_FOR,
-    transit_ids=fixtures.MANY_PASS_TRANSIT,
-)
+def _many_pass_artifacts() -> DesignArtifacts:
+    """Twelve cities of carrier fiber with five backbone seats, synthesized end to end.
+
+    Seven of the twelve are cities the fiber crosses rather than seats. Unlike the ring
+    above, this graph's search needs 26 passes to settle, which is what makes it the one
+    fixture here that notices a search stopping early. Written as a function because two
+    tests need it built under different conditions, not because it changes between them.
+    """
+    return fixtures.design_over_segments(
+        fixtures.MANY_PASS_SITES,
+        fixtures.MANY_PASS_SEGMENTS,
+        _ASKED_FOR,
+        transit_ids=fixtures.MANY_PASS_TRANSIT,
+    )
+
+
+MANY_PASS_ARTIFACTS = _many_pass_artifacts()
 
 
 def test_a_design_whose_search_takes_many_passes_orders_the_fewest_miles_there_are() -> None:
@@ -132,3 +142,18 @@ def test_every_seat_on_that_design_holds_the_two_ways_out_it_was_bought() -> Non
     mileage above means nothing without this beside it.
     """
     assert MANY_PASS_ARTIFACTS.validation["backbone_mesh_independence_deficient"] == []
+
+
+def test_that_design_is_the_same_design_when_every_pass_of_its_search_gives_up(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """159 miles again, over a search in which no pass answers before it runs out of time.
+
+    A pass that runs out of time is asked again with the basis it carried thrown away, and
+    what the whole synthesis delivers has to be what it delivers without that having
+    happened. Forced here on every one of the 26 passes rather than on one of them, since
+    the retry is only ever reached on a national map -- DOW takes it once in 4,478 passes,
+    and no graph small enough to run in this tier reaches it at all (GitHub issue #70).
+    """
+    monkeypatch.setattr(linear_program, "_SECONDS_A_PASS_MAY_RUN", 0.0)
+    assert _many_pass_artifacts().design.metrics.physical_miles == fixtures.MANY_PASS_MILES
