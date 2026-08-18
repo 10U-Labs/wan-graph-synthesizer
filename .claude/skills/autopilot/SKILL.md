@@ -9,11 +9,13 @@ Seven recurring reminders, one per standing rule, that fire back into this sessi
 
 The argument selects the mode: `start <issue-number>` or `stop`.
 
+`CronCreate`, `CronList` and `CronDelete` are deferred tools: the session is told their names but not their schemas, so a call made before the schema is fetched fails with `InputValidationError` and creates nothing. Fetch them first with `ToolSearch`, query `select:CronCreate,CronList,CronDelete`; both modes need them.
+
 ## Start
 
 The issue number is required — it is the `{X}` in the first reminder, and every issue above it is in scope. If the user did not give one, ask for it before creating anything.
 
-Create seven jobs with `CronCreate`, exactly as listed below. Use `recurring: true` (the default). Substitute the issue number for `{X}` in the first prompt and leave the other six verbatim. Each `cron` field is a distinct offset within the same ten-minute period, so the six reminders never land together:
+Create seven jobs with `CronCreate`, exactly as listed below. Use `recurring: true` (the default). Substitute the issue number for `{X}` in the first prompt and leave the other six verbatim. Each `cron` field is a distinct offset within the same ten-minute period, so the seven reminders never land together:
 
 | Offset | Cron | Prompt |
 | --- | --- | --- |
@@ -27,7 +29,7 @@ Create seven jobs with `CronCreate`, exactly as listed below. Use `recurring: tr
 
 Then tell the user which issue number is in force, that seven reminders are running, and the two limits that come with them: the jobs live in this session only and are gone when it ends, and recurring jobs auto-expire after seven days.
 
-Do not begin working the issues as part of starting the reminders. Starting autopilot and doing the work are separate; the first reminder will arrive within ten minutes and start the loop, unless the user asks to begin straight away.
+Then start working, in the same turn that created the jobs. Read the open issues above `{X}` with `gh issue list`, take the lowest-numbered one that nothing else is blocking, and begin solving it under the standing rules the reminders carry. Running this skill is starting the work; the seven jobs only keep it on the rails once it is going.
 
 ## Stop
 
@@ -36,6 +38,10 @@ Call `CronList`, then call `CronDelete` once per job it returns — all of them,
 `CronList` returning nothing is not a failure; say the schedule was already empty and stop.
 
 ## Notes
+
+Starting autopilot begins the work in the same turn, changed on 2026-08-18. It used to create the seven jobs and stop, on the reasoning that arming the reminders and doing the work were separate things. What that produced was a session sitting idle after `/autopilot start 6`: a cron job fires only when the session is idle and the first one is up to ten minutes out, so the skill looked like it had not worked at all. A start at :08 gets going in a minute and looks fine; a start at :10 sits silent for the whole period, and that is the same skill on the same rules.
+
+The three cron tools are deferred, which is why `Start` and `Stop` both open by fetching their schemas. A deferred tool is listed to the session by name only, so the first `CronCreate` call is rejected as invalid input and no job is created — a failure that reads like the tool is missing rather than like a step was skipped.
 
 Cron jobs fire only while the session is idle, never mid-turn, because a turn cannot be preempted. That limit is the reason this skill does not try to correct drift in the middle of a task: what it can do is restart a loop that has stalled, which is the failure it is there to catch.
 
