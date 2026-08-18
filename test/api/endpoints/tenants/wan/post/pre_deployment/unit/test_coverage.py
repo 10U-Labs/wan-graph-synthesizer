@@ -143,12 +143,12 @@ def test_a_site_exempt_from_the_target_cannot_sway_which_candidate_wins() -> Non
     assert min(_ranking_hauls(["east", "oversea"], [*_RANKING_SITES, _OCONUS_SITE]))[1] == "east"
 
 
-# Fiber where spans and independent routes disagree. Three base nodes sit in a triangle.
+# Fiber where segment counts and independent paths disagree. Three base nodes sit in a triangle.
 # "rich" and "rich_far" reach all three directly, so each holds three links that fail
-# independently. "poor" and "poor_far" reach two directly and spend their third span on a
-# stub that rejoins the backbone at b1, so that third route can only re-cross a city they
-# already depend on and each holds two. Three spans apiece either way, which is the number a
-# raw span count would rank them by and the reason it is the wrong number to rank them by.
+# independently. "poor" and "poor_far" reach two directly and spend their third segment on a
+# stub that rejoins the backbone at b1, so that third path can only re-cross a city they
+# already depend on and each holds two. Three segments apiece either way, which is the number
+# a raw segment count would rank them by and the reason it is the wrong number to rank them by.
 _FIBER_EDGES = physical({
     ("b1", "b2"): 1.0, ("b2", "b3"): 1.0, ("b1", "b3"): 1.0,
     ("poor", "x"): 1.0, ("x", "b1"): 1.0, ("poor_far", "x2"): 1.0, ("x2", "b1"): 1.0,
@@ -177,8 +177,8 @@ def test_the_better_connected_of_two_covering_candidates_is_seated() -> None:
     assert _seated(_BOTH_COVER) == "rich"
 
 
-def test_a_candidates_spans_are_not_counted_as_independent_routes() -> None:
-    """Three spans leave poor, and two independent routes out are all its own fiber allows."""
+def test_a_candidates_segments_are_not_counted_as_independent_paths() -> None:
+    """Three segments leave poor, and two independent paths out are all its own fiber allows."""
     assert candidate_mesh_ceiling("poor", _FIBER_BACKBONE, _FIBER_ADJACENCY) == 2
 
 

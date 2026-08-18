@@ -2,7 +2,7 @@
 
 The number of diverse paths is the number a site gets, so a site above it is the exception
 and every link taking it there is somebody else's requirement rather than the tool being
-generous with an operator's cable. There are exactly five such requirements, and the report
+generous with an operator's fiber. There are exactly five such requirements, and the report
 has to name which one, because a count on its own leaves a reader to guess why the network
 they were handed is bigger than the one they ordered.
 
@@ -25,8 +25,8 @@ from synthesizer.model import (
     LINK_FOR_TARGET,
     Design,
     DesignMetrics,
-    MeshTargets,
-    PathUse,
+    MeshRequirements,
+    DesignPath,
 )
 from synthesizer.validation import validate_design
 
@@ -34,9 +34,9 @@ _SITES = ("a", "b", "c", "d")
 _TARGET = 2
 
 
-def _link(peer: str, reason: str, requested_by: tuple[str, ...] = ()) -> PathUse:
-    """One routed mesh link from ``a`` to ``peer``, carrying why it is there."""
-    return PathUse("backbone_mesh", "a", peer, ("a", peer), 1.0, reason, requested_by)
+def _link(peer: str, reason: str, requested_by: tuple[str, ...] = ()) -> DesignPath:
+    """One drawn mesh link from ``a`` to ``peer``, carrying why it is there."""
+    return DesignPath("backbone_mesh", "a", peer, ("a", peer), 1.0, reason, requested_by)
 
 
 # The two links site a reached for itself, which are the two its tenant asked for.
@@ -46,7 +46,7 @@ _ASKED_FOR = [
 ]
 
 
-def _above_target(*extra: PathUse) -> list[dict[str, object]]:
+def _above_target(*extra: DesignPath) -> list[dict[str, object]]:
     """The above-target rows for a design giving site a its two links plus ``extra``."""
     design = Design(
         backbone_ids=_SITES,
@@ -59,7 +59,7 @@ def _above_target(*extra: PathUse) -> list[dict[str, object]]:
     report = validate_design(
         [fixtures.carrier_pop(site) for site in _SITES],
         design,
-        targets=MeshTargets(_TARGET),
+        targets=MeshRequirements(_TARGET),
     )
     return report["backbone_diverse_paths_above_target"]
 
@@ -85,7 +85,7 @@ def test_a_link_past_the_target_names_the_requirement_that_put_it_there(
     """Each of the five grounds for exceeding a target is reported as that ground.
 
     An operator pinned it; a peer needed this site to reach its own target and a link has
-    two ends; it holds the backbone together as one network; it is a second route to a peer
+    two ends; it holds the backbone together as one network; it is a second path to a peer
     this site is joined to already, where its fiber offered no other way out; or it is a
     detour keeping one city off the only path. A link on none of these grounds is not built
     at all, which is what makes naming the ground worth doing.

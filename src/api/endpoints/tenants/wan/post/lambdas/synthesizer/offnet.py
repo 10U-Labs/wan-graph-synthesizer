@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from synthesizer.local_fiber import (
     LOCAL_FIBER_MIN_LINKS,
     LOCAL_FIBER_RADIUS_MILES,
-    LocalFiberTwinSpec,
+    LocalFiberTwinSettings,
     build_local_fiber_twin,
     unique_twin_id,
 )
@@ -35,7 +35,7 @@ OFF_NET_EDGE_NOTE = "synthetic off-net local-fiber link"
 
 
 @dataclass(frozen=True)
-class RealizedOffNet:
+class SeatedOffNetSites:
     """Off-net seats realized into the graph as local-fiber-attached carrier twins.
 
     ``vertices`` and ``physical_edges`` are the graph augmented with one twin PoP per
@@ -54,7 +54,7 @@ def realize_off_net_sites(
     sites: list[Vertex],
     forced_names: frozenset[str],
     datacenter_cities: frozenset[tuple[str, str]] | None = frozenset(),
-) -> RealizedOffNet:
+) -> SeatedOffNetSites:
     """Seat a local-fiber twin for every off-net site the operator has force-pinned.
 
     ``forced_names`` is the operator's forced backbone names. A site whose name is not
@@ -88,7 +88,7 @@ def realize_off_net_sites(
         twin_id = unique_twin_id(f"{OFF_NET_ID_PREFIX}{site.id}", used_ids)
         built = build_local_fiber_twin(
             site, twin_id, carrier_pops,
-            LocalFiberTwinSpec(note=OFF_NET_EDGE_NOTE),
+            LocalFiberTwinSettings(note=OFF_NET_EDGE_NOTE),
         )
         if built is None:
             raise ValueError(
@@ -101,4 +101,4 @@ def realize_off_net_sites(
         augmented_vertices.append(built[0])
         augmented_edges.update(built[1])
         seat_ids.add(twin_id)
-    return RealizedOffNet(augmented_vertices, augmented_edges, frozenset(seat_ids))
+    return SeatedOffNetSites(augmented_vertices, augmented_edges, frozenset(seat_ids))

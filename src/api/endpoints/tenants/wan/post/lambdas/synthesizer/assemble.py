@@ -21,7 +21,7 @@ from synthesizer.model import (
     Design,
     DesignInputs,
     DesignMetrics,
-    PathUse,
+    DesignPath,
 )
 from synthesizer.forced import (
     apply_forced_access_homes,
@@ -30,14 +30,14 @@ from synthesizer.forced import (
 )
 from synthesizer.graphs import path_edge_keys
 from synthesizer.backbone import BackboneConstraints, backbone_mesh_paths
-from synthesizer.ceiling import BackupRouteLimit
+from synthesizer.ceiling import BackupPathLimit
 from synthesizer.search_plan import _SearchPlan
 
 
 @dataclass
 class _DesignDraft:
     access_edges: list[AccessEdge]
-    path_uses: list[PathUse]
+    path_uses: list[DesignPath]
 
 
 def finalize_design(
@@ -121,7 +121,7 @@ def backbone_physically_biconnectable(
 
     They can iff they all share one common biconnected block of the carrier graph --
     otherwise some single city separates two of them and no routing survives its loss.
-    Being city-survivable implies cable-survivable, so this subsumes the old 2-edge gate.
+    Being city-survivable implies segment-survivable, so this subsumes the old 2-edge gate.
     """
     common: frozenset[int] | None = None
     for node in backbone_ids:
@@ -182,27 +182,27 @@ def evaluate_backbone(
     cannot reach its peers, since biconnectivity implies they are all mutually reachable),
     or the backbone is smaller than the configured number of homes per demand vertex (so
     ``assign_access`` cannot give each demand vertex that many distinct backbone nodes).
-    Routed paths are deferred to the winning set, since they do not affect the ranking.
+    The design's paths are deferred to the winning set, since they do not affect the ranking.
     """
     if not backbone_physically_biconnectable(backbone_ids, inputs):
         return None
     return assign_access(backbone_ids, inputs, plan)
 
 
-def routed_path_uses(
+def design_paths(
     backbone_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-) -> list[PathUse]:
+) -> list[DesignPath]:
     """Reconstruct the backbone-mesh paths for a design."""
     backbone_set = set(backbone_ids)
     constraints = BackboneConstraints(
         removed_backbone_pairs(backbone_set, plan.forced_links),
         number_of_diverse_paths=plan.tuning.backbone_number_of_diverse_paths,
         forced_pairs=forced_backbone_pairs(backbone_set, plan.forced_links),
-        limit=BackupRouteLimit(
-            plan.tuning.backbone_max_backup_route_multiple, inputs.all_distances
+        limit=BackupPathLimit(
+            plan.tuning.backbone_max_backup_path_multiple, inputs.all_distances
         ),
         seat_cap=plan.seat_cap,
     )
@@ -224,6 +224,6 @@ def build_design_for_backbone(
     access_edges = evaluate_backbone(backbone_ids, inputs, plan)
     if access_edges is None:
         return None
-    path_uses = routed_path_uses(backbone_ids, inputs, plan, inputs.physical_edges)
+    path_uses = design_paths(backbone_ids, inputs, plan, inputs.physical_edges)
     draft = _DesignDraft(access_edges, path_uses)
     return finalize_design(backbone_ids, draft, inputs.physical_edges)

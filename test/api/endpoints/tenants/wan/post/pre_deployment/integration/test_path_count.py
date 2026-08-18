@@ -1,10 +1,10 @@
-"""Integration test: how many circuits a synthesis builds when the fiber is generous.
+"""Integration test: how many paths a synthesis builds when the fiber is generous.
 
 Every other fixture in this tier is as tight as the request -- a six-point ring gives each
 point two fiber directions and the tenant asks for two -- so the choice between taking what
 was asked for and taking everything the ground offers is a choice none of them can show.
 This graph is a six-site clique: each site's fiber reaches all five others directly, so a
-design that treats the tenant's number as a floor wires the full mesh of fifteen circuits.
+design that treats the tenant's number as a floor wires the full mesh of fifteen paths.
 
 Distances rise with the gap between site numbers, so each site's nearest peers are its
 neighbours rather than one hub, which is what makes the finished design a real topology and
@@ -23,8 +23,8 @@ from synthesizer.validation import backbone_mesh_pairs
 
 _SITES = tuple(f"S{index}" for index in range(6))
 _ASKED_FOR = 2
-# A clique: every pair has its own span, priced by how far apart the two sites sit.
-_SPANS = {
+# A clique: every pair has its own fiber segment, priced by how far apart the two sites sit.
+_SEGMENTS = {
     (_SITES[left], _SITES[right]): 100.0 * (right - left)
     for left, right in combinations(range(len(_SITES)), 2)
 }
@@ -33,7 +33,7 @@ ARTIFACTS = run_design(
         fixtures.carrier_pop(site, 38.0, -115.0 + 2.0 * index)
         for index, site in enumerate(_SITES)
     ],
-    fixtures.physical_edges_from(_SPANS),
+    fixtures.physical_edges_from(_SEGMENTS),
     DesignParams(
         min_backbone_count=2,
         forced_backbone_names=_SITES,
@@ -45,9 +45,9 @@ ARTIFACTS = run_design(
 
 
 def test_the_design_does_not_wire_the_full_mesh() -> None:
-    """Nine circuits where the fiber would have allowed fifteen.
+    """Nine paths where the fiber would have allowed fifteen.
 
-    The six circuits not built are the ones no site asked for and no other requirement
+    The six paths not built are the ones no site asked for and no other requirement
     needed. Under the old behaviour each site was aimed at what its fiber could carry, so
     all fifteen were built and a tenant asking for two got a full mesh.
     """
@@ -64,8 +64,8 @@ def test_the_site_nobody_reached_for_holds_exactly_what_it_asked_for() -> None:
     assert len(links) == _ASKED_FOR
 
 
-def test_every_circuit_past_the_number_names_the_requirement_behind_it() -> None:
-    """No site is over on the tool's own account; each extra circuit traces to a reason.
+def test_every_path_past_the_number_names_the_requirement_behind_it() -> None:
+    """No site is over on the tool's own account; each extra path traces to a reason.
 
     Three of the four grounds appear on this one graph: a peer reaching for its own number,
     a link holding the backbone together as one network, and a detour keeping a city off

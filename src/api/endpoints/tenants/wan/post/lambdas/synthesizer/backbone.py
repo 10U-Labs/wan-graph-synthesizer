@@ -1,12 +1,12 @@
-"""Select and route the backbone-to-backbone mesh.
+"""Select and draw the backbone-to-backbone mesh.
 
-Every backbone node links to its ``number_of_diverse_paths`` nearest reachable backbone nodes that
-do not route through one another, minus any backbone-backbone pairs the operator pruned
-in ``etc/*.yml``. Counting links that share a transit city would let a node report its
+Every backbone node links to its ``number_of_diverse_paths`` nearest reachable backbone nodes
+whose shortest paths do not cross one another, minus any backbone-backbone pairs the operator
+pruned in ``etc/*.yml``. Counting links that share a transit city would let a node report its
 full degree and still fall to one link when that city goes. The mesh is then augmented
 so the backbone is a single connected network and, wherever the carrier graph allows,
-2-vertex-connected -- the physical fiber survives the loss of any single
-city, which also implies it survives any single cable cut. These helpers are split from
+2-vertex-connected -- the physical fiber survives the loss of any single city, which also
+implies it survives the loss of any single fiber segment. These helpers are split from
 the synthesizer so the backbone concern stays cohesive and the synthesizer module stays
 bounded.
 """
@@ -18,10 +18,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
 from synthesizer.ceiling import (
-    BackupRouteLimit,
-    RouteGround,
-    independent_routes,
-    routes_per_peer,
+    BackupPathLimit,
+    PathProofInputs,
+    independent_paths,
+    paths_per_peer,
 )
 from synthesizer.input_graph import PhysicalEdge, edge_key
 from synthesizer.graphs import (
@@ -39,13 +39,13 @@ from synthesizer.model import (
     LINK_FOR_PIN,
     LINK_FOR_SITE_DIVERSITY,
     LINK_FOR_TARGET,
-    PathUse,
+    DesignPath,
 )
-from synthesizer.validation import routed_independent_degree
+from synthesizer.validation import diverse_path_count
 
-# Slack in miles when a routed length is compared against its budget, absorbing the
+# Slack in miles when a drawn path's length is compared against its budget, absorbing the
 # rounding of a sum of great-circle distances. Five millimetres, so it can admit nothing a
-# real route could be refused for.
+# real path could be refused for.
 _LIMIT_TOLERANCE = 1e-6
 
 
@@ -53,7 +53,7 @@ def path_geometry_miles(
     path: tuple[str, ...],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> float:
-    """Sum the per-span straight-line estimate along a routed path (display)."""
+    """Sum the per-fiber-segment straight-line estimate along a path (display)."""
     return sum(
         physical_edges[edge_key(path[index], path[index + 1])].distance_miles
         for index in range(len(path) - 1)
@@ -131,9 +131,9 @@ def _shares_transit(
     A peer sits on a shortest ``node``-to-``candidate`` path exactly when the two legs
     sum to the direct distance, since every subpath of a shortest path is itself
     shortest. Such a candidate buys no redundancy: one city's loss takes both links at
-    once. Where the graph offers two equally short routes and only one of them transits
-    the peer, this still reports a share -- the router is free to pick either, so the
-    diversity cannot be relied on.
+    once. Where the graph offers two equally short paths and only one of them transits
+    the peer, this still reports a share -- the shortest-path search is free to pick
+    either, so the diversity cannot be relied on.
     """
     direct = all_distances[node].get(candidate, math.inf)
     return any(
@@ -156,16 +156,16 @@ def _diverse_picks(
 ) -> list[str]:
     """Fill ``node``'s free slots from ``nearest``, preferring peers it shares no transit with.
 
-    Candidates are walked nearest first; one that routes through a peer already held --
+    Candidates are walked nearest first; one whose path crosses a peer already held --
     a pin or an earlier pick -- is passed over rather than taken.
 
     ``slots`` is how many links the node is reaching for: the number of diverse paths its
     tenant asked for, less any the operator already pinned. Diverse candidates fill it
     first, and anything still short is filled from the passed-over ones, nearest first,
-    since a link through a chokepoint still beats no link at all.
+    since a link through a single point of failure still beats no link at all.
 
     The backfill stops at the same number the diverse picks aimed at. A node short of its
-    target has a shortfall worth reporting, not a slot worth filling with cable that must
+    target has a shortfall worth reporting, not a slot worth filling with fiber that must
     re-cross a city it already depends on -- and a node that met its target has no slot
     left to fill whatever else its fiber offers.
     """
@@ -184,40 +184,40 @@ def _diverse_picks(
 
 
 def _proven_picks(
-    routes: list[tuple[str, ...]],
+    paths: list[tuple[str, ...]],
     nearest: list[tuple[float, str]],
     slots: int,
 ) -> list[str]:
-    """Fill a node's free slots with the peers its own ``routes`` reach.
+    """Fill a node's free slots with the peers its own ``paths`` reach.
 
-    The routes were found by proving how many ways out of the node no one city's loss takes
-    two of (see :func:`synthesizer.ceiling.independent_routes`), so the peers they end at
+    The paths were found by proving how many ways out of the node no one city's loss takes
+    two of (see :func:`synthesizer.ceiling.independent_paths`), so the peers they end at
     are a set the node can hold independently -- known, not hoped for. Picking them is what
     lets the routing step lay the node's links along the very paths the proof produced. The
-    node needs no name here: a route carries its own far end, which is the whole of what a
+    node needs no name here: a path carries its own far end, which is the whole of what a
     pick is.
 
-    Nearer peers are taken first, which is free: the routes are already pairwise clear of
+    Nearer peers are taken first, which is free: the paths are already pairwise clear of
     one another, so order decides only which of them a short reach displaces, never whether
     the ones taken are independent.
 
     ``nearest`` is the only list of peers this may pick from, which is what keeps a proof
     from overriding the operator. A peer they pruned and a peer they already pinned are both
     absent from it -- the first must not be wired at all, the second is wired already and
-    must not take a second slot -- so a proved route to either is passed over here. A ceiling
-    counts routes over the fiber and knows nothing of either instruction, so this is the
+    must not take a second slot -- so a proved path to either is passed over here. A ceiling
+    counts paths over the fiber and knows nothing of either instruction, so this is the
     place the two are reconciled.
 
     ``slots`` is how many links the node is reaching for, as in :func:`_diverse_picks`.
-    The proof may have found more routes than that -- it counts what the fiber can carry,
+    The proof may have found more paths than that -- it counts what the fiber can carry,
     not what anyone asked for -- and the extra ones are left unwired: the number the tenant
-    set is the number, and taking a route because it happens to exist is the tool spending
-    an operator's cable on its own judgement. Anything still short is filled from the
+    set is the number, and taking a path because it happens to exist is the tool spending
+    an operator's money on its own judgement. Anything still short is filled from the
     nearest peers left over, since a link the proof does not cover still beats no link.
     """
     rank = {peer: index for index, (_distance, peer) in enumerate(nearest)}
     proven = sorted(
-        (rank[route[-1]], route[-1]) for route in routes if route[-1] in rank
+        (rank[path[-1]], path[-1]) for path in paths if path[-1] in rank
     )
     picks = [peer for _rank, peer in proven][:slots]
     spare = [peer for _distance, peer in nearest if peer not in picks]
@@ -231,24 +231,24 @@ class BackboneConstraints:
     removed_pairs: frozenset[tuple[str, str]] = frozenset()
     number_of_diverse_paths: int = 3
     forced_pairs: frozenset[tuple[str, str]] = frozenset()
-    # the proved diverse routes (see :func:`synthesizer.ceiling.independent_routes`): per
+    # the proved diverse paths (see :func:`synthesizer.ceiling.independent_paths`): per
     # node, a set of paths out of it that no one city's loss takes two of -- to distinct
     # peers, or several to the one peer where the backbone holds too few of them. A node
     # present here picks the peers they reach, as many as its target asks for, and is wired
     # along them; an empty mapping means nothing has been proved and peers are picked by
-    # distance instead. How many routes there are does not decide how many are taken --
+    # distance instead. How many paths there are does not decide how many are taken --
     # that is the tenant's number, and the surplus is left unwired
-    routes: Mapping[str, list[tuple[str, ...]]] = field(default_factory=dict)
-    # how far a link may be routed against the direct distance between its two ends. It
+    paths: Mapping[str, list[tuple[str, ...]]] = field(default_factory=dict)
+    # how far a link's path may run against the direct distance between its two ends. It
     # bounds the proof that picks a node's peers (see :func:`backbone_mesh_paths`) and the
-    # two heuristics that route everything the proof does not cover, so a node cannot be
-    # given a peer it reaches only by a detour nobody would buy. None leaves every route
+    # two heuristics that draw everything the proof does not cover, so a node cannot be
+    # given a peer it reaches only by a detour nobody would buy. None leaves every path
     # admissible, which is the behaviour of every caller that has no tenant in hand
-    limit: BackupRouteLimit | None = None
+    limit: BackupPathLimit | None = None
     # the most backbone seats the tenant's config allows (``backbone.node_count.max`` in
-    # its ``etc/`` file). It decides how many routes one pair of sites is drawn with: one,
+    # its ``etc/`` file). It decides how many paths one pair of sites is drawn with: one,
     # unless the config allows too few seats for the paths asked for, which is a backbone
-    # capped at two sites (see :func:`synthesizer.ceiling.routes_per_peer`). None is an
+    # capped at two sites (see :func:`synthesizer.ceiling.paths_per_peer`). None is an
     # operator who capped nothing, and the backbone in hand then says how many peers there
     # are
     seat_cap: int | None = None
@@ -276,21 +276,21 @@ def select_backbone_mesh_pairs(
     Every backbone node reaches for exactly ``number_of_diverse_paths`` links -- the number
     of diverse paths its tenant asked for, or one fewer than the backbone itself where the
     backbone is smaller than that. The number is a target and not a floor. Where the fiber
-    offers more independently failing routes than were asked for, the surplus is left
-    unwired: each link is a real circuit on a real route with a real cost, and an operator
-    who asked for two diverse paths has made an engineering decision about how much
-    protection this network is worth. Taking more because the ground allows it substitutes
-    the tool's judgement for theirs.
+    offers more independently failing paths than were asked for, the surplus is left
+    unwired: each link is a real path over real fiber that an operator pays for every
+    month, and an operator who asked for two diverse paths has made an engineering decision
+    about how much protection this network is worth. Taking more because the fiber allows
+    it substitutes the tool's judgement for theirs.
 
     Exceeding the target stays possible, because some of a node's links are not its own
     choice, and the reason each one is there is returned beside it. A node may end above
     its target because the operator pinned a link, because a peer needed this node to reach
     its own target and a link has two ends, because the link holds the backbone together as
-    one network, because it is a second route to a peer the node is joined to already and
+    one network, because it is a second path to a peer the node is joined to already and
     its fiber offers no other way out (see :func:`restore_diverse_paths`), or because it is
     a detour keeping one city off the only path (the last two are added later, when the
-    links are routed -- see :func:`augment_physical_resilience`). A link that would exist
-    only because the ground was generous is on none of those grounds and is not built.
+    links are drawn -- see :func:`augment_physical_resilience`). A link that would exist
+    only because the fiber was generous is on none of those grounds and is not built.
 
     Peers are measured over the carrier graph in ``all_distances``. Any pair in
     ``removed_pairs`` -- an operator-pruned backbone-backbone link from ``etc/*.yml`` -- is
@@ -310,8 +310,8 @@ def select_backbone_mesh_pairs(
     (see :func:`augment_for_resilience`) into a single connected, 2-edge-connected
     network wherever the carrier graph allows, never re-adding a pruned pair.
 
-    Nearest is not the same as diverse. Where ``constraints.routes`` carries a node's proven
-    independent routes, that node's peers are the ones those routes reach (see
+    Nearest is not the same as diverse. Where ``constraints.paths`` carries a node's proven
+    independent paths, that node's peers are the ones those paths reach (see
     :func:`_proven_picks`): the proof has already found a set of ways out that no one city's
     loss takes two of, so the peers are known to be independently holdable rather than
     guessed at, and the routing step can lay the links along the very paths the proof
@@ -326,14 +326,14 @@ def select_backbone_mesh_pairs(
     works, which is why a proof supersedes it wherever one is available.
 
     A node's pins count as picks either way, so a candidate reachable only through a pinned
-    peer is passed over just the same. The pins themselves are wired however they route: an
-    operator instruction is honoured, not second-guessed.
+    peer is passed over just the same. The pins themselves are wired however their paths
+    run: an operator instruction is honoured, not second-guessed.
 
     Where no diverse candidate is left, the node falls back to the nearest of the ones
-    passed over rather than leaving a slot below its target empty. Some cities are genuine
-    carrier chokepoints with no alternate fiber, and a node behind one would otherwise drop
-    to a single link; the link is worth having even though it is not independent. Reporting
-    that shortfall is validation's job, not selection's.
+    passed over rather than leaving a slot below its target empty. Some cities are a single
+    point of failure on the carrier's fiber with no alternate, and a node behind one would
+    otherwise drop to a single link; the link is worth having even though it is not
+    independent. Reporting that shortfall is validation's job, not selection's.
 
     A node left with fewer reachable, non-removed peers than its target -- because the
     operator pruned its links or the carrier graph cannot reach them -- wires to every
@@ -342,7 +342,7 @@ def select_backbone_mesh_pairs(
     deliberately isolate a node without blanking the whole mesh.
 
     Nothing here knows which nodes the operator holds to no diverse path count. An
-    exemption relieves a node of a requirement and says nothing about how much cable to
+    exemption relieves a node of a requirement and says nothing about how much fiber to
     spend on it, so the exemption acts in validation alone and this pass treats every node
     the same.
     """
@@ -350,8 +350,8 @@ def select_backbone_mesh_pairs(
     # How many peers a site reaches for, which is its number of diverse paths until the
     # backbone runs out of peers to be one apiece. Past that the paths are not lost, they
     # double up: a site with one peer and two paths asked for wires the one pair here and
-    # is drawn with two routes over it (see :func:`_proven_paths_for`). So this bounds the
-    # circuits a site opens and not the protection it ends with.
+    # is drawn with two paths over it (see :func:`_proven_paths_for`). So this bounds the
+    # paths a site opens and not the protection it ends with.
     target = min(constraints.number_of_diverse_paths, len(backbone_ids) - 1)
     requested: dict[tuple[str, str], list[str]] = {}
     for node in backbone_ids:
@@ -379,7 +379,7 @@ def _node_picks(
     the first must not be wired at all, the second is wired already and must not take a
     second slot -- and a peer the carrier graph cannot reach goes with them. What is left
     is walked nearest first by :func:`_diverse_picks`, or replaced outright by the proved
-    routes where :func:`_proven_picks` has them.
+    paths where :func:`_proven_picks` has them.
     """
     forced_pairs, removed_pairs = constraints.forced_pairs, constraints.removed_pairs
     distances = all_distances[node]
@@ -393,8 +393,8 @@ def _node_picks(
     )
     pinned = {peer for pair in forced_pairs if node in pair for peer in pair if peer != node}
     slots = max(target - len(pinned), 0)
-    if node in constraints.routes:
-        return _proven_picks(constraints.routes[node], nearest, slots)
+    if node in constraints.paths:
+        return _proven_picks(constraints.paths[node], nearest, slots)
     return _diverse_picks(node, nearest, pinned, slots, all_distances)
 
 
@@ -417,10 +417,10 @@ def _link_reason(
     return LinkReason(LINK_FOR_CONNECTIVITY)
 
 
-def _component_index(vertices: set[str], spans: set[tuple[str, str]]) -> dict[str, int]:
+def _component_index(vertices: set[str], segments: set[tuple[str, str]]) -> dict[str, int]:
     """Map each vertex to the id of the connected piece it lands in."""
     index_of: dict[str, int] = {}
-    for index, side in enumerate(connected_components(vertices, spans)):
+    for index, side in enumerate(connected_components(vertices, segments)):
         for node in side:
             index_of[node] = index
     return index_of
@@ -429,19 +429,21 @@ def _component_index(vertices: set[str], spans: set[tuple[str, str]]) -> dict[st
 def _separated_backbone_pair(
     cut: str,
     vertices: set[str],
-    spans: set[tuple[str, str]],
+    segments: set[tuple[str, str]],
     backbone_set: set[str],
     removed_pairs: frozenset[tuple[str, str]],
 ) -> tuple[str, str] | None:
     """A backbone node on each side of a cut city, as a non-pruned edge key.
 
-    Removing the cut city (and every span touching it) splits its component into pieces;
-    the backbone nodes the city separates land in different pieces. Returns the cheapest-
-    labelled backbone pair sitting in two different pieces whose logical link the operator
-    has not pruned, or None when no such pair exists (only transit is separated, or every
-    cross pair is pruned). The cut city itself is never an endpoint.
+    Removing the cut city (and every fiber segment touching it) splits its component into
+    pieces; the backbone nodes the city separates land in different pieces. Returns the
+    first backbone pair by label sitting in two different pieces whose logical link the
+    operator has not pruned, or None when no such pair exists (only transit is separated,
+    or every cross pair is pruned). The cut city itself is never an endpoint.
     """
-    side_of = _component_index(vertices - {cut}, {span for span in spans if cut not in span})
+    side_of = _component_index(
+        vertices - {cut}, {segment for segment in segments if cut not in segment}
+    )
     backbone_nodes = sorted(node for node in backbone_set if node != cut)
     for offset, near in enumerate(backbone_nodes):
         for far in backbone_nodes[offset + 1:]:
@@ -452,148 +454,147 @@ def _separated_backbone_pair(
 
 
 @dataclass(frozen=True)
-class _DetourSubstrate:
+class _DetourSearchInputs:
     """Everything a detour search reads, which does not change as detours are added.
 
-    The augmentation routes one detour at a time and only the span union moves between
-    rounds; the sites in the backbone, the joins the operator pruned, the carrier fiber
-    and the backup route limit are the same on every one of them. Bundling them says so,
-    and keeps the search's own argument list to the union it is actually iterating on.
+    The augmentation draws one detour at a time and only the union of fiber segments moves
+    between rounds; the sites in the backbone, the joins the operator pruned, the carrier
+    fiber and the backup path limit are the same on every one of them. Bundling them says
+    so, and keeps the search's own argument list to the union it is actually iterating on.
     """
 
     backbone_set: set[str]
     removed_pairs: frozenset[tuple[str, str]]
     adjacency: dict[str, list[tuple[str, float]]]
     physical_edges: dict[tuple[str, str], PhysicalEdge]
-    limit: BackupRouteLimit | None = None
+    limit: BackupPathLimit | None = None
 
 
 def _resilience_detour(
-    spans: set[tuple[str, str]],
-    ground: _DetourSubstrate,
+    segments: set[tuple[str, str]],
+    inputs: _DetourSearchInputs,
     blocked_pairs: frozenset[tuple[str, str]],
-) -> PathUse | None:
-    """One detour route relieving a cut city in the span union, or None when none remains.
+) -> DesignPath | None:
+    """One detour relieving a cut city in the fiber segments drawn, or None when none is.
 
-    Scans the articulation cities; for the first that separates two backbone nodes, routes
-    the shortest alternate between them that avoids that city -- all of its spans blocked --
-    so the city no longer sits on the only path. Returns None when the spans already survive
-    any single city loss, or no usable (non-pruned, reachable) alternate exists. Skipping a
-    cut that separates only transit is safe: once every backbone-separating cut is relieved,
-    the union is biconnected, since each transit city stays joined to a backbone node it
-    routes between after any single removal.
+    Scans the articulation cities; for the first that separates two backbone nodes, draws
+    the shortest alternate between them that avoids that city -- every fiber segment
+    touching it blocked -- so the city no longer sits on the only path. Returns None when
+    the segments already survive any single city loss, or no usable (non-pruned, reachable)
+    alternate exists. Skipping a cut that separates only transit is safe: once every
+    backbone-separating cut is relieved, the union is biconnected, since each transit city
+    stays joined to a backbone node whose path it sits on after any single removal.
 
-    ``blocked_pairs`` are the pairs this pass may not draw another route between: the ones
-    the operator pruned, and the ones already holding every route their tenant asked for. A
+    ``blocked_pairs`` are the pairs this pass may not draw another path between: the ones
+    the operator pruned, and the ones already holding every path their tenant asked for. A
     cut whose only separated pair is blocked is left alone rather than relieved, so the pass
     can end with a city still on the only path. That is the honest report -- the fiber here
     cannot survive that city's loss inside the number of paths the operator bought -- and
     validation is what says so.
     """
-    vertices = {vertex for span in spans for vertex in span} | ground.backbone_set
-    for cut in sorted(articulation_points(vertices, spans)):
+    vertices = {vertex for segment in segments for vertex in segment} | inputs.backbone_set
+    for cut in sorted(articulation_points(vertices, segments)):
         pair = _separated_backbone_pair(
-            cut, vertices, spans, ground.backbone_set, blocked_pairs
+            cut, vertices, segments, inputs.backbone_set, blocked_pairs
         )
         if pair is None:
             continue
         near, far = pair
         blocked = frozenset(
-            edge_key(cut, neighbor) for neighbor, _weight in ground.adjacency.get(cut, [])
+            edge_key(cut, neighbor) for neighbor, _weight in inputs.adjacency.get(cut, [])
         )
-        _distances, predecessors = dijkstra(ground.adjacency, near, blocked)
+        _distances, predecessors = dijkstra(inputs.adjacency, near, blocked)
         detour = reconstruct_path(near, far, predecessors)
-        miles = path_geometry_miles(detour, ground.physical_edges) if detour else 0.0
-        if within_limit(detour, near, far, miles, ground.limit):
-            return PathUse(
+        miles = path_geometry_miles(detour, inputs.physical_edges) if detour else 0.0
+        if within_limit(detour, near, far, miles, inputs.limit):
+            return DesignPath(
                 "backbone_mesh", near, far, detour, miles, LINK_FOR_CITY_DETOUR,
             )
     return None
 
 
 def _pairs_at_their_limit(
-    uses: list[PathUse], routes_per_pair: int
+    uses: list[DesignPath], paths_per_pair: int
 ) -> frozenset[tuple[str, str]]:
-    """The backbone pairs already carrying every route their tenant allows the pair."""
+    """The backbone pairs already carrying every path their tenant allows the pair."""
     drawn: dict[tuple[str, str], int] = {}
     for use in uses:
         pair = edge_key(use.source, use.target)
         drawn[pair] = drawn.get(pair, 0) + 1
     return frozenset(
-        pair for pair, count in drawn.items() if count >= routes_per_pair
+        pair for pair, count in drawn.items() if count >= paths_per_pair
     )
 
 
 def augment_physical_resilience(
-    base_uses: list[PathUse],
+    base_uses: list[DesignPath],
     backbone_ids: tuple[str, ...],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     constraints: BackboneConstraints = BackboneConstraints(),
-) -> list[PathUse]:
-    """Add detour routes until the backbone's physical spans survive any single city loss.
+) -> list[DesignPath]:
+    """Add detours until the backbone's fiber segments survive any single city loss.
 
-    The base mesh routes every logical link as an independent shortest path, so a node's
-    links share their cheapest egress corridor and one city's loss can sever several. This
-    pass takes the union of physical spans the backbone rides and, while any city is a cut
-    (an articulation point), routes an alternate around it (see :func:`_resilience_detour`),
+    The base mesh draws every logical link on its own shortest path, so a node's links
+    share their shortest egress corridor and one city's loss can sever several. This pass
+    takes the union of fiber segments the backbone rides and, while any city is a cut
+    (an articulation point), draws an alternate around it (see :func:`_resilience_detour`),
     putting that city off the only path. The count of cut cities falls monotonically -- a
     detour merges the two pieces the city separated and adds no new cut, since every city on
     the detour sits on the new cycle -- so it terminates at a biconnected union. It stops
-    early when a cut has no usable detour (a genuine carrier chokepoint or a fully pruned
-    join); the search gate keeps such sets from winning, and validation reports the truth
-    either way.
+    early when a cut has no usable detour (a city that is a single point of failure on the
+    carrier's fiber, or a fully pruned join); the search gate keeps such sets from winning,
+    and validation reports the truth either way.
 
-    ``constraints.limit`` makes a detour past the operator's backup route multiple one of
-    the unusable ones. A city stays a cut rather than being relieved by a route nobody would
-    build, which is the
-    honest report: the fiber here cannot survive that city's loss, and saying so is worth
-    more than a cable on the map that would never be ordered.
+    ``constraints.limit`` makes a detour past the operator's backup path multiple one of
+    the unusable ones. A city stays a cut rather than being relieved by a path nobody would
+    build, which is the honest report: the fiber here cannot survive that city's loss, and
+    saying so is worth more than fiber on the map that would never be ordered.
 
-    The routes one pair is allowed stop the pass drawing it any more than that (see
-    :func:`synthesizer.ceiling.routes_per_peer`), which is one route wherever there are peers
+    The paths one pair is allowed stop the pass drawing it any more than that (see
+    :func:`synthesizer.ceiling.paths_per_peer`), which is one path wherever there are peers
     enough to reach instead. Each round relieves one city and rides the same fiber for the
-    rest of the way, so a corridor with several chokepoints takes one route per chokepoint if
-    nothing holds the pass back -- Ashburn, VA to Salt Lake City, UT crosses eight and took
-    four extra routes and 5,633 miles of haul for them (GitHub issue #58). A pair holding the
-    routes it is allowed is protected by them, and a chokepoint they leave standing is a
-    shortfall to report rather than a reason to buy another circuit.
+    rest of the way, so a corridor with several single points of failure takes one path for
+    each of them if nothing holds the pass back -- Ashburn, VA to Salt Lake City, UT crosses
+    eight and took four extra paths and 5,633 miles of haul for them (GitHub issue #58). A
+    pair holding the paths it is allowed is protected by them, and a single point of failure
+    they leave standing is a shortfall to report rather than a reason to buy another path.
 
     The pass still has somewhere to go when every drawn pair is at its limit: a pair of
-    sites the cut city separates that is not joined at all holds no route yet, so relieving
+    sites the cut city separates that is not joined at all holds no path yet, so relieving
     the city by joining two sites that were not neighbours is the repair left to it.
     """
     removed_pairs = constraints.removed_pairs
-    per_pair = routes_per_peer(
+    per_pair = paths_per_peer(
         constraints.seat_cap, len(backbone_ids), constraints.number_of_diverse_paths
     )
-    ground = _DetourSubstrate(
+    inputs = _DetourSearchInputs(
         set(backbone_ids), removed_pairs, build_adjacency(physical_edges),
         physical_edges, constraints.limit,
     )
     uses = list(base_uses)
-    spans: set[tuple[str, str]] = set()
+    segments: set[tuple[str, str]] = set()
     for use in uses:
-        spans |= path_edge_keys(use.path)
+        segments |= path_edge_keys(use.path)
     while True:
         blocked = removed_pairs | _pairs_at_their_limit(uses, per_pair)
-        detour = _resilience_detour(spans, ground, blocked)
+        detour = _resilience_detour(segments, inputs, blocked)
         if detour is None:
             break
         uses.append(detour)
-        spans |= path_edge_keys(detour.path)
+        segments |= path_edge_keys(detour.path)
     return uses
 
 
-def _route_avoiding(
+def _path_avoiding(
     left: str,
     right: str,
     avoid: set[str],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> tuple[str, ...]:
-    """The shortest ``left``-to-``right`` route clear of ``avoid``, or empty when none is.
+    """The shortest ``left``-to-``right`` path clear of ``avoid``, or empty when none is.
 
-    A city is kept off the route by blocking every span that touches it, the same way
-    :func:`_resilience_detour` puts a cut city off the only path.
+    A city is kept off the path by blocking every fiber segment that touches it, the same
+    way :func:`_resilience_detour` puts a cut city off the only path.
     """
     blocked = frozenset(
         edge_key(city, neighbor)
@@ -604,11 +605,11 @@ def _route_avoiding(
     return reconstruct_path(left, right, predecessors)
 
 
-def _route_miles(
-    route: tuple[str, ...], adjacency: dict[str, list[tuple[str, float]]]
+def _path_miles(
+    path: tuple[str, ...], adjacency: dict[str, list[tuple[str, float]]]
 ) -> float:
-    """The distance a route covers over the carrier graph."""
-    hops = zip(route, route[1:])
+    """The distance a path covers over the carrier graph."""
+    hops = zip(path, path[1:])
     return sum(
         next(weight for neighbor, weight in adjacency[city] if neighbor == nxt)
         for city, nxt in hops
@@ -616,25 +617,25 @@ def _route_miles(
 
 
 def within_limit(
-    route: tuple[str, ...],
+    path: tuple[str, ...],
     left: str,
     right: str,
     miles: float,
-    limit: BackupRouteLimit | None,
+    limit: BackupPathLimit | None,
 ) -> bool:
-    """Whether a routed ``left``-to-``right`` link is inside the operator's backup route
+    """Whether a ``left``-to-``right`` link's path is inside the operator's backup path
     multiple.
 
-    An empty route is never inside it, since there is no route to be inside anything. With
-    no limit every route passes, which is the behaviour of every caller with no tenant in
+    An empty path is never inside it, since there is no path to be inside anything. With
+    no limit every path passes, which is the behaviour of every caller with no tenant in
     hand.
 
-    A pair the substrate cannot join at all has no direct distance to measure against, so
+    A pair the carrier fiber cannot join at all has no direct distance to measure against, so
     nothing is asserted about it: the bound says a protect path may not run far past the
     working path, and where there is no working path the bound has no opinion rather than a
     silent refusal.
     """
-    if not route:
+    if not path:
         return False
     if limit is None:
         return True
@@ -644,32 +645,32 @@ def within_limit(
     return miles <= limit.multiple * direct + _LIMIT_TOLERANCE
 
 
-def _clearest_route(
+def _clearest_path(
     left: str,
     right: str,
     carried: dict[str, set[str]],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: BackupRouteLimit | None = None,
+    limit: BackupPathLimit | None = None,
 ) -> tuple[str, ...]:
-    """The route clearing as many of the endpoints' carried cities as the fiber allows.
+    """The path clearing as many of the endpoints' carried cities as the fiber allows.
 
     Clearing both endpoints' cities is what the link is worth most, so it is tried first.
-    Where the fiber has no such route, clearing one endpoint's cities is still worth
-    having: independence is counted per node, so a route that shares a city with the far
+    Where the fiber has no such path, clearing one endpoint's cities is still worth
+    having: independence is counted per node, so a path that shares a city with the far
     end's other links costs this end nothing, and one of the two nodes keeps a link that
-    fails on its own. The cheaper of the two one-sided routes wins, and an endpoint
+    fails on its own. The shorter of the two one-sided paths wins, and an endpoint
     carrying nothing yet is not tried again under its own name -- its set is the whole
     set, which has just failed.
 
-    Returns empty when the fiber offers no route clear of either end's cities. Falling
+    Returns empty when the fiber offers no path clear of either end's cities. Falling
     back to the shortest path is the caller's business, since it is the caller that knows
-    a link must be routed somehow.
+    a link must be drawn somehow.
 
-    ``limit`` bounds how far a clearing route may run against the direct distance between
-    the two ends, and a route past it is discarded rather than taken. Independence bought
-    that way is not worth having: the route exists to carry the traffic when the other one
+    ``limit`` bounds how far a clearing path may run against the direct distance between
+    the two ends, and a path past it is discarded rather than taken. Independence bought
+    that way is not worth having: the path exists to carry the traffic when the other one
     fails, and one four hundred times as long does not do that. A link whose only clear
-    route is over the bound falls back to its shortest path and reads as the shortfall it
+    path is over the bound falls back to its shortest path and reads as the shortfall it
     is, which validation reports.
     """
     left_cities = carried.get(left, set()) - {left, right}
@@ -678,22 +679,22 @@ def _clearest_route(
     if not both:
         return ()
 
-    def admissible(route: tuple[str, ...]) -> bool:
-        """Whether this clearing route is one the operator's bound allows."""
-        return within_limit(route, left, right, _route_miles(route, adjacency), limit)
+    def admissible(path: tuple[str, ...]) -> bool:
+        """Whether this clearing path is one the operator's bound allows."""
+        return within_limit(path, left, right, _path_miles(path, adjacency), limit)
 
-    route = _route_avoiding(left, right, both, adjacency)
-    if admissible(route):
-        return route
+    path = _path_avoiding(left, right, both, adjacency)
+    if admissible(path):
+        return path
     one_sided = [
-        _route_avoiding(left, right, cities, adjacency)
+        _path_avoiding(left, right, cities, adjacency)
         for cities in (left_cities, right_cities)
         if cities and cities != both
     ]
-    clear = [route for route in one_sided if admissible(route)]
+    clear = [path for path in one_sided if admissible(path)]
     if not clear:
         return ()
-    return min(clear, key=lambda route: (_route_miles(route, adjacency), route))
+    return min(clear, key=lambda path: (_path_miles(path, adjacency), path))
 
 
 def _proven_paths_for(
@@ -706,46 +707,46 @@ def _proven_paths_for(
     """The proved paths between ``left`` and ``right``, oriented from ``left``, or empty.
 
     Each endpoint may have proved its own way to the other, and the two need not agree,
-    because each proof is the cheapest set of routes out of *its own* site and the two sites
+    because each proof is the shortest set of paths out of *its own* site and the two sites
     have different other peers to keep clear of.
 
     A path and its reverse are the same fiber, so they collapse to one.
 
-    ``count`` is how many routes this pair is allowed and no more than that many come back,
+    ``count`` is how many paths this pair is allowed and no more than that many come back,
     fewest miles first. It is one wherever there are peers enough for a site to answer its
     number by reaching different ones, which is every tenant but one whose config caps the
-    backbone at two sites (see :func:`synthesizer.ceiling.routes_per_peer`). A pair joined
-    twice is a second circuit somebody orders every month for two sites that are already
-    joined, and the money buys nothing the far end of either route can use: what makes a
+    backbone at two sites (see :func:`synthesizer.ceiling.paths_per_peer`). A pair joined
+    twice is a second path somebody orders every month for two sites that are already
+    joined, and the money buys nothing the far end of either path can use: what makes a
     site's ways out independent is that they end at different peers.
 
-    So where the two ends disagree the shorter route is drawn and the longer is not. That
-    can leave the site whose route was dropped riding one city for two of its links, and
-    :func:`restore_diverse_paths` is what answers it: the route goes back only where the
+    So where the two ends disagree the shorter path is drawn and the longer is not. That
+    can leave the site whose path was dropped riding one city for two of its links, and
+    :func:`restore_diverse_paths` is what answers it: the path goes back only where the
     fiber offers the site nothing else that fails on its own (GitHub issue #59).
     """
     found: list[tuple[str, ...]] = []
     for near, far in ((left, right), (right, left)):
-        for route in proven.get(near, ()):
-            if route[-1] != far:
+        for path in proven.get(near, ()):
+            if path[-1] != far:
                 continue
-            forward = route if near == left else tuple(reversed(route))
+            forward = path if near == left else tuple(reversed(path))
             if forward not in found:
                 found.append(forward)
-    return sorted(found, key=lambda route: (_route_miles(route, adjacency), route))[:count]
+    return sorted(found, key=lambda path: (_path_miles(path, adjacency), path))[:count]
 
 
-def diverse_mesh_routes(
+def diverse_mesh_paths(
     pairs: list[tuple[str, str]],
     backbone_ids: tuple[str, ...],
     all_predecessors: dict[str, dict[str, str]],
     adjacency: dict[str, list[tuple[str, float]]],
     constraints: BackboneConstraints = BackboneConstraints(),
 ) -> list[tuple[str, str, tuple[str, ...]]]:
-    """Route every mesh link, keeping one node's links clear of each other's cities.
+    """Draw every mesh link, keeping one node's links clear of each other's cities.
 
-    Where ``constraints.routes`` carries a node's independent routes (see
-    :func:`synthesizer.ceiling.independent_routes`), a link that pair is wired along the
+    Where ``constraints.paths`` carries a node's independent paths (see
+    :func:`synthesizer.ceiling.independent_paths`), a link that pair is wired along the
     path the proof found for it. That is the whole of what makes a node reach the degree its
     fiber allows: those paths are pairwise clear of one another by construction, so a node
     whose links are laid along them holds as many independently failing links as the proof
@@ -753,72 +754,72 @@ def diverse_mesh_routes(
     number of links and the paths they take come from the same calculation, so neither can
     be right while the other is wrong.
 
-    Every other link is routed by the heuristic below, which is what the fiber leaves to
+    Every other link is drawn by the heuristic below, which is what the fiber leaves to
     judgement: an operator's pin, a join added to hold the backbone together, a slot filled
-    to the tenant's floor. Routing each of those along its own shortest path independently
-    would let a node's links share their cheapest egress corridor, so one city's loss takes
-    several at once. Each is therefore routed clear of the cities its endpoints' other links
+    to the tenant's floor. Drawing each of those along its own shortest path independently
+    would let a node's links share their shortest egress corridor, so one city's loss takes
+    several at once. Each is therefore drawn clear of the cities its endpoints' other links
     already ride, proved ones included, accepting a longer path to buy the independence.
 
     Clearing both ends at once is not always possible, and where it is not the link still
-    clears one of them (see :func:`_clearest_route`): independence is counted per node, so
-    a route that gives up on the far end's cities still buys this end a link that fails on
+    clears one of them (see :func:`_clearest_path`): independence is counted per node, so
+    a path that gives up on the far end's cities still buys this end a link that fails on
     its own. Only when neither end can be cleared is the shortest path taken.
 
-    The endpoints themselves are never avoided, since a link cannot route around its own
-    ends. A link with no clear route falls back to its shortest path: the fiber genuinely
+    The endpoints themselves are never avoided, since a link cannot run around its own
+    ends. A link with no clear path falls back to its shortest path: the fiber genuinely
     offers no alternative there, and validation is what reports the shortfall.
 
-    ``constraints.limit`` bounds the heuristic's clearing routes (see
-    :func:`_clearest_route`), and a link whose only clear route runs past it falls back the
-    same way one with no clear route at all does. The proved paths need no such check here:
-    the proof is already bounded where it is computed, so a route reaching this function has
+    ``constraints.limit`` bounds the heuristic's clearing paths (see
+    :func:`_clearest_path`), and a link whose only clear path runs past it falls back the
+    same way one with no clear path at all does. The proved paths need no such check here:
+    the proof is already bounded where it is computed, so a path reaching this function has
     passed the same test over the same fiber.
 
-    How many routes one pair is drawn with is decided here (see :func:`_proven_paths_for`),
+    How many paths one pair is drawn with is decided here (see :func:`_proven_paths_for`),
     and it is one unless there are too few peers for a site to answer its number over
     distinct ones -- which ``backbone_ids`` and ``constraints.seat_cap`` between them say
-    (see :func:`synthesizer.ceiling.routes_per_peer`). The proof counts what the fiber can
-    carry, which between one pair of sites can be several routes, and this is where how many
+    (see :func:`synthesizer.ceiling.paths_per_peer`). The proof counts what the fiber can
+    carry, which between one pair of sites can be several paths, and this is where how many
     of them are built is decided.
     """
     carried: dict[str, set[str]] = {}
-    routes: list[tuple[str, str, tuple[str, ...]]] = []
+    drawn: list[tuple[str, str, tuple[str, ...]]] = []
 
     def lay(left: str, right: str, path: tuple[str, ...]) -> None:
-        """Record one routed link and charge its cities to both of its endpoints."""
-        routes.append((left, right, path))
+        """Record one drawn link and charge its cities to both of its endpoints."""
+        drawn.append((left, right, path))
         for node in (left, right):
             carried.setdefault(node, set()).update(set(path) - {node})
 
-    per_pair = routes_per_peer(
+    per_pair = paths_per_peer(
         constraints.seat_cap, len(backbone_ids), constraints.number_of_diverse_paths
     )
     unproved: list[tuple[str, str]] = []
     for left, right in pairs:
-        paths = _proven_paths_for(left, right, constraints.routes, adjacency, per_pair)
+        paths = _proven_paths_for(left, right, constraints.paths, adjacency, per_pair)
         if not paths:
             unproved.append((left, right))
         for path in paths:
             lay(left, right, path)
     for left, right in unproved:
-        path = _clearest_route(left, right, carried, adjacency, constraints.limit)
+        path = _clearest_path(left, right, carried, adjacency, constraints.limit)
         if not path:
             path = reconstruct_path(left, right, all_predecessors[left])
         lay(left, right, path)
-    return routes
+    return drawn
 
 
 def restore_diverse_paths(
-    uses: list[PathUse],
+    uses: list[DesignPath],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     constraints: BackboneConstraints = BackboneConstraints(),
-) -> list[PathUse]:
+) -> list[DesignPath]:
     """Join a pair twice where that is the last thing buying a site the paths it asked for.
 
     A pair of sites is joined once, and where its two ends proved different fiber the
-    shorter route is the one built (see :func:`_proven_paths_for`). The site whose route was
-    dropped is given the other end's instead, and that route can ride a city one of its
+    shorter path is the one built (see :func:`_proven_paths_for`). The site whose path was
+    dropped is given the other end's instead, and that path can ride a city one of its
     other links already rides -- so a site that proved two ways out no one city's loss takes
     together can end up holding one.
 
@@ -826,42 +827,42 @@ def restore_diverse_paths(
     it does not reach yet, and selection is what gives it one. This pass is for the fiber
     that offers none: three sites reaching one another over a single transit city and one
     crossing (``fixtures.CROSSING_EDGES``) leaves every site already joined to every other,
-    so the only route left that fails on its own runs to a peer this site is joined to
-    already. A second circuit between that pair is then exactly what the tenant's number of
+    so the only path left that fails on its own runs to a peer this site is joined to
+    already. A second path between that pair is then exactly what the tenant's number of
     diverse paths is buying, and refusing it would refuse the design.
 
-    So a dropped route is put back, cheapest first, while the site holds fewer independently
+    So a dropped path is put back, shortest first, while the site holds fewer independently
     failing links than it asked for and while putting one back is what raises the count. A
     site already holding its number gets nothing, which is what keeps this from undoing the
-    trim: over the six published networks not one site needs a route back, and the
+    trim: over the six published networks not one site needs a path back, and the
     twenty-one pairs joined twice for no gain stay joined once (GitHub issue #59).
 
     What a site asked for is bounded by what its own fiber proved, so a site whose ceiling
-    is one is not chased past it -- that shortfall is the ground's, and
+    is one is not chased past it -- that shortfall is the fiber's, and
     :func:`synthesizer.validation.backbone_mesh_independence_deficient` is where it belongs.
     """
     restored = list(uses)
-    for site in sorted(constraints.routes):
-        proved = constraints.routes[site]
+    for site in sorted(constraints.paths):
+        proved = constraints.paths[site]
         target = min(constraints.number_of_diverse_paths, len(proved))
         joined = {edge_key(use.source, use.target) for use in restored}
         laid = {use.path for use in restored} | {use.path[::-1] for use in restored}
         dropped = sorted(
             (
-                route for route in proved
-                if route not in laid and edge_key(site, route[-1]) in joined
+                path for path in proved
+                if path not in laid and edge_key(site, path[-1]) in joined
             ),
-            key=lambda route: (path_geometry_miles(route, physical_edges), route),
+            key=lambda path: (path_geometry_miles(path, physical_edges), path),
         )
-        for route in dropped:
-            held = routed_independent_degree(restored, site)
+        for path in dropped:
+            held = diverse_path_count(restored, site)
             if held >= target:
                 break
-            candidate = PathUse(
-                "backbone_mesh", site, route[-1], route,
-                path_geometry_miles(route, physical_edges), LINK_FOR_SITE_DIVERSITY,
+            candidate = DesignPath(
+                "backbone_mesh", site, path[-1], path,
+                path_geometry_miles(path, physical_edges), LINK_FOR_SITE_DIVERSITY,
             )
-            if routed_independent_degree([*restored, candidate], site) > held:
+            if diverse_path_count([*restored, candidate], site) > held:
                 restored.append(candidate)
     return restored
 
@@ -872,61 +873,61 @@ def backbone_mesh_paths(
     all_predecessors: dict[str, dict[str, str]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     constraints: BackboneConstraints = BackboneConstraints(),
-) -> list[PathUse]:
-    """Route each backbone-to-backbone mesh link, diversely where the fiber allows.
+) -> list[DesignPath]:
+    """Draw each backbone-to-backbone mesh link, diversely where the fiber allows.
 
     The mesh wires each backbone node to its nearest nodes, plus
     ``constraints.forced_pairs`` and minus ``constraints.removed_pairs`` (see
-    :func:`select_backbone_mesh_pairs`). Routing is not per-link shortest path: a node's
-    links are routed clear of one another's cities so the degree counts links that fail
-    independently (see :func:`diverse_mesh_routes`).
+    :func:`select_backbone_mesh_pairs`). No link is simply put on its own shortest path: a
+    node's links are drawn clear of one another's cities so the degree counts links that
+    fail independently (see :func:`diverse_mesh_paths`).
 
     Which peers each node reaches for is proved here rather than asked of the caller: the
-    routes come off the same substrate ``physical_edges`` describes (see
-    :func:`synthesizer.ceiling.independent_routes`), so the peers a node is wired to and
-    the paths its links are laid along cannot disagree. Any routes already on
+    paths come off the same carrier fiber ``physical_edges`` describes (see
+    :func:`synthesizer.ceiling.independent_paths`), so the peers a node is wired to and
+    the paths its links are laid along cannot disagree. Any paths already on
     ``constraints`` are replaced for that reason.
 
     The proof says which peers a node *could* hold independently, and the tenant's number
     says how many of them it takes. The two are deliberately separate: a proof that finds
     ten ways out of a city is a fact about the fiber, not an instruction to buy ten
-    circuits.
+    paths.
 
     Three passes then follow the routing, in the order the money should be spent: a pair is
-    joined once, a site short of ways out is given a second route to a peer it is joined to
+    joined once, a site short of ways out is given a second path to a peer it is joined to
     only where the fiber offers it nothing better (see :func:`restore_diverse_paths`), and a
     city carrying the whole network is relieved by joining two sites that were not joined at
     all (see :func:`augment_physical_resilience`).
 
-    ``constraints.limit`` bounds how far the proof may route (see
-    :func:`synthesizer.ceiling.independent_routes`). The proof is the reason it must be
-    applied here rather than to the drawn links afterwards: these routes are laid verbatim,
-    so a route the proof finds is cable the design orders. The proof prices its own routes
-    by mileage and still needs the bound, because it maximises how many routes it finds
-    before it minimises what they cost: where an ocean crossing is the only way to one more
+    ``constraints.limit`` bounds how far the proof's paths may run (see
+    :func:`synthesizer.ceiling.independent_paths`). The proof is the reason it must be
+    applied here rather than to the drawn links afterwards: these paths are laid verbatim,
+    so a path the proof finds is fiber the design orders. The proof ranks its own paths
+    by mileage and still needs the bound, because it maximises how many paths it finds
+    before it minimises their mileage: where an ocean crossing is the only way to one more
     peer it is taken to protect a link across a state line, and the bound is what refuses
     it.
     """
     adjacency = build_adjacency(physical_edges)
-    ground = RouteGround(
+    proof_inputs = PathProofInputs(
         backbone_ids, adjacency, constraints.limit,
         constraints.number_of_diverse_paths, constraints.seat_cap,
     )
     proven = {
-        node: independent_routes(node, ground)
+        node: independent_paths(node, proof_inputs)
         for node in backbone_ids
         if node in adjacency
     }
-    constraints = replace(constraints, routes=proven)
+    constraints = replace(constraints, paths=proven)
     reasons = select_backbone_mesh_pairs(backbone_ids, all_distances, constraints)
     uses = [
-        PathUse(
+        DesignPath(
             "backbone_mesh", left, right, path,
             path_geometry_miles(path, physical_edges),
             reasons[edge_key(left, right)].reason,
             reasons[edge_key(left, right)].requested_by,
         )
-        for left, right, path in diverse_mesh_routes(
+        for left, right, path in diverse_mesh_paths(
             sorted(reasons), backbone_ids, all_predecessors, adjacency, constraints
         )
     ]

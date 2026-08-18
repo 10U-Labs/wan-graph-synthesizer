@@ -11,14 +11,14 @@ from synthesizer.config import AppConfig, app_config_from_parts, config_from_dat
 from synthesizer.model import NamedLink, OperatorLinks
 
 
-# The two redundancy degrees, the coverage target and the backup route multiple are
+# The two redundancy degrees, the coverage target and the backup path multiple are
 # required (no default); inject them so each test can focus on the field under test
 # without restating them.
 _REQUIRED_TUNING = {
     "backbone_number_of_diverse_paths": 3,
     "access_backbone_links": 2,
     "backbone_coverage_target_miles": 600,
-    "backbone_max_backup_route_multiple": 3,
+    "backbone_max_backup_path_multiple": 3,
 }
 
 
@@ -65,12 +65,12 @@ def test_default_max_backbone_count_is_none() -> None:
 def test_default_vertex_files() -> None:
     """The default config maps each tenant to its per-tenant vertices CSV."""
     lumen = ("Lumen", Path("data/vertices/carriers/lumen.csv"))
-    assert lumen in default_config().paths.vertex_files
+    assert lumen in default_config().input_files.vertex_files
 
 
 def test_default_regional_edges() -> None:
     """The default config lists both regional carrier edge files."""
-    assert default_config().paths.regional_edge_paths == (
+    assert default_config().input_files.regional_edge_paths == (
         Path("data/edges/dcn.csv"),
         Path("data/edges/vision_net.csv"),
     )
@@ -78,12 +78,12 @@ def test_default_regional_edges() -> None:
 
 def test_default_off_net_path_is_none() -> None:
     """The default config configures no off-net site file."""
-    assert default_config().paths.off_net_path is None
+    assert default_config().input_files.off_net_path is None
 
 
 def test_reads_off_net_path() -> None:
-    """An inputs.off_net value is read into the design paths."""
-    assert _config({"inputs": {"off_net": "off.csv"}}).paths.off_net_path == Path("off.csv")
+    """An inputs.off_net value is read into the input files."""
+    assert _config({"inputs": {"off_net": "off.csv"}}).input_files.off_net_path == Path("off.csv")
 
 
 def test_default_label_is_empty() -> None:
@@ -410,7 +410,7 @@ def test_a_dial_left_in_the_tuning_section_is_not_read() -> None:
 def test_reads_vertices_mapping() -> None:
     """A vertices tenant->path mapping is read into sorted (tenant, path) pairs."""
     vertices = {"Lumen": "lumen.csv", "F-35": "f_35.csv"}
-    assert _config({"inputs": {"vertices": vertices}}).paths.vertex_files == (
+    assert _config({"inputs": {"vertices": vertices}}).input_files.vertex_files == (
         ("F-35", Path("f_35.csv")),
         ("Lumen", Path("lumen.csv")),
     )
@@ -419,17 +419,17 @@ def test_reads_vertices_mapping() -> None:
 def test_reads_vertices_list_of_paths() -> None:
     """A tenant mapped to a list expands into one (tenant, path) pair per entry."""
     vertices = {"Providers": ["region_a.csv", "region_b.csv"]}
-    assert _config({"inputs": {"vertices": vertices}}).paths.vertex_files == (
+    assert _config({"inputs": {"vertices": vertices}}).input_files.vertex_files == (
         ("Providers", Path("region_a.csv")),
         ("Providers", Path("region_b.csv")),
     )
 
 
 def test_reads_carrier_edges_path() -> None:
-    """An inputs.carrier_edges value is read into the design paths."""
+    """An inputs.carrier_edges value is read into the input files."""
     assert _config(
         {"inputs": {"carrier_edges": "fiber.csv"}}
-    ).paths.edge_path == Path("fiber.csv")
+    ).input_files.edge_path == Path("fiber.csv")
 
 
 def test_rejects_non_string_path_in_list() -> None:
@@ -494,15 +494,15 @@ def test_non_number_coverage_target_is_rejected() -> None:
         _config({"tuning": {"backbone_coverage_target_miles": "far"}})
 
 
-def test_reads_tuning_max_backup_route_multiple() -> None:
-    """A tuning backbone_max_backup_route_multiple value is read into the design params."""
+def test_reads_tuning_max_backup_path_multiple() -> None:
+    """A tuning backbone_max_backup_path_multiple value is read into the design params."""
     assert _config(
-        {"tuning": {"backbone_max_backup_route_multiple": 4}}
-    ).params.tuning.backbone_max_backup_route_multiple == 4.0
+        {"tuning": {"backbone_max_backup_path_multiple": 4}}
+    ).params.tuning.backbone_max_backup_path_multiple == 4.0
 
 
-def test_missing_max_backup_route_multiple_is_rejected() -> None:
-    """A config whose tuning omits the required backup route multiple is rejected."""
+def test_missing_max_backup_path_multiple_is_rejected() -> None:
+    """A config whose tuning omits the required backup path multiple is rejected."""
     with pytest.raises(ValueError):
         config_from_data(
             {
@@ -516,34 +516,34 @@ def test_missing_max_backup_route_multiple_is_rejected() -> None:
         )
 
 
-def test_non_number_max_backup_route_multiple_is_rejected() -> None:
-    """A backup route multiple that is not a number is rejected."""
+def test_non_number_max_backup_path_multiple_is_rejected() -> None:
+    """A backup path multiple that is not a number is rejected."""
     with pytest.raises(ValueError):
-        _config({"tuning": {"backbone_max_backup_route_multiple": "three times"}})
+        _config({"tuning": {"backbone_max_backup_path_multiple": "three times"}})
 
 
-def test_boolean_max_backup_route_multiple_is_rejected() -> None:
-    """A backup route multiple given as a bool (an int subclass) is rejected."""
+def test_boolean_max_backup_path_multiple_is_rejected() -> None:
+    """A backup path multiple given as a bool (an int subclass) is rejected."""
     with pytest.raises(ValueError):
-        _config({"tuning": {"backbone_max_backup_route_multiple": True}})
+        _config({"tuning": {"backbone_max_backup_path_multiple": True}})
 
 
-def test_max_backup_route_multiple_of_one_is_rejected() -> None:
-    """A bound of exactly one is rejected: it admits only the shortest route.
+def test_max_backup_path_multiple_of_one_is_rejected() -> None:
+    """A bound of exactly one is rejected: it admits only the shortest path.
 
     A protect path takes a detour by definition, so a bound that leaves no room for one
     would refuse every design rather than bounding it, and an operator who wrote it has
     almost certainly not meant to forbid path diversity outright.
     """
     with pytest.raises(ValueError):
-        _config({"tuning": {"backbone_max_backup_route_multiple": 1}})
+        _config({"tuning": {"backbone_max_backup_path_multiple": 1}})
 
 
-def test_fractional_max_backup_route_multiple_is_accepted() -> None:
+def test_fractional_max_backup_path_multiple_is_accepted() -> None:
     """A fractional bound is kept: a ratio has resolution a whole-mile target does not."""
     assert _config(
-        {"tuning": {"backbone_max_backup_route_multiple": 2.5}}
-    ).params.tuning.backbone_max_backup_route_multiple == 2.5
+        {"tuning": {"backbone_max_backup_path_multiple": 2.5}}
+    ).params.tuning.backbone_max_backup_path_multiple == 2.5
 
 
 def test_fractional_coverage_target_is_rejected() -> None:
@@ -582,7 +582,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "access-homing-degree": {"degree": 2},
         "backbone-placement": {"restrict": True},
         "convergence-promotion": {"promote": True},
-        "knobs": {"backbone_coverage_target_miles": 600, "backbone_max_backup_route_multiple": 3},
+        "knobs": {"backbone_coverage_target_miles": 600, "backbone_max_backup_path_multiple": 3},
         "label": {"label": "Minuteman"},
     }
     parts.update(overrides)
@@ -610,7 +610,7 @@ def test_app_config_from_parts_ignores_a_dial_left_in_knobs() -> None:
     """A dial an operator left behind under knobs no longer steers the search."""
     parts = _parts(knobs={
         "backbone_coverage_target_miles": 600,
-        "backbone_max_backup_route_multiple": 3,
+        "backbone_max_backup_path_multiple": 3,
         "compass_octants": 4,
     })
     assert app_config_from_parts(parts).params.tuning.compass_sector_count == 8
@@ -685,13 +685,13 @@ def test_app_config_from_parts_refuses_the_old_mesh_degree_resource() -> None:
 
 def test_app_config_from_parts_requires_coverage_target() -> None:
     """A knobs document omitting the coverage target is rejected by the assembler."""
-    parts = _parts(knobs={"backbone_max_backup_route_multiple": 3})
+    parts = _parts(knobs={"backbone_max_backup_path_multiple": 3})
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 
 
-def test_app_config_from_parts_requires_max_backup_route_multiple() -> None:
-    """A knobs document omitting the backup route multiple is rejected by the assembler."""
+def test_app_config_from_parts_requires_max_backup_path_multiple() -> None:
+    """A knobs document omitting the backup path multiple is rejected by the assembler."""
     parts = _parts(knobs={"backbone_coverage_target_miles": 600})
     with pytest.raises(ValueError):
         app_config_from_parts(parts)

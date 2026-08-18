@@ -1,15 +1,15 @@
 """Integration test: which sites a whole synthesis settles on when the measures disagree.
 
-The unit tier can show that the score ranks a well-connected site above a spannier one.
+The unit tier can show that the score ranks a well-connected site above one with more fiber.
 It cannot show that the ranking survives the pipeline -- feasibility, the city-survival
 gate, the last-mile tie-break and the coverage growth all sit between a score and a
 backbone, and any of them could put the site back. So the same graph is run through the
 whole design here and the backbone is asserted rather than the score.
 
-The graph is the one fixture where fiber span count and path diversity rank sites
-differently (see ``fixtures.FUNNEL_EDGES``). Two sites have five spans each that converge
+The graph is the one fixture where fiber segment count and path diversity rank sites
+differently (see ``fixtures.FUNNEL_EDGES``). Two sites have five segments each that converge
 on the same two upstream cities, so each carries two paths that fail independently; one
-site has three spans leaving to three separate cities and carries three. Ranked by spans
+site has three segments leaving to three separate cities and carries three. Ranked by segments
 the two funnels are the strongest pair and the spread site is left out; ranked by
 diversity the spread site is seated. Two seats are all the design gets, so the two
 rankings cannot both be satisfied and the backbone says which one ran.
@@ -42,9 +42,9 @@ def test_the_design_seats_two_backbone_sites() -> None:
 
 
 def test_the_backbone_holds_the_site_whose_fiber_carries_the_most_paths() -> None:
-    """The spread site is seated, though two other candidates have more fiber spans.
+    """The spread site is seated, though two other candidates have more fiber segments.
 
-    Under the span-count term the two funnels were the strongest pair and this site placed
+    Under the segment-count term the two funnels were the strongest pair and this site placed
     third, so a design ranking sites by how much fiber touches them leaves it out.
     """
     assert "spread" in ARTIFACTS.design.backbone_ids

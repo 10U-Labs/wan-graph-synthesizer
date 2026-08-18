@@ -48,7 +48,7 @@ def edges(payload: dict[str, Any]) -> list[dict[str, Any]]:
 def backbone_links(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """The logical backbone-to-backbone links of a computed tenant WAN.
 
-    One entry per ``backbone_mesh`` path use: the two hubs the link joins, the routed
+    One entry per ``backbone_mesh`` path use: the two hubs the link joins, the
     distance, and the physical path it takes. These are the mesh links themselves --
     including any the operator forced -- which no other collection exposes, because
     ``edges`` carries only access homings and carrier fiber.

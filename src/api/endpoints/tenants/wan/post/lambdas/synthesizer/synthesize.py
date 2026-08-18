@@ -11,7 +11,7 @@ nodes appear only where they bring demand closer, never as a mileage cost minimi
 over candidate sets.
 
 A final convergence pass then promotes natural hubs: any data-center city where at least
-``CONVERGENCE_BACKBONE_DEGREE`` of the design's own routed fiber lines meet is forced
+``CONVERGENCE_BACKBONE_DEGREE`` of the design's own drawn fiber lines meet is forced
 into the backbone and the design is recomputed, repeating until a redraw finds no new
 hub. The count is per-design (this design's used physical edges), not the shared carrier
 substrate's degree, so a city that hubs one tenant need not hub another.
@@ -24,7 +24,7 @@ operates a cage there). The operator's forced backbone pins are gated the same w
 Every demand vertex (a unified tenant site or provider region) homes to its
 ``access_backbone_links`` nearest selected backbone nodes. There is no last-mile fiber
 data, so a home is the logical link from a demand vertex to a backbone node, not a
-routed path -- the only requirement is that enough backbone nodes exist to home to.
+path over fiber -- the only requirement is that enough backbone nodes exist to home to.
 On top of the algorithm, the operator may pin roles by PoP name (``RoleOverrides``,
 resolved by ``apply_role_overrides``): force a PoP onto the backbone, or exclude it
 from it.
@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 # lines.
 _SEARCH_LOG_INTERVAL = 50_000
 
-# A carrier PoP where at least this many of the design's own routed fiber lines converge
+# A carrier PoP where at least this many of the design's own drawn fiber lines converge
 # is a natural hub; if it also sits at a data-center city it is promoted into the backbone
 # and the design is recomputed (GitHub issue #4). The count is per-design (the design's
 # used physical edges), never the shared carrier substrate's degree.
@@ -84,7 +84,7 @@ def compute_eligible_backbone_ids(
 ) -> set[str]:
     """Carrier PoPs that may serve as backbone nodes.
 
-    A PoP needs at least two physical links to ever route redundantly, so degree-one
+    A PoP needs at least two physical links to ever path redundantly, so degree-one
     PoPs (spurs) are excluded regardless of policy. It must also sit at a data-center
     city -- a colocation provider operates a cage there -- because the backbone is built
     from carrier PoPs that can be lit at a provider facility; a PoP off every data-center
@@ -108,7 +108,7 @@ def convergence_promotion_ids(
 ) -> set[str]:
     """Non-backbone carrier PoPs at a data-center city where this design's fiber converges.
 
-    A PoP qualifies when at least ``min_degree`` of *this design's* routed physical edges
+    A PoP qualifies when at least ``min_degree`` of *this design's* drawn physical edges
     meet at it. The count comes from ``design.physical_edge_keys`` -- the fiber actually
     drawn for this design -- so the measure is per-design, never the shared substrate's
     degree. A non-backbone carrier PoP only ever carries those edges as a transit node
@@ -203,10 +203,10 @@ def best_design_at_size(
     Any operator-forced backbone nodes are fixed into every candidate set; the rest
     are chosen by strength (the spec forbids mileage as a design cost), with total
     last-mile only breaking ties among equally strong sets. Backbone sets are tried
-    strongest-first and scored cheaply (feasibility plus demand homing, no routed
-    paths). Because strength is non-increasing down that order, the moment a feasible
-    set is in hand the search stops as soon as a candidate is strictly weaker. Routed
-    paths are reconstructed only for the winning set.
+    strongest-first and scored cheaply (feasibility plus demand homing, no paths
+    drawn). Because strength is non-increasing down that order, the moment a feasible
+    set is in hand the search stops as soon as a candidate is strictly weaker. The paths
+    are drawn only for the winning set.
     """
     combos = sorted(
         backbone_combinations(plan, size),
@@ -312,8 +312,12 @@ def search_best_design(
 
 
 @dataclass(frozen=True)
-class _GraphContext:
-    """Vertex partition and precomputed shortest-path context shared across backbone sets."""
+class SearchGraph:
+    """The graph every candidate backbone set is scored against.
+
+    The vertices split into carrier PoPs and access sites, the fiber between the PoPs, and
+    the shortest paths and biconnected blocks computed over it once for the whole run.
+    """
 
     carrier_pops: list[Vertex]
     all_access: list[Vertex]
@@ -323,17 +327,17 @@ class _GraphContext:
     carrier_blocks: dict[str, frozenset[int]]
 
 
-def graph_context(
+def build_search_graph(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-) -> _GraphContext:
-    """Split vertices into PoPs/access and precompute the shared graph context."""
+) -> SearchGraph:
+    """Split the vertices into PoPs and access sites and precompute the shared graph."""
     carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
     all_access = [vertex for vertex in vertices if not is_carrier_pop(vertex)]
     adjacency = build_adjacency(physical_edges)
     validate_pop_graph(carrier_pops, physical_edges, adjacency)
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
-    return _GraphContext(
+    return SearchGraph(
         carrier_pops, all_access, adjacency, all_distances, all_predecessors,
         biconnected_block_membership(adjacency),
     )
@@ -408,9 +412,9 @@ def synthesize_two_tier_design(
     ):
         raise ValueError("more backbone nodes are forced than max_backbone_count allows")
 
-    context = graph_context(vertices, physical_edges)
+    graph = build_search_graph(vertices, physical_edges)
     eligible_ids = compute_eligible_backbone_ids(
-        context.carrier_pops, context.adjacency, params.datacenter_cities
+        graph.carrier_pops, graph.adjacency, params.datacenter_cities
     )
     eligible_ids = eligible_ids | overrides.forced_backbone_ids
     backbone_eligible_ids = eligible_ids - overrides.prohibited_backbone_ids
@@ -421,14 +425,14 @@ def synthesize_two_tier_design(
         )
 
     inputs = DesignInputs(
-        access_vertices=context.all_access,
-        carrier_pops=context.carrier_pops,
+        access_vertices=graph.all_access,
+        carrier_pops=graph.carrier_pops,
         physical_edges=physical_edges,
         eligible_backbone_ids=backbone_eligible_ids,
-        adjacency=context.adjacency,
-        all_distances=context.all_distances,
-        all_predecessors=context.all_predecessors,
-        carrier_blocks=context.carrier_blocks,
+        adjacency=graph.adjacency,
+        all_distances=graph.all_distances,
+        all_predecessors=graph.all_predecessors,
+        carrier_blocks=graph.carrier_blocks,
     )
     forced_base = overrides.forced_backbone_ids & backbone_eligible_ids
     promoted: frozenset[str] = frozenset()

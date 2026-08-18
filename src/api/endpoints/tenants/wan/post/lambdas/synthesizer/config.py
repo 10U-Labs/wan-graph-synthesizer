@@ -14,12 +14,12 @@ from pathlib import Path
 from typing import Any
 
 from synthesizer.model import (
-    DesignPaths,
     DesignParams,
-    SearchMemoryBudget,
+    InputFiles,
     NamedLink,
     OperatorLinks,
     RoleExclusions,
+    SearchMemoryBudget,
     Tuning,
 )
 
@@ -45,7 +45,7 @@ class AppConfig:
     since resolution needs the graph the overrides layer holds and this one does not.
     """
 
-    paths: DesignPaths
+    input_files: InputFiles
     params: DesignParams
     restrict_backbone_to_datacenters: bool  # required; the handler maps it to a gate or None
     label: str = ""
@@ -106,7 +106,7 @@ def _required_int(data: dict[str, Any], key: str) -> int:
 def _required_ratio(data: dict[str, Any], key: str) -> float:
     """Return a required ratio config value, rejecting an absent, non-numeric or flat one.
 
-    ``backbone_max_backup_route_multiple`` has no default, on the same terms as the two
+    ``backbone_max_backup_path_multiple`` has no default, on the same terms as the two
     redundancy degrees and the coverage target: how much detour a protect path may take is
     an engineering decision about the network being bought, and a tenant that has not made
     it must not have one made on its behalf.
@@ -115,7 +115,7 @@ def _required_ratio(data: dict[str, Any], key: str) -> float:
     coverage target -- the number multiplies a distance instead of standing in for one, and
     2.5 states a real bound rather than a precision the design does not have.
 
-    At or below one the bound admits nothing but the shortest route. That is not a tight
+    At or below one the bound admits nothing but the shortest path. That is not a tight
     bound but a contradiction: a protect path is a detour by definition, so every design
     would be refused rather than bounded, and an operator writing it has not meant to
     forbid path diversity outright.
@@ -185,11 +185,11 @@ def _vertex_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
     return tuple(sorted(pairs))
 
 
-def _paths(inputs: dict[str, Any]) -> DesignPaths:
-    """Resolve the file-path configuration into a :class:`DesignPaths`."""
+def _input_files(inputs: dict[str, Any]) -> InputFiles:
+    """Resolve the input-file configuration into an :class:`InputFiles`."""
     regional_edges = _str_list(inputs, "regional_edges", DEFAULT_REGIONAL_EDGES)
     off_net = inputs.get("off_net")
-    return DesignPaths(
+    return InputFiles(
         vertex_files=_vertex_files(inputs),
         edge_path=Path(str(inputs.get("carrier_edges", DEFAULT_CARRIER_EDGES))),
         regional_edge_paths=tuple(Path(item) for item in regional_edges),
@@ -255,7 +255,7 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
     """Resolve the tuning and settings configuration into a :class:`Tuning`.
 
     The operator's requirements -- the two degrees, the coverage target and the backup
-    route multiple -- come from ``tuning``, which the assembler builds from the ``knobs``
+    path multiple -- come from ``tuning``, which the assembler builds from the ``knobs``
     resource and the two degree resources. The implementation dials come from
     ``settings``, and only from there: a value left behind under ``knobs`` is not read,
     so it falls back to the dataclass default rather than quietly continuing to steer
@@ -272,8 +272,8 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
             tuning, "backbone_coverage_target_miles"
         ),
         access_backbone_links=_required_int(tuning, "access_backbone_links"),
-        backbone_max_backup_route_multiple=_required_ratio(
-            tuning, "backbone_max_backup_route_multiple"
+        backbone_max_backup_path_multiple=_required_ratio(
+            tuning, "backbone_max_backup_path_multiple"
         ),
         search_memory_budget=SearchMemoryBudget(
             memory_share=_memory_share(settings, base.search_memory_budget.memory_share),
@@ -313,7 +313,7 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
     """
     design = _mapping(data, "design")
     return AppConfig(
-        paths=_paths(_mapping(data, "inputs")),
+        input_files=_input_files(_mapping(data, "inputs")),
         params=_params(design, _mapping(data, "tuning"), _mapping(data, "settings")),
         restrict_backbone_to_datacenters=_required_bool(
             design, "restrict_backbone_to_data_centers"
@@ -349,7 +349,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     ``knobs`` carries the operator's coverage target and ``settings`` the
     implementation dials, and the two are passed on separately: nothing merges them, so
     a dial left behind under ``knobs`` is not read at all.
-    ``paths`` is left at its defaults: the deployed synthesizer reads its substrate
+    ``input_files`` is left at its defaults: the deployed synthesizer reads its substrate
     from the merged carriers, not from these documents.
     """
     count = _mapping(parts, "backbone-node-count")

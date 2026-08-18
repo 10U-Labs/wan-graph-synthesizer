@@ -116,7 +116,7 @@ def test_build_design_builds_a_full_design() -> None:
 
 
 def _two_pocket_inputs() -> DesignInputs:
-    """Inputs over two fiber pockets joined by a single bridge span."""
+    """Inputs over two fiber pockets joined by a single bridge segment."""
     return design_inputs_from_edges(TWO_POCKET_IDS, TWO_POCKET_EDGES, set(TWO_POCKET_IDS))
 
 
@@ -131,12 +131,12 @@ def test_physically_biconnectable_within_one_block() -> None:
 
 
 def test_not_physically_biconnectable_across_a_bridge() -> None:
-    """Two nodes split by a single span share no block, so they are rejected."""
+    """Two nodes split by a single segment share no block, so they are rejected."""
     assert backbone_physically_biconnectable(("a", "d"), _two_pocket_inputs()) is False
 
 
 def test_not_physically_biconnectable_across_a_cut_city() -> None:
-    """Two nodes either side of a cut city are rejected though no single cable splits them."""
+    """Two nodes either side of a cut city are rejected though no one segment splits them."""
     assert backbone_physically_biconnectable(("a", "d"), _bowtie_inputs()) is False
 
 
@@ -192,7 +192,7 @@ DUAL_EDGES = physical(
 
 # A bowtie -- triangles {a,b,x} and {x,d,e} sharing the cut city x. It is bridgeless (so
 # 2-edge-connectable across the lobes) yet x is an articulation point: {a,d} cannot be
-# made city-survivable. The case the cable gate passed but the city gate must reject.
+# made city-survivable. The case the segment gate passed but the city gate must reject.
 _BOWTIE_EDGES = physical(
     {
         ("a", "b"): 1.0, ("b", "x"): 1.0, ("a", "x"): 1.0,

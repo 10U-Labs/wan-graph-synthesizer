@@ -1,15 +1,15 @@
 """Contract: the helpers read a published network by names the synthesizer actually emits.
 
 The measuring helpers reach into a published document by name -- a node's id, name, kind
-and coordinates, a demand site's exemption flag, a link's two endpoints, routed distance
-and path, and a span's two ends, length and whether it is carrier fiber or an access
+and coordinates, a demand site's exemption flag, a link's two endpoints, distance and
+path, and a fiber segment's two ends, length and whether it is carrier fiber or an access
 homing. Those names are a contract with ``synthesizer.collections``, which
 slices the design payload into the collections the store holds, and nothing holds the two
 sides against each other. A field renamed on the producing side surfaces today as a
 ``KeyError`` in the middle of a live post-deployment run, an hour and a deployment after
 the push that caused it; a field that became optional surfaces as nothing at all, because
 the link carrying it is discarded and a network with every link discarded reads exactly
-like a network with no over-long routes.
+like a network with no over-long paths.
 
 The payload is built in process from the suite's ring fixtures, so what is held to account
 here is what the synthesizer emits rather than what some deployment happens to hold.
@@ -45,9 +45,9 @@ _PAYLOAD = design_payload(
 _NODE_FIELDS = ("id", "name", "kind", "coords")
 _SITE_FIELDS = (*_NODE_FIELDS, "exempt_from_distance_constraint")
 _LINK_FIELDS = ("source_id", "target_id", "distance_miles", "path")
-# ``edge_kind`` is what separates a span of carrier fiber from an access homing, and the
+# ``edge_kind`` is what separates a segment of carrier fiber from an access homing, and the
 # two are served in one collection. A reader that could not tell them apart would measure
-# a link against a route through a demand site's homing, which is not cable.
+# a link against a path through a demand site's homing, which is not fiber.
 _EDGE_FIELDS = ("source_id", "target_id", "distance_miles", "edge_kind")
 
 

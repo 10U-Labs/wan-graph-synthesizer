@@ -13,8 +13,8 @@ from synthesizer.model import (
     AccessEdge,
     Design,
     DesignMetrics,
-    MeshTargets,
-    PathUse,
+    MeshRequirements,
+    DesignPath,
     ValidationReport,
 )
 from synthesizer.input_graph import Vertex, edge_key
@@ -116,14 +116,14 @@ def test_missing_redundancy_names_the_failing_demand_vertex() -> None:
 
 
 def _mesh_design(backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> Design:
-    """A design whose only routes are the given backbone-to-backbone mesh links."""
+    """A design whose only paths are the given backbone-to-backbone mesh links."""
     return Design(
         backbone_ids=backbone_ids,
         transit_ids=(),
         access_edges=[],
         physical_edge_keys={edge_key(left, right) for left, right in pairs},
         path_uses=[
-            PathUse("backbone_mesh", left, right, (left, right), 1.0) for left, right in pairs
+            DesignPath("backbone_mesh", left, right, (left, right), 1.0) for left, right in pairs
         ],
         metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
@@ -140,7 +140,7 @@ def _mesh_report(
     return validate_design(
         [make_pop(name) for name in backbone_ids],
         _mesh_design(backbone_ids, pairs),
-        targets=MeshTargets(backbone_number_of_diverse_paths, degree_exempt, ceilings),
+        targets=MeshRequirements(backbone_number_of_diverse_paths, degree_exempt, ceilings),
     )
 
 
@@ -224,7 +224,7 @@ def test_the_report_gives_every_measured_node_its_count_and_its_target() -> None
     The list above names only the nodes the tool held below the configured degree, which is
     what an operator acts on and not enough to check the number behind it. A reader outside
     the build needs both to tell a site short of a link somebody can wire from a site short
-    of one the backup route multiple refuses (GitHub issue #45).
+    of one the backup path multiple refuses (GitHub issue #45).
     """
     report = _mesh_report(*_DEFICIENT, ceilings={"C3": 2, "C4": 4})
     assert report["backbone_diverse_paths_ceilings"] == [
@@ -253,31 +253,31 @@ def test_small_backbone_is_exempt_from_the_mesh_rule() -> None:
     assert _mesh_report(*_SMALL)["backbone_meets_mesh_link_target"] is True
 
 
-def _independence_report(routes: list[tuple[str, ...]]) -> ValidationReport:
-    """Validate one of the shared/diverse routed meshes against a two-link target."""
+def _independence_report(paths: list[tuple[str, ...]]) -> ValidationReport:
+    """Validate one of the shared/diverse drawn meshes against a two-link target."""
     return validate_design(
         [make_pop(name) for name in (*fixtures.SHARED_TRANSIT_BACKBONE, "x", "y")],
-        fixtures.meshed_backbone_design(routes, fixtures.SHARED_TRANSIT_BACKBONE),
-        targets=MeshTargets(2),
+        fixtures.meshed_backbone_design(paths, fixtures.SHARED_TRANSIT_BACKBONE),
+        targets=MeshRequirements(2),
     )
 
 
 def test_shared_transit_fails_the_independent_mesh_target() -> None:
     """A node whose two links cross one transit city misses the two-link target."""
-    assert _independence_report(fixtures.SHARED_TRANSIT_ROUTES)[
+    assert _independence_report(fixtures.SHARED_TRANSIT_PATHS)[
         "backbone_meets_independent_mesh_link_target"
     ] is False
 
 
 def test_shared_transit_names_the_node_that_falls_short() -> None:
     """The independence list names the node whose links a single city would both take."""
-    report = _independence_report(fixtures.SHARED_TRANSIT_ROUTES)
+    report = _independence_report(fixtures.SHARED_TRANSIT_PATHS)
     assert {item["id"] for item in report["backbone_mesh_independence_deficient"]} == {"a"}
 
 
 def test_diverse_transit_meets_the_independent_mesh_target() -> None:
-    """The same mesh with one link rerouted through its own city meets the target."""
-    assert _independence_report(fixtures.DIVERSE_TRANSIT_ROUTES)[
+    """The same mesh with one link redrawn through its own city meets the target."""
+    assert _independence_report(fixtures.DIVERSE_TRANSIT_PATHS)[
         "backbone_meets_independent_mesh_link_target"
     ] is True
 
@@ -294,8 +294,8 @@ def test_bridged_backbone_is_not_two_edge_connected() -> None:
     assert report["backbone_mesh_two_edge_connected"] is False
 
 
-def _routed_design(backbone_ids: tuple[str, ...], path_uses: list[PathUse]) -> Design:
-    """A backbone-only design defined directly by its routed physical paths."""
+def _drawn_design(backbone_ids: tuple[str, ...], path_uses: list[DesignPath]) -> Design:
+    """A backbone-only design defined directly by the fiber its paths run over."""
     return Design(
         backbone_ids=backbone_ids,
         transit_ids=(),
@@ -306,37 +306,37 @@ def _routed_design(backbone_ids: tuple[str, ...], path_uses: list[PathUse]) -> D
     )
 
 
-# Logical links A-B and A-C both route over the shared first hop A-X, so the city-pair
+# Logical links A-B and A-C both path over the shared first hop A-X, so the city-pair
 # mesh (A-B, A-C, B-C) is a triangle -- logically 2-edge-connected -- while the physical
-# fiber hangs A off the lone span A-X. A non-mesh path use rides along, ignored.
-_SHARED_CORRIDOR = _routed_design(
+# fiber hangs A off the lone segment A-X. A non-mesh path use rides along, ignored.
+_SHARED_CORRIDOR = _drawn_design(
     ("A", "B", "C"),
     [
-        PathUse("backbone_mesh", "A", "B", ("A", "X", "B"), 2.0),
-        PathUse("backbone_mesh", "A", "C", ("A", "X", "C"), 2.0),
-        PathUse("backbone_mesh", "B", "C", ("B", "C"), 1.0),
-        PathUse("access", "B", "C", ("B", "C"), 1.0),
+        DesignPath("backbone_mesh", "A", "B", ("A", "X", "B"), 2.0),
+        DesignPath("backbone_mesh", "A", "C", ("A", "X", "C"), 2.0),
+        DesignPath("backbone_mesh", "B", "C", ("B", "C"), 1.0),
+        DesignPath("access", "B", "C", ("B", "C"), 1.0),
     ],
 )
-# Backbone A-B carried over two span-disjoint corridors -- the direct A-B and the detour
+# Backbone A-B carried over two segment-disjoint corridors -- the direct A-B and the detour
 # A-Y-B -- so the physical fiber survives the loss of either.
-_DISJOINT_PATHS = _routed_design(
+_DISJOINT_PATHS = _drawn_design(
     ("A", "B"),
     [
-        PathUse("backbone_mesh", "A", "B", ("A", "B"), 1.0),
-        PathUse("backbone_mesh", "A", "B", ("A", "Y", "B"), 2.0),
+        DesignPath("backbone_mesh", "A", "B", ("A", "B"), 1.0),
+        DesignPath("backbone_mesh", "A", "B", ("A", "Y", "B"), 2.0),
     ],
 )
 
 
 def test_shared_physical_corridor_is_not_two_edge_connected() -> None:
-    """Logical links sharing one fiber span offer no real redundancy, so the check fails."""
+    """Logical links sharing one fiber segment offer no real redundancy, so the check fails."""
     report = validate_design([make_pop(n) for n in ("A", "X", "B", "C")], _SHARED_CORRIDOR)
     assert report["backbone_mesh_two_edge_connected"] is False
 
 
-def test_span_disjoint_paths_are_two_edge_connected() -> None:
-    """Two span-disjoint corridors between the backbone nodes survive any single cut."""
+def test_segment_disjoint_paths_are_two_edge_connected() -> None:
+    """Two segment-disjoint corridors between the backbone nodes survive any single cut."""
     report = validate_design([make_pop(n) for n in ("A", "B", "Y")], _DISJOINT_PATHS)
     assert report["backbone_mesh_two_edge_connected"] is True
 
@@ -360,32 +360,32 @@ def test_chain_backbone_is_not_two_vertex_connected() -> None:
     assert report["backbone_mesh_two_vertex_connected"] is False
 
 
-def test_unrouted_backbone_node_is_not_two_vertex_connected() -> None:
-    """A backbone node carried by no routed span reads as disconnected, so the check fails."""
+def test_an_undrawn_backbone_node_is_not_two_vertex_connected() -> None:
+    """A backbone node no drawn segment reaches reads as disconnected, so the check fails."""
     design = _mesh_design(("C1", "C2", "C3"), [("C1", "C2")])
     report = validate_design([make_pop(n) for n in ("C1", "C2", "C3")], design)
     assert report["backbone_mesh_two_vertex_connected"] is False
 
 
 # A bowtie: two backbone triangles {B1,B2,H} and {H,B3,B4} sharing the transit city H. No
-# span is a bridge, so the fiber survives any single cable cut; but H is a cut city whose
-# loss splits the backbone -- where cable- and city-survivability diverge.
-_BOWTIE_DESIGN = _routed_design(
+# segment is a bridge, so the fiber survives any single segment's loss; but H is a cut city
+# whose loss splits the backbone -- where segment- and city-survivability diverge.
+_BOWTIE_DESIGN = _drawn_design(
     ("B1", "B2", "B3", "B4"),
     [
-        PathUse("backbone_mesh", "B1", "B2", ("B1", "B2"), 1.0),
-        PathUse("backbone_mesh", "B2", "H", ("B2", "H"), 1.0),
-        PathUse("backbone_mesh", "B1", "H", ("B1", "H"), 1.0),
-        PathUse("backbone_mesh", "H", "B3", ("H", "B3"), 1.0),
-        PathUse("backbone_mesh", "B3", "B4", ("B3", "B4"), 1.0),
-        PathUse("backbone_mesh", "H", "B4", ("H", "B4"), 1.0),
+        DesignPath("backbone_mesh", "B1", "B2", ("B1", "B2"), 1.0),
+        DesignPath("backbone_mesh", "B2", "H", ("B2", "H"), 1.0),
+        DesignPath("backbone_mesh", "B1", "H", ("B1", "H"), 1.0),
+        DesignPath("backbone_mesh", "H", "B3", ("H", "B3"), 1.0),
+        DesignPath("backbone_mesh", "B3", "B4", ("B3", "B4"), 1.0),
+        DesignPath("backbone_mesh", "H", "B4", ("H", "B4"), 1.0),
     ],
 )
 _BOWTIE_VERTICES = [make_pop(name) for name in ("B1", "B2", "B3", "B4", "H")]
 
 
 def test_bowtie_backbone_is_two_edge_connected() -> None:
-    """A bowtie has no bridge, so the fiber survives any single cable cut."""
+    """A bowtie has no bridge, so the fiber survives any single segment's loss."""
     report = validate_design(_BOWTIE_VERTICES, _BOWTIE_DESIGN)
     assert report["backbone_mesh_two_edge_connected"] is True
 

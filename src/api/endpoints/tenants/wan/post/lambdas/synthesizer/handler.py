@@ -104,15 +104,15 @@ def _delivered(
     built it, so a design that grew until nothing was left to seat is told apart from one
     that met the target by the only evidence an operator has: where the sites ended up.
 
-    The backup route multiple is echoed rather than measured, because it is not a thing a
+    The backup path multiple is echoed rather than measured, because it is not a thing a
     design can fall short of by degrees the way a coverage target is. What a reader needs
-    from it is which bound the links in front of them were routed under, since the operator
+    from it is which bound the links in front of them were drawn under, since the operator
     can move it and a network published before they did is built to the old one.
 
     How many independently failing links each site was asked for, and which sites did not
     get that many, travel with it. A count computed too high asks a site for a link the
-    backup route multiple will not let the mesh lay, and the design then reports a shortfall no
-    cable an operator buys can close (GitHub issue #45). None of that reaches the published
+    backup path multiple will not let the mesh lay, and the design then reports a shortfall no
+    fiber an operator buys can close (GitHub issue #45). None of that reaches the published
     collections -- they carry the links that were drawn, not the links that were asked for
     -- so a reader outside the build could see the network was thin and never see that the
     build had already said so.
@@ -128,7 +128,7 @@ def _delivered(
     logger.info("Sites short of their diverse-path target for %s: %s", tenant, short)
     return {
         "coverage": coverage,
-        "max_backup_route_multiple": params.tuning.backbone_max_backup_route_multiple,
+        "max_backup_path_multiple": params.tuning.backbone_max_backup_path_multiple,
         "diverse_paths": {
             "number_of_diverse_paths": params.tuning.backbone_number_of_diverse_paths,
             "ceilings": validation["backbone_diverse_paths_ceilings"],
@@ -209,7 +209,7 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     under the same one word as a build that met it, so nothing downstream could tell them
     apart without reading the synthesizer's own log.
 
-    It carries the backup route multiple the build ran under for the same reason read
+    It carries the backup path multiple the build ran under for the same reason read
     forward in time: the operator can move it, and until the tenant is rebuilt the published
     network is one built to the old one. A reader comparing the network against the config
     git now holds needs to know which of the two it is looking at, and nothing in the

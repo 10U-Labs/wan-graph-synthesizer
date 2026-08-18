@@ -67,7 +67,7 @@ def test_the_direction_term_stays_within_one(compass_sector_count: int) -> None:
     assert len(reached) <= compass_sector_count
 
 
-# The protection term counts diverse paths rather than fiber spans, so the tests below run
+# The protection term counts diverse paths rather than fiber segments, so the tests below run
 # over the one fixture graph where the two measures disagree (see ``fixtures.FUNNEL_EDGES``).
 _FUNNEL_INPUTS = fixtures.funnel_inputs()
 _FUNNEL_BOUNDS = diverse_path_bounds(set(fixtures.FUNNEL_ELIGIBLE), _FUNNEL_INPUTS.adjacency)
@@ -79,31 +79,31 @@ def _funnel_strength(site: str) -> float:
     return backbone_strength(site, _FUNNEL_INPUTS, pop_by_id, _FUNNEL_BOUNDS, 8)
 
 
-def test_the_funnelled_site_has_the_most_fiber_spans() -> None:
-    """The fixture's premise: the funnel has five spans where the spread site has three."""
-    spans = {site: len(_FUNNEL_INPUTS.adjacency[site]) for site in ("funnel", "spread")}
-    assert (spans["funnel"], spans["spread"]) == (5, 3)
+def test_the_funnelled_site_has_the_most_fiber_segments() -> None:
+    """The fixture's premise: the funnel has five segments where the spread site has three."""
+    segments = {site: len(_FUNNEL_INPUTS.adjacency[site]) for site in ("funnel", "spread")}
+    assert (segments["funnel"], segments["spread"]) == (5, 3)
 
 
-def test_the_funnelled_site_is_held_to_its_two_chokepoints() -> None:
-    """Five spans converging on two upstream cities carry two diverse paths, not five."""
+def test_the_funnelled_site_is_held_to_its_two_single points of failure() -> None:
+    """Five segments converging on two upstream cities carry two diverse paths, not five."""
     assert _FUNNEL_BOUNDS.per_site["funnel"] == 2
 
 
 def test_the_bound_ranks_the_spread_site_above_the_funnelled_one() -> None:
-    """With fewer spans and three separate ways out, the spread site carries more."""
+    """With fewer segments and three separate ways out, the spread site carries more."""
     assert _FUNNEL_BOUNDS.per_site["spread"] > _FUNNEL_BOUNDS.per_site["funnel"]
 
 
 def test_strength_ranks_the_spread_site_above_the_funnelled_one() -> None:
-    """The score follows the fiber's protection, not the number of cables touching a site.
+    """The score follows the fiber's protection, not the number of segments touching a site.
 
-    This is the ranking the span-count term got backwards: it scored the funnel a full 1.0
+    This is the ranking the segment-count term got backwards: it scored the funnel a full 1.0
     against the spread site's 0.6 and put the weaker site first.
     """
     assert _funnel_strength("spread") > _funnel_strength("funnel")
 
 
 def test_a_site_with_no_fiber_cannot_divide_the_score_by_zero() -> None:
-    """A substrate carrying no spans leaves the largest bound at one rather than nothing."""
+    """Fiber carrying no segments at all leaves the largest bound at one rather than nothing."""
     assert diverse_path_bounds({"lonely"}, {}).largest == 1

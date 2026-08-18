@@ -5,12 +5,12 @@ no distances), so this scoring is the search's primary objective. It is isolated
 here because it depends only on the precomputed graph context, not on the search
 machinery that consumes it.
 
-The protection term counts diverse paths rather than fiber spans. A city can have a
-great many spans and funnel almost all of them through one or two upstream cities, in
-which case the spans are one path wearing many coats; another can have few spans and
+The protection term counts diverse paths rather than fiber segments. A city can have a
+great many segments and funnel almost all of them through one or two upstream cities, in
+which case the segments are one path wearing many coats; another can have few segments and
 send every one of them somewhere separate. Measured over the merged carrier files, Los
-Angeles has eighteen spans and carries six diverse paths while Cheyenne has eleven spans
-and carries eight, so ranking the two by spans ranks them backwards.
+Angeles has eighteen segments and carries six diverse paths while Cheyenne has eleven and
+carries eight, so ranking the two by segments ranks them backwards.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from synthesizer.ceiling import RouteGround, independent_route_ceiling
+from synthesizer.ceiling import PathProofInputs, independent_path_ceiling
 from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.model import DesignInputs
 from synthesizer.graphs import reconstruct_path
@@ -61,18 +61,18 @@ def vertex_straightness(
     pop_by_id: dict[str, Vertex],
     predecessors: dict[str, str],
 ) -> float:
-    """Mean directness to reachable PoPs: straight-line over routed geometry."""
+    """Mean directness to reachable PoPs: straight-line over the path's own geometry."""
     origin = pop_by_id[pop_id]
     ratios: list[float] = []
     for dest_id in predecessors:
         path = reconstruct_path(pop_id, dest_id, predecessors)
-        routed = sum(
+        along_path = sum(
             haversine_miles(pop_by_id[path[index]], pop_by_id[path[index + 1]])
             for index in range(len(path) - 1)
         )
         straight = haversine_miles(origin, pop_by_id[dest_id])
-        if routed > 0.0:
-            ratios.append(straight / routed)
+        if along_path > 0.0:
+            ratios.append(straight / along_path)
     return sum(ratios) / len(ratios) if ratios else 0.0
 
 @dataclass(frozen=True)
@@ -82,7 +82,7 @@ class DiversePathBounds:
     ``per_site`` is the bound itself and ``largest`` is what the strength score divides
     by, so the protection term stays within 0..1 and keeps the weighting the three terms
     were given. A site the substrate says nothing about has no entry and scores zero,
-    which is the truth about it: no fiber in the inputs is no path anyone can route.
+    which is the truth about it: no fiber in the inputs is no path anyone can path.
     """
 
     per_site: Mapping[str, int]
@@ -95,15 +95,15 @@ def diverse_path_bounds(
 ) -> DiversePathBounds:
     """Each candidate site's diverse path bound, computed once for the whole run.
 
-    The bound counts routes from a site to *every other candidate site* that share no
+    The bound counts paths from a site to *every other candidate site* that share no
     city along the way -- one max flow per site (see
-    :func:`synthesizer.ceiling.independent_route_ceiling`). Counting to the candidates
+    :func:`synthesizer.ceiling.independent_path_ceiling`). Counting to the candidates
     rather than to a chosen backbone is what makes it affordable: diversity is otherwise
     a property of the set, changing with every set the search considers, and a max flow
     inside a loop that enumerates millions of them is not something anyone can pay for.
 
     The bound is also honest about which way it errs. Any backbone the search settles on
-    is a subset of these candidates, so it offers a route fewer places to end and no
+    is a subset of these candidates, so it offers a path fewer places to end and no
     choice of set can exceed the bound. Adding fiber can only raise a maximum flow, so
     the bound stays true as the map grows -- the same reason the seed contract measures
     against the pins rather than against a design nobody has built yet.
@@ -113,9 +113,9 @@ def diverse_path_bounds(
     grown backbone (see :func:`synthesizer.coverage.candidate_mesh_ceiling`), because it
     weighs a handful of candidates rather than millions of sets.
 
-    The tenant's backup route multiple is deliberately not applied here, and the reason is
-    the same one that makes this bound affordable. It counts routes to every other candidate,
-    so every city on the map is a peer a route may legitimately end at -- and a route that
+    The tenant's backup path multiple is deliberately not applied here, and the reason is
+    the same one that makes this bound affordable. It counts paths to every other candidate,
+    so every city on the map is a peer a path may legitimately end at -- and a path that
     ends where it was going is not a detour, whatever its length. A crossing to a landing
     point is measured against the direct distance to that same landing point and comes out
     at one. So the bound has almost nothing to say at this scale: over the carrier files in
@@ -125,8 +125,8 @@ def diverse_path_bounds(
     and it is applied at both.
     """
     sites = tuple(sorted(candidate_ids))
-    ground = RouteGround(sites, adjacency)
-    per_site = {site: independent_route_ceiling(site, ground) for site in sites}
+    ground = PathProofInputs(sites, adjacency)
+    per_site = {site: independent_path_ceiling(site, ground) for site in sites}
     return DiversePathBounds(per_site, max((*per_site.values(), 1)))
 
 
@@ -144,7 +144,7 @@ def backbone_strength(
     setting holds and the three terms keep the weighting they were given.
 
     The first term is how many diverse paths the site's fiber can carry rather than how
-    many spans touch it (see :func:`diverse_path_bounds`). Spread and straightness stay
+    many segments touch it (see :func:`diverse_path_bounds`). Spread and straightness stay
     as they were: spread and diversity are related but not the same, and straightness is
     about haul rather than protection.
     """

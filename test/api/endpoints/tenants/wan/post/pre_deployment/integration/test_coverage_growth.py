@@ -36,7 +36,7 @@ _VERTICES = [
     fixtures.access_vertex("west_site", 0.0, -7.49),
 ]
 # Each far hub hangs off both base nodes, so every grown backbone is a pair of triangles
-# sharing the base span and survives any one city: what the design settles on is decided by
+# sharing the base segment and survives any one city: what the design settles on is decided by
 # geography alone. The fiber is carrier PoPs only, as the real substrate is -- demand homes
 # to its nearest backbone nodes logically, over no last-mile fiber anyone has measured.
 _EDGES = fixtures.physical_edges_from({

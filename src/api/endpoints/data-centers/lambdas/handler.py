@@ -6,7 +6,7 @@
     DELETE /wan-graph-synthesizer/data-centers/{provider}           -> remove the provider
 
 A data-center graph is facility points only (no fiber), so it exposes vertices but no
-edges. The synthesizer never routes through these points -- they gate which carrier PoPs
+edges. The synthesizer never paths through these points -- they gate which carrier PoPs
 may serve as backbone nodes (a backbone node must sit in a city a provider has a cage in).
 A write only stores the sites; building a tenant's WAN is a separate operation
 (``POST /tenants/{t}/wan``), so a write endpoint never triggers a build.

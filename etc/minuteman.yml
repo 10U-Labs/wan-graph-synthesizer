@@ -14,7 +14,7 @@ backbone:
       - McLean, VA
       - Minot, ND
       - Salt Lake City, UT
-  max_backup_route_multiple: 3
+  max_backup_path_multiple: 3
   node_count:
     max: 6
     min: 3

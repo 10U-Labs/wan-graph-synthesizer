@@ -9,8 +9,8 @@ from synthesizer.input_graph import Vertex, edge_key
 from synthesizer.model import (
     LINK_FOR_TARGET,
     Design,
-    MeshTargets,
-    PathUse,
+    DesignPath,
+    MeshRequirements,
     ValidationReport,
 )
 from synthesizer.graphs import (
@@ -27,7 +27,7 @@ from synthesizer.graphs import (
 # reach it.
 
 
-def node_mesh_target(node: str, targets: MeshTargets) -> int:
+def node_mesh_target(node: str, targets: MeshRequirements) -> int:
     """How many independent mesh links ``node`` owes: the tenant's degree, or its ceiling.
 
     A node cannot owe more links than its fiber can independently carry, so the target is
@@ -44,9 +44,9 @@ def node_mesh_target(node: str, targets: MeshTargets) -> int:
     with it a target lowered past a shortfall worth reporting. Unbounded, the ceiling could
     not do this: a set of links with pairwise disjoint failure cities is a feasible flow in
     the network it maximises over, so the flow can never come out under them. A ceiling
-    measured against the operator's backup route multiple is a search among the routes that
+    measured against the operator's backup path multiple is a search among the paths that
     multiple allows rather than a maximum over all of them (see
-    :func:`synthesizer.ceiling.independent_routes`), and no exact search is available at any
+    :func:`synthesizer.ceiling.independent_paths`), and no exact search is available at any
     price, so it can now sit one under. That it happened is not silent: a node the ceiling
     holds below the configured degree is reported by name in
     ``backbone_diverse_paths_ceiling_limited`` (see :func:`ceiling_limited_nodes`), which is
@@ -62,7 +62,7 @@ def backbone_mesh_deficient(
     backbone_ids: tuple[str, ...],
     backbone_degrees: dict[str, int],
     vertices_by_id: dict[str, Vertex],
-    targets: MeshTargets,
+    targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Backbone nodes with fewer mesh links than their own target.
 
@@ -131,71 +131,71 @@ def backbone_mesh_pairs(design: Design) -> set[tuple[str, str]]:
         if use.purpose == "backbone_mesh"
     }
 
-def backbone_mesh_physical_spans(design: Design) -> set[tuple[str, str]]:
-    """The physical fiber spans the backbone mesh actually routes over.
+def backbone_mesh_fiber_segments(design: Design) -> set[tuple[str, str]]:
+    """The fiber segments the backbone mesh's paths actually run over.
 
-    The union of every ``backbone_mesh`` path's spans -- the real cables, not the logical
-    city-pairs, so two links sharing a corridor count that corridor once.
+    The union of every ``backbone_mesh`` path's fiber segments -- the real fiber, not the
+    logical city-pairs, so two links sharing a corridor count that corridor once.
     """
-    spans: set[tuple[str, str]] = set()
+    segments: set[tuple[str, str]] = set()
     for use in design.path_uses:
         if use.purpose == "backbone_mesh":
-            spans |= path_edge_keys(use.path)
-    return spans
+            segments |= path_edge_keys(use.path)
+    return segments
 
 def _backbone_mesh_survives(
     design: Design, is_resilient: Callable[[set[str], set[tuple[str, str]]], bool]
 ) -> bool:
-    """Whether the backbone's routed physical spans pass ``is_resilient``.
+    """Whether the fiber segments the backbone's paths run over pass ``is_resilient``.
 
-    Shared by the cable- and city-loss metrics: both judge the same span union (the real
-    cables the mesh rides, not the logical pairs), differing only in the resilience test.
-    A backbone of fewer than two nodes is trivially resilient; a backbone node with no
-    routed span reads as disconnected.
+    Shared by the fiber- and city-loss metrics: both judge the same union of fiber
+    segments (the real fiber the mesh rides, not the logical pairs), differing only in the
+    resilience test. A backbone of fewer than two nodes is trivially resilient; a backbone
+    node whose paths run over no fiber segment reads as disconnected.
     """
     ids = set(design.backbone_ids)
     if len(ids) < 2:
         return True
-    spans = backbone_mesh_physical_spans(design)
-    vertices = ids | {vertex for span in spans for vertex in span}
-    return is_resilient(vertices, spans)
+    segments = backbone_mesh_fiber_segments(design)
+    vertices = ids | {vertex for segment in segments for vertex in segment}
+    return is_resilient(vertices, segments)
 
 def backbone_mesh_two_edge_connected(design: Design) -> bool:
-    """True if the backbone's physical fiber survives the loss of any single cable span."""
+    """True if the backbone's fiber survives the loss of any single fiber segment."""
     return _backbone_mesh_survives(design, is_two_edge_connected)
 
 def backbone_mesh_two_vertex_connected(design: Design) -> bool:
     """True if the backbone's physical fiber survives the loss of any single city.
 
-    The city-loss analogue: the routed span union must have no articulation point, so no
-    single city -- a backbone city or a transit city the routes pass through -- can split
+    The city-loss analogue: the union of fiber segments must have no articulation point,
+    so no single city -- a backbone city or a transit city the paths cross -- can split
     the backbone.
     """
     return _backbone_mesh_survives(design, is_two_vertex_connected)
 
-def routed_failure_cities(path_uses: list[PathUse], node: str) -> list[frozenset[str]]:
+def failure_cities_per_path(path_uses: list[DesignPath], node: str) -> list[frozenset[str]]:
     """Per mesh link at ``node`` in ``path_uses``, the cities whose loss would take it down.
 
-    Every city the link's routed path visits except ``node`` itself: a transit city, and
-    the peer at the far end, which is a city too.
+    Every city the link's path crosses except ``node`` itself: a transit city, and the
+    peer at the far end, which is a city too.
 
-    Taking the routes rather than a whole design is what lets the mesh be measured while it
+    Taking the paths rather than a whole design is what lets the mesh be measured while it
     is still being built, before there is a design to hand.
     """
-    return [cities for _peer, cities in routed_links(path_uses, node)]
+    return [cities for _peer, cities in paths_out_of(path_uses, node)]
 
 
-def routed_links(
-    path_uses: list[PathUse], node: str
+def paths_out_of(
+    path_uses: list[DesignPath], node: str
 ) -> list[tuple[str, frozenset[str]]]:
     """Per mesh link at ``node``, the peer it reaches and the cities that would take it down.
 
     The peer travels beside the cities because the two answer different halves of one
     question. Two links that share a city normally fail together, so they are one way out of
     the site rather than two -- unless the city they share is the peer both of them end at,
-    in which case they are two routes to one peer and the shared city is the destination
-    itself. Losing it costs the site those routes and nothing else, which is what a way out
-    is. Only :func:`routed_independent_degree` needs to tell the two apart, and it cannot
+    in which case they are two paths to one peer and the shared city is the destination
+    itself. Losing it costs the site those paths and nothing else, which is what a way out
+    is. Only :func:`diverse_path_count` needs to tell the two apart, and it cannot
     from the cities alone.
     """
     return [
@@ -210,14 +210,14 @@ def routed_links(
 
 def mesh_link_failure_cities(design: Design, node: str) -> list[frozenset[str]]:
     """Per mesh link at ``node``, the cities whose loss would take that link down."""
-    return routed_failure_cities(design.path_uses, node)
+    return failure_cities_per_path(design.path_uses, node)
 
 
 def _all_disjoint(links: tuple[tuple[str, frozenset[str]], ...]) -> bool:
     """Whether no two of these links would be taken down by the loss of one city.
 
     A city in two links' failure sets fails both, so the two are one way out of the site.
-    The exception is the peer two links both end at: a site with one peer and two routes to
+    The exception is the peer two links both end at: a site with one peer and two paths to
     it loses both when that peer goes, and has lost the destination rather than its
     protection. Those two are the two paths a two-site backbone is asked for, and charging
     them for the city they exist to reach would make the number unreachable.
@@ -231,32 +231,32 @@ def _all_disjoint(links: tuple[tuple[str, frozenset[str]], ...]) -> bool:
     return True
 
 
-def routed_independent_degree(path_uses: list[PathUse], node: str) -> int:
+def diverse_path_count(path_uses: list[DesignPath], node: str) -> int:
     """How many of ``node``'s mesh links in ``path_uses`` no single city's loss takes two of.
 
     A node's nominal degree counts lines on a diagram. This counts links that fail
     independently, which is the number the configured degree is asking for: the largest
     set of the node's links no one city's loss takes two of (see :func:`_all_disjoint`,
-    which is where two routes to one peer are told apart from two links through one transit
+    which is where two paths to one peer are told apart from two links through one transit
     city). Searched largest first over a handful of links, so the exhaustive walk stays
     cheap.
+
+    It takes the paths rather than a whole design for the same reason
+    :func:`failure_cities_per_path` does: the mesh is measured while it is still being
+    built, before there is a design to hand. A caller holding one passes
+    ``design.path_uses``.
     """
-    links = routed_links(path_uses, node)
+    links = paths_out_of(path_uses, node)
     for size in range(len(links), 0, -1):
         if any(_all_disjoint(combo) for combo in combinations(links, size)):
             return size
     return 0
 
 
-def diverse_path_count(design: Design, node: str) -> int:
-    """How many of ``node``'s mesh links no single city's loss can take two of."""
-    return routed_independent_degree(design.path_uses, node)
-
-
 def backbone_mesh_independence_deficient(
     design: Design,
     vertices_by_id: dict[str, Vertex],
-    targets: MeshTargets,
+    targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Backbone nodes without their own target of independently failing mesh links.
 
@@ -267,23 +267,23 @@ def backbone_mesh_independence_deficient(
     Every backbone is asked, however few sites are in it. A backbone with fewer peers than
     paths asked for used to be waved through here, on the reasoning that a site cannot hold
     more paths than it has peers to reach -- which stopped being true when a peer on a
-    backbone whose config caps its seats that low was allowed to carry more than one route
-    (see :func:`synthesizer.ceiling.routes_per_peer`).
+    backbone whose config caps its seats that low was allowed to carry more than one path
+    (see :func:`synthesizer.ceiling.paths_per_peer`).
     Two-Node is the backbone that reasoning waved through: two sites asking for two paths,
-    published with five routes between them and never once measured (GitHub issue #58). A
+    published with five paths between them and never once measured (GitHub issue #58). A
     site whose fiber genuinely cannot carry the number is still not reported, because its
     ceiling brings its own target down (see :func:`node_mesh_target`).
 
     The target is per node (see :func:`node_mesh_target`), which is what separates a
-    shortfall the ground imposes from a shortfall the tool caused. A node whose every route
+    shortfall the ground imposes from a shortfall the tool caused. A node whose every path
     out crosses one of two cities is reported at neither -- two is all it could ever hold --
     while a node whose fiber supports the full degree is still reported when the mesh gives
     it less, because that one is a defect somebody can fix.
 
-    A node in ``targets.degree_exempt`` is left out here too. A spur behind a carrier
-    chokepoint is exactly the node that fails both counts, so an exemption that silenced
-    only the nominal one would leave the operator with the same report they asked to be rid
-    of -- and this is the count the build refuses on.
+    A node in ``targets.degree_exempt`` is left out here too. A spur behind a single point
+    of failure on the carrier's fiber is exactly the node that fails both counts, so an
+    exemption that silenced only the nominal one would leave the operator with the same
+    report they asked to be rid of -- and this is the count the build refuses on.
     """
     return [
         {
@@ -292,7 +292,7 @@ def backbone_mesh_independence_deficient(
             "independent_degree": degree,
         }
         for backbone_id, degree in sorted(
-            (node, diverse_path_count(design, node)) for node in design.backbone_ids
+            (node, diverse_path_count(design.path_uses, node)) for node in design.backbone_ids
         )
         if degree < node_mesh_target(backbone_id, targets)
         and backbone_id not in targets.degree_exempt
@@ -321,14 +321,14 @@ def _ceilings_where(
 def diverse_path_ceilings_reported(
     backbone_ids: tuple[str, ...],
     vertices_by_id: dict[str, Vertex],
-    targets: MeshTargets,
+    targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Every backbone node's computed ceiling beside the target it was held to.
 
     :func:`ceiling_limited_nodes` reports only the nodes the ceiling lowered, which is what
     an operator needs to see and not enough for a reader outside the build to check the
     lowering. The two numbers together are what say a node short of its target was short of
-    a link its fiber could have carried, rather than of one the backup route multiple
+    a link its fiber could have carried, rather than of one the backup path multiple
     forbids -- and the second of those is not a defect anybody can close.
 
     A node the substrate said nothing about has no ceiling and so never appears here either;
@@ -350,11 +350,11 @@ def diverse_path_ceilings_reported(
 def ceiling_limited_nodes(
     backbone_ids: tuple[str, ...],
     vertices_by_id: dict[str, Vertex],
-    targets: MeshTargets,
+    targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Backbone nodes the tool held to less than the tenant degree, and to what.
 
-    A ceiling is only as good as the substrate behind it: a fiber route missing from the
+    A ceiling is only as good as the substrate behind it: a fiber path missing from the
     inputs lowers a node's ceiling, which lowers its target, which could let a design pass
     that should not. So every reduction the tool made on its own is named here rather than
     left to be inferred from a link count -- an operator reads what was asked of each node,
@@ -368,8 +368,8 @@ def ceiling_limited_nodes(
     ]
 
 
-def node_mesh_links(design: Design, node: str) -> list[PathUse]:
-    """Every routed backbone mesh link with ``node`` at one end."""
+def node_mesh_links(design: Design, node: str) -> list[DesignPath]:
+    """Every drawn backbone mesh link with ``node`` at one end."""
     return [
         use
         for use in design.path_uses
@@ -403,7 +403,7 @@ def unrequested_mesh_links(design: Design, node: str) -> list[dict[str, object]]
 def above_target_nodes(
     design: Design,
     vertices_by_id: dict[str, Vertex],
-    targets: MeshTargets,
+    targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Backbone nodes holding more links than they were asked for, and why each one stands.
 
@@ -422,9 +422,10 @@ def above_target_nodes(
 
     The number compared against is the one the tenant asked for, not the per-node target
     :func:`node_mesh_target` lowers where the fiber cannot carry it. A node the ceiling
-    holds to two still reaches for the tenant's three and may take a chokepoint link to
-    get there; that link is one it asked for, and reporting it as surplus would tell an
-    operator they were given cable they ordered themselves. What is reported is cable
+    holds to two still reaches for the tenant's three and may take a link through a single
+    point of failure to get there; that link is one it asked for, and reporting it as
+    surplus would tell an
+    operator they were given fiber they ordered themselves. What is reported is fiber
     nobody ordered, which is a different question from how much protection came of it --
     so ``diverse_path_count`` sits beside ``link_count`` rather than standing in for it.
 
@@ -433,9 +434,9 @@ def above_target_nodes(
     empty list.
     """
     # The tenant's number flat. It once came down to the peers a site had to reach, since a
-    # site could take only one route to each; a site whose config allows too few seats for
+    # site could take only one path to each; a site whose config allows too few seats for
     # the paths it asks for now doubles up on a peer instead (see
-    # :func:`synthesizer.ceiling.routes_per_peer`), so the routes it is entitled to are the
+    # :func:`synthesizer.ceiling.paths_per_peer`), so the paths it is entitled to are the
     # number asked for wherever they end.
     asked_for = targets.number_of_diverse_paths
     rows: list[dict[str, object]] = []
@@ -448,7 +449,7 @@ def above_target_nodes(
             "name": vertices_by_id[node].name,
             "target": asked_for,
             "link_count": len(links),
-            "diverse_path_count": diverse_path_count(design, node),
+            "diverse_path_count": diverse_path_count(design.path_uses, node),
             "unrequested_links": unrequested_mesh_links(design, node),
         })
     return rows
@@ -469,7 +470,7 @@ def validate_design(
     vertices: list[Vertex],
     design: Design,
     access_backbone_links: int = 2,
-    targets: MeshTargets = MeshTargets(),
+    targets: MeshRequirements = MeshRequirements(),
 ) -> ValidationReport:
     """Check a design against every hard structural requirement.
 
@@ -477,7 +478,7 @@ def validate_design(
     must home to, the operator's configured access redundancy.
 
     ``targets`` says how many mesh links each backbone node owes (see
-    :class:`synthesizer.model.MeshTargets`): the operator's degree, the nodes it is not
+    :class:`synthesizer.model.MeshRequirements`): the operator's degree, the nodes it is not
     asked of, and each node's computed ceiling. The degree is therefore a per-node target
     rather than one number every node is held to -- a node is asked for the smaller of the
     degree and what its fiber can independently carry.
@@ -486,7 +487,7 @@ def validate_design(
     number was not asked of, the nodes whose target the tool lowered on its own, and the
     nodes holding more links than they were asked for, with what put each one there. All on
     one principle -- a check that was silenced, a number the tool chose for itself, or a
-    circuit nobody ordered is something an operator reads, because a design that differs
+    path nobody ordered is something an operator reads, because a design that differs
     from the one that was asked for and does not say so is worse than the noise it saves.
     """
     vertices_by_id = {vertex.id: vertex for vertex in vertices}

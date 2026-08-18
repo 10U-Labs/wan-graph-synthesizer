@@ -86,7 +86,7 @@ def test_the_opposite_pair_is_never_meshed_on_its_own() -> None:
 
 
 def test_forced_backbone_connection_appears_in_the_mesh() -> None:
-    """A forced backbone-backbone connection is present in the routed backbone mesh."""
+    """A forced backbone-backbone connection is present in the drawn backbone mesh."""
     assert edge_key("P0", "P3") in backbone_mesh_pairs(FORCED_BACKBONE_LINK.design)
 
 
@@ -140,7 +140,7 @@ def test_design_is_connected() -> None:
 
 
 def test_backbone_survives_any_single_city() -> None:
-    """The ring backbone's physical fiber has no single-city chokepoint (biconnected)."""
+    """No one city is a single point of failure on the ring backbone (biconnected)."""
     assert ARTIFACTS.validation["backbone_mesh_two_vertex_connected"] is True
 
 
@@ -225,7 +225,7 @@ def test_a_chorded_node_ends_above_the_number_only_because_a_peer_asked() -> Non
     number, and a link has two ends -- which is a different thing from the tool deciding
     the extra path was worth buying.
     """
-    assert diverse_path_count(CHORDED.design, "P0") == 4
+    assert diverse_path_count(CHORDED.design.path_uses, "P0") == 4
 
 
 def test_the_chorded_ring_names_the_nodes_holding_more_than_was_asked() -> None:
@@ -256,7 +256,7 @@ def test_no_chorded_node_finishes_below_what_its_own_fiber_allows() -> None:
     is built at all. A node under that number is not a fact about the ground -- the ceiling
     has already given the ground its say -- so it is the tool falling short of what it can
     see is possible, and it refuses the design over it. The mesh is built along the very
-    routes the ceiling proved exist, so a node holds as many independent links as its own
+    paths the ceiling proved exist, so a node holds as many independent links as its own
     fiber was already known to carry, rather than as many as choosing peers by distance
     happened to leave it with.
     """
@@ -265,7 +265,7 @@ def test_no_chorded_node_finishes_below_what_its_own_fiber_allows() -> None:
     assert [
         node
         for node in _CHORDED_BACKBONE
-        if diverse_path_count(CHORDED.design, node) < min(3, capped.get(node, 3))
+        if diverse_path_count(CHORDED.design.path_uses, node) < min(3, capped.get(node, 3))
     ] == []
 
 

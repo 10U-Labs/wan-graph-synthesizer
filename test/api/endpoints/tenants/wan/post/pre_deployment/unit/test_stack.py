@@ -96,7 +96,7 @@ def test_synthesizer_async_retries_are_disabled(synth_main: dict[str, object]) -
 
 
 def test_synthesizer_on_failure_targets_the_failure_handler(synth_main: dict[str, object]) -> None:
-    """A failed synthesizer invocation is routed to the failure handler."""
+    """A failed synthesizer invocation is handed to the failure handler."""
     invoke_config = _resource(
         synth_main, "aws_lambda_function_event_invoke_config", "synthesizer")
     destination = invoke_config["destination_config"][0]["on_failure"][0]["destination"]

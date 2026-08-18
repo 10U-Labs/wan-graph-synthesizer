@@ -11,7 +11,7 @@ parametric test bodies live here once. An endpoint test subclasses ``ReaderContr
 subclass. This module is not collected itself (its name is not ``test_*``).
 
 The write side is the same behaviour whichever way a resource is addressed, so it
-lives once in :class:`WriteBehaviour` and each contract supplies only the events its
+lives once in :class:`SharedWriteTests` and each contract supplies only the events its
 endpoint answers to: by path parameter where a resource has an id, by path alone
 where the endpoint stores one fixed object.
 """
@@ -106,7 +106,7 @@ class ReaderContract:
         assert mock_client.call_count == 1
 
 
-class WriteBehaviour:
+class SharedWriteTests:
     """The write-side tests every storing endpoint shares.
 
     A subclass supplies the two events its endpoint is addressed by -- a PUT to one of
@@ -183,7 +183,7 @@ class WriteBehaviour:
         assert self.CFG["key"] not in objects
 
 
-class WriterContract(WriteBehaviour):
+class WriterContract(SharedWriteTests):
     """The write side as the carrier and data-center endpoints are addressed.
 
     Their resources carry an id, so a request names it in a path parameter and a DELETE
@@ -204,7 +204,7 @@ class WriterContract(WriteBehaviour):
         assert self._status_of(monkeypatch, {"httpMethod": "DELETE"}) == 404
 
 
-class RegionsContract(WriteBehaviour):
+class RegionsContract(SharedWriteTests):
     """Read/write tests for the single-resource providers endpoint.
 
     Unlike the id-keyed framework endpoints, the providers endpoint stores one fixed

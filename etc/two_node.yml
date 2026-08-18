@@ -10,7 +10,7 @@ backbone:
     nodes:
       - Ashburn, VA
       - Salt Lake City, UT
-  max_backup_route_multiple: 3
+  max_backup_path_multiple: 3
   node_count:
     max: 2
     min: 2

@@ -25,7 +25,7 @@ def test_synthesizer_role_grants_store_access(
 
 def test_synthesizer_on_failure_targets_the_failure_handler(
         synthesizer_invoke_config: dict[str, Any], failure_handler_function_name: str) -> None:
-    """A failed synthesizer invocation is routed to the failure handler."""
+    """A failed synthesizer invocation is handed to the failure handler."""
     destination = synthesizer_invoke_config["DestinationConfig"]["OnFailure"]["Destination"]
     assert destination.endswith(f"function:{failure_handler_function_name}")
 

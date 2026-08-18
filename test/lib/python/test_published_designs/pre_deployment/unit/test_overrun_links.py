@@ -1,4 +1,4 @@
-"""Unit tests for the published links routed further than their tenant's bound allows.
+"""Unit tests for the published links drawn further than their tenant's bound allows.
 
 Three of the four cases below are links the helper discards without recording that it
 did, and no published network will ever contain one: a real design names no node outside
@@ -32,7 +32,7 @@ _ANNEX: dict[str, Any] = {
 
 
 def _design(source: str, target: str, distance: float) -> dict[str, Any]:
-    """A published network of the three nodes carrying one routed link between two ids."""
+    """A published network of the three nodes carrying one drawn link between two ids."""
     return {
         "backbone": [_WEST, _EAST, _ANNEX],
         "links": [{
@@ -41,15 +41,15 @@ def _design(source: str, target: str, distance: float) -> dict[str, Any]:
             "distance_miles": distance,
             "path": [source, target],
         }],
-        "max_backup_route_multiple": 3.0,
+        "max_backup_path_multiple": 3.0,
     }
 
 
-def test_a_link_routed_past_the_bound_is_reported_by_the_path_it_takes() -> None:
-    """A thousand miles of route between two cities 52.9 miles apart is nineteen times out.
+def test_a_link_drawn_past_the_bound_is_reported_by_the_path_it_takes() -> None:
+    """A thousand miles of path between two cities 52.9 miles apart is nineteen times out.
 
     Reported by its path, which is what names the detour to whoever reads the failure:
-    the routes GitHub issue #44 produced ran through Paris and through Tokyo.
+    the paths GitHub issue #44 produced ran through Paris and through Tokyo.
     """
     assert [path for path, _ in overrun_links(_design("west", "east", 1000.0))] == [
         "west -> east"

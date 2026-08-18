@@ -27,7 +27,7 @@ from test_published_designs import published_design
 _CONFIG: dict[str, Any] = {
     "backbone": {
         "coverage_target_miles": 200,
-        "max_backup_route_multiple": 3.0,
+        "max_backup_path_multiple": 3.0,
         "node_count": {"max": 6},
         "number_of_diverse_paths": 2,
         "forced": {"nodes": ["Ashburn, VA"]},
@@ -37,7 +37,7 @@ _NODE = {"id": "ash", "name": "Ashburn, VA", "kind": "PoP", "coords": [39.0, -77
 _SITE = {"id": "s1", "name": "Site", "kind": "Tenant site", "coords": [38.9, -77.0]}
 _REGION = {"id": "r1", "name": "us-east-1", "kind": "provider region", "coords": [39.0, -78.0]}
 _LINK = {"source_id": "ash", "target_id": "nyc", "distance_miles": 240.0, "path": ["ash", "nyc"]}
-_SPAN = {
+_SEGMENT = {
     "source_id": "ash", "target_id": "nyc", "distance_miles": 240.0,
     "edge_kind": "carrier_physical",
 }
@@ -74,12 +74,12 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "tenants/daf/backbone-links": [_LINK],
         "tenants/daf/tenant-nodes": [_SITE],
         "tenants/daf/provider-nodes": [_REGION],
-        "tenants/daf/edges": [_SPAN],
+        "tenants/daf/edges": [_SEGMENT],
     }))
     assert published_design(DEFAULT_API, "daf", _CONFIG) == {
         "tenant": "daf",
         "target_miles": 200,
-        "max_backup_route_multiple": 3.0,
+        "max_backup_path_multiple": 3.0,
         "number_of_diverse_paths": 2,
         "seat_cap": 6,
         "forced": ["Ashburn, VA"],
@@ -87,7 +87,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "backbone": [_NODE],
         "demand": [_SITE, _REGION],
         "links": [_LINK],
-        "edges": [_SPAN],
+        "edges": [_SEGMENT],
     }
 
 

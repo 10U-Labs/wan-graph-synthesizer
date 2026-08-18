@@ -16,7 +16,7 @@ def distances_from(
 ) -> dict[str, dict[str, float]]:
     """Shortest-path distances to every city, from each of ``sources``.
 
-    One Dijkstra per source. Enough for the backup route limit, which needs the distance
+    One Dijkstra per source. Enough for the backup path limit, which needs the distance
     from the site being measured and from each of its peers and nothing else, so the callers
     that already hold all-pairs distances pass those straight in rather than paying for
     this. A source the substrate does not carry gets a row holding only itself, which is
@@ -32,8 +32,8 @@ def dijkstra(
 ) -> tuple[dict[str, float], dict[str, str]]:
     """Shortest-path distances and predecessors from a single source.
 
-    ``blocked`` is a set of ``edge_key`` spans the search may not traverse -- used to
-    route a detour around a span already carrying backbone traffic.
+    ``blocked`` is a set of ``edge_key`` fiber segments the search may not traverse --
+    used to draw a detour around a segment already carrying backbone traffic.
     """
     distances = {source: 0.0}
     predecessors: dict[str, str] = {}
@@ -169,7 +169,7 @@ def _lowlink_dfs(
                 on_finish(node, up, low[node], disc[up])
 
 def bridge_edges(adjacency: dict[str, list[tuple[str, float]]]) -> set[tuple[str, str]]:
-    """Every bridge span of a weighted graph, found in one linear DFS.
+    """Every bridge segment of a weighted graph, found in one linear DFS.
 
     An edge ``(u, v)`` is a bridge when the subtree rooted at ``v`` has no back edge
     reaching ``u`` or above (``low[v] > disc[u]``). Suited to the full carrier graph, where
@@ -187,11 +187,11 @@ def bridge_edges(adjacency: dict[str, list[tuple[str, float]]]) -> set[tuple[str
 def two_edge_components(adjacency: dict[str, list[tuple[str, float]]]) -> dict[str, int]:
     """Label each vertex with its 2-edge-connected component id.
 
-    Two vertices share a component exactly when no single span separates them -- so a
+    Two vertices share a component exactly when no single segment separates them -- so a
     set of backbone nodes can be wired into a fiber-resilient (bridgeless) mesh iff they
     all carry the same label. Computed once over the carrier graph and reused as the
     search's cheap feasibility oracle. Deleting the bridges leaves the components as the
-    connected pieces; a vertex whose every span is a bridge is its own singleton.
+    connected pieces; a vertex whose every segment is a bridge is its own singleton.
     """
     cut = bridge_edges(adjacency)
     surviving = {
@@ -215,13 +215,13 @@ def _record_block(
     """Pop one biconnected component off the edge stack down to ``marker``.
 
     Records the popped vertices as a new block only when it is non-trivial (more than one
-    span); a single-span pop is a bridge and earns no block.
+    segment); a single-segment pop is a bridge and earns no block.
     """
     block = [edge_stack.pop()]
     while block[-1] != marker:
         block.append(edge_stack.pop())
     if len(block) >= 2:
-        blocks.append({vertex for span in block for vertex in span})
+        blocks.append({vertex for segment in block for vertex in segment})
 
 def biconnected_block_membership(
     adjacency: dict[str, list[tuple[str, float]]],
@@ -235,11 +235,12 @@ def biconnected_block_membership(
     (no single-vertex cut) physical mesh iff they all share one common block, so the gate
     is a non-empty intersection of their block sets.
 
-    Bridge spans are conventionally their own block, but two cities joined only by a bridge
-    are not on a common cycle and are not even cable-survivable; such trivial (single-edge)
-    blocks get **no id**, so a city all of whose spans are bridges maps to the empty set and
+    Bridge segments are conventionally their own block, but two cities joined only by a
+    bridge are not on a common cycle and do not even survive that one segment's loss; such
+    trivial (single-edge) blocks get **no id**, so a city all of whose segments are bridges
+    maps to the empty set and
     fails the gate. A Hopcroft--Tarjan pass over an explicit edge stack, driven by the shared
-    iterative low-link DFS (:func:`_lowlink_dfs`): each span is pushed as it is walked, and a
+    iterative low-link DFS (:func:`_lowlink_dfs`): each segment is pushed as it is walked, and a
     finished node whose subtree cannot climb above its parent closes off one block.
     """
     edge_stack: list[tuple[str, str]] = []

@@ -186,7 +186,7 @@ def test_capped_convergence_design_fills_its_backbone_budget() -> None:
 # --- compute_eligible_backbone_ids: the data-center gate -------------------------------
 
 def test_eligible_excludes_a_degree_one_spur() -> None:
-    """A degree-one PoP can never route redundantly, so it is not eligible."""
+    """A degree-one PoP can never path redundantly, so it is not eligible."""
     edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0, ("a", "spur"): 1.0})
     pops = [pop(name) for name in ("a", "b", "c", "spur")]
     eligible = compute_eligible_backbone_ids(
@@ -231,7 +231,7 @@ def _design(
 
 def test_convergence_promotes_a_data_center_transit_hub() -> None:
     """A non-backbone data-center PoP carrying >= 3 of the design's lines is promoted."""
-    # hub carries four of the design's routed edges; b1/b2 are the seated backbone.
+    # hub carries four of the design's drawn edges; b1/b2 are the seated backbone.
     keys = {edge_key("hub", n) for n in ("b1", "b2", "x", "y")}
     design = _design(("b1", "b2"), keys)
     pops = [pop(name) for name in ("hub", "b1", "b2", "x", "y")]
@@ -587,7 +587,7 @@ def test_eligible_includes_any_pop_when_gate_is_open() -> None:
 
 
 def test_eligible_still_excludes_a_spur_when_gate_is_open() -> None:
-    """The degree-one spur exclusion holds in free-for-all -- it can never route redundantly."""
+    """The degree-one spur exclusion holds in free-for-all -- it can never path redundantly."""
     edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0, ("a", "spur"): 1.0})
     pops = [pop(name) for name in ("a", "b", "c", "spur")]
     eligible = compute_eligible_backbone_ids(pops, build_adjacency(edges), None)

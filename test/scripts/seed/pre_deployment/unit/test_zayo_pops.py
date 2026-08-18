@@ -1,11 +1,11 @@
 """Data-integrity checks for the worldwide Zayo carrier graph.
 
-The Zayo PoPs and links are digitized from the mapbook's network maps, so they span
+The Zayo PoPs and links are digitized from the mapbook's network maps, so they cover
 the globe. These guard the invariants that keep that graph usable: every PoP has a
 distinct ``(municipality, state)`` key, overseas PoPs carry their country, every PoP
 is named by at least one edge (or the substrate loader silently drops it), no edge
 dangles to a city that is not a PoP, and every intercontinental link rides one of the
-cities the maps draw a submarine cable to.
+cities the maps draw subsea fiber to.
 """
 
 from __future__ import annotations
@@ -40,9 +40,9 @@ _CONTINENT = {
     "Brazil": "South America",
 }
 
-# The cities the mapbook draws an intercontinental cable to -- the Subsea Routes
+# The cities the mapbook draws intercontinental fiber to -- the Subsea Paths
 # section plus the Global IP Network map's APAC inset, which lands trans-Pacific and
-# intra-APAC cables at Hong Kong. A cross-ocean edge may only connect two of these --
+# intra-APAC fiber at Hong Kong. A cross-ocean edge may only connect two of these --
 # everywhere else reaches another continent by routing terrestrially to one first.
 _GATEWAYS = {
     ("New York", "NY"), ("Ashburn", "VA"), ("Seattle", "WA"), ("Hillsboro", "OR"),
@@ -117,7 +117,7 @@ def test_edge_endpoints_resolve_to_pops() -> None:
 
 
 def test_intercontinental_edges_use_submarine_gateways() -> None:
-    """A cross-continent edge connects only cities the map gives a submarine cable."""
+    """A cross-continent edge connects only cities the map gives subsea fiber."""
     offenders = {
         (a, z) for a, z in _edge_pairs()
         if _continent(a) != _continent(z) and not ({a, z} <= _GATEWAYS)
@@ -126,7 +126,7 @@ def test_intercontinental_edges_use_submarine_gateways() -> None:
 
 
 def _domestic_neighbours(city: tuple[str, str]) -> set[tuple[str, str]]:
-    """The US PoPs one Zayo span away from ``city``."""
+    """The US PoPs one Zayo fiber segment away from ``city``."""
     country = {(pop["Municipality"], pop["State"]): pop["Country"] for pop in _pops()}
     linked = set()
     for near, far in _edge_pairs():
@@ -140,14 +140,15 @@ def _domestic_neighbours(city: tuple[str, str]) -> set[tuple[str, str]]:
 def test_pacific_gateways_are_not_domestic_spurs() -> None:
     """No trans-Pacific landing city hangs off a single inland hub.
 
-    A gateway with one terrestrial neighbour makes its submarine cable the cheapest way
-    around that neighbour, so a design needing a route around the hub goes offshore
-    instead of treating the hub as the chokepoint it is -- Hillsboro once reached Los
-    Angeles by way of Tokyo, 10,988 miles to a city fifteen miles from its only span.
-    Every Pacific gateway the map lands a cable at is a metro PoP with terrestrial fiber
-    of its own, so each has at least two domestic spans. The rule is deliberately about
-    the count and not about which cities: a redrawn mapbook may move a corridor between
-    metro members, and only a gateway falling back to a single domestic span is a fault.
+    A gateway with one terrestrial neighbour makes its subsea fiber the shortest way
+    around that neighbour, so a design needing a path around the hub goes offshore instead
+    of treating the hub as the single point of failure it is -- Hillsboro once reached Los
+    Angeles by way of Tokyo, 10,988 miles to a city fifteen miles from its only fiber
+    segment. Every Pacific gateway the map lands fiber at is a metro PoP with terrestrial
+    fiber of its own, so each has at least two domestic segments. The rule is deliberately
+    about the count and not about which cities: a redrawn mapbook may move a corridor
+    between metro members, and only a gateway falling back to a single domestic segment is
+    a fault.
 
     The Atlantic landings are out of scope until their corridors are digitised from the
     mapbook -- Tuckerton, NJ currently reaches the network through Manasquan alone.

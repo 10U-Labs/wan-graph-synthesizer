@@ -35,14 +35,14 @@ def _adjacency(pairs: list[tuple[str, str]]) -> dict[str, list[tuple[str, float]
     return adjacency
 
 
-# Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single span c-d, the lone
+# Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single segment c-d, the lone
 # bridge between two otherwise 2-edge-connected pockets.
 _TWO_POCKETS = _adjacency(
     [("a", "b"), ("b", "c"), ("a", "c"), ("c", "d"), ("d", "e"), ("e", "f"), ("d", "f")]
 )
 
 # A bowtie: two triangles -- {a,b,c} and {c,d,e} -- sharing the single cut city c. It has
-# no bridge (every span lies on a triangle), yet c is an articulation point: the lobes
+# no bridge (every segment lies on a triangle), yet c is an articulation point: the lobes
 # fall apart when it is removed. The case where 2-edge-connected and 2-vertex-connected
 # diverge.
 _BOWTIE = _adjacency(
@@ -173,12 +173,12 @@ def test_cycle_has_no_bridges() -> None:
 
 
 def test_bridge_edges_finds_the_lone_cut_between_two_pockets() -> None:
-    """The single span joining two 2-edge-connected pockets is the only bridge."""
+    """The single segment joining two 2-edge-connected pockets is the only bridge."""
     assert bridge_edges(_TWO_POCKETS) == {edge_key("c", "d")}
 
 
 def test_bridge_edges_empty_for_a_cycle() -> None:
-    """A cycle has no bridge spans; the linear sweep agrees with the probing search."""
+    """A cycle has no bridge segments; the linear sweep agrees with the probing search."""
     assert bridge_edges(_adjacency([("a", "b"), ("b", "c"), ("a", "c")])) == set()
 
 
@@ -189,19 +189,19 @@ def test_two_edge_components_labels_a_cycle_as_one() -> None:
 
 
 def test_two_edge_components_splits_two_pockets_at_the_bridge() -> None:
-    """Two pockets joined by a single span fall into two components."""
+    """Two pockets joined by a single segment fall into two components."""
     labels = two_edge_components(_TWO_POCKETS)
     assert labels["a"] != labels["d"]
 
 
 def test_two_edge_components_labels_a_chain_as_singletons() -> None:
-    """Every span of a chain is a bridge, so each vertex is its own component."""
+    """Every segment of a chain is a bridge, so each vertex is its own component."""
     labels = two_edge_components(_adjacency([("a", "b"), ("b", "c")]))
     assert len(set(labels.values())) == 3
 
 
-def test_dijkstra_routes_around_a_blocked_span() -> None:
-    """Blocking the direct span forces the detour, lengthening the shortest path."""
+def test_dijkstra_paths_around_a_blocked_segment() -> None:
+    """Blocking the direct segment forces the detour, lengthening the shortest path."""
     adjacency = _adjacency([("a", "b"), ("b", "c"), ("a", "c")])
     distances, _predecessors = dijkstra(adjacency, "a", frozenset({edge_key("a", "c")}))
     assert distances["c"] == 2.0
@@ -226,7 +226,7 @@ def test_block_membership_gives_a_bridge_no_block() -> None:
 
 
 def test_block_membership_labels_a_chain_as_blockless() -> None:
-    """Every span of a chain is a bridge, so no vertex sits in any block."""
+    """Every segment of a chain is a bridge, so no vertex sits in any block."""
     blocks = biconnected_block_membership(_adjacency([("a", "b"), ("b", "c")]))
     assert blocks == {"a": frozenset(), "b": frozenset(), "c": frozenset()}
 

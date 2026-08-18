@@ -89,7 +89,7 @@ def test_finalize_refuses_a_design_short_of_the_configured_number_of_diverse_pat
     and a holds a single independent link where the configuration asks for two.
     """
     design = fixtures.meshed_backbone_design(
-        fixtures.SHARED_TRANSIT_ROUTES, fixtures.SHARED_TRANSIT_BACKBONE
+        fixtures.SHARED_TRANSIT_PATHS, fixtures.SHARED_TRANSIT_BACKBONE
     )
     params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_number_of_diverse_paths=2))
     with pytest.raises(ValueError, match="independently failing backbone mesh links at"):
@@ -105,7 +105,7 @@ def test_finalize_holds_a_node_to_the_ceiling_of_the_substrate_it_is_given() -> 
     one.
     """
     design = fixtures.meshed_backbone_design(
-        fixtures.SHARED_TRANSIT_ROUTES, fixtures.SHARED_TRANSIT_BACKBONE
+        fixtures.SHARED_TRANSIT_PATHS, fixtures.SHARED_TRANSIT_BACKBONE
     )
     params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_number_of_diverse_paths=2))
     edges = fixtures.physical_edges_from({
@@ -120,7 +120,7 @@ def test_finalize_holds_a_node_to_the_ceiling_of_the_substrate_it_is_given() -> 
 def _finalize_shared_transit(degree_exempt: frozenset[str]) -> ValidationReport:
     """Finalize the shared-transit mesh, whose node a holds one independent link."""
     design = fixtures.meshed_backbone_design(
-        fixtures.SHARED_TRANSIT_ROUTES, fixtures.SHARED_TRANSIT_BACKBONE
+        fixtures.SHARED_TRANSIT_PATHS, fixtures.SHARED_TRANSIT_BACKBONE
     )
     params = DesignParams(min_backbone_count=2, tuning=Tuning(backbone_number_of_diverse_paths=2))
     _vertices, _edges, _design, validation = finalize(

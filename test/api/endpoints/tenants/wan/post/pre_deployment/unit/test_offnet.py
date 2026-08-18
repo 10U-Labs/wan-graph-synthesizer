@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 import fixtures
-from synthesizer.offnet import RealizedOffNet, realize_off_net_sites
+from synthesizer.offnet import SeatedOffNetSites, realize_off_net_sites
 from synthesizer.model import is_carrier_pop
 from synthesizer.input_graph import Vertex
 
@@ -27,7 +27,7 @@ def _realize(
     *sites: Vertex,
     forced: frozenset[str] = frozenset(),
     cities: frozenset[tuple[str, str]] | None = _CITIES,
-) -> RealizedOffNet:
+) -> SeatedOffNetSites:
     """Realize the given off-net sites against the three carrier PoPs."""
     return realize_off_net_sites(_pops(), {}, list(sites), forced, cities)
 

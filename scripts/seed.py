@@ -232,12 +232,12 @@ def push_tenants(api: str) -> list[str]:
              {"promote": backbone["promote_high_degree_convergences"]})
         # The stored documents keep the unshortened keys: the config drops the prefix its
         # block now supplies, but the synthesizer reads both values under the long names.
-        # The backup route multiple rides the knobs resource rather than taking one of its
-        # own, which is what keeps a seed run from racing a route the API does not define
-        # yet.
+        # The backup path multiple rides the knobs resource rather than taking one of its
+        # own, which is what keeps a seed run from racing an endpoint the API does not
+        # define yet.
         _put(api, f"tenants/{tid}/knobs", {
             "backbone_coverage_target_miles": backbone["coverage_target_miles"],
-            "backbone_max_backup_route_multiple": backbone["max_backup_route_multiple"],
+            "backbone_max_backup_path_multiple": backbone["max_backup_path_multiple"],
         })
         _put(api, f"tenants/{tid}/settings", config.get("settings", {}))
         _put(api, f"tenants/{tid}/label", {"label": config.get("label", "")})

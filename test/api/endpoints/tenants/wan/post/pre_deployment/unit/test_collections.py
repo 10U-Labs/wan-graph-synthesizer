@@ -25,12 +25,12 @@ def test_vertex_role_backbone_for_selected_pop() -> None:
 
 
 def test_vertex_role_transit_for_routing_only_pop() -> None:
-    """A carrier PoP only used to route is labelled transit."""
+    """A carrier PoP only used to path is labelled transit."""
     assert gc.vertex_role(fixtures.carrier_pop("a"), _design((), ("a",))) == "transit"
 
 
 def test_vertex_role_unused_for_unselected_pop() -> None:
-    """A carrier PoP neither selected nor routed through is labelled unused."""
+    """A carrier PoP neither selected nor crossed by a path is labelled unused."""
     assert gc.vertex_role(fixtures.carrier_pop("a"), _design((), ())) == "unused"
 
 

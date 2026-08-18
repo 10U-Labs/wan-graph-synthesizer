@@ -3,7 +3,7 @@
 This is the authorization layer of every deployable unit in the repository: before a
 deployment reads the OpenTofu state it shares with the others, its tests establish that
 the credentials are allowed to look. The check has to keep two answers apart that arrive
-by the same route. A refusal means the credentials may not look, and the deployment would
+by the same path. A refusal means the credentials may not look, and the deployment would
 fail; a not-found means they may look and the bucket is not there, which is somebody
 else's business and not a reason to stop.
 

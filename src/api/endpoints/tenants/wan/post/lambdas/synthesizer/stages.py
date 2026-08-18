@@ -7,10 +7,10 @@ The synthesizer composes these over the JSON-loaded graph:
 
 from __future__ import annotations
 
-from synthesizer.ceiling import BackupRouteLimit, RouteGround, diverse_path_ceilings
+from synthesizer.ceiling import BackupPathLimit, PathProofInputs, diverse_path_ceilings
 from synthesizer.graphs import build_adjacency, distances_from
 from synthesizer.input_graph import PhysicalEdge, Vertex
-from synthesizer.model import Design, DesignParams, MeshTargets, ValidationReport
+from synthesizer.model import Design, DesignParams, MeshRequirements, ValidationReport
 from synthesizer.on_net_fabrication import fabricate_missing_on_net_nodes
 from synthesizer.offnet import realize_off_net_sites
 from synthesizer.validation import node_mesh_target, validate_design
@@ -81,14 +81,14 @@ def finalize(
     took every link its fiber could carry.
     """
     adjacency = build_adjacency(physical_edges)
-    targets = MeshTargets(
+    targets = MeshRequirements(
         number_of_diverse_paths=params.tuning.backbone_number_of_diverse_paths,
         degree_exempt=degree_exempt,
-        ceilings=diverse_path_ceilings(RouteGround(
+        ceilings=diverse_path_ceilings(PathProofInputs(
             design.backbone_ids,
             adjacency,
-            BackupRouteLimit(
-                params.tuning.backbone_max_backup_route_multiple,
+            BackupPathLimit(
+                params.tuning.backbone_max_backup_path_multiple,
                 distances_from(adjacency, design.backbone_ids),
             ),
             params.tuning.backbone_number_of_diverse_paths,

@@ -2,19 +2,19 @@
 
 A backbone of two sites is the case where a site cannot answer its tenant by reaching more
 peers, because there is only one peer to reach. It has to double up on that peer instead,
-and every step from the route proof to the validation report has to agree that two routes
+and every step from the path proof to the validation report has to agree that two paths
 over the one pair are the two paths asked for.
 
 No one unit can show that. The proof, the selection, the routing, the resilience repair and
 the report each looked right on their own while the design they made together carried five
-routes between Ashburn, VA and Salt Lake City, UT against a tenant asking for one path and
+paths between Ashburn, VA and Salt Lake City, UT against a tenant asking for one path and
 was reported as meeting it (GitHub issue #58). So the whole pipeline is run here and the
 finished design is asserted.
 
 The fiber joins the two sites three ways that share no city, at 200, 400 and 1,800 miles.
 Three is more than the tenant asked for, which is what makes the count worth asserting: a
 design that treats the number as a floor takes all three, and one that stops at a single
-circuit and repairs it afterwards takes two routes plus a detour per chokepoint city. The
+path and repairs it afterwards takes two paths plus a detour per single point of failure city. The
 1,800-mile way round is there so that which two were taken can be asserted as well as how
 many.
 
@@ -30,7 +30,7 @@ from synthesizer.model import DesignParams, Tuning
 _SITES = ("a", "b")
 _ASKED_FOR = 2
 # Three disjoint ways from a to b, priced so the third is plainly the one to leave out.
-_SPANS = {
+_SEGMENTS = {
     ("a", "north"): 100.0, ("north", "b"): 100.0,
     ("a", "south"): 200.0, ("south", "b"): 200.0,
     ("a", "long"): 900.0, ("long", "b"): 900.0,
@@ -41,7 +41,7 @@ ARTIFACTS = fixtures.run_design(
         fixtures.carrier_pop(city, 38.0, -115.0 + 2.0 * index)
         for index, city in enumerate(_CITIES)
     ],
-    fixtures.physical_edges_from(_SPANS),
+    fixtures.physical_edges_from(_SEGMENTS),
     DesignParams(
         min_backbone_count=2,
         max_backbone_count=2,
@@ -60,26 +60,26 @@ def test_the_backbone_is_the_two_sites() -> None:
 
 
 def test_the_pair_is_drawn_with_the_paths_the_tenant_asked_for() -> None:
-    """Two asked for over fiber offering three, so two routes are built and no more."""
+    """Two asked for over fiber offering three, so two paths are built and no more."""
     assert len(_MESH) == _ASKED_FOR
 
 
-def test_the_routes_drawn_are_the_shortest_of_the_ones_open_to_it() -> None:
+def test_the_paths_drawn_are_the_shortest_of_the_ones_open_to_it() -> None:
     """The 1,800-mile way round is the one left unbuilt, not either of the shorter two."""
     assert sorted(use.path[1] for use in _MESH) == ["north", "south"]
 
 
-def test_the_two_routes_share_no_city_but_the_two_sites() -> None:
+def test_the_two_paths_share_no_city_but_the_two_sites() -> None:
     """Sharing a transit city would make them one path that a single city's loss takes."""
     transit = [city for use in _MESH for city in use.path[1:-1]]
     assert sorted(transit) == sorted(set(transit))
 
 
-def test_no_route_is_a_repair_of_another() -> None:
+def test_no_path_is_a_repair_of_another() -> None:
     """The paths are drawn diverse to begin with, so the resilience pass has nothing to add."""
     assert [use.reason for use in _MESH].count("city_detour") == 0
 
 
 def test_each_site_is_credited_with_the_paths_it_holds() -> None:
-    """Two routes to the one peer are counted as the two ways out they are, not as one."""
+    """Two paths to the one peer are counted as the two ways out they are, not as one."""
     assert ARTIFACTS.validation["backbone_mesh_independence_deficient"] == []

@@ -27,7 +27,7 @@ from synthesizer.model import (
     DesignParams,
     ForcedLinks,
     OperatorLinks,
-    PathUse,
+    DesignPath,
     RoleExclusions,
     SourceFiles,
     Tuning,
@@ -132,19 +132,19 @@ def ring_physical_edges(distance: float = 100.0) -> dict[tuple[str, str], Physic
 # A three-node backbone mesh in two routings, the pair the independence check exists to
 # tell apart: in the first, node a's links to b and to c both cross transit city x, so one
 # city's loss takes both and a holds a single independent link; in the second, a's second
-# link is rerouted through x's alternative y and both links stand on their own. Node b and
+# link is redrawn through x's alternative y and both links stand on their own. Node b and
 # node c hold two independent links in either routing.
 SHARED_TRANSIT_BACKBONE = ("a", "b", "c")
-SHARED_TRANSIT_ROUTES = [("a", "x", "b"), ("a", "x", "c"), ("b", "c")]
-DIVERSE_TRANSIT_ROUTES = [("a", "x", "b"), ("a", "y", "c"), ("b", "c")]
+SHARED_TRANSIT_PATHS = [("a", "x", "b"), ("a", "x", "c"), ("b", "c")]
+DIVERSE_TRANSIT_PATHS = [("a", "x", "b"), ("a", "y", "c"), ("b", "c")]
 
 
 def meshed_backbone_design(
-    routes: list[tuple[str, ...]], backbone_ids: tuple[str, ...]
+    paths: list[tuple[str, ...]], backbone_ids: tuple[str, ...]
 ) -> Design:
-    """A design whose backbone mesh rides the given routed paths, one link per route.
+    """A design whose backbone mesh rides the given paths, one link per path.
 
-    Shared by the tiers that judge a routed mesh rather than build one: each route's ends
+    Shared by the tiers that judge a drawn mesh rather than build one: each path's ends
     are its link's endpoints, so the cities in between are the link's transit.
     """
     return Design(
@@ -153,7 +153,7 @@ def meshed_backbone_design(
         access_edges=[],
         physical_edge_keys=set(),
         path_uses=[
-            PathUse("backbone_mesh", route[0], route[-1], route, 1.0) for route in routes
+            DesignPath("backbone_mesh", path[0], path[-1], path, 1.0) for path in paths
         ],
         metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
@@ -316,7 +316,7 @@ def forced_link_artifacts(
 
 
 # A four-PoP square around one central PoP. Short spokes to the centre and longer ring
-# edges make every diagonal backbone-mesh link route through the centre, so once the four
+# edges make every diagonal backbone-mesh link path through the centre, so once the four
 # corners are the backbone the centre carries four of the design's lines as a transit
 # node. The convergence pass (issue #4) then promotes the centre when it is a data-center
 # city. Coordinates are a degenerate diamond; distances are pinned in
@@ -349,7 +349,7 @@ def convergence_hub_artifacts(
 ) -> DesignArtifacts:
     """Run the synthesizer with the four corners forced and the centre left transit.
 
-    The diagonal backbone-mesh links route through the centre, so it carries four of the
+    The diagonal backbone-mesh links path through the centre, so it carries four of the
     design's lines. When ``promote_hub`` is set the centre is a data-center city and the
     convergence pass promotes it into the backbone and redraws; otherwise the centre is
     barred from the gate and stays transit. A ``max_backbone_count`` of four (the four
@@ -433,28 +433,28 @@ def search_plan(
 TRIANGLE = physical_edges_from({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
 
 
-# --- span count against path diversity: the one graph where the two measures disagree ----
+# --- segment count against path diversity: the one graph where the two measures disagree ----
 #
 # Every other fixture here is a ring, a small cluster or a clique, and on all three a site's
-# span count and its diverse path count are the same number: ring sites have two spans and
-# two paths, clique sites turn every span into a path. So none of them can tell a ranking by
-# spans from a ranking by diversity, and this graph exists to.
+# segment count and its diverse path count are the same number: ring sites have two segments and
+# two paths, clique sites turn every segment into a path. So none of them can tell a ranking by
+# segments from a ranking by diversity, and this graph exists to.
 #
-# ``funnel`` and ``second_funnel`` have five spans each and ``spread`` has three. Four of
-# each funnel's spans reach the same upstream city ``choke_east`` and the fifth reaches
-# ``choke_west``, so however many spans a funnel has, every route out of it crosses one of
+# ``funnel`` and ``second_funnel`` have five segments each and ``spread`` has three. Four of
+# each funnel's segments reach the same upstream city ``choke_east`` and the fifth reaches
+# ``choke_west``, so however many segments a funnel has, every path out of it crosses one of
 # those two cities and it can hold two paths that fail independently. The spread's three
-# spans go to three separate cities, each of which is itself a candidate, so it can hold
-# three. Span count therefore ranks both funnels above the spread and path diversity ranks
+# segments go to three separate cities, each of which is itself a candidate, so it can hold
+# three. Segment count therefore ranks both funnels above the spread and path diversity ranks
 # the spread above both.
 #
 # There are two funnels rather than one so that a two-seat backbone has to choose. With one,
 # the spread places second under either measure and the chosen backbone is the same either
 # way, which would let a synthesis pass while ranking by the wrong thing.
 #
-# The funnelled spans leave eastward together, because fiber that converges on one upstream
+# The funnelled segments leave eastward together, because fiber that converges on one upstream
 # city is fiber pointing one way -- so the compass term is not carrying this fixture's
-# disagreement. Under the span-count term a funnel scored a full 1.0 against the spread's
+# disagreement. Under the segment-count term a funnel scored a full 1.0 against the spread's
 # 0.6; under the diversity term it scores 2/3 against the spread's 1.0.
 FUNNEL_EDGES = physical_edges_from({
     ("funnel", "east_a"): 40.0,
@@ -491,7 +491,8 @@ FUNNEL_IDS = [
     "choke_east", "choke_west",
 ]
 # Only the six sites the measures are compared over are gate-eligible; the spurs and the
-# two chokepoints are transit the routes pass through, not places a backbone node may sit.
+# two single points of failure are transit the paths pass through, not places a backbone
+# node may sit.
 FUNNEL_ELIGIBLE = {"funnel", "second_funnel", "spread", "north", "south", "west"}
 FUNNEL_COORDS = {
     "funnel": (40.0, -100.0),
@@ -514,16 +515,16 @@ def funnel_vertices() -> list[Vertex]:
 
 
 def funnel_datacenter_cities() -> frozenset[tuple[str, str]]:
-    """Only the six compared sites pass the gate, so spurs and chokepoints stay transit."""
+    """Only the six compared sites pass the gate; the rest stay transit."""
     return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in FUNNEL_ELIGIBLE)
 
 
 # Three backbone sites within twenty miles of each other, all reaching one another over
 # ``pdx``, and all reaching one another again over ``tok`` a thousand miles offshore. The
-# overland routes share ``pdx``, so a proof counting only disjoint routes takes the
+# overland paths share ``pdx``, so a proof counting only disjoint paths takes the
 # crossing as a second way out and the mesh is wired along it -- two thousand miles of
-# cable standing in for twenty. It is the one fixture whose spans differ by orders of
-# magnitude, which is what the backup route multiple is measured against.
+# fiber standing in for twenty. It is the one fixture whose segments differ by orders of
+# magnitude, which is what the backup path multiple is measured against.
 CROSSING_EDGES = physical_edges_from({
     ("sea", "pdx"): 10.0,
     ("pdx", "hil"): 10.0,
@@ -533,9 +534,9 @@ CROSSING_EDGES = physical_edges_from({
     ("tok", "eug"): 1000.0,
 })
 CROSSING_IDS = ["sea", "hil", "eug", "pdx", "tok"]
-# The three compared sites are seatable; ``pdx`` and ``tok`` are transit the routes pass
+# The three compared sites are seatable; ``pdx`` and ``tok`` are transit the paths pass
 # through, never places a backbone node may sit -- which is what keeps ``tok`` a crossing
-# rather than a peer a route may legitimately end at.
+# rather than a peer a path may legitimately end at.
 CROSSING_ELIGIBLE = {"sea", "hil", "eug"}
 CROSSING_COORDS = {
     "sea": (47.6, -122.3),
@@ -559,23 +560,23 @@ def crossing_datacenter_cities() -> frozenset[tuple[str, str]]:
 # Three backbone sites reaching one another over three shared hub cities, priced so the
 # cheapest way out of one site is not the cheapest way back out of another. That is what
 # makes the two ends of a pair prove different fiber to each other: each proof is the
-# cheapest set of routes out of its own site, and the two sites have different other peers
+# cheapest set of paths out of its own site, and the two sites have different other peers
 # to keep clear of. ``a`` is cheap through ``h2`` and dear through ``h1``, ``b`` is the
 # other way round, and ``c`` is cheap through both -- so a proves h1 to b and h2 to c, b
 # proves h1 to a and h3 to c, and c proves h2 to a and h1 to b. Only the pair b-c is proved
 # twice: five miles the way b proved it and two the way c did.
-SHARED_HUB_SPANS = {
+SHARED_HUB_SEGMENTS = {
     ("a", "h1"): 400.0, ("a", "h2"): 100.0, ("a", "h3"): 800.0,
     ("b", "h1"): 100.0, ("b", "h2"): 800.0, ("b", "h3"): 200.0,
     ("c", "h1"): 100.0, ("c", "h2"): 200.0, ("c", "h3"): 300.0,
 }
-SHARED_HUB_EDGES = physical_edges_from(SHARED_HUB_SPANS)
+SHARED_HUB_EDGES = physical_edges_from(SHARED_HUB_SEGMENTS)
 # The same three sites with a fourth, ``d``, joined to ``b`` and to ``c`` over fiber of its
 # own. It is what leaves ``b`` a way out that no hub carries: joined once, b's links to a
-# and to c both ride ``h1``, and the circuit to d is its second independently failing link.
+# and to c both ride ``h1``, and the path to d is its second independently failing link.
 # Without d there is no such fiber and the pair b-c is joined twice instead.
 SHARED_HUB_PEER_EDGES = physical_edges_from({
-    **SHARED_HUB_SPANS,
+    **SHARED_HUB_SEGMENTS,
     ("b", "d1"): 100.0, ("d1", "d"): 300.0,
     ("c", "d2"): 100.0, ("d2", "d"): 300.0,
 })
@@ -601,7 +602,7 @@ def shared_hub_peer_artifacts(asked_for: int = 2) -> DesignArtifacts:
     """The design the whole pipeline settles on over the four-site graph.
 
     Every site is seated and the seats are capped at the four, so the tenant's config says
-    each site has peers to reach and every pair of them is allowed one route.
+    each site has peers to reach and every pair of them is allowed one path.
     """
     return run_design(
         shared_hub_peer_vertices(),
@@ -618,10 +619,10 @@ def shared_hub_peer_artifacts(asked_for: int = 2) -> DesignArtifacts:
 
 
 # The crossing graph with one of its peers moved seven thousand miles away, which is what
-# lets a bound applied span by span be met and a bound applied to the finished route be
+# lets a bound applied segment by segment be met and a bound applied to the finished path be
 # broken (GitHub issue #45). ``sea`` is twenty miles from ``hil`` over ``pdx`` and seven
-# thousand from ``syd``, so syd's allowance is large enough to keep both ``tok`` spans and
-# hil's is nowhere near. Only ``pdx`` reaches ``syd``, so sea's two routes cannot both take
+# thousand from ``syd``, so syd's allowance is large enough to keep both ``tok`` segments and
+# hil's is nowhere near. Only ``pdx`` reaches ``syd``, so sea's two paths cannot both take
 # it and the second is left the crossing -- landing on ``hil``, at a hundred times what hil
 # allows. ``hil``--``syd`` closes the ring, so no single city's loss splits the fiber and
 # the search will seat all three.
@@ -659,12 +660,12 @@ def distant_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
     return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in DISTANT_PEER_ELIGIBLE)
 
 
-# Three sites on a ring of one-mile spans, each also joined to the other two by an express
-# span of five. Every pair is two miles apart round the ring through one transit city and
-# five miles apart down the express span, so the express spans cross fewer cities and run
-# two and a half times the cable. Both ways of wiring the ring are the same two independent
-# links per site, and both sit inside a backup route multiple of three, so nothing but the
-# mileage tells them apart: the ring comes to six miles of mesh and the express spans to
+# Three sites on a ring of one-mile segments, each also joined to the other two by an express
+# segment of five. Every pair is two miles apart round the ring through one transit city and
+# five miles apart down the express segment, so the express segments cross fewer cities and run
+# two and a half times the fiber miles. Both ways of wiring the ring are the same two independent
+# links per site, and both sit inside a backup path multiple of three, so nothing but the
+# mileage tells them apart: the ring comes to six miles of mesh and the express segments to
 # fifteen (GitHub issue #57).
 EXPRESS_EDGES = physical_edges_from({
     ("sea", "pdx"): 1.0,
@@ -679,7 +680,7 @@ EXPRESS_EDGES = physical_edges_from({
 })
 EXPRESS_IDS = ["sea", "hil", "eug", "pdx", "alb", "tac"]
 # The three compared sites are seatable; ``pdx``, ``alb`` and ``tac`` are the transit the
-# ring routes through, never places a backbone node may sit.
+# ring paths through, never places a backbone node may sit.
 EXPRESS_ELIGIBLE = {"sea", "hil", "eug"}
 EXPRESS_COORDS = {
     "sea": (47.6, -122.3),
@@ -710,7 +711,7 @@ def funnel_inputs() -> DesignInputs:
 
 # --- physical biconnectivity: the search-time city-survivability gate --------------------
 
-# Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single span c-d, so the two
+# Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single segment c-d, so the two
 # pockets share no biconnected block: no backbone may straddle them.
 TWO_POCKET_EDGES = physical_edges_from(
     {

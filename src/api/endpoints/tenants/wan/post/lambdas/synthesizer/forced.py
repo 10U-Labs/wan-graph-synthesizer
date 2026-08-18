@@ -2,7 +2,7 @@
 
 The overrides layer resolves the operator's forced connections into a
 :class:`~synthesizer.model.ForcedLinks` bundle; these helpers consume it while
-the synthesizer routes a design, so the pinned edges are honored: backbone-backbone
+the synthesizer paths a design, so the pinned edges are honored: backbone-backbone
 pairs forced into or pruned from the mesh, and access-backbone links pinned as homes.
 They depend only on the model, so the synthesizer imports them without a cycle.
 """

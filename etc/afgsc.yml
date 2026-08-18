@@ -27,7 +27,7 @@ backbone:
       - San Jose, CA
       - Seattle, WA
       - Tacoma, WA
-  max_backup_route_multiple: 3
+  max_backup_path_multiple: 3
   node_count:
     max: 99
     min: 3

@@ -30,7 +30,7 @@ LOCAL_FIBER_RADIUS_MILES = 300.0
 
 
 @dataclass(frozen=True)
-class LocalFiberTwinSpec:
+class LocalFiberTwinSettings:
     """How to seat a local-fiber twin: edge note and reach cap.
 
     ``max_radius`` of ``None`` removes the distance cap so an operator-forced site is
@@ -75,16 +75,16 @@ def build_local_fiber_twin(
     site: Vertex,
     twin_id: str,
     carrier_pops: list[Vertex],
-    spec: LocalFiberTwinSpec,
+    settings: LocalFiberTwinSettings,
 ) -> tuple[Vertex, dict[tuple[str, str], PhysicalEdge]] | None:
     """A co-located carrier-PoP twin for ``site`` plus its local-fiber edges.
 
     Returns the ``KIND_POP`` twin and its synthetic links to the nearest carrier
     PoPs, or ``None`` only when fewer than :data:`LOCAL_FIBER_MIN_LINKS` carrier PoPs
-    are available to wire to (``spec.max_radius`` of ``None`` lifts the distance cap).
+    are available to wire to (``settings.max_radius`` of ``None`` lifts the distance cap).
     """
     neighbors = nearest_carrier_pops(
-        site, carrier_pops, LOCAL_FIBER_LINKS, spec.max_radius
+        site, carrier_pops, LOCAL_FIBER_LINKS, settings.max_radius
     )
     if len(neighbors) < LOCAL_FIBER_MIN_LINKS:
         return None
@@ -102,6 +102,6 @@ def build_local_fiber_twin(
             source=key[0],
             target=key[1],
             distance_miles=haversine_miles(twin, pop),
-            note=spec.note,
+            note=settings.note,
         )
     return twin, edges

@@ -20,7 +20,7 @@ from typing import TypedDict
 from synthesizer.input_graph import Vertex, haversine_miles
 from synthesizer.model import Design, DesignInputs, DesignParams
 from synthesizer.assemble import build_design_for_backbone, evaluate_backbone
-from synthesizer.ceiling import BackupRouteLimit, RouteGround, independent_route_ceiling
+from synthesizer.ceiling import BackupPathLimit, PathProofInputs, independent_path_ceiling
 from synthesizer.search_plan import _SearchPlan
 
 logger = logging.getLogger(__name__)
@@ -139,26 +139,27 @@ def candidate_mesh_ceiling(
     candidate_id: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: BackupRouteLimit | None = None,
+    limit: BackupPathLimit | None = None,
 ) -> int:
     """How many independently failing links ``candidate_id`` could hold once it joins.
 
-    The number of routes from it to the rest of the grown backbone that no single city's
-    loss takes two of (see :func:`synthesizer.ceiling.independent_route_ceiling`).
+    The number of paths from it to the rest of the grown backbone that no single city's
+    loss takes two of (see :func:`synthesizer.ceiling.independent_path_ceiling`).
 
-    This is not the number of fiber spans leaving the city, and the difference is the whole
-    reason to measure it rather than count them. A city with three spans whose branches
-    funnel through one upstream city can hold two links that fail independently, not three,
-    so a raw span count would say it can carry a backbone node when its fiber cannot.
+    This is not the number of fiber segments leaving the city, and the difference is the
+    whole reason to measure it rather than count them. A city with three segments whose
+    branches funnel through one upstream city can hold two links that fail independently,
+    not three, so a raw segment count would say it can carry a backbone node when its fiber
+    cannot.
 
-    ``limit`` bounds how far the routes counted may run (see
-    :func:`synthesizer.ceiling.independent_routes`). A hub credited with a route it could
+    ``limit`` bounds how far the paths counted may run (see
+    :func:`synthesizer.ceiling.independent_paths`). A hub credited with a path it could
     only take by crossing an ocean is chosen for protection the operator will not buy, so
     the bound belongs to the ranking as much as to the routing.
     """
-    return independent_route_ceiling(
+    return independent_path_ceiling(
         candidate_id,
-        RouteGround(tuple(sorted((*backbone_ids, candidate_id))), adjacency, limit),
+        PathProofInputs(tuple(sorted((*backbone_ids, candidate_id))), adjacency, limit),
     )
 
 
@@ -167,7 +168,7 @@ def best_coverage_candidate(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     target_miles: float,
-    limit: BackupRouteLimit | None = None,
+    limit: BackupPathLimit | None = None,
 ) -> str:
     """Which improving candidate to seat: the best connected of those that satisfy coverage.
 
@@ -283,8 +284,8 @@ def grow_backbone_for_coverage(
             backbone_ids,
             inputs.adjacency,
             target_miles,
-            BackupRouteLimit(
-                params.tuning.backbone_max_backup_route_multiple, inputs.all_distances
+            BackupPathLimit(
+                params.tuning.backbone_max_backup_path_multiple, inputs.all_distances
             ),
         )
         backbone_ids = tuple(sorted((*backbone_ids, best_id)))

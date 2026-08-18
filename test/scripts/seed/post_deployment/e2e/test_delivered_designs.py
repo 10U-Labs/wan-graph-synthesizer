@@ -3,7 +3,7 @@
 ``scripts/seed.py`` PUTs every ``etc/*.yml`` to the API and then POSTs one build per
 tenant. This is that journey read back the way a caller reads it: each tenant's published
 status and its backbone, demand and links collections, measured against the
-``target_miles``, ``max_backup_route_multiple``, ``seat_cap`` and pinned cities its own config sets.
+``target_miles``, ``max_backup_path_multiple``, ``seat_cap`` and pinned cities its own config sets.
 What fails here is as often a config asking for something its other settings rule out as it
 is a defect in the synthesizer -- GitHub issue #42 was closed by moving a target in
 etc/minuteman.yml, with no code changed at all.
@@ -149,22 +149,22 @@ def test_no_design_stopped_short_of_its_target_with_a_seat_left_to_spend(
     assert gave_up_early == []
 
 
-def test_no_published_link_is_routed_further_than_its_tenant_allows(
+def test_no_published_link_runs_further_than_its_tenant_allows(
         delivered_designs: list[dict[str, Any]]) -> None:
     """No backbone link wanders far past the direct distance between the two sites it joins.
 
     This is the assertion GitHub issue #44 had to get past. DAF's published network
     protected Ashburn to New York, 220 miles apart, along a 7,471-mile path through Paris,
     and protected Seattle to Hillsboro through Tokyo at 9,607 miles against 161 -- because
-    the proof behind the mesh counted routes that share no city and read no distance at all.
+    the proof behind the mesh counted paths that share no city and read no distance at all.
 
-    Measured against the great-circle distance rather than the shortest fiber route, since
-    the published collections carry no substrate to route over and rebuilding one here would
-    reimplement the router this layer exists to check from the outside. Great-circle is the
+    Measured against the great-circle distance rather than the shortest fiber path, since
+    the published collections carry no fiber to draw over and rebuilding it here would
+    reimplement the very code this layer exists to check from the outside. Great-circle is the
     shorter denominator, so the ratio it yields overstates the real multiple and the bound is
     loosened by ``SINUOSITY`` to stay sound. That leaves it far looser than what the
     synthesizer enforces -- six times the direct distance rather than three -- and it still
-    catches every route the defect produced, the nearest of which ran twelve times.
+    catches every path the defect produced, the nearest of which ran twelve times.
     """
     overrun = {
         design["tenant"]: overrun_links(design)
@@ -176,20 +176,20 @@ def test_no_published_link_is_routed_further_than_its_tenant_allows(
 
 def test_no_published_link_wanders_past_the_fiber_its_own_network_carries(
         delivered_designs: list[dict[str, Any]]) -> None:
-    """No backbone link runs far past the cheapest way over the fiber the design ordered.
+    """No backbone link runs far past the shortest way over the fiber the design ordered.
 
     The assertion above measures each link against the straight line between its two sites,
     which is why it has to be loosened to six times the tenant's bound: real fiber does not
     fly. This one measures it against fiber -- the published ``edges`` collection carries
-    every carrier span the design routed over, so the shortest way between the two sites is
-    recomputable from outside the build and the tenant's own ``max_backup_route_multiple`` can be
+    every fiber segment the design ordered, so the shortest way between the two sites is
+    recomputable from outside the build and the tenant's own ``max_backup_path_multiple`` can be
     applied to it without slack.
 
-    What it cannot ask is whether the *set* of routes out of a site is the shortest set that
+    What it cannot ask is whether the *set* of paths out of a site is the shortest set that
     holds that many independent links, which is what GitHub issue #57 is about: the proof
-    behind the mesh chose the routes crossing the fewest cities rather than the ones running
-    the least cable, and a set of needlessly long routes can pass here with every link in it
-    inside the bound. The routes proved and never drawn are not published at all. This is
+    behind the mesh chose the paths crossing the fewest cities rather than the ones running
+    the fewest fiber miles, and a set of needlessly long paths can pass here with every link in it
+    inside the bound. The paths proved and never drawn are not published at all. This is
     the strongest statement available from outside, and it needs nothing added to what the
     synthesizer publishes.
     """
@@ -207,7 +207,7 @@ def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(
 
     A site is asked for the smaller of the tenant's own diverse-path number and the count of
     ways out its fiber proves, and the mesh then lays what it can. A count proved over
-    routes the backup route multiple forbids asks for a link the router will not draw, and
+    paths the backup path multiple forbids asks for a link the mesh will not draw, and
     the site is reported short of it for the rest of the build's life -- a shortfall an
     operator reads, investigates and cannot close, because the missing link is one the
     bound itself refuses (GitHub issue #45).
@@ -224,22 +224,22 @@ def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(
     assert {tenant: sites for tenant, sites in short.items() if sites} == {}
 
 
-def test_no_published_network_draws_a_pair_more_routes_than_its_tenant_bought(
+def test_no_published_network_draws_a_pair_more_paths_than_its_tenant_bought(
         delivered_designs: list[dict[str, Any]]) -> None:
-    """No two backbone sites are joined by a route that buys neither of them a path.
+    """No two backbone sites are joined by a path that buys neither of them a path.
 
-    Two sites that are joined are joined once, and a second circuit between them earns its
+    Two sites that are joined are joined once, and a second path between them earns its
     monthly cost only where a single city's loss would not take it along with the first. So
-    each pair's longest route is set aside and both ends are measured without it (see
+    each pair's longest path is set aside and both ends are measured without it (see
     ``test_published_designs.overbuilt_pairs``): where neither end loses a way out it was
-    asked for, nobody needed the circuit. Twenty-one pairs across DAF, F-35, AFGSC and
-    Minuteman were of that kind, 17,013 route miles of them, and passed here while this
-    counted routes against the tenant's number instead (GitHub issue #59).
+    asked for, nobody needed the path. Twenty-one pairs across DAF, F-35, AFGSC and
+    Minuteman were of that kind, 17,013 path miles of them, and passed here while this
+    counted paths against the tenant's number instead (GitHub issue #59).
 
     The counterpart of the shortfall above, and the half that was missing. Every question
-    this layer asked about routes asked it of one route at a time -- is this one inside the
+    this layer asked about paths asked it of one path at a time -- is this one inside the
     bound, is this one the shortest way over the fiber -- so a network could hold any number
-    of them and answer yes every time. Two-Node did: five routes between Ashburn, VA and
+    of them and answer yes every time. Two-Node did: five paths between Ashburn, VA and
     Salt Lake City, UT, each of them sound on its own, 5,633 miles of haul nobody ordered,
     and not one published measurement with anything to say about it (GitHub issue #58).
 

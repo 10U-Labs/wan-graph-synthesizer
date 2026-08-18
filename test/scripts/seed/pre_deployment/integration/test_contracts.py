@@ -27,9 +27,9 @@ import seed
 from repo_utils import REPO_ROOT
 from seed import _carrier_cities, _city_key, _mapping_rows, _rows, _slug
 from synthesizer.ceiling import (
-    BackupRouteLimit,
-    RouteGround,
-    independent_route_ceiling,
+    BackupPathLimit,
+    PathProofInputs,
+    independent_path_ceiling,
 )
 from synthesizer.codec import load_regions, load_sites, load_substrate
 from synthesizer.graphs import build_adjacency, distances_from
@@ -133,10 +133,10 @@ def _declared_coverage_targets() -> dict[str, int]:
     }
 
 
-def _declared_backup_route_multiples() -> dict[str, float]:
-    """Each tenant's backup route multiple, read from the backbone block of its own config."""
+def _declared_backup_path_multiples() -> dict[str, float]:
+    """Each tenant's backup path multiple, read from the backbone block of its own config."""
     return {
-        tenant: backbone["max_backup_route_multiple"]
+        tenant: backbone["max_backup_path_multiple"]
         for tenant, backbone in _backbone_blocks().items()
     }
 
@@ -163,20 +163,20 @@ def test_pipeline_writes_each_tenant_the_coverage_target_its_config_declares(
         _declared_coverage_targets()
 
 
-def test_pipeline_writes_each_tenant_the_backup_route_multiple_its_config_declares(
+def test_pipeline_writes_each_tenant_the_backup_path_multiple_its_config_declares(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
     """Each knobs document carries the multiple its config declares, under the stored key.
 
     The same two-spellings problem as the coverage target, and the same reason it cannot be
-    checked in either file alone: the config names it ``backbone.max_backup_route_multiple``
-    and the synthesizer reads ``backbone_max_backup_route_multiple``. A tenant whose
-    multiple never arrives is a failed build rather than a design that quietly routes the
+    checked in either file alone: the config names it ``backbone.max_backup_path_multiple``
+    and the synthesizer reads ``backbone_max_backup_path_multiple``. A tenant whose
+    multiple never arrives is a failed build rather than a design that quietly paths the
     long way, since the synthesizer requires the key, but the failure would name the store
     and not this seam.
     """
     _seed(urlopen_recorder, monkeypatch)
-    assert _knob(urlopen_recorder, "backbone_max_backup_route_multiple") == \
-        _declared_backup_route_multiples()
+    assert _knob(urlopen_recorder, "backbone_max_backup_path_multiple") == \
+        _declared_backup_path_multiples()
 
 
 def test_pipeline_writes_no_knob_the_synthesizer_does_not_read(
@@ -191,7 +191,7 @@ def test_pipeline_writes_no_knob_the_synthesizer_does_not_read(
     assert {
         frozenset(document)
         for document in _written_by_tenant(urlopen_recorder, "knobs").values()
-    } == {frozenset({"backbone_coverage_target_miles", "backbone_max_backup_route_multiple"})}
+    } == {frozenset({"backbone_coverage_target_miles", "backbone_max_backup_path_multiple"})}
 
 
 def test_pipeline_writes_every_tenant_the_regions_of_the_file_its_config_names(
@@ -262,7 +262,7 @@ def test_pipeline_writes_a_forced_homes_document_for_every_tenant(
 
 
 def _merged_substrate() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
-    """Every carrier's points and every carrier's spans, merged as the API merges them.
+    """Every carrier's points and every carrier's fiber, merged as the API merges them.
 
     Read with seed's own reader and merged by the same loader, so the graph measured here
     is the graph the synthesizer starts from. The files are taken in sorted order because
@@ -273,10 +273,10 @@ def _merged_substrate() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdg
         for path in sorted((seed.DATA / "vertices" / "carriers").glob("*.csv"))
         for row in _rows(path)
     ]
-    spans = [
+    segments = [
         row for path in sorted((seed.DATA / "edges").glob("*.csv")) for row in _rows(path)
     ]
-    return load_substrate(points, spans)
+    return load_substrate(points, segments)
 
 
 def _substrate() -> tuple[dict[str, str], dict[str, list[tuple[str, float]]]]:
@@ -303,18 +303,18 @@ def _pinned_ids(backbone: dict[str, Any], by_name: dict[str, str]) -> tuple[str,
     """The tenant's pinned backbone cities as substrate ids, skipping any it has no point for.
 
     A pin the carrier files do not serve is seated by fabricating a point for it, which this
-    graph does not have. Leaving it out costs the count a place a route could have ended,
+    graph does not have. Leaving it out costs the count a place a path could have ended,
     which can only make the bound below smaller.
     """
     return tuple(by_name[name] for name in _pinned_cities(backbone) if name in by_name)
 
 
-def _route_endpoints(city_id: str, pinned: tuple[str, ...]) -> int:
-    """How many places a route out of ``city_id`` has to end at, for the bound below.
+def _path_endpoints(city_id: str, pinned: tuple[str, ...]) -> int:
+    """How many places a path out of ``city_id`` has to end at, for the bound below.
 
-    The bound counts routes to the tenant's pinned cities, so the pins are the only
-    endpoints there are, and a city that is itself a pin cannot route to itself. A tenant
-    that pins one city therefore leaves a route out of it nowhere to go.
+    The bound counts paths to the tenant's pinned cities, so the pins are the only
+    endpoints there are, and a city that is itself a pin cannot path to itself. A tenant
+    that pins one city therefore leaves a path out of it nowhere to go.
     """
     return len(pinned) - (1 if city_id in pinned else 0)
 
@@ -328,26 +328,26 @@ def _ceiling_bounds(
     contracts below differ in: one asks about the cities a tenant excuses, the other about
     the cities it pins.
 
-    The bound counts routes from the city to the tenant's pinned backbone cities that share
+    The bound counts paths from the city to the tenant's pinned backbone cities that share
     no city on the way, over the merged carrier substrate. It is a floor rather than the
     real ceiling for two reasons, and both point the same way: the real run seats backbone
-    nodes beyond the pins, which gives routes more distinct places to end, and it fabricates
-    on-net points and seats off-net ones, which adds spans. Neither can lower a maximum
+    nodes beyond the pins, which gives paths more distinct places to end, and it fabricates
+    on-net points and seats off-net ones, which adds fiber segments. Neither can lower a maximum
     flow, so the real ceiling is at least what this returns.
 
     A city the carrier files hold no point for is left out, since there is no graph to
     measure it on and a silent zero would read as a proven limit.
 
-    A city with no other pin to route to at all is left out for the same reason: every route
+    A city with no other pin to path to at all is left out for the same reason: every path
     counted here ends at one of the tenant's pins, so a city that is the only pin leaves a
-    route out of it nowhere to go and the bound reads zero however much fiber leaves the
+    path out of it nowhere to go and the bound reads zero however much fiber leaves the
     city. That is a fact about the config rather than about the ground. Two-Node was in that
     position while it pinned Ashburn, VA alone, and pinning Salt Lake City, UT beside it
     brought both cities back into the count.
 
     Having fewer pins than the number asked for is no longer a reason to leave a city out.
-    A peer may carry more than one route where the tenant's own seats leave its sites too
-    few peers to reach (see ``synthesizer.ceiling.routes_per_peer``), so the tenant's number
+    A peer may carry more than one path where the tenant's own seats leave its sites too
+    few peers to reach (see ``synthesizer.ceiling.paths_per_peer``), so the tenant's number
     and its seat cap are both passed in and a two-seat tenant asking for two paths is
     measured on whether its fiber joins the two cities two ways rather than skipped for
     having pinned only two. Two-Node is that tenant, and the seat cap is what the build
@@ -358,10 +358,10 @@ def _ceiling_bounds(
     and refuses one sitting in a fiber pocket too small for the backbone it was asked for
     (``forced_backbone_resilience_error``).
 
-    The tenant's own backup route multiple is applied, because the real run applies it: a
+    The tenant's own backup path multiple is applied, because the real run applies it: a
     ceiling measured over fiber the design may not use is not a floor under the real one
-    but a number above it, and a tenant could clear this contract on routes its build would
-    refuse. Adding pins can only admit more spans, since a span is withheld only when no
+    but a number above it, and a tenant could clear this contract on paths its build would
+    refuse. Adding pins can only admit more fiber segments, since a segment is withheld only when no
     peer at all can reach it inside its budget, so the bound stays a floor under the real
     ceiling exactly as before.
     """
@@ -373,18 +373,18 @@ def _ceiling_bounds(
         asked = backbone["number_of_diverse_paths"]
         # A row per peer and per city measured: an exempt city need not be a pin, and the
         # bound is measured from it as well as to it.
-        limit = BackupRouteLimit(
-            float(backbone["max_backup_route_multiple"]),
+        limit = BackupPathLimit(
+            float(backbone["max_backup_path_multiple"]),
             distances_from(adjacency, {*pinned, *measured}),
         )
         for city in cities(backbone):
             city_id = by_name.get(city)
-            if city_id is None or _route_endpoints(city_id, pinned) < 1:
+            if city_id is None or _path_endpoints(city_id, pinned) < 1:
                 continue
-            ground = RouteGround(
+            ground = PathProofInputs(
                 pinned, adjacency, limit, asked, backbone["node_count"]["max"]
             )
-            bound = independent_route_ceiling(city_id, ground)
+            bound = independent_path_ceiling(city_id, ground)
             bounds.append((tenant, city, bound, asked))
     return bounds
 
@@ -405,9 +405,9 @@ def test_no_tenant_exempts_a_city_its_own_fiber_already_accounts_for() -> None:
     unmentioned -- so an exemption is worth keeping only where the fiber does not already
     account for the gap.
 
-    Boston was a city of the first kind: every route out of it passes through Albany or
+    Boston was a city of the first kind: every path out of it passes through Albany or
     Stamford, so it could never hold three independent links, and it came off the list once
-    the ceiling said so. San Jose is a city of the second kind, with three routes to three
+    the ceiling said so. San Jose is a city of the second kind, with three paths to three
     different pinned cities that share no city between them.
     """
     assert [
@@ -421,7 +421,7 @@ def test_every_pinned_city_can_carry_the_diversity_its_tenant_asks_for() -> None
     """No tenant pins a backbone city whose own fiber cannot hold the paths it asks for.
 
     The base backbone is now ranked by how many diverse paths a site's fiber can carry
-    rather than by how many spans touch it, which makes this the question the ranking is
+    rather than by how many fiber segments touch it, which makes this the question the ranking is
     trying to answer -- and a pin is the one site the ranking never gets to decide, because
     an operator has already decided it. So a pin is the place a design can still start out
     short, and neither file can say on its own: the config names the cities, the carrier
@@ -430,14 +430,14 @@ def test_every_pinned_city_can_carry_the_diversity_its_tenant_asks_for() -> None
     Measured over the merged carriers today, twelve of the eighty-four pinned cities sit
     exactly on the number their tenant asks for and the other seventy-two are above it --
     Boston, MA under four tenants, New York, NY under two, AFGSC's Tacoma, WA and DoW's
-    Boardman, OR, Tucson, AZ and Umatilla, OR, each with two routes out that share no city,
-    and Two-Node's Ashburn, VA and Salt Lake City, UT, joined by two routes sharing nothing
+    Boardman, OR, Tucson, AZ and Umatilla, OR, each with two paths out that share no city,
+    and Two-Node's Ashburn, VA and Salt Lake City, UT, joined by two paths sharing nothing
     but their two ends, 1,843.1 and 2,041.1 miles against 1,815.7 direct. The bound counts
-    only routes to the tenant's other pins, so the real run, which seats more sites and adds
-    spans, can only do better.
+    only paths to the tenant's other pins, so the real run, which seats more sites and adds
+    fiber segments, can only do better.
 
     A tenant that pins one city is not measured here (see :func:`_ceiling_bounds`), because
-    a route out of it would have nowhere to end and the bound would report the count of pins
+    a path out of it would have nowhere to end and the bound would report the count of pins
     rather than anything about the fiber. No tenant is in that position today; Two-Node was,
     until it pinned a second city.
     """
@@ -500,7 +500,7 @@ def _seats_for_coverage(config: dict[str, Any], carriers: list[Vertex]) -> int:
 
 def _seat_shortfalls() -> list[tuple[str, int, int]]:
     """Per tenant, the seat cap beside the seats its target needs, where the cap is smaller."""
-    carriers, _spans = _merged_substrate()
+    carriers, _segments = _merged_substrate()
     shortfalls: list[tuple[str, int, int]] = []
     for tenant, config in sorted(_tenant_configs().items()):
         cap = config["backbone"]["node_count"]["max"]

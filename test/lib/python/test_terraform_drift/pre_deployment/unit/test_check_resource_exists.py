@@ -12,7 +12,7 @@ folded into ``False``: a call that was refused or throttled has said nothing abo
 the resource is there.
 
 Every service is replaced by a client that answers one way for every call, so what is
-under test is the ten checkers and the two registries that route to them.
+under test is the ten checkers and the two registries that path to them.
 """
 
 from __future__ import annotations

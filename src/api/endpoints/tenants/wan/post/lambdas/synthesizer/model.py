@@ -36,14 +36,14 @@ LINK_FOR_TARGET = "site_target"  # a site reached for it to meet its own target
 LINK_FOR_PIN = "operator_pin"  # the operator wrote it into etc/*.yml
 LINK_FOR_CONNECTIVITY = "network_connectivity"  # it holds the backbone together as one
 LINK_FOR_CITY_DETOUR = "city_detour"  # it stops one city's loss splitting the backbone
-# a second route to a peer a site is joined to already, drawn only where the site's fiber
+# a second path to a peer a site is joined to already, drawn only where the site's fiber
 # offers it no other way out that a single city's loss would not take with its first
 LINK_FOR_SITE_DIVERSITY = "site_diversity"
 
 
 @dataclass(frozen=True)
-class PathUse:
-    """A routed path over the physical graph for one design purpose.
+class DesignPath:
+    """One path the design ordered, over the physical graph, and why it exists.
 
     ``reason`` is why a ``backbone_mesh`` link exists, one of the five constants above.
     ``requested_by`` names the sites that reached for it and is empty unless ``reason`` is
@@ -69,13 +69,13 @@ class DesignMetrics:
 
 @dataclass
 class Design:
-    """A complete two-tier design: the backbone, the demand it carries, routes, metrics."""
+    """A complete two-tier design: the backbone, the demand it carries, paths, metrics."""
 
     backbone_ids: tuple[str, ...]
     transit_ids: tuple[str, ...]
     access_edges: list[AccessEdge]
     physical_edge_keys: set[tuple[str, str]]
-    path_uses: list[PathUse]
+    path_uses: list[DesignPath]
     metrics: DesignMetrics
 
 @dataclass(frozen=True)
@@ -99,9 +99,9 @@ class Tuning:
     at the config layer (its field default here is a construction fallback only,
     kept because dataclass field ordering forces one); it lives in the ``knobs``
     resource rather than its own, since it describes the network an operator wants.
-    ``backbone_max_backup_route_multiple`` is required on the same terms and lives in the
+    ``backbone_max_backup_path_multiple`` is required on the same terms and lives in the
     same resource for the same reason: how far a protect path may run against the direct
-    route between its two sites is a statement about the network being bought, not a
+    path between its two sites is a statement about the network being bought, not a
     dial on how the search finds it.
     The remaining fields (``compass_sector_count``, ``search_memory_budget``) describe how the
     search scores candidates and how much memory it may consume, which is nobody's
@@ -116,11 +116,11 @@ class Tuning:
     # haul it is compared against stands in for an unmeasured last-mile build
     backbone_coverage_target_miles: int = 600
     access_backbone_links: int = 2  # backbone nodes each demand vertex homes to
-    # how many times the direct route between two backbone nodes a path between them may
+    # how many times the direct path between two backbone nodes a path between them may
     # run; a ratio rather than a mileage, so it means the same thing to a 200-mile link
     # and a 2,000-mile one, and fractional because a ratio has resolution that a target
     # compared against a great-circle haul does not
-    backbone_max_backup_route_multiple: float = 3.0
+    backbone_max_backup_path_multiple: float = 3.0
     # how much memory the backbone enumeration may spend
     search_memory_budget: SearchMemoryBudget = field(default_factory=SearchMemoryBudget)
 
@@ -262,7 +262,7 @@ class DesignInputs:
     carrier_blocks: dict[str, frozenset[int]]
 
 @dataclass(frozen=True)
-class MeshTargets:
+class MeshRequirements:
     """What each backbone node owes on the mesh: the degree, the exemptions, the ceilings.
 
     The three always decide one question together -- how many independently failing links
@@ -304,7 +304,7 @@ class ValidationReport(TypedDict):
     backbone_mesh_two_vertex_connected: bool
 
 @dataclass(frozen=True)
-class DesignPaths:
+class InputFiles:
     """All file paths a WAN map's design is computed from.
 
     ``vertex_files`` pairs each tenant with its per-tenant vertices CSV; the
