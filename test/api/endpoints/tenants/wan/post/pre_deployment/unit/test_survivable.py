@@ -301,10 +301,10 @@ def test_the_fiber_a_long_search_settles_on_meets_every_requirement_asked_of_it(
     ``synthesizer.validation.backbone_mesh_independence_deficient``, on a report an operator
     reads rather than on the fiber the design stands on.
     """
-    assert _shortfalls(
+    assert not _shortfalls(
         _requirements(_MANY_PASS_INPUTS, _MANY_PASS_FIBER),
         _held(_MANY_PASS_FIBER, _MANY_PASS_CHOICE.segments),
-    ) == []
+    )
 
 
 # Every choice above beside the fiber it was made over, so the guarantee the whole module

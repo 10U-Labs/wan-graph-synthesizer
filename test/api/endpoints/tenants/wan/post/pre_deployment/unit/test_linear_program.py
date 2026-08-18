@@ -144,3 +144,17 @@ def test_a_column_let_go_of_is_no_longer_held_whole_and_the_answer_comes_back_do
     growing.solve()
     growing.hold_nothing()
     assert growing.solve().miles == pytest.approx(6.0)
+
+
+def test_writing_no_rows_at_all_leaves_the_program_answering_as_it_did() -> None:
+    """A batch with nothing in it is written, and the answer is the one from before it.
+
+    This is the batch a search writes when every separation it has just found is one it
+    wrote down earlier, and reaching it is how the search knows to stop: a program that
+    learned nothing will answer the same thing for ever if it is asked again. So the empty
+    batch has to be a no-op rather than a call into the solver with no rows in hand.
+    """
+    growing = GrowingSegmentProgram(_TWO_COLUMNS)
+    growing.add_rows(_EVERY_ROW)
+    growing.add_rows(())
+    assert growing.solve().miles == pytest.approx(6.0)

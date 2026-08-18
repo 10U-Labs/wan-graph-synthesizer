@@ -345,12 +345,16 @@ def test_no_published_network_runs_fewer_miles_than_the_floor_it_publishes(
 
     This is the direction the assertion above does not test, and the two are not
     interchangeable. That one fires when a design runs too long, and it caught Two-Node at
-    2.078 times its floor. Both numbers come out of the same search, so a search cut off
-    early reports a floor too low and, for two of the six tenants, a design too small as
-    well, and the two wrong numbers agree with each other: F-35 published 6,664.009 miles
-    against a floor of 6,359.323, a ratio of 1.048 that passes comfortably, while the floor a
-    finished search reports for it is 7,772.795 -- so the published design sat 1,108.786
-    miles below the fewest miles any working design could hold, and nothing out here said a
-    word (GitHub issue #63).
+    2.078 times its floor.
+
+    What it can catch is bounded by which floor a tenant publishes, and that is worth being
+    exact about. Both numbers come out of the same search, so while the search was being cut
+    off early the published floor was too low and moved with the design that was too small:
+    F-35 published 6,664.009 miles against a published floor of 6,359.323 and passes here,
+    though a finished search floors it at 7,772.795 and the delivered design was 1,108.786
+    miles below the fewest miles any working design could hold. So this would not have
+    caught F-35 as it stood, and GitHub issue #63 was wrong to say it would. It bites from
+    the moment that search is allowed to finish, because the floor a tenant publishes is
+    then the real one and a design under it is arithmetic that has come apart.
     """
     assert _tenants_outside(delivered_designs, lambda miles, floor: miles >= floor) == {}
