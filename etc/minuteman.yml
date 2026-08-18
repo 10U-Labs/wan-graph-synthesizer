@@ -11,7 +11,6 @@ backbone:
       - Ashburn, VA
       - Cheyenne, WY
       - Great Falls, MT
-      - McLean, VA
       - Minot, ND
       - Salt Lake City, UT
   max_backup_path_multiple: 3
