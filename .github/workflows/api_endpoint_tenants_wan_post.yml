@@ -110,7 +110,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install mypy boto3 boto3-stubs pytest pyyaml types-PyYAML
+        run: pip install mypy boto3 boto3-stubs highspy==1.15.1 pytest pyyaml types-PyYAML
       - name: Run mypy on source
         run: >-
           MYPYPATH=lib/python:src:src/api/endpoints/tenants/wan/post/lambdas
@@ -122,7 +122,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install mypy boto3 boto3-stubs pytest pyyaml types-PyYAML
+        run: pip install mypy boto3 boto3-stubs highspy==1.15.1 pytest pyyaml types-PyYAML
       - name: Run mypy on tests
         run: >-
           MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
@@ -174,7 +174,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8' pyyaml
+        run: pip install boto3 boto3-stubs highspy==1.15.1 pytest 'python-hcl2<8' pyyaml
       - name: Run pre-deployment integration tests
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/post/lambdas
@@ -187,7 +187,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install pylint boto3 boto3-stubs pytest pyyaml types-PyYAML
+        run: pip install pylint boto3 boto3-stubs highspy==1.15.1 pytest pyyaml types-PyYAML
       # This source lint disables pylint's broad-exception-caught (W0718) check.
       # post/lambdas/synthesizer/handler.py is the synthesizer Lambda that builds a tenant's
       # WAN, and it deliberately wraps the whole build in a catch-all
@@ -228,7 +228,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install pylint boto3 boto3-stubs pytest pyyaml types-PyYAML
+        run: pip install pylint boto3 boto3-stubs highspy==1.15.1 pytest pyyaml types-PyYAML
       - name: Run pylint on tests
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
@@ -270,6 +270,26 @@ jobs:
         with:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      # The same two wheels validate-stack fetches -- highspy 1.15.1 and numpy 2.3.5, the
+      # contents of aws_lambda_layer_version.solver. This job runs tofu apply, so the layer
+      # zip built here is the one AWS receives; the sha256 check is what says it is the
+      # wheel that was pinned. It runs before tofu because data.archive_file.solver_layer
+      # reads the unpacked directory during the plan.
+      - name: Fetch and unpack the solver wheels the Lambda layer is built from
+        run: |
+          wheels=$RUNNER_TEMP/solver_wheels
+          layer=src/api/endpoints/tenants/wan/post/.terraform/solver_layer/python
+          highs=$wheels/highspy-1.15.1-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl
+          numpy=$wheels/numpy-2.3.5-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl
+          mkdir -p "$wheels" "$layer"
+          curl -fsSL -o "$highs" https://files.pythonhosted.org/packages/2f/97/4b5e345affc107f1f315c55dd0b6f35f13be07092feccbdfe1d9bfe38e63/highspy-1.15.1-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl
+          curl -fsSL -o "$numpy" https://files.pythonhosted.org/packages/95/03/dc0723a013c7d7c19de5ef29e932c3081df1c14ba582b8b86b5de9db7f0f/numpy-2.3.5-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl
+          sha256sum -c <<EOF
+          383cd3f28cce0753dec8e949719b10864e068c53a485624fcab4c6b585496dd7  $highs
+          9c75442b2209b8470d6d5d8b1c25714270686f14c749028d2199c54e29f20b4d  $numpy
+          EOF
+          unzip -q -o "$highs" -d "$layer"
+          unzip -q -o "$numpy" -d "$layer"
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v2
         with:
@@ -317,7 +337,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install boto3 pytest pytest-cov 'python-hcl2<8' pyyaml
+        run: pip install boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
       # Each module is named in a --cov of its own rather than lib/python covered as a
       # whole, so the next module to arrive without tests fails here instead of being
       # carried by its neighbours' numbers (GitHub issue #52).
@@ -372,7 +392,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install boto3 boto3-stubs pytest pytest-cov 'python-hcl2<8' pyyaml
+        run: pip install boto3 boto3-stubs highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
       # What remains gated here is the synthesizer this workflow deploys, at 100% of its
       # branches. The shared modules its tests import are gated in test-repo-libraries,
       # which every job in this workflow that imports them runs after.
@@ -392,6 +412,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # The two wheels aws_lambda_layer_version.solver ships to the synthesizer: highspy
+      # 1.15.1, the HiGHS solver that lambdas/synthesizer/linear_program.py calls, and numpy
+      # 2.3.5, which highspy needs. They are unpacked under
+      # src/api/endpoints/tenants/wan/post/.terraform/solver_layer/ and nowhere else under
+      # src/, because pylint-source, mypy-source and copy-paste-source read every .py they
+      # find under src/ and would report on code nobody here wrote. A wheel is a zip, so
+      # unzip is all it takes to unpack one. Both are pinned by URL and checked by sha256,
+      # so a file replaced on PyPI fails here rather than reaching AWS. This step runs
+      # before tofu because data.archive_file.solver_layer reads that directory during the
+      # plan, and the plan fails outright if it does not exist.
+      - name: Fetch and unpack the solver wheels the Lambda layer is built from
+        run: |
+          wheels=$RUNNER_TEMP/solver_wheels
+          layer=src/api/endpoints/tenants/wan/post/.terraform/solver_layer/python
+          highs=$wheels/highspy-1.15.1-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl
+          numpy=$wheels/numpy-2.3.5-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl
+          mkdir -p "$wheels" "$layer"
+          curl -fsSL -o "$highs" https://files.pythonhosted.org/packages/2f/97/4b5e345affc107f1f315c55dd0b6f35f13be07092feccbdfe1d9bfe38e63/highspy-1.15.1-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl
+          curl -fsSL -o "$numpy" https://files.pythonhosted.org/packages/95/03/dc0723a013c7d7c19de5ef29e932c3081df1c14ba582b8b86b5de9db7f0f/numpy-2.3.5-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl
+          sha256sum -c <<EOF
+          383cd3f28cce0753dec8e949719b10864e068c53a485624fcab4c6b585496dd7  $highs
+          9c75442b2209b8470d6d5d8b1c25714270686f14c749028d2199c54e29f20b4d  $numpy
+          EOF
+          unzip -q -o "$highs" -d "$layer"
+          unzip -q -o "$numpy" -d "$layer"
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v2
         with:

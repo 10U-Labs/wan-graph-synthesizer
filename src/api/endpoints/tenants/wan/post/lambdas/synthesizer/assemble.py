@@ -29,15 +29,24 @@ from synthesizer.forced import (
     removed_backbone_pairs,
 )
 from synthesizer.graphs import path_edge_keys
-from synthesizer.backbone import BackboneConstraints, backbone_mesh_paths
+from synthesizer.backbone import BackboneConstraints, BackboneMesh, backbone_mesh
 from synthesizer.ceiling import BackupPathLimit
 from synthesizer.search_plan import _SearchPlan
 
 
 @dataclass
 class _DesignDraft:
+    """A design before its mileage is added up: what it homes, what it paths, its floor.
+
+    ``backbone_lower_bound_miles`` is the fewest fiber miles any backbone meeting this
+    tenant's requirements could have run (see :mod:`synthesizer.survivable`). It is carried
+    here so it reaches :class:`synthesizer.model.DesignMetrics` and is published with the
+    design; a draft built without a fiber choice behind it carries no floor and reads zero.
+    """
+
     access_edges: list[AccessEdge]
     path_uses: list[DesignPath]
+    backbone_lower_bound_miles: float = 0.0
 
 
 def finalize_design(
@@ -63,7 +72,9 @@ def finalize_design(
         access_edges=draft.access_edges,
         physical_edge_keys=physical_edge_keys,
         path_uses=draft.path_uses,
-        metrics=DesignMetrics(score, access_miles, physical_miles),
+        metrics=DesignMetrics(
+            score, access_miles, physical_miles, draft.backbone_lower_bound_miles
+        ),
     )
 
 
@@ -194,8 +205,15 @@ def design_paths(
     inputs: DesignInputs,
     plan: _SearchPlan,
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-) -> list[DesignPath]:
-    """Reconstruct the backbone-mesh paths for a design."""
+) -> BackboneMesh:
+    """Draw the backbone-to-backbone paths for a design, and the floor they are judged against.
+
+    The operator's instructions are gathered here and handed over whole: the pairs they
+    pinned, the pairs they struck out, how many ways out each site is bought, how far a
+    path may run against the direct distance between its ends, and how many seats their
+    config allows. What comes back is the paths and the fewest miles any design meeting the
+    same requirements could have run (see :class:`synthesizer.backbone.BackboneMesh`).
+    """
     backbone_set = set(backbone_ids)
     constraints = BackboneConstraints(
         removed_backbone_pairs(backbone_set, plan.forced_links),
@@ -206,9 +224,7 @@ def design_paths(
         ),
         seat_cap=plan.seat_cap,
     )
-    return backbone_mesh_paths(
-        backbone_ids, inputs.all_distances, inputs.all_predecessors, physical_edges, constraints
-    )
+    return backbone_mesh(backbone_ids, inputs.all_distances, physical_edges, constraints)
 
 
 def build_design_for_backbone(
@@ -224,6 +240,6 @@ def build_design_for_backbone(
     access_edges = evaluate_backbone(backbone_ids, inputs, plan)
     if access_edges is None:
         return None
-    path_uses = design_paths(backbone_ids, inputs, plan, inputs.physical_edges)
-    draft = _DesignDraft(access_edges, path_uses)
+    mesh = design_paths(backbone_ids, inputs, plan, inputs.physical_edges)
+    draft = _DesignDraft(access_edges, mesh.paths, mesh.lower_bound_miles)
     return finalize_design(backbone_ids, draft, inputs.physical_edges)

@@ -69,6 +69,19 @@ def test_design_payload_summary_lists_backbone_node_names() -> None:
     assert len(summary["backbone_nodes"]) == len(ARTIFACTS.design.backbone_ids)
 
 
+def test_design_payload_summary_publishes_the_floor_under_the_fiber_it_ordered() -> None:
+    """The fewest miles the same requirements could have been met with is served too.
+
+    A reader can add up the fiber a design ordered and cannot work out what the least it
+    could have run was, since that answer needs the whole carrier map and the tenant's
+    requirements together. So the design publishes it, and it is never above the miles the
+    design actually holds -- a floor above the thing it floors would be a defect in the
+    fiber choice rather than a number to read (GitHub issue #60).
+    """
+    summary = design_payload(SOURCES, ARTIFACTS)["summary"]
+    assert summary["backbone_lower_bound_miles"] <= summary["physical_carrier_miles"]
+
+
 def test_sorted_physical_edges_is_sorted() -> None:
     """Sorted physical edges is sorted."""
     edges = sorted_physical_edges(ARTIFACTS.design)

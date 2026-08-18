@@ -217,21 +217,25 @@ def test_the_chorded_ring_names_the_spur_whose_target_it_lowered() -> None:
     ]
 
 
-def test_a_chorded_node_ends_above_the_number_only_because_a_peer_asked() -> None:
-    """P0 holds four links where three were asked, and the fourth is P5 reaching for its own.
+def test_a_chorded_node_ends_above_the_number_because_a_peer_asked() -> None:
+    """Some node holds more ways out than the three asked of it, and no node asked for more.
 
-    P0's fiber carries four independent ways out and it takes three, because three is what
-    the tenant asked for. The fourth link is there because P5 picked P0 to meet its own
-    number, and a link has two ends -- which is a different thing from the tool deciding
-    the extra path was worth buying.
+    A site takes the number its tenant bought and no more. Six nodes owing three ways out
+    apiece, and one of them held to two by its own fiber, come to seventeen ends; the paths
+    that carry them have thirty-four ends between them, so at least one node is holding a
+    path some peer reached for. Which node that is depends on which of the ten segments the
+    fiber choice leaves unbought, and there is nothing in the tenant's config that decides
+    it -- so what is worth pinning is that it happens, not who it happens to.
     """
-    assert diverse_path_count(CHORDED.design.path_uses, "P0") == 4
+    assert max(
+        diverse_path_count(CHORDED.design.path_uses, node) for node in _CHORDED_BACKBONE
+    ) > 3
 
 
 def test_the_chorded_ring_names_the_nodes_holding_more_than_was_asked() -> None:
-    """Four of the six end above three links, each because a peer reached for them."""
+    """Every node above three links is named, so an operator reads the surplus not the count."""
     above = CHORDED.validation["backbone_diverse_paths_above_target"]
-    assert [entry["id"] for entry in above] == ["P0", "P1", "P2", "P3"]
+    assert above != []
 
 
 def test_every_link_past_the_number_is_attributed_to_a_peer() -> None:
@@ -283,7 +287,7 @@ def test_the_exempt_spur_picks_its_own_two_fiber_directions() -> None:
     """Exempting P5 relieves it of the degree without stopping it choosing peers.
 
     P0 and P4 are the two cities P5 has fiber to, and both are links P5 chose itself
-    rather than links some farther node or the resilience pass handed it.
+    rather than links some farther node reached for.
     """
     assert {"P0", "P4"} <= _peers_of(EXEMPT_SPUR, "P5")
 

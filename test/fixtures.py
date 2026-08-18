@@ -570,17 +570,16 @@ SHARED_HUB_SEGMENTS = {
     ("b", "h1"): 100.0, ("b", "h2"): 800.0, ("b", "h3"): 200.0,
     ("c", "h1"): 100.0, ("c", "h2"): 200.0, ("c", "h3"): 300.0,
 }
-SHARED_HUB_EDGES = physical_edges_from(SHARED_HUB_SEGMENTS)
 # The same three sites with a fourth, ``d``, joined to ``b`` and to ``c`` over fiber of its
-# own. It is what leaves ``b`` a way out that no hub carries: joined once, b's links to a
-# and to c both ride ``h1``, and the path to d is its second independently failing link.
-# Without d there is no such fiber and the pair b-c is joined twice instead.
+# own. It is what leaves ``b`` a way out that no hub carries: b's paths to a and to c both
+# ride ``h1``, and the path to d is its second independently failing link. Without d the
+# only way out b has left that a single city's loss would not take with its first is a
+# second path to c, which is fiber for a pair that is joined already.
 SHARED_HUB_PEER_EDGES = physical_edges_from({
     **SHARED_HUB_SEGMENTS,
     ("b", "d1"): 100.0, ("d1", "d"): 300.0,
     ("c", "d2"): 100.0, ("d2", "d"): 300.0,
 })
-SHARED_HUB_SITES = ("a", "b", "c")
 SHARED_HUB_PEER_SITES = ("a", "b", "c", "d")
 SHARED_HUB_PEER_IDS = ("a", "b", "c", "d", "h1", "h2", "h3", "d1", "d2")
 

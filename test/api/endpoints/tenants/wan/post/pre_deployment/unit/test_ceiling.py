@@ -192,7 +192,7 @@ def test_the_paths_proved_are_the_shortest_set_of_that_size() -> None:
     """sea's two ways out run four miles in all, not the two hundred the express segments do.
 
     This is the assertion the whole of GitHub issue #57 reduces to. The paths are laid
-    verbatim by ``synthesizer.backbone.diverse_mesh_paths``, so the fiber this picks is
+    verbatim by ``synthesizer.backbone.backbone_mesh``, so the fiber this picks is
     fiber the design orders, and picking the express segments ordered fifty times as much of
     it for exactly the same protection.
     """

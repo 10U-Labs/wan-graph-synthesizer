@@ -1,913 +1,335 @@
-"""Unit tests for backbone-mesh selection and routing."""
+"""Unit tests for the paths a backbone is drawn with over the fiber it was chosen with.
+
+``synthesizer.backbone`` no longer decides anything one pair of sites at a time. The fiber
+is chosen for the whole design at once by ``synthesizer.survivable``, each site's ways out
+are read off that fiber, and every path nobody needs is taken back out. So the cases here
+are about the finished list of paths rather than about the order four passes ran in: which
+pairs ended up joined, which fiber each path took, and which paths were dropped again.
+
+Two graphs carry almost all of it. The square is four sites on a ring of hundred-mile
+segments with two chords at two hundred and fifty, so the only design that gives every site
+two ways out is the ring itself and both the count and the mileage are forced. The
+shared-egress graph is the shape GitHub issue #60 is about: the fewest-mile way from ``hub``
+to ``q`` runs through ``m``, which is a city ``hub`` already stands on to reach ``p``, and a
+slightly longer way through ``n`` does not. A design that decides one pair at a time takes
+the shorter way and leaves ``hub`` with one way out; a design that chooses the whole thing
+at once takes the longer one.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-
 import fixtures
 from synthesizer.input_graph import PhysicalEdge, edge_key
-from synthesizer.model import LINK_FOR_SITE_DIVERSITY, LINK_FOR_TARGET, DesignPath
+from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, DesignPath
 from synthesizer.backbone import (
     BackboneConstraints,
-    LinkReason,
-    augment_physical_resilience,
-    backbone_mesh_paths,
-    diverse_mesh_paths,
-    restore_diverse_paths,
-    select_backbone_mesh_pairs,
-    within_limit,
+    BackboneMesh,
+    _needed,
+    backbone_mesh,
+    path_geometry_miles,
 )
-from synthesizer.ceiling import BackupPathLimit
 from synthesizer.synthesize import all_pairs_shortest
-from synthesizer.graphs import (
-    build_adjacency,
-    connected_components,
-    distances_from,
-    is_two_edge_connected,
-    is_two_vertex_connected,
-    path_edge_keys,
-)
+from synthesizer.graphs import build_adjacency
 
 pop = fixtures.carrier_pop
 physical = fixtures.physical_edges_from
 
 
-def test_backbone_mesh_paths_empty_when_nodes_disconnected() -> None:
-    """Backbone mesh paths empty when the backbone nodes are disconnected."""
-    edges = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
-    adjacency = build_adjacency(edges)
-    distances, predecessors = all_pairs_shortest(
-        [pop("a"), pop("b"), pop("c"), pop("d")], adjacency
-    )
-    assert not backbone_mesh_paths(("a", "c"), distances, predecessors, edges)
-
-
-def _symmetric_distances(weights: dict[tuple[str, str], float]) -> dict[str, dict[str, float]]:
-    """Build a symmetric all-pairs distance table from undirected pair weights."""
-    nodes = {node for pair in weights for node in pair}
-    table: dict[str, dict[str, float]] = {node: {node: 0.0} for node in nodes}
-    for (left, right), weight in weights.items():
-        table[left][right] = weight
-        table[right][left] = weight
-    return table
-
-
-# Five fully-connected backbone nodes with distinct finite inter-node distances.
-_FIVE_NODE_DISTANCES = _symmetric_distances({
-    ("c1", "c2"): 1.0, ("c1", "c3"): 2.0, ("c1", "c4"): 3.0, ("c1", "c5"): 10.0,
-    ("c2", "c3"): 4.0, ("c2", "c4"): 5.0, ("c2", "c5"): 6.0,
-    ("c3", "c4"): 7.0, ("c3", "c5"): 8.0,
-    ("c4", "c5"): 9.0,
-})
-_FIVE_NODES = ("c1", "c2", "c3", "c4", "c5")
-
-
-def _backbone(
-    removed: frozenset[tuple[str, str]] = frozenset(),
-    number_of_diverse_paths: int = 3,
-    forced: frozenset[tuple[str, str]] = frozenset(),
-    paths: dict[str, list[tuple[str, ...]]] | None = None,
-) -> dict[tuple[str, str], LinkReason]:
-    """The five-node backbone wiring each node to its nearest peers."""
-    return select_backbone_mesh_pairs(
-        _FIVE_NODES,
-        _FIVE_NODE_DISTANCES,
-        BackboneConstraints(removed, number_of_diverse_paths, forced, paths or {}),
-    )
-
-
-def _node_degrees(pairs: Iterable[tuple[str, str]]) -> dict[str, int]:
-    """Distinct-neighbor degree of every five-node vertex over ``pairs``."""
-    degrees = {node: 0 for node in _FIVE_NODES}
-    for left, right in pairs:
-        degrees[left] += 1
-        degrees[right] += 1
-    return degrees
-
-
-def test_every_node_meets_its_number_of_diverse_paths() -> None:
-    """With three diverse paths asked for, every node wires to at least three others."""
-    assert min(_node_degrees(_backbone()).values()) == 3
-
-
-def test_number_of_diverse_paths_scales_with_the_config() -> None:
-    """Lowering the degree to two leaves the least-connected node with two links."""
-    assert min(_node_degrees(_backbone(number_of_diverse_paths=2)).values()) == 2
-
-
-def test_a_node_wires_to_its_nearest_not_its_farthest() -> None:
-    """c1's three nearest are c2/c3/c4, so it never wires the distant c5."""
-    assert edge_key("c1", "c5") not in _backbone()
-
-
-def test_each_node_picks_exactly_its_degree_unioned() -> None:
-    """Three picks per node union to nine distinct mesh links."""
-    assert len(_backbone()) == 9
-
-
-def test_a_node_picked_by_a_farther_peer_gains_an_extra_link() -> None:
-    """c2 is among others' nearest, so it ends one over the three-link target."""
-    assert _node_degrees(_backbone())["c2"] == 4
-
-
-# c5 is the farthest node from everything, so at a target of two nobody else picks it and
-# its own picks are the whole of its wiring. That makes it the one node on this fixture
-# whose link count is its target and nothing else, which is what the next two tests need.
-def test_a_node_with_headroom_takes_only_what_was_asked_for() -> None:
-    """c5's fiber reaches four peers and the tenant asked for two, so it wires two.
-
-    This is the decision the ceiling behaviour used to make the other way. A site with
-    headroom was aimed at its ceiling on the reasoning that the extra paths were nearly
-    free, which is true of the fiber and false of the paths riding it.
-    """
-    assert _node_degrees(_backbone(number_of_diverse_paths=2))["c5"] == 2
-
-
-def test_a_link_a_node_reached_for_is_attributed_to_that_node() -> None:
-    """c5's own links name c5 as the site that asked for them."""
-    backbone = _backbone(number_of_diverse_paths=2)
-    assert backbone[edge_key("c2", "c5")] == LinkReason(LINK_FOR_TARGET, ("c5",))
-
-
-def test_a_removed_pair_gets_no_link() -> None:
-    """An operator-pruned backbone-backbone pair gets no mesh link."""
-    assert edge_key("c1", "c2") not in _backbone(frozenset({edge_key("c1", "c2")}))
-
-
-def test_a_removed_pair_is_filled_by_the_next_nearest() -> None:
-    """Dropping c1-c2 makes c1 wire to c5, its next-nearest reachable node."""
-    assert edge_key("c1", "c5") in _backbone(frozenset({edge_key("c1", "c2")}))
-
-
-# c1-c5 is the farthest pair in the table, so a nearest-neighbour mesh never picks it:
-# whatever the forced case asserts is the pin at work, not an emergent choice.
-_FORCED = frozenset({edge_key("c1", "c5")})
-
-
-def test_a_forced_pair_gets_a_mesh_link() -> None:
-    """An operator-forced backbone-backbone pair is wired even though it is the farthest."""
-    assert edge_key("c1", "c5") in _backbone(forced=_FORCED)
-
-
-def test_a_forced_link_counts_towards_the_number_of_diverse_paths() -> None:
-    """c5's forced link fills one of its three slots rather than adding a fourth."""
-    assert _node_degrees(_backbone(forced=_FORCED))["c5"] == 3
-
-
-def test_a_forced_link_displaces_the_farthest_pick() -> None:
-    """c5 spends a slot on the forced c1, so it drops c4, the farthest it would have picked."""
-    assert edge_key("c4", "c5") not in _backbone(forced=_FORCED)
-
-
-# Removing three of c1's four peers leaves it only c5, one link below the target of
-# three; the backbone must still render rather than collapsing to nothing.
-_THINNED = frozenset({edge_key("c1", "c2"), edge_key("c1", "c3"), edge_key("c1", "c4")})
-
-
-def test_a_node_thinned_below_target_still_renders_a_backbone() -> None:
-    """Thinning one node below its diverse path count does not blank the whole backbone."""
-    assert _backbone(_THINNED)
-
-
-def test_a_node_thinned_below_target_keeps_its_one_remaining_link() -> None:
-    """The thinned node keeps the single link it can still make."""
-    assert _node_degrees(_backbone(_THINNED))["c1"] == 1
-
-
-def test_a_node_thinned_below_target_wires_to_its_one_reachable_peer() -> None:
-    """That single link goes to c5, the only peer c1 has left."""
-    assert edge_key("c1", "c5") in _backbone(_THINNED)
-
-
-def test_a_thinned_backbone_never_re_adds_a_removed_pair() -> None:
-    """No removed pair sneaks back into the rendered backbone."""
-    assert not _THINNED & set(_backbone(_THINNED))
-
-
-def test_backbone_wires_what_it_can_when_a_node_is_unreachable() -> None:
-    """An unreachable node blanks only its own links, not the whole backbone."""
-    distances = _symmetric_distances({("c1", "c2"): 1.0})
-    distances["c3"] = {"c3": 0.0}
-    assert sorted(select_backbone_mesh_pairs(("c1", "c2", "c3"), distances)) == [
-        edge_key("c1", "c2")
-    ]
-
-
-# Two tight triangles -- {a1,a2,a3} and {b1,b2,b3} -- joined only by long but finite
-# cross links. A nearest-neighbour mesh of degree two keeps every node wired inside its
-# own triangle, so without a connectivity step the two clusters never link. Every cross
-# distance is its endpoints' distance to a1/b1 plus the 100-mile crossing, so the table
-# is a metric a real carrier graph could produce: the join is genuinely a single point of failure
-# rather than a table that lets one node cross more cheaply than its neighbour can.
-_TWO_CLUSTER_DISTANCES = _symmetric_distances({
-    ("a1", "a2"): 1.0, ("a1", "a3"): 2.0, ("a2", "a3"): 3.0,
-    ("b1", "b2"): 1.0, ("b1", "b3"): 2.0, ("b2", "b3"): 3.0,
-    ("a1", "b1"): 100.0, ("a1", "b2"): 101.0, ("a1", "b3"): 102.0,
-    ("a2", "b1"): 101.0, ("a2", "b2"): 102.0, ("a2", "b3"): 103.0,
-    ("a3", "b1"): 102.0, ("a3", "b2"): 103.0, ("a3", "b3"): 104.0,
-})
-_TWO_CLUSTER_NODES = ("a1", "a2", "a3", "b1", "b2", "b3")
-
-
-def _two_cluster_mesh(
-    removed: frozenset[tuple[str, str]] = frozenset(),
-) -> dict[tuple[str, str], LinkReason]:
-    """The two-cluster backbone wired at two diverse paths."""
-    return select_backbone_mesh_pairs(
-        _TWO_CLUSTER_NODES,
-        _TWO_CLUSTER_DISTANCES,
-        BackboneConstraints(removed, number_of_diverse_paths=2),
-    )
-
-
-def test_two_clusters_are_joined_into_one_component() -> None:
-    """Two nearest-neighbour clusters are stitched into a single connected mesh."""
-    pairs = _two_cluster_mesh()
-    assert len(connected_components(set(_TWO_CLUSTER_NODES), set(pairs))) == 1
-
-
-def test_two_clusters_are_joined_redundantly() -> None:
-    """The stitched backbone survives the loss of any single link (2-edge-connected)."""
-    pairs = _two_cluster_mesh()
-    assert is_two_edge_connected(set(_TWO_CLUSTER_NODES), set(pairs))
-
-
-def test_the_cluster_join_uses_the_shortest_cross_link() -> None:
-    """The clusters are stitched starting from the shortest cross pair, a1-b1."""
-    assert edge_key("a1", "b1") in _two_cluster_mesh()
-
-
-def test_the_cluster_join_skips_a_removed_cross_pair() -> None:
-    """A pruned cross pair is never used to stitch the clusters."""
-    removed = frozenset({edge_key("a1", "b1")})
-    assert edge_key("a1", "b1") not in _two_cluster_mesh(removed)
-
-
-def test_the_cluster_join_falls_back_to_the_next_shortest_cross_pair() -> None:
-    """With the shortest cross pair pruned, the next shortest stitches the clusters."""
-    removed = frozenset({edge_key("a1", "b1")})
-    assert edge_key("a1", "b2") in _two_cluster_mesh(removed)
-
-
-# A backbone whose peers are not all diverse. d hangs off a and e off b, so h reaches
-# either one only by transiting a peer it has already picked; f sits on a segment of its
-# own, two and a half miles out, and shares transit with nobody. h's third-nearest peer
-# is therefore d at two miles, reachable only through a, while the diverse f is farther.
-_TRANSIT_EDGES = physical({
-    ("h", "a"): 1.0, ("h", "b"): 1.0, ("a", "b"): 1.0,
-    ("a", "d"): 1.0, ("b", "e"): 1.0, ("d", "e"): 1.0,
-    ("h", "f"): 2.5,
-})
-_TRANSIT_NODES = ("h", "a", "b", "d", "e", "f")
-_TRANSIT_DISTANCES = all_pairs_shortest(
-    [pop(node) for node in _TRANSIT_NODES], build_adjacency(_TRANSIT_EDGES)
-)[0]
-
-
-def _transit_mesh(
-    forced: frozenset[tuple[str, str]] = frozenset(),
-) -> dict[tuple[str, str], LinkReason]:
-    """The transit backbone wired at three diverse paths."""
-    return select_backbone_mesh_pairs(
-        _TRANSIT_NODES, _TRANSIT_DISTANCES, BackboneConstraints(frozenset(), 3, forced)
-    )
-
-
-def _peers(pairs: Iterable[tuple[str, str]], node: str) -> set[str]:
-    """Every node ``node`` shares a mesh link with."""
-    return {other for pair in pairs if node in pair for other in pair if other != node}
-
-
-def test_a_peer_reachable_only_through_a_nearer_peer_is_skipped() -> None:
-    """h skips d, whose shortest path transits a, the peer h picked first."""
-    assert edge_key("h", "d") not in _transit_mesh()
-
-
-def test_the_skipped_slot_goes_to_a_diverse_peer() -> None:
-    """h spends the freed slot on the farther f, which shares no transit."""
-    assert _peers(_transit_mesh(), "h") == {"a", "b", "f"}
-
-
-def test_a_node_with_no_diverse_peer_left_still_meets_its_degree() -> None:
-    """f leaves the backbone only through h, yet still wires its three links."""
-    assert len(_peers(_transit_mesh(), "f")) == 3
-
-
-def test_a_pinned_peer_counts_when_judging_diversity() -> None:
-    """A pinned a still makes d a transit of a peer h holds, so d is skipped."""
-    assert edge_key("h", "d") not in _transit_mesh(frozenset({edge_key("h", "a")}))
-
-
-def test_a_forced_pair_is_wired_even_when_it_shares_transit() -> None:
-    """An operator's pin is wired even though its path transits another peer."""
-    assert edge_key("h", "d") in _transit_mesh(frozenset({edge_key("h", "d")}))
-
-
-def test_a_node_short_of_diverse_peers_still_backfills_to_its_target() -> None:
-    """d reaches only a and e diversely, and still spends its third slot on b.
-
-    Falling short of diverse peers is not a reason to leave a slot empty: the tenant asked
-    for three links and a single point of failure link is worth having up to that number. What the
-    backfill will not do is carry on past it.
-    """
-    assert edge_key("d", "b") in _transit_mesh()
-
-
-# c5 is the farthest node from every other, so distance alone never reaches for it. A proof
-# that c1 has an independent path to c5 is the only thing that would wire the pair, which
-# is what makes it the case that tells a proven pick apart from a near one.
-_PROVED_TO_THE_FARTHEST: dict[str, list[tuple[str, ...]]] = {"c1": [("c1", "c5")]}
-# The same from c5's side, where c5's one proved path is to the node it is farthest from.
-_PROVED_FROM_THE_FARTHEST: dict[str, list[tuple[str, ...]]] = {"c5": [("c5", "c1")]}
-
-
-def test_a_proven_peer_is_picked_over_the_nearer_ones_distance_would_take() -> None:
-    """c1 wires the peer its proof reaches, though four others sit closer to it."""
-    assert edge_key("c1", "c5") in _backbone(paths=_PROVED_TO_THE_FARTHEST)
-
-
-def test_a_proof_shorter_than_the_floor_is_backfilled_by_distance() -> None:
-    """c5's one proved path leaves it two links short, and its nearest peers make them up."""
-    assert _node_degrees(_backbone(paths=_PROVED_FROM_THE_FARTHEST))["c5"] == 3
-
-
-def test_the_backfill_stops_at_the_floor_rather_than_filling_every_slot() -> None:
-    """c5 owes three links and its proof plus two nearest are three, so c4 is never reached."""
-    assert edge_key("c4", "c5") not in _backbone(paths=_PROVED_FROM_THE_FARTHEST)
-
-
-def test_a_node_with_no_proof_of_its_own_is_still_picked_by_distance() -> None:
-    """A proof for one node says nothing about another, which wires as it always did."""
-    assert edge_key("c1", "c2") in _backbone(paths=_PROVED_FROM_THE_FARTHEST)
-
-
-def test_a_proved_path_to_a_pruned_peer_is_not_wired() -> None:
-    """The fiber can carry the link and the operator has said not to, so it is not wired."""
-    pruned = frozenset({edge_key("c1", "c5")})
-    assert edge_key("c1", "c5") not in _backbone(pruned, paths=_PROVED_TO_THE_FARTHEST)
-
-
-_UNIT_MESH_EDGES = physical({
-    ("c1", "c2"): 1.0, ("c1", "c3"): 1.0, ("c1", "c4"): 1.0, ("c1", "c5"): 1.0,
-    ("c2", "c3"): 1.0, ("c2", "c4"): 1.0, ("c2", "c5"): 1.0,
-    ("c3", "c4"): 1.0, ("c3", "c5"): 1.0, ("c4", "c5"): 1.0,
-})
-
-
-def _five_node_mesh_paths(removed: frozenset[tuple[str, str]] = frozenset()) -> list[DesignPath]:
-    """Path the five-node backbone over a unit-weight physical graph."""
-    adjacency = build_adjacency(_UNIT_MESH_EDGES)
-    distances, predecessors = all_pairs_shortest([pop(c) for c in _FIVE_NODES], adjacency)
-    return backbone_mesh_paths(
-        _FIVE_NODES, distances, predecessors, _UNIT_MESH_EDGES, BackboneConstraints(removed)
-    )
-
-
-def test_backbone_mesh_paths_stop_at_the_number_asked_for() -> None:
-    """A five-node clique offers each site four diverse paths; three were asked for.
-
-    This test used to assert all ten pairs were wired, which is a full mesh on a network
-    that asked for a fraction of one, written down as correct. Each site now picks three
-    peers and the union is nine: every segment on a unit clique is the same length, so the
-    tie falls to the lowest ids and both c4 and c5 pick c1, c2 and c3, leaving the pair
-    between them the one nobody reached for.
-    """
-    assert len(_five_node_mesh_paths()) == 9
-
-
-def test_backbone_mesh_paths_are_labelled_backbone_mesh() -> None:
-    """Every drawn backbone path carries the backbone_mesh purpose."""
-    assert all(use.purpose == "backbone_mesh" for use in _five_node_mesh_paths())
-
-
-def test_backbone_mesh_paths_wire_around_a_node_the_substrate_does_not_carry() -> None:
-    """A node no fiber mentions has no paths to prove and no links, and the rest still wire."""
-    edges = physical({("a", "b"): 1.0})
-    adjacency = build_adjacency(edges)
-    distances, predecessors = all_pairs_shortest([pop("a"), pop("b"), pop("z")], adjacency)
-    uses = backbone_mesh_paths(("a", "b", "z"), distances, predecessors, edges)
-    assert {edge_key(use.source, use.target) for use in uses} == {edge_key("a", "b")}
-
-
-def test_backbone_mesh_paths_omit_a_removed_pair() -> None:
-    """An operator-pruned pair gets no drawn backbone-mesh path."""
-    drawn = _five_node_mesh_paths(frozenset({edge_key("c1", "c2")}))
-    assert edge_key("c1", "c2") not in {edge_key(use.source, use.target) for use in drawn}
-
-
-# A three-node backbone (a, b, c) whose base mesh paths a-b and b-c both through the
-# transit hub h, so h is a single city whose loss strands a node. The carrier graph also
-# offers direct a-b, a-c, b-c segments, the alternates a detour can use to path around h.
-_HUB_EDGES = physical({
-    ("a", "h"): 1.0, ("b", "h"): 1.0, ("c", "h"): 1.0,
-    ("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0,
-})
-_HUB_ONLY = physical({("a", "h"): 1.0, ("b", "h"): 1.0, ("c", "h"): 1.0})
-_BASE_HUB = [
-    DesignPath("backbone_mesh", "a", "b", ("a", "h", "b"), 2.0),
-    DesignPath("backbone_mesh", "b", "c", ("b", "h", "c"), 2.0),
-]
-
-
-def _augmented_segments(
-    base: list[DesignPath],
-    backbone_ids: tuple[str, ...],
-    edges: dict[tuple[str, str], PhysicalEdge],
-    removed: frozenset[tuple[str, str]] = frozenset(),
-) -> set[tuple[str, str]]:
-    """The physical segments the augmented backbone rides over."""
-    segments: set[tuple[str, str]] = set()
-    for use in augment_physical_resilience(
-        base, backbone_ids, edges, BackboneConstraints(removed)
-    ):
-        segments |= path_edge_keys(use.path)
-    return segments
-
-
-def test_augment_physical_resilience_makes_a_cut_city_survivable() -> None:
-    """Detours are added around the shared hub until the fiber survives any city loss."""
-    segments = _augmented_segments(_BASE_HUB, ("a", "b", "c"), _HUB_EDGES)
-    assert is_two_vertex_connected({vertex for segment in segments for vertex in segment}, segments)
-
-
-def test_augment_physical_resilience_stops_when_no_detour_exists() -> None:
-    """A hub-only carrier graph offers no city-avoiding alternate, so the base is left as is."""
-    assert augment_physical_resilience(
-        _BASE_HUB, ("a", "b", "c"), _HUB_ONLY
-    ) == _BASE_HUB
-
-
-def test_augment_physical_resilience_skips_pruned_detour_pairs() -> None:
-    """When every backbone cross pair is operator-pruned, no detour is added."""
-    pruned = frozenset({edge_key("a", "b"), edge_key("a", "c"), edge_key("b", "c")})
-    assert augment_physical_resilience(
-        _BASE_HUB, ("a", "b", "c"), _HUB_EDGES, BackboneConstraints(pruned)
-    ) == _BASE_HUB
-
-
-# The same hub, with the alternates moved a thousand miles offshore: the only way around
-# ``h`` is out through ``x`` and back. The detour exists and relieves the cut city, and no
-# operator would buy a two-thousand-mile protect path for a two-mile link.
-_OFFSHORE_EDGES = physical({
-    ("a", "h"): 1.0, ("b", "h"): 1.0, ("c", "h"): 1.0,
-    ("a", "x"): 1000.0, ("b", "x"): 1000.0, ("c", "x"): 1000.0,
-})
-_OFFSHORE_LIMIT = BackupPathLimit(
-    3.0, distances_from(build_adjacency(_OFFSHORE_EDGES), ("a", "b", "c"))
-)
-
-
-def test_a_detour_beyond_the_bound_is_not_added() -> None:
-    """The cut city stands rather than being relieved by a path nobody would buy."""
-    assert augment_physical_resilience(
-        _BASE_HUB, ("a", "b", "c"), _OFFSHORE_EDGES,
-        BackboneConstraints(limit=_OFFSHORE_LIMIT),
-    ) == _BASE_HUB
-
-
-def test_a_detour_inside_the_bound_is_still_added() -> None:
-    """The bound refuses a detour for its length, not for being a detour."""
-    limit = BackupPathLimit(3.0, distances_from(build_adjacency(_HUB_EDGES), ("a", "b", "c")))
-    assert augment_physical_resilience(
-        _BASE_HUB, ("a", "b", "c"), _HUB_EDGES, BackboneConstraints(limit=limit)
-    ) != _BASE_HUB
-
-
-# One pair, one path drawn through the hub ``h``, and a second way round through ``x`` that
-# the pass would take if nothing held it back. The cap is counted per pair, so this is the
-# fixture that shows it: the only pair there is is the one already at its number.
-_ONE_PAIR_EDGES = physical({
-    ("a", "h"): 1.0, ("h", "b"): 1.0, ("a", "x"): 2.0, ("x", "b"): 2.0,
-})
-_BASE_ONE_PAIR = [DesignPath("backbone_mesh", "a", "b", ("a", "h", "b"), 2.0)]
-
-
-def test_no_detour_is_added_to_a_pair_already_holding_the_paths_it_asked_for() -> None:
-    """A pair given its number is protected by the paths it has, whatever cities they leave cut.
-
-    Each detour relieves one city and rides the same fiber for the rest of the way, so an
-    unbounded pass buys one path for each single point of failure: Ashburn, VA to Salt Lake
-    City, UT crosses eight and took four extra paths for them (GitHub issue #58). Here the
-    pair holds the
-    one path it asked for, so ``h`` stands and validation is what reports it.
-    """
-    assert augment_physical_resilience(
-        _BASE_ONE_PAIR, ("a", "b"), _ONE_PAIR_EDGES,
-        BackboneConstraints(number_of_diverse_paths=1),
-    ) == _BASE_ONE_PAIR
-
-
-def test_a_detour_is_still_added_to_a_pair_with_a_path_left_to_spend() -> None:
-    """The cap refuses a path for being one too many, not for being a detour."""
-    assert augment_physical_resilience(
-        _BASE_ONE_PAIR, ("a", "b"), _ONE_PAIR_EDGES,
-        BackboneConstraints(number_of_diverse_paths=2),
-    ) != _BASE_ONE_PAIR
-
-
-# The hub triangle with all three of its pairs drawn, one path each. Every pair the loss of
-# ``h`` separates is joined already, so the pass has nowhere left to put a detour: the cities
-# it could path around are the cities it may not buy a second path to reach.
-_BASE_TRIANGLE = [*_BASE_HUB, DesignPath("backbone_mesh", "a", "c", ("a", "c"), 1.0)]
-
-
-def test_no_detour_is_added_where_every_separated_pair_is_joined_already() -> None:
-    """``h`` stands as a cut city and is reported, rather than bought off with a path.
-
-    Three sites and two paths asked for is one path a pair, so a-b and b-c are both closed
-    to the pass and a-c is not separated by ``h`` at all. What the design cannot survive is
-    then what ``synthesizer.validation`` says it cannot survive (GitHub issue #59).
-    """
-    assert augment_physical_resilience(
-        _BASE_TRIANGLE, ("a", "b", "c"), _HUB_EDGES,
-        BackboneConstraints(number_of_diverse_paths=2, seat_cap=3),
-    ) == _BASE_TRIANGLE
-
-
-# Two sites and nothing else, joined two ways round that share no city. This is Two-Node in
-# miniature: one peer apiece, so a tenant asking for two paths is answered by two paths
-# over the one pair rather than by links to two peers.
-_TWO_SITE_EDGES = physical({
-    ("a", "north"): 1.0, ("north", "b"): 1.0,
-    ("a", "south"): 2.0, ("south", "b"): 2.0,
-    ("a", "long"): 9.0, ("long", "b"): 9.0,
-})
-
-
-def _two_site_paths(number_of_diverse_paths: int, seat_cap: int = 2) -> list[DesignPath]:
-    """Path the two-site backbone over fiber that joins it three disjoint ways."""
-    adjacency = build_adjacency(_TWO_SITE_EDGES)
-    distances, predecessors = all_pairs_shortest([pop("a"), pop("b")], adjacency)
-    return backbone_mesh_paths(
-        ("a", "b"), distances, predecessors, _TWO_SITE_EDGES,
-        BackboneConstraints(
-            number_of_diverse_paths=number_of_diverse_paths, seat_cap=seat_cap
-        ),
-    )
-
-
-def test_a_two_site_backbone_is_drawn_with_the_paths_it_asked_for() -> None:
-    """Two asked for over fiber offering three, so two paths are built and the third is not."""
-    assert len(_two_site_paths(2)) == 2
-
-
-def test_a_two_site_backbone_takes_the_shortest_of_the_paths_open_to_it() -> None:
-    """The nine-mile way round is the one left unbuilt, not either of the shorter two."""
-    assert sorted(use.path[1] for use in _two_site_paths(2)) == ["north", "south"]
-
-
-def test_a_two_site_backbone_needs_no_detour_once_its_paths_are_drawn() -> None:
-    """Two paths sharing no city already survive any one city's loss, so nothing is repaired."""
-    assert [use.reason for use in _two_site_paths(2)] == [LINK_FOR_TARGET, LINK_FOR_TARGET]
-
-
-def test_a_backbone_seated_below_its_cap_is_still_drawn_one_path_a_pair() -> None:
-    """Two sites seated where the config allows six is a design short of sites, not of paths.
-
-    The seats the tenant allows are what say whether a site has other peers to reach, and a
-    tenant that allows six has bought a network where it does. A run that seats two of them
-    is a coverage question; joining the two it seated twice answers a different one nobody
-    asked (GitHub issue #59).
-    """
-    assert len(_two_site_paths(2, seat_cap=6)) == 1
-
-
-# Two backbone sites a short hop apart through ``m``, plus a thousand-mile pair of segments
-# through ``x`` that clears it. Both sites reach ``s`` through ``m`` and nowhere else, so
-# routing that link first is what leaves each of them already riding ``m`` when the p-q
-# link comes to be drawn and the crossing is the only path clear of it. It is four
-# hundred times the direct one.
-_OFFSHORE_CLEAR = physical({
-    ("p", "m"): 1.0, ("m", "q"): 1.0, ("m", "s"): 1.0,
-    ("p", "x"): 1000.0, ("x", "q"): 1000.0,
-})
-_OFFSHORE_CLEAR_ADJACENCY = build_adjacency(_OFFSHORE_CLEAR)
-_OFFSHORE_CLEAR_DISTANCES = all_pairs_shortest(
-    [pop(node) for node in ("p", "q", "m", "s", "x")], _OFFSHORE_CLEAR_ADJACENCY
-)
-
-
-def _clear_path(limit: BackupPathLimit | None) -> tuple[str, ...]:
-    """The path the mesh lays p-q when both ends already carry ``m``."""
-    paths = diverse_mesh_paths(
-        [("p", "s"), ("q", "s"), ("p", "q")],
-        ("p", "q", "s"),
-        _OFFSHORE_CLEAR_DISTANCES[1],
-        _OFFSHORE_CLEAR_ADJACENCY,
-        BackboneConstraints(limit=limit),
-    )
-    return next(path for left, right, path in paths if (left, right) == ("p", "q"))
-
-
-def test_a_clearing_path_beyond_the_bound_falls_back_to_the_shortest_path() -> None:
-    """p-q takes the two-mile path through m rather than the two-thousand-mile one."""
-    assert _clear_path(
-        BackupPathLimit(3.0, distances_from(_OFFSHORE_CLEAR_ADJACENCY, ("p", "q")))
-    ) == ("p", "m", "q")
-
-
-def test_an_unbounded_clearing_path_still_takes_the_detour() -> None:
-    """Without a bound the heuristic buys the crossing, which is the defect it had."""
-    assert _clear_path(None) == ("p", "x", "q")
-
-
-def test_a_pair_the_fiber_cannot_join_has_no_bound_to_break() -> None:
-    """Two sites with no working path between them are not measured against one.
-
-    The bound says a protect path may not run far past the working path the link already
-    has. Where the fiber joins the two ends nowhere there is no such path, so there is no
-    distance to multiply and nothing the bound can say -- and saying nothing is the honest
-    answer rather than refusing every path on a measurement that does not exist.
-    """
-    islands = build_adjacency(physical({("a", "b"): 1.0, ("c", "d"): 1.0}))
-    limit = BackupPathLimit(3.0, distances_from(islands, ("a", "c")))
-    assert within_limit(("a", "b", "c"), "a", "c", 500.0, limit)
-
-
-# h reaches both p and q through g on the cheap side, and q again through r the long way
-# round. Routing each link on its own shortest path would send both of h's links through
-# g, so one city's loss would take both.
-_SHARED_EGRESS_EDGES = physical({
-    ("h", "g"): 1.0, ("g", "p"): 1.0, ("g", "q"): 1.0,
-    ("h", "r"): 1.0, ("r", "q"): 5.0,
-})
-# The same fiber with the long way round missing, so q is reachable only through g.
-_ONLY_EGRESS_EDGES = physical({
-    ("h", "g"): 1.0, ("g", "p"): 1.0, ("g", "q"): 1.0, ("h", "r"): 1.0,
-})
-
-
 def _drawn(
-    pairs: list[tuple[str, str]],
+    sites: tuple[str, ...],
     edges: dict[tuple[str, str], PhysicalEdge],
-    proven: dict[str, list[tuple[str, ...]]] | None = None,
-    seat_cap: int | None = None,
-) -> list[tuple[str, str, tuple[str, ...]]]:
-    """Path the given mesh pairs over ``edges``, along ``proven`` wherever it covers one.
-
-    The backbone is the sites the pairs name, and ``seat_cap`` is the seats the operator
-    allows, which is what decides how many paths one pair is drawn with.
-    """
+    constraints: BackboneConstraints,
+) -> BackboneMesh:
+    """The mesh a whole fiber choice and assembly settles on over one graph."""
     adjacency = build_adjacency(edges)
-    ids = {vertex_id for pair in edges for vertex_id in pair}
-    _distances, predecessors = all_pairs_shortest([pop(i) for i in sorted(ids)], adjacency)
-    return diverse_mesh_paths(
-        pairs,
-        tuple(sorted({site for pair in pairs for site in pair})),
-        predecessors,
-        adjacency,
-        BackboneConstraints(paths=proven or {}, seat_cap=seat_cap),
+    cities = sorted({city for pair in edges for city in pair})
+    distances, _predecessors = all_pairs_shortest([pop(city) for city in cities], adjacency)
+    return backbone_mesh(sites, distances, edges, constraints)
+
+
+def _pairs(mesh: BackboneMesh) -> set[tuple[str, str]]:
+    """Every pair of sites the mesh joined, however many paths it joined them with."""
+    return {edge_key(use.source, use.target) for use in mesh.paths}
+
+
+def _mesh_miles(mesh: BackboneMesh) -> float:
+    """The fiber miles every path in the mesh runs on, added up."""
+    return sum(use.distance_miles for use in mesh.paths)
+
+
+def _joining(mesh: BackboneMesh, left: str, right: str) -> DesignPath:
+    """The path the mesh drew between one pair of sites."""
+    return next(
+        use
+        for use in mesh.paths
+        if edge_key(use.source, use.target) == edge_key(left, right)
     )
 
 
-def _paths(
-    drawn: list[tuple[str, str, tuple[str, ...]]]
-) -> dict[tuple[str, str], tuple[str, ...]]:
-    """The links of :func:`_drawn`, keyed by the pair each one joins."""
-    return {(left, right): path for left, right, path in drawn}
-
-
-def test_the_first_link_of_a_node_takes_its_shortest_path() -> None:
-    """With nothing yet to keep clear of, a link takes the shortest path it has."""
-    paths = _paths(_drawn([("h", "p"), ("h", "q")], _SHARED_EGRESS_EDGES))
-    assert paths[("h", "p")] == ("h", "g", "p")
-
-
-def test_a_second_link_paths_clear_of_the_first_links_transit_city() -> None:
-    """h's second link takes the long way round rather than cross g a second time."""
-    paths = _paths(_drawn([("h", "p"), ("h", "q")], _SHARED_EGRESS_EDGES))
-    assert paths[("h", "q")] == ("h", "r", "q")
-
-
-def test_a_link_with_no_clear_path_falls_back_to_its_shortest_path() -> None:
-    """Where the fiber offers no alternative the link is still wired, through g."""
-    paths = _paths(_drawn([("h", "p"), ("h", "q")], _ONLY_EGRESS_EDGES))
-    assert paths[("h", "q")] == ("h", "g", "q")
-
-
-# m reaches a through c and r, and t reaches a directly, so the m-t link can clear
-# neither end at once: every path to m crosses r, and the cheap path to t crosses a.
-# Going by way of j gives up on m's cities and keeps t's two links independent.
-_ONE_SIDED_EDGES = physical({
-    ("t", "a"): 1.0, ("a", "c"): 1.0, ("c", "r"): 1.0, ("r", "m"): 1.0,
-    ("t", "j"): 1.0, ("j", "c"): 1.0,
+# Four sites on a ring of hundred-mile segments, with the two chords priced at two hundred
+# and fifty. Every site needs two ways out and has only two fiber directions to find them
+# in, so the ring is the whole of the answer: four paths, four hundred miles, and neither
+# chord bought. The chords are what make it an answer rather than the only graph there is.
+_SQUARE_SITES = ("w", "x", "y", "z")
+_SQUARE_EDGES = physical({
+    ("w", "x"): 100.0, ("x", "y"): 100.0, ("y", "z"): 100.0, ("z", "w"): 100.0,
+    ("w", "y"): 250.0, ("x", "z"): 250.0,
 })
+_TWO_WAYS_OUT = BackboneConstraints(number_of_diverse_paths=2, seat_cap=4)
+_SQUARE = _drawn(_SQUARE_SITES, _SQUARE_EDGES, _TWO_WAYS_OUT)
 
 
-def test_a_link_clears_one_end_when_it_cannot_clear_both() -> None:
-    """Unable to clear m's cities, the link still clears t's rather than crossing them."""
-    paths = _paths(_drawn([("a", "t"), ("a", "m"), ("m", "t")], _ONE_SIDED_EDGES))
-    assert paths[("m", "t")] == ("m", "r", "c", "j", "t")
+def test_the_square_is_drawn_with_one_path_a_pair_round_the_ring() -> None:
+    """Four sites needing two ways out each are joined round the ring and nowhere else."""
+    assert _pairs(_SQUARE) == {
+        edge_key("w", "x"), edge_key("x", "y"), edge_key("y", "z"), edge_key("z", "w"),
+    }
 
 
-# x reaches u only through p and y reaches v only through q, so the x-y link can clear
-# one end or the other but never both: the path through q clears x's cities, the path
-# through p clears y's, and the first is five times shorter.
-_TWO_WAY_EDGES = physical({
-    ("x", "p"): 5.0, ("p", "u"): 1.0, ("p", "y"): 5.0,
-    ("y", "q"): 1.0, ("q", "v"): 1.0, ("q", "x"): 1.0,
+def test_the_square_buys_neither_of_the_chords() -> None:
+    """A chord costs two hundred and fifty miles and buys nobody a way out, so it is not bought.
+
+    The old passes could reach for one: a chord is the shortest way between the two sites it
+    joins, and a pass drawing that pair on its own had no way to see that the ring already
+    gave both of them everything they were owed.
+    """
+    assert _SQUARE_EDGES.keys() - {
+        edge_key(*pair) for use in _SQUARE.paths for pair in zip(use.path, use.path[1:])
+    } == {edge_key("w", "y"), edge_key("x", "z")}
+
+
+def test_the_square_runs_the_fewest_miles_its_fiber_allows() -> None:
+    """Four hundred miles: every site owes two ways out, so four segments is the floor."""
+    assert _mesh_miles(_SQUARE) == 400.0
+
+
+def test_the_square_publishes_the_floor_it_was_judged_against() -> None:
+    """The fewest miles any design meeting the same requirements could run is four hundred.
+
+    Each of the four sites needs two ways out, so the segments the design holds add to at
+    least four however they are shared out, and the four shortest are the ring.
+    """
+    assert round(_SQUARE.lower_bound_miles, 3) == 400.0
+
+
+def test_the_square_runs_no_further_than_twice_the_floor() -> None:
+    """The guarantee the whole choice exists for, asserted rather than assumed."""
+    assert _mesh_miles(_SQUARE) <= 2 * _SQUARE.lower_bound_miles
+
+
+def test_every_path_the_square_draws_says_a_site_reached_for_it() -> None:
+    """No path is in the design on the tool's own account; each one answers a site's number."""
+    assert {use.reason for use in _SQUARE.paths} == {LINK_FOR_TARGET}
+
+
+def test_a_path_names_both_of_the_sites_that_reached_for_it() -> None:
+    """A path has two ends and both of them are reaching for it, so both are recorded.
+
+    Which end asked is what separates a site's own path from one it holds because a peer
+    needed it, and that is the whole of what ``unrequested_mesh_links`` reports.
+    """
+    assert _joining(_SQUARE, "w", "x").requested_by == ("w", "x")
+
+
+def test_no_path_the_square_holds_could_be_taken_back_out() -> None:
+    """Removing any one path leaves a site with one way out where its tenant bought two."""
+    assert _needed(_SQUARE.paths, _SQUARE_SITES, 2) == _SQUARE.paths
+
+
+# The shape GitHub issue #60 is about. ``hub`` reaches ``p`` and ``q`` through ``m`` at ten
+# miles a segment, and reaches ``q`` again through ``n`` at eleven. Drawing hub-to-q on its
+# own takes the twenty-mile way through ``m``, which leaves both of hub's paths riding one
+# city; the twenty-two-mile way through ``n`` is the one that gives hub a second way out. The
+# p-to-q segment closes the ring, so a whole-design choice buys five segments and 52 miles.
+_EGRESS_SITES = ("hub", "p", "q")
+_EGRESS_EDGES = physical({
+    ("hub", "m"): 10.0, ("m", "p"): 10.0, ("m", "q"): 10.0,
+    ("hub", "n"): 11.0, ("n", "q"): 11.0, ("p", "q"): 10.0,
 })
+_EGRESS = _drawn(_EGRESS_SITES, _EGRESS_EDGES, BackboneConstraints(
+    number_of_diverse_paths=2, seat_cap=3,
+))
 
 
-def test_the_shorter_of_two_one_sided_paths_wins() -> None:
-    """With one end clearable either way, the link takes the shorter of the two paths."""
-    paths = _paths(_drawn([("u", "x"), ("v", "y"), ("x", "y")], _TWO_WAY_EDGES))
-    assert paths[("x", "y")] == ("x", "q", "y")
+def test_the_longer_way_round_a_shared_city_is_the_one_drawn() -> None:
+    """hub reaches q through n at twenty-two miles rather than through m at twenty.
 
-
-def test_links_of_unrelated_nodes_do_not_constrain_each_other() -> None:
-    """A city another node's link crosses is no reason to path this one around it."""
-    paths = _paths(_drawn([("g", "p"), ("h", "q")], _SHARED_EGRESS_EDGES))
-    assert paths[("h", "q")] == ("h", "g", "q")
-
-
-# h reaches q through g on the cheap side, so an unproved h-q link takes that way round.
-# A proof that h has a path through r is the only thing that sends the link the long way,
-# which is what tells a proved path apart from the one the heuristic would have chosen.
-_H_PROVED_THE_LONG_WAY: dict[str, list[tuple[str, ...]]] = {"h": [("h", "r", "q")]}
-# The same fiber proved from q's end instead, so the path arrives pointing the other way.
-_Q_PROVED_THE_LONG_WAY: dict[str, list[tuple[str, ...]]] = {"q": [("q", "r", "h")]}
-
-
-def test_a_link_is_wired_along_the_path_its_node_proved() -> None:
-    """h proved a way round through r, so its link takes it rather than the shorter g."""
-    paths = _paths(_drawn([("h", "q")], _SHARED_EGRESS_EDGES, _H_PROVED_THE_LONG_WAY))
-    assert paths[("h", "q")] == ("h", "r", "q")
-
-
-def test_a_path_proved_from_the_far_end_is_wired_pointing_at_this_one() -> None:
-    """The proof belongs to q and the link runs h to q, so the path is turned to match."""
-    paths = _paths(_drawn([("h", "q")], _SHARED_EGRESS_EDGES, _Q_PROVED_THE_LONG_WAY))
-    assert paths[("h", "q")] == ("h", "r", "q")
-
-
-def test_one_fiber_proved_from_both_ends_is_wired_once() -> None:
-    """A path and its reverse are the same fiber, so the pair gets a single link."""
-    proven: dict[str, list[tuple[str, ...]]] = {**_H_PROVED_THE_LONG_WAY, **_Q_PROVED_THE_LONG_WAY}
-    assert len(_drawn([("h", "q")], _SHARED_EGRESS_EDGES, proven)) == 1
-
-
-# The two ends of one pair proved different fiber: h the cheap way through g, q the long
-# way round through r. The two are what the tenant's seats decide between -- a backbone
-# with peers to spare joins the pair once, and one whose config seats only these two has
-# nowhere else to put the second path.
-_ENDS_DISAGREE: dict[str, list[tuple[str, ...]]] = {
-    "h": [("h", "g", "q")], **_Q_PROVED_THE_LONG_WAY,
-}
-
-
-def test_two_ends_that_proved_different_fiber_are_wired_once() -> None:
-    """Two sites that are joined are joined once, however many ways their fiber offers."""
-    assert len(_drawn([("h", "q")], _SHARED_EGRESS_EDGES, _ENDS_DISAGREE, 6)) == 1
-
-
-def test_the_shorter_of_the_two_proved_ways_round_is_the_one_wired() -> None:
-    """Six miles through r buys the pair nothing the two through g do not, so g is wired."""
-    paths = _paths(_drawn([("h", "q")], _SHARED_EGRESS_EDGES, _ENDS_DISAGREE, 6))
-    assert paths[("h", "q")] == ("h", "g", "q")
-
-
-def test_both_are_wired_where_the_seats_leave_the_pair_no_other_peer() -> None:
-    """Seated for two sites, the paths a tenant buys can only be paths over the one pair."""
-    assert len(_drawn([("h", "q")], _SHARED_EGRESS_EDGES, _ENDS_DISAGREE, 2)) == 2
-
-
-def test_a_pair_no_proof_covers_is_still_drawn_by_the_heuristic() -> None:
-    """A pin or a join has no proof behind it and is wired the way it always was."""
-    paths = _paths(_drawn([("h", "p")], _SHARED_EGRESS_EDGES, _H_PROVED_THE_LONG_WAY))
-    assert paths[("h", "p")] == ("h", "g", "p")
-
-
-def test_backbone_mesh_paths_path_a_nodes_links_over_distinct_cities() -> None:
-    """Drawn through backbone_mesh_paths, h's two links still share no city but h."""
-    adjacency = build_adjacency(_SHARED_EGRESS_EDGES)
-    ids = sorted({vertex_id for pair in _SHARED_EGRESS_EDGES for vertex_id in pair})
-    distances, predecessors = all_pairs_shortest([pop(i) for i in ids], adjacency)
-    uses = backbone_mesh_paths(
-        ("h", "p", "q"), distances, predecessors, _SHARED_EGRESS_EDGES,
-        BackboneConstraints(number_of_diverse_paths=2),
-    )
-    cities = {edge_key(use.source, use.target): set(use.path) - {"h"} for use in uses}
-    assert not cities[edge_key("h", "p")] & cities[edge_key("h", "q")]
-
-
-# Three sites over three shared hub cities, where the two ends of the pair b-c each proved
-# their own way to the other (see ``fixtures.SHARED_HUB_SEGMENTS``), and the same three with a
-# fourth site joined to two of them over fiber of its own. The pair is what the two graphs
-# decide between: with a fourth site to reach, b has a way out that no hub carries and the
-# pair is joined once; without one, the second path to c is the only fiber left that fails
-# on its own, and joining the pair twice is what the tenant's two paths are buying.
-def _shared_hub_paths(
-    edges: dict[tuple[str, str], PhysicalEdge], sites: tuple[str, ...]
-) -> list[DesignPath]:
-    """Path one of the two shared-hub backbones, two paths asked of each site."""
-    adjacency = build_adjacency(edges)
-    ids = sorted({vertex_id for pair in edges for vertex_id in pair})
-    distances, predecessors = all_pairs_shortest([pop(i) for i in ids], adjacency)
-    return backbone_mesh_paths(
-        sites, distances, predecessors, edges,
-        BackboneConstraints(number_of_diverse_paths=2, seat_cap=len(sites)),
-    )
-
-
-def _pair_paths(uses: list[DesignPath], left: str, right: str) -> list[DesignPath]:
-    """The paths drawn between one pair of sites, in the order they were drawn."""
-    return [
-        use for use in uses if edge_key(use.source, use.target) == edge_key(left, right)
-    ]
-
-
-def _peer_backbone() -> list[DesignPath]:
-    """The four-site backbone, where b reaches d over fiber no hub carries."""
-    return _shared_hub_paths(
-        fixtures.SHARED_HUB_PEER_EDGES, fixtures.SHARED_HUB_PEER_SITES
-    )
-
-
-def test_a_pair_whose_two_ends_proved_different_fiber_is_drawn_once() -> None:
-    """b proved its way to c and c proved its way to b, and the two sites are one pair.
-
-    This is the shape no other fixture here can make. On a unit clique both ends prove the
-    same segment and the two collapse into one path on their own, so the number a pair is
-    held to is never reached (GitHub issue #59).
+    This is the narrowest statement of the defect. The way through ``m`` is shorter and is
+    built from a segment hub's path to ``p`` already rides, so taking it would leave one
+    city's loss taking both of hub's paths. Deciding the pair on its own cannot see that;
+    deciding the whole design can.
     """
-    assert len(_pair_paths(_peer_backbone(), "b", "c")) == 1
+    assert ("hub", "n", "q") in {use.path for use in _EGRESS.paths}
 
 
-def test_the_path_drawn_for_that_pair_is_the_shorter_of_the_two() -> None:
-    """Two hundred miles through h1 rather than five hundred through h3."""
-    assert _pair_paths(_peer_backbone(), "b", "c")[0].path == ("b", "h1", "c")
+def test_the_shorter_way_round_that_shared_city_is_not_bought_at_all() -> None:
+    """The m-to-q segment is fiber the finished design never orders."""
+    assert edge_key("m", "q") not in {
+        edge_key(*pair) for use in _EGRESS.paths for pair in zip(use.path, use.path[1:])
+    }
 
 
-def test_the_four_sites_are_drawn_one_path_a_pair() -> None:
-    """Five pairs and five paths: none joined twice, and none left unjoined."""
-    assert len(_peer_backbone()) == 5
+def test_the_shared_egress_graph_joins_all_three_pairs_once() -> None:
+    """Three sites, three pairs, one path each: nothing is joined twice and nothing is left out."""
+    assert len(_EGRESS.paths) == 3
 
 
-def _hub_only_backbone() -> list[DesignPath]:
-    """The three-site backbone, where every way out of every site is one of the three hubs."""
-    return _shared_hub_paths(fixtures.SHARED_HUB_EDGES, fixtures.SHARED_HUB_SITES)
+def test_the_shared_egress_design_runs_the_miles_its_five_segments_cost() -> None:
+    """Fifty-two miles, which is the five segments the choice bought read back as paths."""
+    assert _mesh_miles(_EGRESS) == 52.0
 
 
-def test_a_pair_is_drawn_twice_where_the_fiber_leaves_a_site_nothing_else() -> None:
-    """Drawn once, b's links to a and to c both ride h1, and b asked for two ways out.
+def test_no_path_the_shared_egress_design_holds_could_be_taken_back_out() -> None:
+    """Every one of the three paths is the second way out of one of the three sites."""
+    assert _needed(_EGRESS.paths, _EGRESS_SITES, 2) == _EGRESS.paths
 
-    Every peer b has is joined to it already, so the second path to c is the only thing
-    left that a single city's loss does not take with the first. Refusing it would refuse
-    the design, which is what the count of paths a pair may hold cannot be allowed to do.
+
+# The square again with one pair struck out by the operator, and again with one pinned. A
+# pruned pair is a pair no path may end at, and a pinned pair is one that is joined whatever
+# the choice of fiber said; the chord is pinned rather than a ring segment because no design
+# over this graph reaches for it, so what the pin does cannot be mistaken for what the
+# choice would have done anyway.
+_PRUNED = _drawn(_SQUARE_SITES, _SQUARE_EDGES, BackboneConstraints(
+    removed_pairs=frozenset({edge_key("w", "x")}), number_of_diverse_paths=2, seat_cap=4,
+))
+_PINNED_CHORD = _drawn(_SQUARE_SITES, _SQUARE_EDGES, BackboneConstraints(
+    number_of_diverse_paths=2, forced_pairs=frozenset({edge_key("w", "y")}), seat_cap=4,
+))
+_PINNED_SEGMENT = _drawn(_SQUARE_SITES, _SQUARE_EDGES, BackboneConstraints(
+    number_of_diverse_paths=2, forced_pairs=frozenset({edge_key("w", "x")}), seat_cap=4,
+))
+
+
+def test_a_pruned_pair_is_never_joined_by_a_drawn_path() -> None:
+    """The operator struck the pair out, so no site's way out is allowed to end there."""
+    assert edge_key("w", "x") not in _pairs(_PRUNED)
+
+
+def test_a_pruned_pair_leaves_the_rest_of_the_backbone_drawn() -> None:
+    """Striking out one pair costs that pair its path and costs the other sites nothing."""
+    assert edge_key("y", "z") in _pairs(_PRUNED)
+
+
+def test_a_pinned_pair_is_joined_however_the_fiber_was_chosen() -> None:
+    """No design over this graph reaches for the chord, so the pin is what joins the pair."""
+    assert edge_key("w", "y") in _pairs(_PINNED_CHORD)
+
+
+def test_a_pinned_path_says_the_operator_is_what_put_it_there() -> None:
+    """An operator reading a network larger than they asked for is owed the reason beside it."""
+    assert _joining(_PINNED_CHORD, "w", "y").reason == LINK_FOR_PIN
+
+
+def test_a_pinned_path_is_never_taken_back_out_as_unneeded() -> None:
+    """The pin buys nobody a way out and stands anyway: it is the one path nobody justifies.
+
+    Every site already holds its two ways out round the ring, so the pinned path would be
+    dropped on the same test that drops any other path nobody needs. An operator instruction
+    is honoured rather than second-guessed.
     """
-    assert len(_pair_paths(_hub_only_backbone(), "b", "c")) == 2
+    assert len(_PINNED_CHORD.paths) == 5
 
 
-def test_the_path_put_back_is_the_one_that_site_proved() -> None:
-    """b proved its way to c through h3, and that is the way out h1 cannot take with it."""
-    assert _pair_paths(_hub_only_backbone(), "b", "c")[-1].path == ("b", "h3", "c")
+def test_a_pin_over_fiber_the_design_would_have_bought_anyway_is_still_a_pin() -> None:
+    """The pinned pair is one the ring joins too, and the pin is what the path is recorded as."""
+    assert _joining(_PINNED_SEGMENT, "w", "x").reason == LINK_FOR_PIN
 
 
-def test_the_path_put_back_says_what_it_is_there_for() -> None:
-    """A second path between two sites is not a link b reached for, and says so.
+# Two sites the carrier's fiber never joins, pinned together by an operator who was wrong
+# about the map. It is the one thing a pin cannot ask for, and the design says so by drawing
+# nothing rather than by failing.
+_ISLANDS = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
+_ISLAND_PIN = _drawn(("a", "c"), _ISLANDS, BackboneConstraints(
+    forced_pairs=frozenset({edge_key("a", "c")}),
+))
 
-    An operator reading a network larger than the one they asked for is owed the reason
-    beside every extra path, and this one has its own: the fiber left b no other way out
-    (see :data:`synthesizer.model.LINK_FOR_SITE_DIVERSITY`).
-    """
-    assert _pair_paths(_hub_only_backbone(), "b", "c")[-1].reason == LINK_FOR_SITE_DIVERSITY
+
+def test_a_backbone_the_fiber_never_joins_is_drawn_with_no_paths() -> None:
+    """Two sites on separate fiber have no ways out to draw, pinned to each other or not."""
+    assert _ISLAND_PIN.paths == []
 
 
-# One site whose three links were drawn along fiber it did not prove: ``a`` proved a way out
-# through each of h1, h2 and h3, and holds instead a path to b that rides h1 the long way
-# round, a path to c through h2 and a path to d that rides h2 as well. So it is short --
-# the h2 pair count as one way out -- and the two paths it proved that were not drawn are
-# not equally worth putting back. The one to b crosses h1, which the link it already holds
-# to b crosses too, so buying it changes nothing a city's loss would take.
-_SHORT_SITE_EDGES = physical({
-    ("a", "h1"): 1.0, ("h1", "b"): 1.0, ("h1", "x"): 1.0, ("x", "b"): 1.0,
-    ("a", "h2"): 1.0, ("h2", "c"): 1.0, ("h2", "y"): 1.0, ("y", "d"): 1.0,
-    ("a", "h3"): 5.0, ("h3", "d"): 5.0,
-})
-_SHORT_SITE_PROVED: dict[str, list[tuple[str, ...]]] = {
-    "a": [("a", "h1", "b"), ("a", "h2", "c"), ("a", "h3", "d")],
-}
-_SHORT_SITE_USES = [
-    DesignPath("backbone_mesh", "a", "b", ("a", "h1", "x", "b"), 3.0),
-    DesignPath("backbone_mesh", "a", "c", ("a", "h2", "c"), 2.0),
-    DesignPath("backbone_mesh", "a", "d", ("a", "h2", "y", "d"), 3.0),
+def test_a_backbone_the_fiber_never_joins_is_floored_at_nothing() -> None:
+    """There is no fiber to choose from, so the fewest miles any design could run is none."""
+    assert _ISLAND_PIN.lower_bound_miles == 0.0
+
+
+def test_a_site_the_fiber_does_not_carry_costs_the_others_nothing() -> None:
+    """A site no fiber mentions draws no path, and the two the fiber does carry still join."""
+    edges = physical({("a", "b"): 1.0})
+    mesh = _drawn(("a", "b", "zed"), edges, BackboneConstraints(number_of_diverse_paths=1))
+    assert _pairs(mesh) == {edge_key("a", "b")}
+
+
+def test_path_geometry_miles_adds_up_the_segments_a_path_crosses() -> None:
+    """A path's mileage is the fiber it runs on, segment by segment."""
+    assert path_geometry_miles(("w", "x", "y"), _SQUARE_EDGES) == 200.0
+
+
+# Four hand-built designs the assembly would never produce, each one holding a path that has
+# to be judged on a different ground. Written out rather than synthesized because each is a
+# design some other fiber choice could hand over, and the test is what the judgement does
+# with it rather than how it came to be.
+def _use(source: str, target: str, path: tuple[str, ...], miles: float) -> DesignPath:
+    """One drawn path between two sites, over the cities named."""
+    return DesignPath("backbone_mesh", source, target, path, miles)
+
+
+_RING_PLUS_CHORD = [
+    _use("w", "x", ("w", "x"), 100.0),
+    _use("x", "y", ("x", "y"), 100.0),
+    _use("y", "z", ("y", "z"), 100.0),
+    _use("z", "w", ("z", "w"), 100.0),
+    _use("w", "y", ("w", "y"), 250.0),
+]
+_TRIANGLE = [
+    _use("a", "b", ("a", "b"), 1.0),
+    _use("b", "c", ("b", "c"), 1.0),
+    _use("a", "c", ("a", "c"), 1.0),
+]
+_CHAIN = [
+    _use("a", "b", ("a", "b"), 1.0),
+    _use("b", "c", ("b", "c"), 1.0),
+    _use("c", "d", ("c", "d"), 1.0),
 ]
 
 
-def _short_site_restored() -> list[DesignPath]:
-    """The three links a holds, plus whatever putting a proved path back is worth."""
-    return restore_diverse_paths(
-        _SHORT_SITE_USES, _SHORT_SITE_EDGES,
-        BackboneConstraints(number_of_diverse_paths=3, paths=_SHORT_SITE_PROVED),
-    )
+def test_a_path_nobody_needs_is_taken_back_out() -> None:
+    """The chord buys neither of its ends a way out the ring did not already give it."""
+    assert _needed(_RING_PLUS_CHORD, _SQUARE_SITES, 2) == _RING_PLUS_CHORD[:4]
 
 
-def test_a_path_that_would_not_raise_the_count_is_not_put_back() -> None:
-    """Two miles through h1 to a peer already reached through h1 buys nothing, so it is not."""
-    assert ("a", "h1", "b") not in [use.path for use in _short_site_restored()]
+def test_a_path_a_site_would_lose_a_way_out_by_is_kept() -> None:
+    """Every ring path is a site's second way out, so the ring survives the judgement whole."""
+    assert _needed(_RING_PLUS_CHORD[:4], _SQUARE_SITES, 2) == _RING_PLUS_CHORD[:4]
 
 
-def test_the_path_that_does_raise_the_count_is_put_back_though_it_costs_more() -> None:
-    """Ten miles through h3 is five times the other and is the only one that is a way out."""
-    assert _short_site_restored()[-1].path == ("a", "h3", "d")
+def test_a_path_whose_loss_would_leave_a_city_carrying_the_network_is_kept() -> None:
+    """Dropping one side of a triangle leaves the middle city carrying both other sites.
+
+    Each of the three sites is bought one way out and would still have one without the
+    third path, so the ways out alone would let it go. What stops it is that the fiber left
+    would fall to the loss of a single city, which the fiber with it does not.
+    """
+    assert _needed(_TRIANGLE, ("a", "b", "c"), 1) == _TRIANGLE
+
+
+def test_a_path_whose_loss_would_break_the_backbone_in_two_is_kept() -> None:
+    """Dropping the middle of a chain leaves two backbones rather than one.
+
+    Every site is bought one way out and every site still has one on either side of the
+    break, so nothing about the ways out refuses this. Being one network is the separate
+    thing a backbone owes, and it is what keeps the path.
+    """
+    assert _needed(_CHAIN, ("a", "b", "c", "d"), 1) == _CHAIN
+
+
+def test_a_design_that_never_survived_a_city_loss_is_not_held_to_surviving_one() -> None:
+    """A chain cannot survive any city's loss, so that cannot be a reason to keep a path.
+
+    Read the other way round, this is what keeps the judgement honest on the fiber a site
+    behind a single point of failure really has: a design that never survived a city's loss
+    is not made to keep a path on the pretence that it did.
+    """
+    doubled = [*_CHAIN, _use("a", "b", ("a", "b"), 9.0)]
+    assert _needed(doubled, ("a", "b", "c", "d"), 1) == _CHAIN

@@ -64,6 +64,14 @@ def design_payload(sources: SourceFiles, artifacts: DesignArtifacts) -> dict[str
             "physical_edge_count": len(design.physical_edge_keys),
             "access_miles": round(design.metrics.access_miles, 3),
             "physical_carrier_miles": round(design.metrics.physical_miles, 3),
+            # The fewest fiber miles any backbone meeting this tenant's requirements could
+            # have run (see :mod:`synthesizer.survivable`). It sits beside the miles the
+            # design actually ordered because the two are only meaningful together: a
+            # figure for what was bought says nothing about whether it was worth buying
+            # until there is a figure for what the same requirements could have cost.
+            "backbone_lower_bound_miles": round(
+                design.metrics.backbone_lower_bound_miles, 3
+            ),
             "total_design_miles": round(
                 design.metrics.access_miles + design.metrics.physical_miles, 3
             ),

@@ -674,7 +674,25 @@
         "parameters": [
           { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The WAN." } },
+        "responses": {
+          "200": {
+            "description": "The WAN: the state of the build, the coverage it delivered, the backup path multiple it was built under, what each site was asked for, and the fewest fiber miles the same requirements could have been met with.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "backbone_lower_bound_miles": {
+                      "type": "number",
+                      "description": "The fewest fiber miles any backbone meeting this tenant's requirements over this carrier fiber could have run. Published so a reader outside the build can say how close the network they were handed is to the shortest one there is."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "x-amazon-apigateway-integration": {
           "uri": "${WanHandlerArn}",
           "httpMethod": "POST",

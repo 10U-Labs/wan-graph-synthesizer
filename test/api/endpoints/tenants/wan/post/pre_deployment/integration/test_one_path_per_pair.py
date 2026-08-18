@@ -1,10 +1,10 @@
 """Integration test: how many paths a whole synthesis buys between one pair of sites.
 
 Two sites that are joined are joined once. A second path between the same two sites is a
-second path somebody orders every month, and it buys nothing the first did not: what
-makes a site's ways out independent is that they end at different peers. A pair is joined
-twice only where nothing else is left -- a tenant whose config seats two sites, which has
-its own file beside this one, or a site whose fiber offers no other way out at all.
+second path somebody orders every month, and it buys nothing the first did not: what makes
+a site's ways out independent is that they end at different peers. A pair is joined twice
+only where nothing else is left -- a tenant whose config seats two sites, which has its own
+file beside this one, or a site whose fiber offers no other way out at all.
 
 The shape that overbuilds a pair cannot be made from a clique or a ring, which is why this
 tier missed it. It needs the two ends of a pair to prove different fiber to each other, and
@@ -13,11 +13,14 @@ peers. ``fixtures.SHARED_HUB_PEER_EDGES`` is that graph: three sites over three 
 cities where b and c each proved their own way to the other, five hundred miles apart, and
 a fourth site d joined to b and to c over fiber of its own.
 
-The fourth site is what the argument turns on. Joined once, b's links to a and to c both
-ride ``h1``, and the path to d is the second way out that no one city takes with them --
-so the money that was buying b a second path to c buys a path to a site b did not
-reach at all. That is the network being argued for, and it is the reason the pair is not
-joined twice here (GitHub issue #59).
+The fourth site is what the argument turns on. It is the reason b's second way out is a
+path to a site it did not reach at all rather than a second path to c (GitHub issue #59).
+GitHub issue #60 then took the argument one step further: choosing the fiber for the whole
+design at once buys eight segments and sixteen hundred miles, and over that fiber b and c
+reach each other round the ring rather than over fiber of their own, so the pair is not
+joined at all. Nobody loses by it -- both still hold the two ways out they were bought --
+and the pair that used to be joined twice is now joined none, which is the same argument
+run to the end.
 
 The hub and corridor cities are not data-center cities, so none of them can take a backbone
 seat and the backbone stays the four sites the case is about.
@@ -26,8 +29,10 @@ seat and the backbone stays the four sites the case is about.
 from __future__ import annotations
 
 import fixtures
+from synthesizer.backbone import _needed
 from synthesizer.input_graph import edge_key
 
+_ASKED_FOR = 2
 ARTIFACTS = fixtures.shared_hub_peer_artifacts()
 _MESH = [use for use in ARTIFACTS.design.path_uses if use.purpose == "backbone_mesh"]
 
@@ -53,26 +58,41 @@ def test_the_backbone_is_the_four_sites() -> None:
 
 
 def test_no_pair_of_sites_is_joined_more_than_once() -> None:
-    """b and c proved different fiber to each other, and one path is what is built."""
+    """b and c proved different fiber to each other, and neither path is bought twice over."""
     assert max(_paths_per_pair().values()) == 1
 
 
-def test_the_pair_whose_ends_disagreed_takes_the_shorter_of_the_two_paths() -> None:
-    """Two hundred miles through h1 rather than five hundred through h3."""
-    drawn = [use for use in _MESH if edge_key(use.source, use.target) == edge_key("b", "c")]
-    assert drawn[0].path == ("b", "h1", "c")
+def test_the_design_joins_each_site_to_the_two_peers_it_reaches() -> None:
+    """Four sites, four paths: a ring through the two hubs and the two corridor cities.
+
+    Five pairs were joined while the fiber was chosen one pair at a time. Choosing it whole
+    reaches the same protection over four paths, because b and c reach each other round the
+    ring rather than over fiber of their own.
+    """
+    assert len(_MESH) == 4
 
 
-def test_every_pair_the_sites_reached_for_is_still_joined() -> None:
-    """Drawing a pair once is not drawing it none: the five pairs the mesh picked are wired."""
-    assert len(_paths_per_pair()) == 5
+def test_the_design_orders_the_fewest_fiber_miles_its_requirements_allow() -> None:
+    """Sixteen hundred miles: d's four hundred each way, and a's two ways out at eight hundred.
+
+    d has exactly two fiber directions and needs both, which is eight hundred miles nothing
+    can avoid. a then needs two ways out that no one city takes together, and the shortest
+    pair it has is h2 to c at three hundred and h1 to b at five hundred. Everything else falls out
+    of those: b and c each already hold a hub path and a corridor path to d.
+    """
+    assert sum(use.distance_miles for use in _MESH) == 1600.0
 
 
 def test_every_site_still_holds_the_paths_its_tenant_asked_for() -> None:
-    """b rides h1 for two of its three links and reaches d clear of it, which is two ways out."""
+    """b rides h1 to a and reaches d over its own corridor, which is two ways out."""
     assert ARTIFACTS.validation["backbone_mesh_independence_deficient"] == []
 
 
 def test_the_fiber_survives_the_loss_of_any_one_city() -> None:
-    """No city is left carrying the whole network, so the repair pass adds no detour."""
+    """No city is left carrying the whole network: the eight segments close into one ring."""
     assert ARTIFACTS.validation["biconnected_no_articulation_points"]
+
+
+def test_no_path_the_design_holds_could_be_taken_back_out() -> None:
+    """Each of the four paths is the second way out of one of the four sites."""
+    assert _needed(_MESH, ARTIFACTS.design.backbone_ids, _ASKED_FOR) == _MESH

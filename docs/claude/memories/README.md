@@ -23,6 +23,7 @@ session tool's local memory only what is true of one machine alone.
 - [a-rejected-push-is-fixed-forward](a-rejected-push-is-fixed-forward.md) — a failed run is answered with a follow-up commit, never an amended force-push
 - [markdown-is-not-hard-wrapped](markdown-is-not-hard-wrapped.md) — no
   column limit on `.md` files or on issue and pull-request bodies
+- [third-party-code-ships-as-a-layer](third-party-code-ships-as-a-layer.md) — a package the synthesizer needs at runtime ships as a Lambda layer built from wheels pinned by version and by sha256, never unpacked under `src/`
 - [how-issues-are-written](how-issues-are-written.md) — six fixed sections for the program, two for everything else, plain English, telecom vocabulary
 - [write-the-exact-name](write-the-exact-name.md) — name the file, function and line everywhere, in chat as much as in issues; never a coined collective noun
 - [lead-with-what-it-is-for](lead-with-what-it-is-for.md) — say what the thing is and what it costs before the first identifier, and cut the details that change nothing

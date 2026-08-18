@@ -13,15 +13,14 @@ paths (:func:`independent_paths`) and the ceiling is their number, rather than t
 being thrown away once they have been counted.
 
 Because they are wired, their length is part of the answer. A path this module returns is
-fiber the design orders: ``synthesizer.backbone.backbone_mesh_paths`` hands them to
-``synthesizer.backbone.diverse_mesh_paths``, which draws the backbone-to-backbone links
-along them segment for segment. So the flow is a minimum-cost maximum flow, mileage on
-each arc: it returns the largest set of paths no one city's loss takes two of, and out of
-every set that size it returns the one running the fewest fiber miles. Callers may rely on
-both halves. Counting cities instead is what put 220 miles of protection between Ashburn
-and New York on a 7,471-mile path through Paris (GitHub issue #44), and left roughly a
-tenth of the fiber the five tenants' proofs reach for reached for on nothing (GitHub issue
-#57).
+fiber the design orders: ``synthesizer.backbone.backbone_mesh`` reads a site's ways out off
+the fiber the design bought by calling :func:`independent_paths` over it, and draws them
+segment for segment. So the flow is a minimum-cost maximum flow, mileage on each arc: it
+returns the largest set of paths no one city's loss takes two of, and out of every set that
+size it returns the one running the fewest fiber miles. Callers may rely on both halves.
+Counting cities instead is what put 220 miles of protection between Ashburn and New York on
+a 7,471-mile path through Paris (GitHub issue #44), and left roughly a tenth of the fiber
+the five tenants' proofs reach for reached for on nothing (GitHub issue #57).
 
 The ceiling is the point where the thing path diversity buys runs out. Below it a node is
 leaving built fiber unused; above it every further link must, by the max-flow min-cut
@@ -567,7 +566,7 @@ def independent_paths(node: str, inputs: PathProofInputs) -> list[tuple[str, ...
 
     It is not a cap on what comes back. This counts what the fiber can carry, and how many
     of them the mesh then draws is the tenant's number applied by
-    :func:`synthesizer.backbone.backbone_mesh_paths`.
+    :func:`synthesizer.backbone.backbone_mesh`.
 
     Of the many sets that size, the one returned runs the fewest fiber miles. Each
     round takes the cheapest path left rather than the one crossing the fewest cities (see

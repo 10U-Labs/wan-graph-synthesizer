@@ -4,7 +4,8 @@
 # (in the sibling `../` stack) async-invokes it on a WAN create (POST /tenants/{t}/wan),
 # the only build trigger, referencing it by its deterministic derived name.
 # A build is single-threaded, finishes in seconds with a few-GB working set, and needs
-# nothing beyond stdlib + boto3, so it fits Lambda's 15-minute / 10 GB envelope.
+# nothing beyond stdlib, boto3 and the solver in aws_lambda_layer_version.solver, so it
+# fits Lambda's 15-minute / 10 GB envelope.
 # This `post/` stack (owned by the *_post.yml workflow) is self-contained: its lambda code
 # lives under `./lambdas/`.
 
@@ -18,6 +19,34 @@ data "archive_file" "synthesizer" {
   type        = "zip"
   source_dir  = "${path.module}/lambdas"
   output_path = "${path.module}/.terraform/lambda_packages/synthesizer.zip"
+}
+
+# The solver the backbone search runs on, shipped as a Lambda layer instead of inside the
+# function's own zip. `data "archive_file" "synthesizer"` above zips the whole of
+# src/api/endpoints/tenants/wan/post/lambdas, so a wheel unpacked there would land under
+# src/, and pylint-source, mypy-source and copy-paste-source read everything they find
+# under src/ -- they would report on third-party code nobody here wrote and the workflow
+# would go red. This layer is what keeps that code out of src/. It holds two pinned wheels:
+# highspy 1.15.1, the HiGHS solver that synthesizer/linear_program.py calls to round the
+# linear-programming relaxation, and numpy 2.3.5, which highspy needs. The workflow fetches
+# both by URL, checks their sha256 and unpacks them into
+# ${path.module}/.terraform/solver_layer/python/ before tofu reads this data source.
+# Both aws_lambda_function.synthesizer and aws_lambda_function.failure_handler attach it.
+# They already share one deployment package, and attaching the layer to only one of them
+# would start them drifting apart.
+data "archive_file" "solver_layer" {
+  type        = "zip"
+  source_dir  = "${path.module}/.terraform/solver_layer"
+  output_path = "${path.module}/.terraform/lambda_packages/solver_layer.zip"
+}
+
+resource "aws_lambda_layer_version" "solver" {
+  filename                 = data.archive_file.solver_layer.output_path
+  source_code_hash         = data.archive_file.solver_layer.output_base64sha256
+  layer_name               = "wan-graph-synthesizer-solver"
+  compatible_runtimes      = ["python3.13"]
+  compatible_architectures = ["arm64"]
+  description              = "highspy 1.15.1 and numpy 2.3.5: the solver the synthesizer's backbone search calls."
 }
 
 resource "aws_iam_role" "synthesizer" {
@@ -67,6 +96,7 @@ resource "aws_lambda_function" "synthesizer" {
   source_code_hash = data.archive_file.synthesizer.output_base64sha256
   runtime          = "python3.13"
   architectures    = ["arm64"]
+  layers           = [aws_lambda_layer_version.solver.arn]
   # The build is single-threaded and finishes in seconds with a few-GB working set;
   # 8192 MB matches the prior 8 GB Fargate task so enumeration_limit is unchanged, and
   # 900s (the Lambda max) is ample headroom over a ~5s build.
@@ -141,6 +171,7 @@ resource "aws_lambda_function" "failure_handler" {
   source_code_hash = data.archive_file.synthesizer.output_base64sha256
   runtime          = "python3.13"
   architectures    = ["arm64"]
+  layers           = [aws_lambda_layer_version.solver.arn]
   # It writes a single S3 object; the default envelope is ample.
   timeout     = 30
   memory_size = 128

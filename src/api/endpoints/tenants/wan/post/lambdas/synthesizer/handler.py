@@ -116,6 +116,14 @@ def _delivered(
     collections -- they carry the links that were drawn, not the links that were asked for
     -- so a reader outside the build could see the network was thin and never see that the
     build had already said so.
+
+    ``backbone_lower_bound_miles`` travels with them because it is the only figure that
+    says whether the fiber an operator is paying for is close to the least this network
+    could have been built with. It is the answer to the linear-programming relaxation the
+    fiber was chosen by (see :mod:`synthesizer.survivable`), so no design meeting this
+    tenant's requirements runs fewer miles than that -- which is what lets a reader outside
+    the build hold the published network to it, and what
+    ``test_delivered_designs`` does against all six live maps.
     """
     coverage: CoverageReport = coverage_report(
         design.backbone_ids,
@@ -129,6 +137,7 @@ def _delivered(
     return {
         "coverage": coverage,
         "max_backup_path_multiple": params.tuning.backbone_max_backup_path_multiple,
+        "backbone_lower_bound_miles": round(design.metrics.backbone_lower_bound_miles, 3),
         "diverse_paths": {
             "number_of_diverse_paths": params.tuning.backbone_number_of_diverse_paths,
             "ceilings": validation["backbone_diverse_paths_ceilings"],

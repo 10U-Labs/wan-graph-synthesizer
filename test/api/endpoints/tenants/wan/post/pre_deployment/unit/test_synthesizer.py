@@ -65,10 +65,14 @@ def _stub_pipeline(
     )
     monkeypatch.setattr(module, "synthesize_two_tier_design", lambda *_a: object())
     # The design carries its backbone because the handler measures the coverage it
-    # delivered before publishing; the rest of it is the stubbed payload's business. The
-    # validation report carries the two diverse-path findings for the same reason: the
-    # handler republishes them in the status without recomputing either.
-    design = SimpleNamespace(backbone_ids=("P",))
+    # delivered before publishing, and its floor because the handler publishes that beside
+    # the coverage; the rest of it is the stubbed payload's business. The validation report
+    # carries the two diverse-path findings for the same reason: the handler republishes
+    # them in the status without recomputing either.
+    design = SimpleNamespace(
+        backbone_ids=("P",),
+        metrics=SimpleNamespace(backbone_lower_bound_miles=1250.0),
+    )
     validation = {
         "backbone_diverse_paths_ceilings": [
             {"id": "P", "name": "P", "ceiling": 1, "target": 1}
@@ -170,6 +174,21 @@ def test_the_ready_status_carries_the_backup_path_multiple_the_build_ran_under(
     objects = _run(synthesizer, monkeypatch)
     status = json.loads(objects["tenants/f-35/wan-status.json"])
     assert status["max_backup_path_multiple"] == 3.0
+
+
+def test_the_ready_status_carries_the_floor_the_design_is_judged_against(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The fewest miles the same requirements could have been met with is published too.
+
+    A reader outside the build can add up the fiber a published network ordered and cannot
+    work out what the least it could have run was, because that answer needs the whole
+    carrier map and the tenant's requirements together. So the build publishes it, and the
+    network is held to twice it (GitHub issue #60).
+    """
+    objects = _run(synthesizer, monkeypatch)
+    status = json.loads(objects["tenants/f-35/wan-status.json"])
+    assert status["backbone_lower_bound_miles"] == 1250.0
 
 
 def test_the_ready_status_carries_what_each_site_was_asked_for(

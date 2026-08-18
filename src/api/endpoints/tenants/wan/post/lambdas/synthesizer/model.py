@@ -27,18 +27,20 @@ class AccessEdge:
     target: str
     distance_miles: float
 
-# Why a backbone mesh link is in the design. A site is wired for exactly the number of
-# diverse paths its tenant asked for, so any link it holds beyond that number is one
-# somebody else's requirement put there, and these are the only five things that can have.
-# Carrying the cause on the link is what lets the report name it rather than leave an
+# Why a path between two backbone nodes is in the design. A site is drawn with exactly the
+# number of ways out its tenant asked for, so any path it holds beyond that number is one
+# somebody else's requirement put there, and there are only two things that can have.
+# Carrying the cause on the path is what lets the report name it rather than leave an
 # operator to infer from a count why their network is larger than they asked for.
+#
+# There were five of these until GitHub issue #60. Three of them named the pass that added
+# the path -- a join holding the backbone together, a detour around a city carrying the
+# whole network, a second path to a peer already reached -- and those passes are gone: the
+# fiber is now chosen for the whole design at once (see :mod:`synthesizer.survivable`), so
+# every path in a design is one some site's own requirement produced or one the operator
+# wrote down.
 LINK_FOR_TARGET = "site_target"  # a site reached for it to meet its own target
 LINK_FOR_PIN = "operator_pin"  # the operator wrote it into etc/*.yml
-LINK_FOR_CONNECTIVITY = "network_connectivity"  # it holds the backbone together as one
-LINK_FOR_CITY_DETOUR = "city_detour"  # it stops one city's loss splitting the backbone
-# a second path to a peer a site is joined to already, drawn only where the site's fiber
-# offers it no other way out that a single city's loss would not take with its first
-LINK_FOR_SITE_DIVERSITY = "site_diversity"
 
 
 @dataclass(frozen=True)
@@ -61,11 +63,22 @@ class DesignPath:
 
 @dataclass
 class DesignMetrics:
-    """Mileage totals and the synthesis score for a design."""
+    """Mileage totals and the synthesis score for a design.
+
+    ``backbone_lower_bound_miles`` is the fewest fiber miles any backbone meeting this
+    tenant's requirements over this carrier fiber could have run, computed as the answer to
+    the linear-programming relaxation the fiber was chosen by (see
+    :mod:`synthesizer.survivable`). It is published beside ``physical_miles`` because a
+    design is only as good as the shortest design there is, and until that number travels
+    with the design nobody reading it can say how close this one came. A design assembled
+    without a fiber choice behind it -- a fixture, a hand-built draft -- carries no floor
+    and reads zero.
+    """
 
     score: float
     access_miles: float
     physical_miles: float
+    backbone_lower_bound_miles: float = 0.0
 
 @dataclass
 class Design:

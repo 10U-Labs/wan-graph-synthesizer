@@ -1,11 +1,10 @@
 """Integration test: how far a whole synthesis will path a link to make it diverse.
 
 The unit tier can show the proof refuses a path past the operator's backup path multiple. It
-cannot show the refusal survives the pipeline: peer selection, the routing heuristic that
-covers every link the proof does not, and the resilience augmentation that adds detours
-around cut cities all sit between a proved path and a drawn link, and any of them could
-put the crossing back. So the same graph is run through the whole design here and the
-drawn links are asserted rather than the proof.
+cannot show the refusal survives the pipeline: the fiber for the whole design is chosen
+first, over the segments the bound leaves usable, and the paths are read off that fiber
+afterwards -- two steps that could each put the crossing back. So the same graph is run
+through the whole design here and the drawn links are asserted rather than the proof.
 
 The first graph is ``fixtures.CROSSING_EDGES``: three sites twenty miles apart overland
 through ``pdx``, and a thousand miles apart through ``tok`` offshore. Every overland path
@@ -19,12 +18,10 @@ for a link nobody can wire -- a shortfall reported against the design that no fi
 Neither unit is wrong on its own, so only a tier holding both can see it (GitHub issue #45).
 
 The third is ``fixtures.EXPRESS_EDGES``, and it asks how many fiber miles the finished design
-orders. Every path the proof returns is drawn segment for segment, so the shortest set of
-independent paths only saves anything if nothing between the proof and the drawn link
-lengthens it again -- peer selection, the clearing heuristic and the resilience detours all
-sit in between, and the proof cannot see any of them. Here both ways of wiring the ring are
-allowed by the bound and hold the same number of independent links, so the mileage is the
-only thing separating them (GitHub issue #57).
+orders. The fiber choice and the reading of paths off it are separate steps, so a design can
+choose the shorter fiber and still draw a longer path over it. Here both ways of wiring the
+ring are allowed by the bound and hold the same number of independent links, so the mileage
+is the only thing separating them (GitHub issue #57).
 """
 
 from __future__ import annotations
@@ -175,10 +172,10 @@ def test_the_distant_peer_ceiling_is_the_one_its_usable_fiber_carries() -> None:
 def test_the_finished_design_orders_the_fewest_fiber_miles_it_can_be_wired_with() -> None:
     """The ring design's three links run six miles in all, not the fifteen the express segments do.
 
-    The unit tier pins what the proof hands over; this pins that the mesh lays it. Between
-    the two sit the peer picks, the clearing heuristic and the resilience detours, and a
-    design that proved the ring and then drew an express segment anyway would cost the operator
-    the whole saving while every other assertion here still passed.
+    The unit tier pins what the proof hands over; this pins that the design orders it. The
+    fiber is chosen first and the paths are read off it afterwards, and a design that bought
+    the ring and then drew an express segment anyway would cost the operator the whole saving
+    while every other assertion here still passed.
     """
     assert _mesh_miles(EXPRESS) == 6.0
 

@@ -25,7 +25,7 @@ backbone stays the two sites the case is about.
 from __future__ import annotations
 
 import fixtures
-from synthesizer.model import DesignParams, Tuning
+from synthesizer.model import LINK_FOR_TARGET, DesignParams, Tuning
 
 _SITES = ("a", "b")
 _ASKED_FOR = 2
@@ -75,9 +75,16 @@ def test_the_two_paths_share_no_city_but_the_two_sites() -> None:
     assert sorted(transit) == sorted(set(transit))
 
 
-def test_no_path_is_a_repair_of_another() -> None:
-    """The paths are drawn diverse to begin with, so the resilience pass has nothing to add."""
-    assert [use.reason for use in _MESH].count("city_detour") == 0
+def test_both_paths_are_ones_the_two_sites_reached_for_themselves() -> None:
+    """Two paths over one pair is what a two-site backbone asking for two paths buys.
+
+    There was a fifth reason a path could carry until GitHub issue #60 -- a detour added
+    afterwards to keep a city off the only path -- and a design that drew one path and then
+    repaired it would have shown up here as that reason rather than as the tenant's own
+    number. The fiber is chosen for the whole design at once now, so the two paths are the
+    two the sites were bought and neither is a repair of the other.
+    """
+    assert [use.reason for use in _MESH] == [LINK_FOR_TARGET, LINK_FOR_TARGET]
 
 
 def test_each_site_is_credited_with_the_paths_it_holds() -> None:

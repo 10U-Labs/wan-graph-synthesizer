@@ -1,9 +1,9 @@
 """Unit tests for the synthesizer stack's declared infrastructure.
 
 Parse the synthesizer stack's ``main.tf`` with hcl2 and assert the synthesizer Lambda
-(its runtime, size, handler, role and S3 access) and its log group are declared as
-intended. No AWS calls, no apply. (The handler's runtime behaviour is covered by
-``test_synthesizer.py``.)
+(its runtime, size, handler, role, S3 access and solver layer) and its log group are
+declared as intended. No AWS calls, no apply. (The handler's runtime behaviour is covered
+by ``test_synthesizer.py``.)
 """
 from __future__ import annotations
 
@@ -142,3 +142,32 @@ def test_failure_handler_log_group_retention(synth_main: dict[str, object]) -> N
     """The failure handler's log group retains events for fourteen days."""
     log_group = _resource(synth_main, "aws_cloudwatch_log_group", "failure_handler")
     assert log_group["retention_in_days"] == 14
+
+
+def test_solver_layer_is_declared(synth_main: dict[str, object]) -> None:
+    """The solver ships as a layer, so no third-party wheel is unpacked under ``src/``."""
+    assert find_resource(synth_main, "aws_lambda_layer_version", "solver") is not None
+
+
+def test_solver_layer_runtime_is_python313(synth_main: dict[str, object]) -> None:
+    """The solver layer declares python3.13, the runtime both functions are declared with."""
+    layer = _resource(synth_main, "aws_lambda_layer_version", "solver")
+    assert layer["compatible_runtimes"] == ["python3.13"]
+
+
+def test_solver_layer_is_arm64(synth_main: dict[str, object]) -> None:
+    """The solver layer declares arm64: its wheels are aarch64 and load on nothing else."""
+    layer = _resource(synth_main, "aws_lambda_layer_version", "solver")
+    assert layer["compatible_architectures"] == ["arm64"]
+
+
+def test_synthesizer_attaches_the_solver_layer(synth_main: dict[str, object]) -> None:
+    """The synthesizer gets the solver layer; without it ``import highspy`` fails on start."""
+    synthesizer = _resource(synth_main, "aws_lambda_function", "synthesizer")
+    assert "aws_lambda_layer_version.solver" in synthesizer["layers"][0]
+
+
+def test_failure_handler_attaches_the_solver_layer(synth_main: dict[str, object]) -> None:
+    """The failure handler gets the same layer: one package, so the two must not diverge."""
+    failure_handler = _resource(synth_main, "aws_lambda_function", "failure_handler")
+    assert "aws_lambda_layer_version.solver" in failure_handler["layers"][0]

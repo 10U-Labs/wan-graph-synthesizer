@@ -2,11 +2,15 @@
 
 The delivered-design layer reads what the deployed synthesizer published and judges it.
 This module is both halves of that job: the reader that asks the service for a tenant's
-network and for the state of its build, and the four measurements that cannot be answered
+network and for the state of its build, and the six measurements that cannot be answered
 by reading a number back -- what the worst haul of a published network really is, whether
 any published link wanders further from the straight line than its tenant allows, whether
-any of them wanders further than the fiber it runs over made necessary, and whether
-any pair of sites was drawn with more paths between them than the tenant bought.
+any of them wanders further than the fiber it runs over made necessary, whether
+any pair of sites was drawn with more paths between them than the tenant bought, whether
+any path at all could be taken out with no site losing a diverse path, no site cut off and
+no city's loss newly splitting the fiber, and how many miles of carrier fiber the network
+ordered, which is the figure the floor a build publishes under itself is there to be held
+against.
 
 The reading goes through the API and not through the S3 bucket the synthesizer writes to.
 The bucket holds only what the synthesizer chose to publish, which is three of the eight
@@ -97,6 +101,12 @@ def published_design(api: str, tenant: str, config: dict[str, Any]) -> dict[str,
     A tenant whose build has not finished has no network to read, so its collections come
     back empty rather than fetched: the collection endpoints answer 404 until the first
     build lands, and the first test in the layer is the one that reports the tenant.
+
+    ``lower_bound_miles`` is the fewest miles of fiber any design meeting the same tenant's
+    requirements could have run, which the build computes as the optimum of the
+    linear-programming relaxation it solved and serves as ``backbone_lower_bound_miles``.
+    It is read with ``.get`` for the same reason the collections are not fetched: a build
+    that has not finished has decided no such number yet, and carries none.
     """
     state_path, *collection_paths = request_paths(tenant)
     state = _build_state(api, state_path)
@@ -113,6 +123,7 @@ def published_design(api: str, tenant: str, config: dict[str, Any]) -> dict[str,
         "seat_cap": backbone["node_count"]["max"],
         "forced": backbone.get("forced", {}).get("nodes", []),
         "status": state,
+        "lower_bound_miles": state.get("backbone_lower_bound_miles"),
         "backbone": published.get("backbone-nodes", []),
         "demand": published.get("tenant-nodes", []) + published.get("provider-nodes", []),
         "links": published.get("backbone-links", []),
@@ -284,6 +295,151 @@ def overbuilt_pairs(design: dict[str, Any]) -> list[tuple[str, int]]:
     return overbuilt
 
 
+def _joined_to(pairs: list[tuple[str, str]]) -> dict[str, set[str]]:
+    """For each place named in the pairs, the places joined straight to it.
+
+    Both ways round, because a path from here to there is a path from there to here, and a
+    sweep reading this map starts wherever it likes.
+    """
+    joined: dict[str, set[str]] = {}
+    for near, far in pairs:
+        joined.setdefault(near, set()).add(far)
+        joined.setdefault(far, set()).add(near)
+    return joined
+
+
+def _reached(joined: dict[str, set[str]], start: str) -> set[str]:
+    """Every place a sweep out from ``start`` gets to over the map given.
+
+    The set of places found grows until nothing new arrives at it. A published backbone
+    seats tens of sites and crosses tens of cities, so growing a set until it stops growing
+    is the whole of what is wanted here and is the plainest way to say it.
+    """
+    found = {start}
+    unswept = [start]
+    while unswept:
+        here = unswept.pop()
+        for there in joined[here] - found:
+            found.add(there)
+            unswept.append(there)
+    return found
+
+
+def _all_one_network(joined: dict[str, set[str]]) -> bool:
+    """Whether the places in the map are one network rather than two or more.
+
+    A sweep out from any one of them either reaches all of them or does not, so the sweep
+    runs from the one place it is started at. A map holding no places at all is one network
+    holding nothing, which is why the start is written as the first place there is rather
+    than as a place taken out of a map that may have none.
+    """
+    return all(_reached(joined, start) == set(joined) for start in sorted(joined)[:1])
+
+
+def _holds_a_single_point_of_failure(joined: dict[str, set[str]]) -> bool:
+    """Whether losing some one city would leave the rest of these cities in pieces.
+
+    A city that every way between two parts of the network crosses is a single point of
+    failure, and an operator who loses it loses one part of their network to the other. Each
+    city is dropped in turn and the rest are asked whether they are still one network, which
+    over the tens of cities a published backbone crosses is both fast enough and the
+    plainest statement of the question.
+    """
+    return any(
+        not _all_one_network({
+            city: joined[city] - {lost} for city in joined if city != lost
+        })
+        for lost in joined
+    )
+
+
+def _sites_the_paths_join(
+    links: list[dict[str, Any]], sites: list[str]
+) -> dict[str, set[str]]:
+    """For each backbone site, the sites it holds a published path to, every site listed.
+
+    Every site is in the map whether or not a path ends at it, so a site nothing joins reads
+    as the site cut off from the rest that it is rather than being absent from the map and
+    reached without anybody noticing.
+    """
+    alone: dict[str, set[str]] = {site: set() for site in sites}
+    return alone | _joined_to([(link["source_id"], link["target_id"]) for link in links])
+
+
+def _cities_the_paths_cross(links: list[dict[str, Any]]) -> dict[str, set[str]]:
+    """For each city the published paths cross, the cities they run straight on to.
+
+    A published path names the cities it crosses in the order it crosses them, so each city
+    and the next one along is one hop of the fiber the design is standing on. All of those
+    hops together are the fiber the paths run over, which is what a city's loss is asked
+    about.
+    """
+    return _joined_to([
+        (near, far)
+        for link in links
+        for near, far in zip(link["path"], link["path"][1:])
+    ])
+
+
+def removable_paths(design: dict[str, Any]) -> list[tuple[str, float]]:
+    """Every published path whose removal would cost nobody anything at all.
+
+    A path is fiber an operator holds and pays for every month, so one that buys no site a
+    diverse path, joins nobody who was not already joined and relieves no single point of
+    failure is miles ordered for nothing. Each path is taken out in turn and what remains is
+    put to the three demands the design was built to meet: every backbone site still holds
+    as many independently failing links as it held with the path -- capped at the
+    ``number_of_diverse_paths`` its tenant asked for, the way :func:`overbuilt_pairs` caps
+    it, since a site whose fiber cannot reach that number is not asked to -- the paths still
+    join every backbone site into one network, and no city's loss splits the fiber the paths
+    run over where none did with the path in. A path that passes all three is reported as
+    the cities it crosses and the miles it runs, longest first, so the failure names the
+    fiber and its length.
+
+    54 of the 192 paths in the six published networks are of that kind, 23,917 of their
+    83,927 miles -- 28 per cent of the fiber the six tenants pay for buys no backbone site a
+    diverse path (GitHub issue #60). They come from every pass of the build rather than from
+    one: of the 54, thirty-three carry the reason ``site_target``, eighteen
+    ``network_connectivity`` and three ``city_detour``.
+
+    :func:`overbuilt_pairs` could not see a single one of them. It examines only pairs of
+    sites holding more than one path between them, which is the question GitHub issue #59
+    asked, and all 54 are the only path between their two sites. Whether a pair is joined
+    more often than it needs was answered; whether a path buys anybody anything was not
+    asked until here.
+
+    A floor rather than the whole of the surplus. Each path is judged against a network
+    still holding every other path, so two paths that could each go if the other stayed are
+    both kept, and the shortest design meeting the same three demands is shorter again than
+    what this reports.
+    """
+    names = {node["id"]: node["name"] for node in design["backbone"]}
+    sites = list(names)
+    asked = design["number_of_diverse_paths"]
+    held_ways_out = {
+        site: min(asked, independent_ways_out(design["links"], site, names))
+        for site in sites
+    }
+    survives_a_city_loss = not _holds_a_single_point_of_failure(
+        _cities_the_paths_cross(design["links"])
+    )
+    removable: list[tuple[str, float]] = []
+    for spare in design["links"]:
+        kept = [link for link in design["links"] if link is not spare]
+        if any(
+            independent_ways_out(kept, site, names) < held_ways_out[site] for site in sites
+        ):
+            continue
+        if not _all_one_network(_sites_the_paths_join(kept, sites)):
+            continue
+        if survives_a_city_loss and _holds_a_single_point_of_failure(
+            _cities_the_paths_cross(kept)
+        ):
+            continue
+        removable.append((" -> ".join(spare["path"]), spare["distance_miles"]))
+    return sorted(removable, key=lambda found: (-found[1], found[0]))
+
+
 def _published_fiber(design: dict[str, Any]) -> dict[str, dict[str, float]]:
     """The carrier fiber a published network runs over, segment by segment between sites.
 
@@ -355,3 +511,21 @@ def detoured_links(design: dict[str, Any]) -> list[tuple[str, float]]:
         if shortest > 0 and link["distance_miles"] > allowed * shortest + ROUNDING_SLACK:
             detoured.append((" -> ".join(link["path"]), link["distance_miles"] / shortest))
     return detoured
+
+
+def ordered_fiber_miles(design: dict[str, Any]) -> float:
+    """The miles of carrier fiber a published network ordered, added up.
+
+    What an operator holds and pays for every month is the fiber between their backbone
+    sites, so this is the size of the network in the only unit anything here is measured in,
+    and the figure the floor a build publishes under itself is there to be held against.
+
+    The access homings served in the same collection are left out, for the reason
+    :func:`_published_fiber` gives: a homing joins a demand site to the backbone node it is
+    served from rather than joining fiber to fiber, so counting one would add miles no
+    backbone path can be laid along.
+    """
+    segments: list[float] = [
+        edge["distance_miles"] for edge in design["edges"] if edge["edge_kind"] == FIBER
+    ]
+    return sum(segments)

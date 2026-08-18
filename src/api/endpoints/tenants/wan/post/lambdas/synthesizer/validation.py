@@ -380,10 +380,11 @@ def node_mesh_links(design: Design, node: str) -> list[DesignPath]:
 def unrequested_mesh_links(design: Design, node: str) -> list[dict[str, object]]:
     """The mesh links at ``node`` that ``node`` did not reach for, each with why it is there.
 
-    A link the node picked itself is one of the number its tenant asked for -- selection
-    never gives a node more of those than its target. Every other link at the node is one
-    somebody else's requirement put there, and the link carries which (see
-    :data:`synthesizer.model.LINK_FOR_TARGET` and its siblings).
+    A link the node picked itself is one of the number its tenant asked for -- a site is
+    drawn with no more of its own than its target. Every other link at the node is one
+    somebody else's requirement put there, and the link carries which: a peer that reached
+    for it, or the operator's own pin (see :data:`synthesizer.model.LINK_FOR_TARGET` and
+    :data:`synthesizer.model.LINK_FOR_PIN`).
 
     A link the far end reached for is reported as the peer's rather than as a target, since
     from this node's side that is what it is: a link has two ends and only one of them
@@ -408,12 +409,15 @@ def above_target_nodes(
     """Backbone nodes holding more links than they were asked for, and why each one stands.
 
     The number of diverse paths is the number a site gets, not a floor it may be carried
-    past because the ground was generous (see
-    :func:`synthesizer.backbone.select_backbone_mesh_pairs`). So a node above its target is
-    the exception rather than the norm, and every link taking it there is attributable to
-    somebody else's requirement: an operator pin, a peer that needed this node to reach its
-    own target, a link holding the backbone together as one network, or a detour keeping
-    one city off the only path.
+    past because the ground was generous (see :func:`synthesizer.backbone.backbone_mesh`).
+    So a node above its target is the exception rather than the norm, and every link taking
+    it there is attributable to somebody else's requirement: a peer that needed this node
+    to reach its own target, or an operator pin. The two grounds that once stood beside
+    them -- a link holding the backbone together as one network and a detour keeping one
+    city off the only path -- were passes that added a link after the fact, and GitHub
+    issue #60 retired them: the fiber is chosen for the whole design at once now, so
+    holding the backbone together and keeping every city off the only path are requirements
+    of that one choice rather than repairs made to it.
 
     Reporting the reason is the point. A count alone leaves an operator to work out for
     themselves why the network they were handed is larger than the one they asked for, and

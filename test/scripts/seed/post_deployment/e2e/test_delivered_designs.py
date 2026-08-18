@@ -17,7 +17,7 @@ assertions, because the build was accepted and the status said ``ready``, which 
 how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
 200-mile target.
 
-The measurement itself is not here. Four of the ten questions below are answered by
+The measurement itself is not here. Six of the twelve questions below are answered by
 recomputing a number from the published collections rather than by reading one back, and
 that recomputation lives in lib/python/test_published_designs/, where a unit tier can hold
 it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
@@ -42,8 +42,10 @@ from typing import Any
 
 from test_published_designs import (
     detoured_links,
+    ordered_fiber_miles,
     overbuilt_pairs,
     overrun_links,
+    removable_paths,
     worst_haul,
 )
 
@@ -254,3 +256,63 @@ def test_no_published_network_draws_a_pair_more_paths_than_its_tenant_bought(
         if overbuilt_pairs(design)
     }
     assert overbuilt == {}
+
+
+def test_no_published_network_holds_a_path_that_buys_nobody_a_diverse_path(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """No published path could be taken out with every site and every city no worse off.
+
+    A path is fiber the operator holds and pays for every month, and it earns that only
+    where taking it out would cost somebody something: a backbone site the diverse paths
+    its tenant asked for, a site its place in the one network the backbone is, or the
+    fiber the standing it has against the loss of any one city. So each path is taken out
+    in turn and what remains is put to those three demands (see
+    ``test_published_designs.removable_paths``); a path all three still hold without is a
+    path nobody needed.
+
+    This is the assertion that would have reported the 54 paths against the six real maps
+    rather than against a fixture -- 23,917 of the 83,927 miles the six tenants pay for --
+    and it goes on reporting as the maps grow and tenants are added (GitHub issue #60).
+    The nine questions asked before it each judge one path on its own: is this one inside
+    the tenant's backup path multiple, is this one the shortest way over the fiber the
+    design ordered. A network can hold any number of unneeded paths and answer yes to every
+    one of them. The tenth is the only one that judges a path against the rest of the
+    design, and it examines only pairs of sites holding more than one path between them
+    (GitHub issue #59), while all 54 are the only path between their two sites, so it never
+    looked at one of them.
+    """
+    spare = {design["tenant"]: removable_paths(design) for design in delivered_designs}
+    assert {tenant: paths for tenant, paths in spare.items() if paths} == {}
+
+
+def test_no_published_network_runs_more_than_twice_the_fewest_miles_it_could_have(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """Every published network ordered at most twice the fiber miles it could have ordered.
+
+    Each build publishes the floor its own design is judged against. ``lower_bound_miles``
+    is the optimum of the linear-programming relaxation the build solved, which is the
+    fewest miles of fiber any design meeting the same tenant's requirements could run, and
+    holding the fiber the design ordered against it turns "the design is close to the
+    shortest one there is" from a claim about an algorithm into a statement a test can make
+    on the six real maps (GitHub issue #60).
+
+    That is the half an approximation cannot report about itself. The factor of two is a
+    property of the method rather than of the code that runs it, so an implementation that
+    has lost the guarantee through a defect goes on publishing designs that look perfectly
+    well formed from every other angle -- which is how 54 paths buying nobody a diverse
+    path stayed invisible from out here. This is where it shows, and the finding names the
+    tenant, the miles it ordered and the floor it ordered them against.
+
+    A tenant whose build has not finished has no floor to be held to, so it is left out
+    rather than compared against nothing.
+    """
+    measured = {
+        design["tenant"]: (ordered_fiber_miles(design), design["lower_bound_miles"])
+        for design in delivered_designs
+        if design["lower_bound_miles"] is not None
+    }
+    assert {
+        tenant: (miles, floor)
+        for tenant, (miles, floor) in measured.items()
+        if miles > 2 * floor
+    } == {}

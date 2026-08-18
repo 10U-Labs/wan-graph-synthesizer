@@ -41,7 +41,11 @@ _SEGMENT = {
     "source_id": "ash", "target_id": "nyc", "distance_miles": 240.0,
     "edge_kind": "carrier_physical",
 }
-_READY = {"status": "ready", "coverage": {"target_miles": 200, "met": True}}
+_READY = {
+    "status": "ready",
+    "coverage": {"target_miles": 200, "met": True},
+    "backbone_lower_bound_miles": 1250.0,
+}
 
 
 def _answering(bodies: dict[str, Any], code: int = 200) -> Callable[..., FakeResponse]:
@@ -63,10 +67,13 @@ def _answering(bodies: dict[str, Any], code: int = 200) -> Callable[..., FakeRes
 
 def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """A ``ready`` tenant carries its five collections and the six things git holds.
+    """A ``ready`` tenant carries its five collections, the six things git holds, and its floor.
 
     The two demand collections arrive as one, since every site the coverage target applies
-    to is measured the same way whether the tenant or a cloud provider owns it.
+    to is measured the same way whether the tenant or a cloud provider owns it. The floor
+    comes out of the build's own status: it is the fewest fiber miles the same requirements
+    could have been met with, and a network is only judged against it once it is read
+    beside the network itself.
     """
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
         "tenants/daf/wan": _READY,
@@ -84,6 +91,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "seat_cap": 6,
         "forced": ["Ashburn, VA"],
         "status": _READY,
+        "lower_bound_miles": 1250.0,
         "backbone": [_NODE],
         "demand": [_SITE, _REGION],
         "links": [_LINK],

@@ -249,10 +249,18 @@ def grow_backbone_for_coverage(
     that satisfy the target, the best-connected one is seated (see
     :func:`best_coverage_candidate`), because a hub that meets the distance requirement and
     then cannot hold the links a backbone node owes has not solved anything.
+
+    The design itself is drawn once, at the end, over whatever the rounds settled on. Every
+    round asks its questions of the backbone's ids -- where the sites are, which candidates
+    are admissible, which is best connected -- and none of them reads a drawn design, so
+    drawing one per round was drawing a design nobody looked at. It cost little while the
+    paths were laid a pair at a time; the fiber for a whole design is now chosen at once
+    (see :mod:`synthesizer.survivable`), which is the expensive step of a build, and a
+    backbone that grows from three seats to thirty-four would have paid it thirty-one times
+    over.
     """
     target_miles = params.tuning.backbone_coverage_target_miles
     backbone_ids = base.backbone_ids
-    design = base
     free = [pop_id for pop_id in plan.backbone_candidates if pop_id not in backbone_ids]
     logger.info(
         "Growing backbone for coverage: %d candidates, %.0f mi target", len(free), target_miles
@@ -289,10 +297,11 @@ def grow_backbone_for_coverage(
             ),
         )
         backbone_ids = tuple(sorted((*backbone_ids, best_id)))
-        grown = build_design_for_backbone(backbone_ids, inputs, plan)
-        # The winning candidate already passed evaluate_backbone above, so its design builds.
-        assert grown is not None
-        design = grown
         free.remove(best_id)
         logger.info("Added node %s for coverage; now %d nodes", best_id, len(backbone_ids))
-    return design
+    if backbone_ids == base.backbone_ids:
+        return base
+    grown = build_design_for_backbone(backbone_ids, inputs, plan)
+    # Every candidate seated above passed evaluate_backbone, so its design builds.
+    assert grown is not None
+    return grown
