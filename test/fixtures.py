@@ -316,7 +316,7 @@ def forced_link_artifacts(
 
 
 # A four-PoP square around one central PoP. Short spokes to the centre and longer ring
-# edges make every diagonal backbone-mesh link path through the centre, so once the four
+# edges make every diagonal backbone-mesh link run through the centre, so once the four
 # corners are the backbone the centre carries four of the design's lines as a transit
 # node. The convergence pass (issue #4) then promotes the centre when it is a data-center
 # city. Coordinates are a degenerate diamond; distances are pinned in
@@ -349,7 +349,7 @@ def convergence_hub_artifacts(
 ) -> DesignArtifacts:
     """Run the synthesizer with the four corners forced and the centre left transit.
 
-    The diagonal backbone-mesh links path through the centre, so it carries four of the
+    The diagonal backbone-mesh links run through the centre, so it carries four of the
     design's lines. When ``promote_hub`` is set the centre is a data-center city and the
     convergence pass promotes it into the backbone and redraws; otherwise the centre is
     barred from the gate and stays transit. A ``max_backbone_count`` of four (the four
@@ -558,10 +558,10 @@ def crossing_datacenter_cities() -> frozenset[tuple[str, str]]:
 
 
 # Three backbone sites reaching one another over three shared hub cities, priced so the
-# cheapest way out of one site is not the cheapest way back out of another. That is what
+# shortest way out of one site is not the shortest way back out of another. That is what
 # makes the two ends of a pair prove different fiber to each other: each proof is the
-# cheapest set of paths out of its own site, and the two sites have different other peers
-# to keep clear of. ``a`` is cheap through ``h2`` and dear through ``h1``, ``b`` is the
+# shortest set of paths out of its own site, and the two sites have different other peers
+# to keep clear of. ``a`` is short through ``h2`` and long through ``h1``, ``b`` is the
 # other way round, and ``c`` is cheap through both -- so a proves h1 to b and h2 to c, b
 # proves h1 to a and h3 to c, and c proves h2 to a and h1 to b. Only the pair b-c is proved
 # twice: five miles the way b proved it and two the way c did.

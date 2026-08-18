@@ -668,7 +668,7 @@ def _paths(
 
 
 def test_the_first_link_of_a_node_takes_its_shortest_path() -> None:
-    """With nothing yet to path clear of, a link takes the cheapest path it has."""
+    """With nothing yet to keep clear of, a link takes the shortest path it has."""
     paths = _paths(_drawn([("h", "p"), ("h", "q")], _SHARED_EGRESS_EDGES))
     assert paths[("h", "p")] == ("h", "g", "p")
 
@@ -702,14 +702,14 @@ def test_a_link_clears_one_end_when_it_cannot_clear_both() -> None:
 
 # x reaches u only through p and y reaches v only through q, so the x-y link can clear
 # one end or the other but never both: the path through q clears x's cities, the path
-# through p clears y's, and the first is five times cheaper.
+# through p clears y's, and the first is five times shorter.
 _TWO_WAY_EDGES = physical({
     ("x", "p"): 5.0, ("p", "u"): 1.0, ("p", "y"): 5.0,
     ("y", "q"): 1.0, ("q", "v"): 1.0, ("q", "x"): 1.0,
 })
 
 
-def test_the_cheaper_of_two_one_sided_paths_wins() -> None:
+def test_the_shorter_of_two_one_sided_paths_wins() -> None:
     """With one end clearable either way, the link takes the shorter of the two paths."""
     paths = _paths(_drawn([("u", "x"), ("v", "y"), ("x", "y")], _TWO_WAY_EDGES))
     assert paths[("x", "y")] == ("x", "q", "y")
@@ -730,7 +730,7 @@ _Q_PROVED_THE_LONG_WAY: dict[str, list[tuple[str, ...]]] = {"q": [("q", "r", "h"
 
 
 def test_a_link_is_wired_along_the_path_its_node_proved() -> None:
-    """h proved a way round through r, so its link takes it rather than the cheaper g."""
+    """h proved a way round through r, so its link takes it rather than the shorter g."""
     paths = _paths(_drawn([("h", "q")], _SHARED_EGRESS_EDGES, _H_PROVED_THE_LONG_WAY))
     assert paths[("h", "q")] == ("h", "r", "q")
 

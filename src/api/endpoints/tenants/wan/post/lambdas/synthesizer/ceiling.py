@@ -84,8 +84,8 @@ _TOLERANCE = 1e-6
 class BackupPathLimit:
     """How far a path may run against the direct distance between its two ends.
 
-    ``multiple`` multiplies the shortest path between a site and the peer a path ends at,
-    giving that path its budget: a protect path takes a detour, and this says how much of
+    ``multiple`` multiplies the distance from a site to the peer a path ends at, giving
+    that path its budget: a protect path takes a detour, and this says how much of
     one the operator is buying. It is the tenant's own
     ``backbone.max_backup_path_multiple``, carried in from the config unchanged.
     ``distances`` supplies the shortest-path rows the test needs -- one for the site being

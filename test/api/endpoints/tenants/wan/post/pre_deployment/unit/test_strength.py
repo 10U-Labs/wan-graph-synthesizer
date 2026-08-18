@@ -85,7 +85,7 @@ def test_the_funnelled_site_has_the_most_fiber_segments() -> None:
     assert (segments["funnel"], segments["spread"]) == (5, 3)
 
 
-def test_the_funnelled_site_is_held_to_its_two_single points of failure() -> None:
+def test_the_funnelled_site_is_held_to_its_two_failure_points() -> None:
     """Five segments converging on two upstream cities carry two diverse paths, not five."""
     assert _FUNNEL_BOUNDS.per_site["funnel"] == 2
 

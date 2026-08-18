@@ -58,7 +58,7 @@ _ONE_CUT = build_adjacency(physical({
 }))
 
 
-def test_a_node_behind_one_single point of failure_has_a_ceiling_of_one() -> None:
+def test_a_node_behind_one_failure_point_has_a_ceiling_of_one() -> None:
     """Two segments leave bos and both paths cross alb, so one city takes everything."""
     assert independent_path_ceiling("bos", PathProofInputs(("bos", "n1", "n2"), _ONE_CUT)) == 1
 
@@ -206,7 +206,7 @@ def test_taking_the_shortest_set_costs_the_site_none_of_its_paths() -> None:
     """sea still holds two ways out, so choosing on mileage costs it nothing.
 
     A path lost is protection lost, and the ceiling is what
-    :func:`synthesizer.stages.finalize` holds a site to, so a cheaper set one path smaller
+    :func:`synthesizer.stages.finalize` holds a site to, so a shorter set one path smaller
     would lower the site's target and silence the check on it.
     """
     inputs = PathProofInputs(_EXPRESS_BACKBONE, _EXPRESS_SEGMENTS)
@@ -226,7 +226,7 @@ _PACIFIC = physical({
 _PACIFIC_ADJACENCY = build_adjacency(_PACIFIC)
 _PACIFIC_BACKBONE = ("eug", "hil", "sea")
 # 2,000 miles of fiber to cover the twenty ``sea`` is from either peer overland, so the
-# crossing runs a hundred times the direct path and a bound of three refuses it.
+# crossing runs a hundred times the direct distance and a bound of three refuses it.
 _PACIFIC_LIMIT = BackupPathLimit(3.0, distances_from(_PACIFIC_ADJACENCY, _PACIFIC_BACKBONE))
 
 
@@ -262,7 +262,7 @@ def test_the_unbounded_ceiling_still_counts_the_crossing() -> None:
 # throw away while it is throwing away the detour above.
 #
 # ``syd`` sits five hundred miles beyond ``tok`` rather than a thousand, so it is strictly
-# the cheapest thing across the ocean. Left at a thousand it would tie with ``hil`` and
+# the nearest thing across the ocean. Left at a thousand it would tie with ``hil`` and
 # ``eug``, and which peer the crossing landed on would be decided by nothing.
 _SOLE_CROSSING_ADJACENCY = build_adjacency(
     {**_PACIFIC, **physical({("tok", "syd"): 500.0})}
@@ -383,7 +383,7 @@ def test_the_site_whose_path_leaked_is_scored_at_the_one_it_can_use() -> None:
 # A path that overruns while no single segment on it can be shown impossible, which is where
 # withdrawing segments runs out. ``sea`` has two ways out, ``pdx`` and ``tac``, and two peers,
 # ``hil`` 105 miles off through ``pdx`` and ``syd`` 7,025 miles off behind it. Only ``pdx``
-# and ``tac`` reach ``syd``, so the two paths take one way out each, and the cheapest pair
+# and ``tac`` reach ``syd``, so the two paths take one way out each, and the shortest pair
 # spends ``pdx`` on ``syd``: 7,025 miles plus the 400 that ``sea -> tac -> hil`` runs, against
 # 13,305 for the pair the other way round. That leaves ``hil`` reached over two 200-mile
 # segments against an allowance of 315. Neither segment can be refused, each being measured

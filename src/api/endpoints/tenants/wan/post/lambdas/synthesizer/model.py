@@ -101,7 +101,7 @@ class Tuning:
     resource rather than its own, since it describes the network an operator wants.
     ``backbone_max_backup_path_multiple`` is required on the same terms and lives in the
     same resource for the same reason: how far a protect path may run against the direct
-    path between its two sites is a statement about the network being bought, not a
+    distance between its two sites is a statement about the network being bought, not a
     dial on how the search finds it.
     The remaining fields (``compass_sector_count``, ``search_memory_budget``) describe how the
     search scores candidates and how much memory it may consume, which is nobody's
@@ -116,8 +116,8 @@ class Tuning:
     # haul it is compared against stands in for an unmeasured last-mile build
     backbone_coverage_target_miles: int = 600
     access_backbone_links: int = 2  # backbone nodes each demand vertex homes to
-    # how many times the direct path between two backbone nodes a path between them may
-    # run; a ratio rather than a mileage, so it means the same thing to a 200-mile link
+    # how many times the direct distance between two backbone nodes a path between them
+    # may run; a ratio rather than a mileage, so it means the same thing to a 200-mile link
     # and a 2,000-mile one, and fractional because a ratio has resolution that a target
     # compared against a great-circle haul does not
     backbone_max_backup_path_multiple: float = 3.0

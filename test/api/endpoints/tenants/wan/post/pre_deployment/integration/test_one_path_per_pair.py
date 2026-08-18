@@ -8,7 +8,7 @@ its own file beside this one, or a site whose fiber offers no other way out at a
 
 The shape that overbuilds a pair cannot be made from a clique or a ring, which is why this
 tier missed it. It needs the two ends of a pair to prove different fiber to each other, and
-they do that when the cheapest way out of one site is already spoken for by another of its
+they do that when the shortest way out of one site is already spoken for by another of its
 peers. ``fixtures.SHARED_HUB_PEER_EDGES`` is that graph: three sites over three shared hub
 cities where b and c each proved their own way to the other, five hundred miles apart, and
 a fourth site d joined to b and to c over fiber of its own.

@@ -1,14 +1,14 @@
 """Unit tests for the published links drawn further than their own fiber made necessary.
 
 The helper reads the fiber a published network carries and asks, of each backbone link,
-whether it took the cheapest way over that fiber between the two sites it joins. Nothing
+whether it took the shortest way over that fiber between the two sites it joins. Nothing
 outside the build could ask this before, and the reason to ask it is that the proof behind
 the mesh once read no distance at all: it counted paths that share no city, so a link
 between two sites a few hundred miles apart could be drawn across an ocean and every
 published number about it would look well formed (GitHub issues #44 and #57).
 
 The fiber below is two ten-mile segments through ``hub`` and one hundred-mile segment straight
-across, so the cheapest way from ``west`` to ``east`` is twenty miles and a tenant allowing
+across, so the shortest way from ``west`` to ``east`` is twenty miles and a tenant allowing
 three times the direct distance allows sixty. The two access homings are there because the
 published edges collection carries them beside the fiber: counted as segments they would make
 ``west`` two miles from ``east`` through a demand site, which is not fiber any link can be
