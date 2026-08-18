@@ -42,6 +42,7 @@ from collections.abc import Callable
 from typing import Any
 
 from test_published_designs import (
+    FIBER,
     detoured_links,
     ordered_fiber_miles,
     overbuilt_pairs,
@@ -51,9 +52,32 @@ from test_published_designs import (
 )
 
 
+# The precision every mileage is published at: a thousandth of a mile, about a metre and a
+# half.
+_ROUNDED_TO = 0.001
+
+
+def _rounding_slack(design: dict[str, Any]) -> float:
+    """How far the two mileages a design is judged by can differ on rounding alone.
+
+    A build quotes every mileage to a thousandth of a mile, and it quotes the two numbers
+    compared below in different places: the floor once, and each fiber segment on its own,
+    with the miles a design ordered being those rounded segments added up. So a design of
+    many segments carries many roundings while the floor carries one, and the two can part
+    company by that much with nothing whatever wrong. Two-Node landed exactly on its floor
+    and published 3,884.264 miles against 3,884.265.
+
+    Nothing real hides under this. A design that genuinely falls short of its floor is short
+    by at least the fiber it failed to buy, and the shortest segment on any of the six maps
+    runs miles rather than thousandths.
+    """
+    segments = sum(1 for edge in design["edges"] if edge["edge_kind"] == FIBER)
+    return (segments + 1) * _ROUNDED_TO / 2
+
+
 def _tenants_outside(
     delivered_designs: list[dict[str, Any]],
-    allowed: Callable[[float, float], bool],
+    allowed: Callable[[float, float, float], bool],
 ) -> dict[str, tuple[float, float]]:
     """Every finished network whose ordered fiber miles sit outside what its floor allows.
 
@@ -66,14 +90,18 @@ def _tenants_outside(
     rather than compared against nothing.
     """
     measured = {
-        design["tenant"]: (ordered_fiber_miles(design), design["lower_bound_miles"])
+        design["tenant"]: (
+            ordered_fiber_miles(design),
+            design["lower_bound_miles"],
+            _rounding_slack(design),
+        )
         for design in delivered_designs
         if design["lower_bound_miles"] is not None
     }
     return {
         tenant: (miles, floor)
-        for tenant, (miles, floor) in measured.items()
-        if not allowed(miles, floor)
+        for tenant, (miles, floor, slack) in measured.items()
+        if not allowed(miles, floor, slack)
     }
 
 
@@ -330,7 +358,9 @@ def test_no_published_network_runs_more_than_twice_the_fewest_miles_it_could_hav
     path stayed invisible from out here. This is where it shows, and the finding names the
     tenant, the miles it ordered and the floor it ordered them against.
     """
-    assert _tenants_outside(delivered_designs, lambda miles, floor: miles <= 2 * floor) == {}
+    assert _tenants_outside(
+        delivered_designs, lambda miles, floor, _slack: miles <= 2 * floor
+    ) == {}
 
 
 def test_no_published_network_runs_fewer_miles_than_the_floor_it_publishes(
@@ -347,6 +377,13 @@ def test_no_published_network_runs_fewer_miles_than_the_floor_it_publishes(
     interchangeable. That one fires when a design runs too long, and it caught Two-Node at
     2.078 times its floor.
 
+    It is held to the precision the two numbers are published at, which ``_rounding_slack``
+    works out. Two-Node and Minuteman both land exactly on their floors now and both publish
+    a total one thousandth of a mile under them, because the floor is rounded once and the
+    ordered miles are rounded segment by segment and then added up. Landing on the floor is
+    the best a design can do, so reading that as a shortfall would fail the very networks
+    this exists to pass.
+
     What it can catch is bounded by which floor a tenant publishes, and that is worth being
     exact about. Both numbers come out of the same search, so while the search was being cut
     off early the published floor was too low and moved with the design that was too small:
@@ -357,4 +394,6 @@ def test_no_published_network_runs_fewer_miles_than_the_floor_it_publishes(
     the moment that search is allowed to finish, because the floor a tenant publishes is
     then the real one and a design under it is arithmetic that has come apart.
     """
-    assert _tenants_outside(delivered_designs, lambda miles, floor: miles >= floor) == {}
+    assert _tenants_outside(
+        delivered_designs, lambda miles, floor, slack: miles >= floor - slack
+    ) == {}
