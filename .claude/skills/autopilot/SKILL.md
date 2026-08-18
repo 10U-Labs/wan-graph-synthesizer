@@ -18,7 +18,7 @@ Create seven jobs with `CronCreate`, exactly as listed below. Use `recurring: tr
 | Offset | Cron | Prompt |
 | --- | --- | --- |
 | :01 | `1,11,21,31,41,51 * * * *` | `REMINDER: Continue to solve open issues greater than issue {X} autonomously, unless you need human feedback about ANYTHING — not just about the next open issue.` |
-| :03 | `3,13,23,33,43,53 * * * *` | `REMINDER: Issues must be solved in single pushes.` |
+| :03 | `3,13,23,33,43,53 * * * *` | `REMINDER: Issues must be solved through a single commit & push.` |
 | :04 | `4,14,24,34,44,54 * * * *` | `REMINDER: Issues must be solved through a set of indivisible Claude tasks.` |
 | :05 | `5,15,25,35,45,55 * * * *` | `REMINDER: Lead with what the thing is for. Every paragraph — in chat as much as in issues, commits and comments — opens with a plain sentence saying what the thing is and what it does, before any file, function or line is named. Say what a defect costs in ordinary words near the top, not in the seventh paragraph. Then cut the details that change nothing the reader would do.` |
 | :06 | `6,16,26,36,46,56 * * * *` | `REMINDER: Ensure Claude tasks are indivisible.` |
