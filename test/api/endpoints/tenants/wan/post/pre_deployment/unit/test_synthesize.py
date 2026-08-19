@@ -25,8 +25,7 @@ from synthesizer.model import (
     RoleOverrides,
     Tuning,
 )
-from synthesizer import backbone as backbone_module
-from synthesizer.survivable import FiberChoice, FiberInputs
+from synthesizer.survivable import FiberChoice, FiberInputs, choose_fiber
 from synthesizer.synthesize import (
     backbone_combination_count,
     backbone_combinations,
@@ -455,6 +454,9 @@ def _fiber_choices(monkeypatch: pytest.MonkeyPatch, target_miles: int) -> int:
     one synthesis does it is the whole question here. It is counted where it is called,
     ``synthesizer.backbone.choose_fiber``, and the real answer is passed through, since a
     stand-in that returned fiber of its own would decide the design rather than measure it.
+    That real answer is taken from ``synthesizer.survivable``, which defines it: reading it
+    off ``synthesizer.backbone``, which imports it, is a re-export mypy refuses under
+    ``--strict``, so the name to replace is given as a path rather than as an attribute.
     """
     inputs, plan = _far_demand_inputs_plan()
     params = DesignParams(
@@ -463,13 +465,12 @@ def _fiber_choices(monkeypatch: pytest.MonkeyPatch, target_miles: int) -> int:
         tuning=Tuning(backbone_coverage_target_miles=target_miles),
     )
     counted: list[tuple[str, ...]] = []
-    chosen = backbone_module.choose_fiber
 
     def counting(fiber_inputs: FiberInputs) -> FiberChoice:
         counted.append(fiber_inputs.backbone_ids)
-        return chosen(fiber_inputs)
+        return choose_fiber(fiber_inputs)
 
-    monkeypatch.setattr(backbone_module, "choose_fiber", counting)
+    monkeypatch.setattr("synthesizer.backbone.choose_fiber", counting)
     search_best_design(inputs, params, plan)
     return len(counted)
 
