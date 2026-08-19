@@ -75,15 +75,23 @@ def _fiber_rows() -> list[dict[str, Any]]:
     ]
 
 
+# The six resources naming sites and links the operator has pinned, prohibited or excused.
+# This tenant pins nothing, so each is delivered as the empty document seed writes for a
+# config that names nobody, and the design is left to the map.
+_NAMES_NOBODY = (
+    "forced-backbone-nodes",
+    "forced-connections",
+    "forced-homes",
+    "prohibited-backbone-nodes",
+    "prohibited-connections",
+    "degree-exempt-backbone-nodes",
+)
+
+
 def _config_documents() -> dict[str, Any]:
     """The tenant's config, one document per resource, as ``scripts/seed.py`` PUTs them."""
     return {
-        "forced-backbone-nodes": [],
-        "forced-connections": [],
-        "forced-homes": [],
-        "prohibited-backbone-nodes": [],
-        "prohibited-connections": [],
-        "degree-exempt-backbone-nodes": [],
+        **{resource: [] for resource in _NAMES_NOBODY},
         "backbone-node-count": {"min": 2, "max": 6},
         "backbone-number-of-diverse-paths": {"degree": 2},
         "access-homing-degree": {"degree": 2},

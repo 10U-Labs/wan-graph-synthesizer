@@ -32,7 +32,11 @@ from synthesizer.model import (
     SourceFiles,
     Tuning,
 )
-from synthesizer.graphs import biconnected_block_membership, build_adjacency
+from synthesizer.graphs import (
+    biconnected_block_membership,
+    build_adjacency,
+    path_edge_keys,
+)
 from synthesizer.search_plan import _SearchPlan
 from synthesizer.synthesize import all_pairs_shortest, synthesize_two_tier_design
 from synthesizer.overrides import apply_role_overrides
@@ -146,12 +150,17 @@ def meshed_backbone_design(
 
     Shared by the tiers that judge a drawn mesh rather than build one: each path's ends
     are its link's endpoints, so the cities in between are the link's transit.
+
+    The fiber the paths run over is carried too, segment by segment, which is what
+    ``synthesizer.assemble.finalize_design`` puts there in a real build. A design listing
+    paths and no fiber is one no build produces and one whose sites nothing joins, so the
+    connectivity gate in ``synthesizer.stages.finalize`` reads it as a site per group.
     """
     return Design(
         backbone_ids=backbone_ids,
         transit_ids=(),
         access_edges=[],
-        physical_edge_keys=set(),
+        physical_edge_keys={key for path in paths for key in path_edge_keys(path)},
         path_uses=[
             DesignPath("backbone_mesh", path[0], path[-1], path, 1.0) for path in paths
         ],

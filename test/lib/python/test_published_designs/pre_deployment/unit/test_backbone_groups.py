@@ -72,4 +72,4 @@ def test_a_seat_reached_only_through_an_access_homing_is_its_own_group() -> None
 
 def test_a_tenant_with_no_published_backbone_has_no_group() -> None:
     """A build that has not landed publishes no seats, so there is no group to report."""
-    assert backbone_groups({"backbone": [], "edges": []}) == []
+    assert not backbone_groups({"backbone": [], "edges": []})
