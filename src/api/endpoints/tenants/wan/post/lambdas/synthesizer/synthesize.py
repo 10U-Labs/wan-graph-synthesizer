@@ -11,9 +11,9 @@ nodes appear only where they bring demand closer, never as a mileage cost minimi
 over candidate sets.
 
 A final convergence pass then promotes natural hubs: any data-center city where at least
-``CONVERGENCE_BACKBONE_DEGREE`` of the design's own drawn fiber lines meet is forced
-into the backbone and the design is recomputed, repeating until a redraw finds no new
-hub. The count is per-design (this design's used physical edges), not the shared carrier
+``CONVERGENCE_BACKBONE_DEGREE`` of the synthesis's own drawn fiber lines meet is forced
+into the backbone and the synthesis is recomputed, repeating until a redraw finds no new
+hub. The count is per-synthesis (this synthesis's used physical edges), not the shared carrier
 substrate's degree, so a city that hubs one tenant need not hub another.
 
 Eligibility is gated twice: a carrier PoP may serve as a backbone node only if it has
@@ -40,9 +40,9 @@ from dataclasses import dataclass, replace
 
 from synthesizer.input_graph import PhysicalEdge, Vertex
 from synthesizer.model import (
-    Design,
-    DesignInputs,
-    DesignParams,
+    Synthesis,
+    SynthesisInputs,
+    SynthesisParams,
     RoleOverrides,
     backbone_city_allowed,
     is_carrier_pop,
@@ -64,9 +64,9 @@ logger = logging.getLogger(__name__)
 # lines.
 _SEARCH_LOG_INTERVAL = 50_000
 
-# A carrier PoP where at least this many of the design's own drawn fiber lines converge
+# A carrier PoP where at least this many of the synthesis's own drawn fiber lines converge
 # is a natural hub; if it also sits at a data-center city it is promoted into the backbone
-# and the design is recomputed (GitHub issue #4). The count is per-design (the design's
+# and the synthesis is recomputed (GitHub issue #4). The count is per-synthesis (the synthesis's
 # used physical edges), never the shared carrier substrate's degree.
 CONVERGENCE_BACKBONE_DEGREE = 3
 
@@ -97,28 +97,28 @@ def compute_eligible_backbone_ids(
 
 
 def convergence_promotion_ids(
-    design: Design,
+    synthesis: Synthesis,
     carrier_pops: list[Vertex],
     datacenter_cities: frozenset[tuple[str, str]] | None,
     min_degree: int = CONVERGENCE_BACKBONE_DEGREE,
 ) -> set[str]:
-    """Non-backbone carrier PoPs at a data-center city where this design's fiber converges.
+    """Non-backbone carrier PoPs at a data-center city where this synthesis's fiber converges.
 
-    A PoP qualifies when at least ``min_degree`` of *this design's* drawn physical edges
-    meet at it. The count comes from ``design.physical_edge_keys`` -- the fiber actually
-    drawn for this design -- so the measure is per-design, never the shared substrate's
+    A PoP qualifies when at least ``min_degree`` of *this synthesis's* drawn physical edges
+    meet at it. The count comes from ``synthesis.physical_edge_keys`` -- the fiber actually
+    drawn for this synthesis -- so the measure is per-synthesis, never the shared substrate's
     degree. A non-backbone carrier PoP only ever carries those edges as a transit node
     (demand homes to backbone nodes, never to transit), so its incident count is exactly
-    the number of the design's lines meeting there. PoPs already seated in the backbone
+    the number of the synthesis's lines meeting there. PoPs already seated in the backbone
     are excluded; the caller forces the rest in and redraws. When ``datacenter_cities``
     is ``None`` (the operator's free-for-all) the data-center-city gate is lifted, so any
     non-backbone convergence hub promotes.
     """
     counts: dict[str, int] = {}
-    for left, right in design.physical_edge_keys:
+    for left, right in synthesis.physical_edge_keys:
         counts[left] = counts.get(left, 0) + 1
         counts[right] = counts.get(right, 0) + 1
-    backbone = set(design.backbone_ids)
+    backbone = set(synthesis.backbone_ids)
     pop_by_id = {pop.id: pop for pop in carrier_pops}
     return {
         pop_id
@@ -190,24 +190,24 @@ def backbone_combinations(plan: _SearchPlan, size: int) -> list[tuple[str, ...]]
 
 
 def best_backbone_at_size(
-    inputs: DesignInputs,
+    inputs: SynthesisInputs,
     plan: _SearchPlan,
     size: int,
 ) -> tuple[str, ...] | None:
     """The seats of the strongest feasible backbone of exactly ``size`` nodes, or None.
 
     Any operator-forced backbone nodes are fixed into every candidate set; the rest
-    are chosen by strength (the spec forbids mileage as a design cost), with total
+    are chosen by strength (the spec forbids mileage as a synthesis cost), with total
     last-mile only breaking ties among equally strong sets. Backbone sets are tried
     strongest-first and scored cheaply (feasibility plus demand homing, no paths
     drawn). Because strength is non-increasing down that order, the moment a feasible
     set is in hand the search stops as soon as a candidate is strictly weaker.
 
-    Seats come back rather than a design because nothing here needs one. Coverage growth
-    reads the seats and rebuilds over whatever it settles on, so a design drawn here is
+    Seats come back rather than a synthesis because nothing here needs one. Coverage growth
+    reads the seats and rebuilds over whatever it settles on, so a synthesis drawn here is
     thrown away the moment a node is seated past this size -- 234 of DOW's 438 seconds,
     which is what put that tenant past the fifteen minutes AWS allows a Lambda (GitHub
-    issue #72). Feasibility does not need one either: ``build_design_for_backbone``
+    issue #72). Feasibility does not need one either: ``build_synthesis_for_backbone``
     returns ``None`` in exactly the case ``evaluate_backbone`` does, and every candidate
     set below has already been through ``evaluate_backbone``.
     """
@@ -254,7 +254,7 @@ def total_memory_bytes() -> int:
     return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
 
 
-def enumeration_limit(memory_bytes: int, params: DesignParams) -> int:
+def enumeration_limit(memory_bytes: int, params: SynthesisParams) -> int:
     """How many backbone sets fit in the share of RAM the enumeration may use."""
     budget = params.tuning.search_memory_budget
     return int(memory_bytes * budget.memory_share / budget.bytes_per_combination)
@@ -262,23 +262,23 @@ def enumeration_limit(memory_bytes: int, params: DesignParams) -> int:
 
 
 
-def search_best_design(
-    inputs: DesignInputs,
-    params: DesignParams,
+def search_best_synthesis(
+    inputs: SynthesisInputs,
+    params: SynthesisParams,
     plan: _SearchPlan,
-) -> Design:
-    """Build the strongest feasible design, then grow the backbone until demand is close.
+) -> Synthesis:
+    """Build the strongest feasible synthesis, then grow the backbone until demand is close.
 
     The backbone count is a floor, not an exact target. The search first finds the
     strongest feasible set at ``min_backbone_count`` (total last-mile only breaking
-    ties), growing the backbone one PoP at a time only if no feasible design exists at a
+    ties), growing the backbone one PoP at a time only if no feasible synthesis exists at a
     size. It then adds nodes past that floor while some demand vertex is farther than
     ``backbone_coverage_target_miles`` from every selected node, each added node being the
     best-connected candidate that brings those distances inside the target -- so extra
     nodes appear only where they close a gap, and the one seated is chosen for the fiber
     it can carry rather than the miles it saves. Enumerating each size must fit
     the share of RAM
-    the search may use, or the design is refused rather than risk exhausting memory.
+    the search may use, or the synthesis is refused rather than risk exhausting memory.
     """
     limit = enumeration_limit(total_memory_bytes(), params)
     base: tuple[str, ...] | None = None
@@ -304,12 +304,12 @@ def search_best_design(
             break
     if base is None:
         raise ValueError(
-            f"No feasible design with at least {params.min_backbone_count} backbone nodes"
+            f"No feasible synthesis with at least {params.min_backbone_count} backbone nodes"
         )
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
-    design = grow_backbone_for_coverage(base, inputs, plan, params, pop_by_id)
-    logger.info("Selected a %d-node backbone design", len(design.backbone_ids))
-    return design
+    synthesis = grow_backbone_for_coverage(base, inputs, plan, params, pop_by_id)
+    logger.info("Selected a %d-node backbone synthesis", len(synthesis.backbone_ids))
+    return synthesis
 
 
 @dataclass(frozen=True)
@@ -345,10 +345,10 @@ def build_search_graph(
 
 
 def build_search_plan(
-    inputs: DesignInputs,
+    inputs: SynthesisInputs,
     eligible_ids: set[str],
     overrides: RoleOverrides,
-    params: DesignParams,
+    params: SynthesisParams,
     promoted_backbone_ids: frozenset[str] = frozenset(),
 ) -> _SearchPlan:
     """Compute vertex strengths and backbone candidates.
@@ -386,16 +386,16 @@ def build_search_plan(
     )
 
 
-def synthesize_two_tier_design(
+def synthesize_two_tier(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-    params: DesignParams,
+    params: SynthesisParams,
     overrides: RoleOverrides | None = None,
-) -> Design:
+) -> Synthesis:
     """Synthesize a two-tier WAN over the Carrier graph for the given parameters.
 
     ``overrides`` carries operator role pins already resolved to vertex ids; pass
-    ``None`` for an unpinned design.
+    ``None`` for an unpinned synthesis.
     """
     overrides = overrides if overrides is not None else RoleOverrides()
     if params.min_backbone_count < 2:
@@ -425,7 +425,7 @@ def synthesize_two_tier_design(
             + (" at a data-center city)" if params.datacenter_cities is not None else ")")
         )
 
-    inputs = DesignInputs(
+    inputs = SynthesisInputs(
         access_vertices=graph.all_access,
         carrier_pops=graph.carrier_pops,
         physical_edges=physical_edges,
@@ -446,15 +446,15 @@ def synthesize_two_tier_design(
         )
         if forced_error is not None:
             raise ValueError(forced_error)
-        design = search_best_design(inputs, params, plan)
+        synthesis = search_best_synthesis(inputs, params, plan)
 
         if not params.promote_high_degree_convergences:
-            return design
+            return synthesis
         new = convergence_promotion_ids(
-            design, inputs.carrier_pops, params.datacenter_cities
+            synthesis, inputs.carrier_pops, params.datacenter_cities
         ) - promoted
         if not new:
-            return design
+            return synthesis
         grown = promoted | new
         if (
             params.max_backbone_count is not None
@@ -465,6 +465,6 @@ def synthesize_two_tier_design(
                 "crossing(s) left as transit",
                 params.max_backbone_count, len(new),
             )
-            return design
+            return synthesis
         logger.info("Promoting %d data-center convergence hub(s); redrawing", len(new))
         promoted = grown

@@ -16,7 +16,7 @@ a fourth site d joined to b and to c over fiber of its own.
 The fourth site is what the argument turns on. It is the reason b's second way out is a
 path to a site it did not reach at all rather than a second path to c (GitHub issue #59).
 GitHub issue #60 then took the argument one step further: choosing the fiber for the whole
-design at once buys eight segments and sixteen hundred miles, and over that fiber b and c
+synthesis at once buys eight segments and sixteen hundred miles, and over that fiber b and c
 reach each other round the ring rather than over fiber of their own, so the pair is not
 joined at all. Nobody loses by it -- both still hold the two ways out they were bought --
 and the pair that used to be joined twice is now joined none, which is the same argument
@@ -38,12 +38,12 @@ _MESH = fixtures.mesh_paths(ARTIFACTS)
 
 
 def _paths_per_pair() -> dict[tuple[str, str], int]:
-    """How many paths the finished design drew between each pair of backbone sites.
+    """How many paths the finished synthesis drew between each pair of backbone sites.
 
     Counted off the drawn paths rather than through
     ``synthesizer.validation.backbone_mesh_pairs``, which answers with a set: a pair drawn
     twice collapses into the one member it is, so the count of pairs reads the same whether
-    the design bought one path between them or two.
+    the synthesis bought one path between them or two.
     """
     drawn: dict[tuple[str, str], int] = {}
     for use in _MESH:
@@ -54,7 +54,7 @@ def _paths_per_pair() -> dict[tuple[str, str], int]:
 
 def test_the_backbone_is_the_four_sites() -> None:
     """Only the sites sit at data-center cities, so no hub or corridor city takes a seat."""
-    assert sorted(ARTIFACTS.design.backbone_ids) == ["a", "b", "c", "d"]
+    assert sorted(ARTIFACTS.synthesis.backbone_ids) == ["a", "b", "c", "d"]
 
 
 def test_no_pair_of_sites_is_joined_more_than_once() -> None:
@@ -62,7 +62,7 @@ def test_no_pair_of_sites_is_joined_more_than_once() -> None:
     assert max(_paths_per_pair().values()) == 1
 
 
-def test_the_design_joins_each_site_to_the_two_peers_it_reaches() -> None:
+def test_the_synthesis_joins_each_site_to_the_two_peers_it_reaches() -> None:
     """Four sites, four paths: a ring through the two hubs and the two corridor cities.
 
     Five pairs were joined while the fiber was chosen one pair at a time. Choosing it whole
@@ -72,7 +72,7 @@ def test_the_design_joins_each_site_to_the_two_peers_it_reaches() -> None:
     assert len(_MESH) == 4
 
 
-def test_the_design_orders_the_fewest_fiber_miles_its_requirements_allow() -> None:
+def test_the_synthesis_orders_the_fewest_fiber_miles_its_requirements_allow() -> None:
     """Sixteen hundred miles: d's four hundred each way, and a's two ways out at eight hundred.
 
     d has exactly two fiber directions and needs both, which is eight hundred miles nothing
@@ -93,6 +93,6 @@ def test_the_fiber_survives_the_loss_of_any_one_city() -> None:
     assert ARTIFACTS.validation["biconnected_no_articulation_points"]
 
 
-def test_no_path_the_design_holds_could_be_taken_back_out() -> None:
+def test_no_path_the_synthesis_holds_could_be_taken_back_out() -> None:
     """Each of the four paths is the second way out of one of the four sites."""
-    assert _needed(_MESH, ARTIFACTS.design.backbone_ids, _ASKED_FOR) == _MESH
+    assert _needed(_MESH, ARTIFACTS.synthesis.backbone_ids, _ASKED_FOR) == _MESH

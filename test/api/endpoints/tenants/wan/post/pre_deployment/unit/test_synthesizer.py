@@ -1,6 +1,6 @@
 """Unit tests for the synthesizer Lambda handler.
 
-The heavy design pipeline is stubbed (it is exercised by the synthesizer engine tests);
+The heavy synthesis pipeline is stubbed (it is exercised by the synthesizer engine tests);
 these tests cover the handler's own orchestration and S3 I/O: it reads the tenant from
 the invoke event, moves the status to ``synthesizing``, and publishes ``success`` or
 ``fail``.
@@ -21,7 +21,7 @@ from repo_utils import REPO_ROOT
 from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
 from synthesizer.input_graph import Vertex
-from synthesizer.model import DesignParams, OperatorLinks, RoleOverrides
+from synthesizer.model import SynthesisParams, OperatorLinks, RoleOverrides
 from synthesizer.stages import finalize
 
 _PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/post/lambdas/synthesizer/handler.py"
@@ -37,7 +37,7 @@ def synthesizer_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
 def _stub_pipeline(
     module: Any, monkeypatch: pytest.MonkeyPatch, restrict: bool = True
 ) -> None:
-    """Replace the heavy design pipeline with light canned stand-ins.
+    """Replace the heavy synthesis pipeline with light canned stand-ins.
 
     ``restrict`` sets ``config.restrict_backbone_to_datacenters`` so both handler
     branches -- gating the backbone to data-center cities vs the open free-for-all --
@@ -47,7 +47,7 @@ def _stub_pipeline(
     site = Vertex(id="S", name="S", kind="Tenant site", coords=(1.0, 1.0))
     graph = [pop, site]
     config = SimpleNamespace(
-        params=DesignParams(),
+        params=SynthesisParams(),
         restrict_backbone_to_datacenters=restrict,
         links=OperatorLinks(),
     )
@@ -66,13 +66,13 @@ def _stub_pipeline(
     monkeypatch.setattr(
         module, "apply_role_overrides", lambda *_a: (graph, {}, RoleOverrides())
     )
-    monkeypatch.setattr(module, "synthesize_two_tier_design", lambda *_a: object())
-    # The design carries its backbone because the handler measures the coverage it
+    monkeypatch.setattr(module, "synthesize_two_tier", lambda *_a: object())
+    # The synthesis carries its backbone because the handler measures the coverage it
     # delivered before publishing, and its floor because the handler publishes that beside
     # the coverage; the rest of it is the stubbed payload's business. The validation report
     # carries the two diverse-path findings for the same reason: the handler republishes
     # them in the status without recomputing either.
-    design = SimpleNamespace(
+    synthesis = SimpleNamespace(
         backbone_ids=("P",),
         metrics=SimpleNamespace(backbone_lower_bound_miles=1250.0),
     )
@@ -82,8 +82,8 @@ def _stub_pipeline(
         ],
         "backbone_mesh_independence_deficient": [],
     }
-    monkeypatch.setattr(module, "finalize", lambda *_a: (graph, {}, design, validation))
-    monkeypatch.setattr(module, "design_payload", lambda *_a: payload)
+    monkeypatch.setattr(module, "finalize", lambda *_a: (graph, {}, synthesis, validation))
+    monkeypatch.setattr(module, "synthesis_payload", lambda *_a: payload)
 
 
 def _inputs(module: Any) -> dict[str, bytes]:
@@ -106,9 +106,9 @@ def _run(module: Any, monkeypatch: pytest.MonkeyPatch, fail: bool = False) -> di
     if fail:
 
         def _raise(*_args: Any) -> Any:
-            raise ValueError("No feasible design")
+            raise ValueError("No feasible synthesis")
 
-        monkeypatch.setattr(module, "synthesize_two_tier_design", _raise)
+        monkeypatch.setattr(module, "synthesize_two_tier", _raise)
     objects = _inputs(module)
     with patch("boto3.client", return_value=fake_s3(objects)):
         module.lambda_handler({"tenant": "f-35"}, None)
@@ -158,10 +158,10 @@ def test_the_success_status_says_whether_the_coverage_target_was_met(
     assert status["coverage"]["met"] is True
 
 
-def test_the_success_status_carries_the_target_the_design_was_measured_against(
+def test_the_success_status_carries_the_target_the_synthesis_was_measured_against(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The tenant's own coverage target travels with the measurement of its design."""
+    """The tenant's own coverage target travels with the measurement of its synthesis."""
     objects = _run(synthesizer, monkeypatch)
     status = json.loads(objects["tenants/f-35/wan-status.json"])
     assert status["coverage"]["target_miles"] == 600
@@ -181,7 +181,7 @@ def test_the_success_status_carries_the_backup_path_multiple_the_build_ran_under
     assert status["max_backup_path_multiple"] == 3.0
 
 
-def test_the_success_status_carries_the_floor_the_design_is_judged_against(
+def test_the_success_status_carries_the_floor_the_synthesis_is_judged_against(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The fewest miles the same requirements could have been met with is published too.
@@ -245,7 +245,7 @@ def test_the_status_says_synthesizing_while_the_build_runs(
         polled.append(json.loads(objects["tenants/f-35/wan-status.json"]))
         return object()
 
-    monkeypatch.setattr(synthesizer, "synthesize_two_tier_design", _read_the_status_mid_build)
+    monkeypatch.setattr(synthesizer, "synthesize_two_tier", _read_the_status_mid_build)
     with patch("boto3.client", return_value=fake_s3(objects)):
         synthesizer.lambda_handler({"tenant": "f-35"}, None)
     assert polled[0]["status"] == "synthesizing"
@@ -260,11 +260,11 @@ def test_records_fail_when_no_valid_wan(
 
 
 def _run_split_backbone(module: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, bytes]:
-    """Run a build whose design falls into two groups, with the real finalize gating it.
+    """Run a build whose synthesis falls into two groups, with the real finalize gating it.
 
-    Everything the design is made of is stubbed as it is everywhere else in this file; what
+    Everything the synthesis is made of is stubbed as it is everywhere else in this file; what
     is not stubbed is ``finalize``, because the gate under test is the one it holds. The
-    design it is handed is four backbone sites whose fiber joins a to b through the
+    synthesis it is handed is four backbone sites whose fiber joins a to b through the
     transit city t and c to d, with nothing between the two pairs.
     """
     _stub_pipeline(module, monkeypatch)
@@ -275,7 +275,7 @@ def _run_split_backbone(module: Any, monkeypatch: pytest.MonkeyPatch) -> dict[st
         module, "apply_role_overrides", lambda *_a: (graph, fiber, RoleOverrides())
     )
     monkeypatch.setattr(
-        module, "synthesize_two_tier_design", lambda *_a: fixtures.split_backbone_design()
+        module, "synthesize_two_tier", lambda *_a: fixtures.split_backbone_synthesis()
     )
     monkeypatch.setattr(module, "finalize", finalize)
     objects = _inputs(module)
@@ -284,10 +284,10 @@ def _run_split_backbone(module: Any, monkeypatch: pytest.MonkeyPatch) -> dict[st
     return objects
 
 
-def test_records_fail_when_the_design_falls_into_more_than_one_group(
+def test_records_fail_when_the_synthesis_falls_into_more_than_one_group(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A design in two groups is recorded as ``fail``, which is how the gate is seen outside.
+    """A synthesis in two groups is recorded as ``fail``, which is how the gate is seen outside.
 
     The refusal happens inside the build, so a caller polling the GET learns of it only
     through this status; without it the tenant would sit at ``synthesizing`` forever.

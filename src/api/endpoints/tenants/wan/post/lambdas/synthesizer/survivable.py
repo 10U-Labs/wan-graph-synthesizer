@@ -2,7 +2,7 @@
 
 A tenant asks for a number of ways out of every backbone node that no one city's loss
 takes two of. Which segments of the carrier's fiber to buy so that every node has them is
-one question about the whole design, and this module answers it as one question rather
+one question about the whole synthesis, and this module answers it as one question rather
 than as a sequence of decisions about one pair of sites at a time. Deciding a pair at a
 time is what left 54 of the 192 published paths buying nobody a way out, 23,917 miles of
 fiber that six tenants pay for every month and get nothing for (GitHub issue #60): each
@@ -10,7 +10,7 @@ decision was defensible when it was taken and none of them was ever revisited.
 
 The problem has a name. Choosing the fewest-mile set of fiber segments in which every pair
 of backbone nodes is joined by as many paths sharing no city as the tenant asked for is
-the survivable network design problem, and it is NP-hard -- the case where every
+the survivable network synthesis problem, and it is NP-hard -- the case where every
 requirement is two contains Hamiltonian cycle -- so no exact method finishes on a national
 map. What is available is a method with a proven limit on how far past the ideal it can
 land, by iterative rounding of the linear-programming relaxation: hold each segment
@@ -18,13 +18,13 @@ anywhere between none of it and all of it, buy the fewest miles that meet every
 requirement, and take the segments the answer holds at half or more as bought outright
 (Fleischer, Jain and Williamson 2006, on the half-integrality of Jain 2001). Repeat over
 what is still unmet. For element connectivity -- paths sharing no fiber segment and no
-city between their two ends -- that lands within twice the fewest miles any design could
+city between their two ends -- that lands within twice the fewest miles any synthesis could
 have run.
 
-The relaxation is where the second half of the answer comes from. No design can run fewer
-miles than a program whose every row is a requirement that design has to meet, so the
-program's own answer is a floor under the whole problem. It is published beside the design
-as ``backbone_lower_bound_miles``, because a claim that a design is close to the shortest
+The relaxation is where the second half of the answer comes from. No synthesis can run fewer
+miles than a program whose every row is a requirement that synthesis has to meet, so the
+program's own answer is a floor under the whole problem. It is published beside the synthesis
+as ``backbone_lower_bound_miles``, because a claim that a synthesis is close to the shortest
 one there is means nothing until the shortest one there is has a number.
 
 Two requirements are written down rather than one, and they are not the same requirement.
@@ -34,7 +34,7 @@ repository actually asks of a site is narrower: ``synthesizer.validation.
 diverse_path_count`` charges a way out for the peer it ends at, so two ways out of a site
 that both run through one peer are one way out rather than two. That requirement is
 written down as well, once per site, and the fiber has to meet both. Writing only the
-first would let the program buy a design where every way out of a site runs through one of
+first would let the program buy a synthesis where every way out of a site runs through one of
 its peers, which the tenant did not ask for and validation would refuse.
 """
 
@@ -51,7 +51,7 @@ from synthesizer.linear_program import GrowingSegmentProgram, SegmentChoice, Seg
 
 # What counts as holding a segment outright. Half of it is the share Jain's half-integrality
 # result guarantees some segment reaches, and taking those is what makes the finished choice
-# at most twice the fewest miles any design could have run.
+# at most twice the fewest miles any synthesis could have run.
 _HELD_OUTRIGHT = 0.5
 
 # Slack in miles, absorbing the rounding of a sum of great-circle distances and the
@@ -61,7 +61,7 @@ _TOLERANCE = 1e-6
 
 @dataclass(frozen=True)
 class FiberInputs:
-    """The fiber a design may be built from and what the tenant asks it to carry.
+    """The fiber a synthesis may be built from and what the tenant asks it to carry.
 
     ``ways_out`` is the tenant's ``number_of_diverse_paths``, asked of every backbone node
     and of every pair of them. ``per_peer`` is how many of a site's ways out one peer may
@@ -82,10 +82,10 @@ class FiberInputs:
 
 @dataclass(frozen=True)
 class FiberChoice:
-    """The fiber a design is built from, beside the fewest miles any design could run.
+    """The fiber a synthesis is built from, beside the fewest miles any synthesis could run.
 
     ``lower_bound_miles`` is the relaxation's own answer over every requirement the search
-    wrote down, so no design meeting those requirements runs fewer miles than this.
+    wrote down, so no synthesis meeting those requirements runs fewer miles than this.
     """
 
     segments: frozenset[tuple[str, str]]
@@ -224,7 +224,7 @@ def _capped(requirement: _Requirement, whole: Mapping[tuple[str, str], float]) -
     A site behind a single point of failure on the carrier's fiber cannot be given two ways
     out by any amount of buying, so asking for two would leave the program with no answer
     at all rather than with the honest one. Lowering it here is what keeps every row the
-    program is given a row some design can meet, and the shortfall is then reported by
+    program is given a row some synthesis can meet, and the shortfall is then reported by
     ``synthesizer.validation.backbone_mesh_independence_deficient`` rather than hidden.
     """
     required = requirement.required
@@ -345,7 +345,7 @@ def _tighten(search: _Search, requirements: list[_Requirement]) -> SegmentChoice
     held to. A cap of 24 passes used to stand here, and every one of the six tenants needs
     hundreds -- 645 for DAF, 1,382 for AFGSC -- so 36 of Two-Node's 37 rounds spent the cap
     and rounded an answer that still missed three requirements, leaving it holding 17 fiber
-    segments and 871.542 miles more than a design meeting the same requirements needs
+    segments and 871.542 miles more than a synthesis meeting the same requirements needs
     (GitHub issue #63).
 
     The search ends of its own accord in two ways and both are needed. A pass that finds no
@@ -381,12 +381,12 @@ def _round_up(search: _Search, choice: SegmentChoice) -> frozenset[tuple[str, st
 
 
 def choose_fiber(inputs: FiberInputs) -> FiberChoice:
-    """The fiber to build this backbone from, and the fewest miles any design could run.
+    """The fiber to build this backbone from, and the fewest miles any synthesis could run.
 
     Rounds of buying, each one a fewest-miles answer over every requirement written down so
     far with the earlier rounds' segments held outright, until the fiber bought meets every
     requirement on its own. Then one last answer with nothing held outright, which is the
-    floor: no design meeting these requirements runs fewer miles than that.
+    floor: no synthesis meeting these requirements runs fewer miles than that.
 
     A backbone the carrier's fiber says nothing about buys nothing and is floored at
     nothing, which is the truth about it -- there is no fiber to choose from, so the

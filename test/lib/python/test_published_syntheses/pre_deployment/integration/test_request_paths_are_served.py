@@ -24,7 +24,7 @@ from urllib.parse import urlsplit
 
 from repo_utils import REPO_ROOT
 from seed import DEFAULT_API
-from test_published_designs import request_paths
+from test_published_syntheses import request_paths
 
 _SPEC = json.loads(
     (REPO_ROOT / "src" / "www" / "api" / "openapi.json").read_text(encoding="utf-8"))

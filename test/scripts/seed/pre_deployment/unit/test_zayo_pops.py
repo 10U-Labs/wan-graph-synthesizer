@@ -141,7 +141,7 @@ def test_pacific_gateways_are_not_domestic_spurs() -> None:
     """No trans-Pacific landing city hangs off a single inland hub.
 
     A gateway with one terrestrial neighbour makes its subsea fiber the shortest way
-    around that neighbour, so a design needing a path around the hub goes offshore instead
+    around that neighbour, so a synthesis needing a path around the hub goes offshore instead
     of treating the hub as the single point of failure it is -- Hillsboro once reached Los
     Angeles by way of Tokyo, 10,988 miles to a city fifteen miles from its only fiber
     segment. Every Pacific gateway the map lands fiber at is a metro PoP with terrestrial

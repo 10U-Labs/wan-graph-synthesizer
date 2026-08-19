@@ -26,7 +26,7 @@ from typing import Any
 import highspy
 
 # What a column may hold at most: one whole fiber segment. Nothing is bought twice, so a
-# row asking for more than the segments crossing it can hold is a row no design can meet.
+# row asking for more than the segments crossing it can hold is a row no synthesis can meet.
 _WHOLE = 1.0
 
 # The solver itself, held under a name of its own. ``highspy.Highs`` is written without type
@@ -119,7 +119,7 @@ def _answer(solver: Any) -> SegmentChoice:
     A program with no answer at all is a defect rather than a finding: every row records a
     separation the fiber in hand could close by buying more of the segments that cross it,
     so a row nothing can meet means the requirements were never capped against the fiber.
-    It is raised by name rather than returned, because a design built on a silent zero
+    It is raised by name rather than returned, because a synthesis built on a silent zero
     would be fiber nobody can order.
     """
     if solver.getModelStatus() != highspy.HighsModelStatus.kOptimal:

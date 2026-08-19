@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from synthesizer.ceiling import PathProofInputs, independent_path_ceiling
 from synthesizer.input_graph import Vertex, haversine_miles
-from synthesizer.model import DesignInputs
+from synthesizer.model import SynthesisInputs
 from synthesizer.graphs import reconstruct_path
 
 
@@ -106,7 +106,7 @@ def diverse_path_bounds(
     is a subset of these candidates, so it offers a path fewer places to end and no
     choice of set can exceed the bound. Adding fiber can only raise a maximum flow, so
     the bound stays true as the map grows -- the same reason the seed contract measures
-    against the pins rather than against a design nobody has built yet.
+    against the pins rather than against a synthesis nobody has built yet.
 
     The exact set-dependent measure is not replaced, only kept out of the hot loop: the
     coverage growth step still asks what a candidate's fiber can carry against the actual
@@ -132,7 +132,7 @@ def diverse_path_bounds(
 
 def backbone_strength(
     pop_id: str,
-    inputs: DesignInputs,
+    inputs: SynthesisInputs,
     pop_by_id: dict[str, Vertex],
     bounds: DiversePathBounds,
     compass_sector_count: int,

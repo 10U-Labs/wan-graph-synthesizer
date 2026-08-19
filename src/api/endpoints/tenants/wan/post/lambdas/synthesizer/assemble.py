@@ -1,12 +1,12 @@
-"""Assemble a complete two-tier design for one fixed set of backbone PoPs.
+"""Assemble a complete two-tier synthesis for one fixed set of backbone PoPs.
 
-Everything here answers the same question: given these backbone nodes, what design do they
+Everything here answers the same question: given these backbone nodes, what synthesis do they
 make, and do they make one at all. Nothing here chooses the backbone nodes -- the search
 that does that (:mod:`synthesizer.synthesize`) and the coverage growth that adds to them
 (:mod:`synthesizer.coverage`) both stand above this module and both call into it.
 
 Keeping it separate is what lets those two be separate. The growth step has to build a
-design to judge a candidate, and the search has to grow the backbone once it has a base, so
+synthesis to judge a candidate, and the search has to grow the backbone once it has a base, so
 if the builder lived with either one the other would have to import it and the two would
 point at each other.
 """
@@ -18,10 +18,10 @@ from dataclasses import dataclass
 from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
 from synthesizer.model import (
     AccessEdge,
-    Design,
-    DesignInputs,
-    DesignMetrics,
-    DesignPath,
+    Synthesis,
+    SynthesisInputs,
+    SynthesisMetrics,
+    SynthesisPath,
 )
 from synthesizer.forced import (
     apply_forced_access_homes,
@@ -35,26 +35,26 @@ from synthesizer.search_plan import _SearchPlan
 
 
 @dataclass
-class _DesignDraft:
-    """A design before its mileage is added up: what it homes, what it paths, its floor.
+class _SynthesisDraft:
+    """A synthesis before its mileage is added up: what it homes, what it paths, its floor.
 
     ``backbone_lower_bound_miles`` is the fewest fiber miles any backbone meeting this
     tenant's requirements could have run (see :mod:`synthesizer.survivable`). It is carried
-    here so it reaches :class:`synthesizer.model.DesignMetrics` and is published with the
-    design; a draft built without a fiber choice behind it carries no floor and reads zero.
+    here so it reaches :class:`synthesizer.model.SynthesisMetrics` and is published with the
+    synthesis; a draft built without a fiber choice behind it carries no floor and reads zero.
     """
 
     access_edges: list[AccessEdge]
-    path_uses: list[DesignPath]
+    path_uses: list[SynthesisPath]
     backbone_lower_bound_miles: float = 0.0
 
 
-def finalize_design(
+def finalize_synthesis(
     backbone_ids: tuple[str, ...],
-    draft: _DesignDraft,
+    draft: _SynthesisDraft,
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-) -> Design:
-    """Compute edge sets, mileage estimate, and score for a design draft."""
+) -> Synthesis:
+    """Compute edge sets, mileage estimate, and score for a synthesis draft."""
     physical_edge_keys: set[tuple[str, str]] = set()
     for path_use in draft.path_uses:
         physical_edge_keys.update(path_edge_keys(path_use.path))
@@ -66,13 +66,13 @@ def finalize_design(
     score = access_miles + physical_miles
     carrier_on_paths = {vertex_id for use in draft.path_uses for vertex_id in use.path}
     transit_ids = tuple(sorted(carrier_on_paths - set(backbone_ids)))
-    return Design(
+    return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=transit_ids,
         access_edges=draft.access_edges,
         physical_edge_keys=physical_edge_keys,
         path_uses=draft.path_uses,
-        metrics=DesignMetrics(
+        metrics=SynthesisMetrics(
             score, access_miles, physical_miles, draft.backbone_lower_bound_miles
         ),
     )
@@ -85,7 +85,7 @@ def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
 
 def assign_access(
     backbone_ids: tuple[str, ...],
-    inputs: DesignInputs,
+    inputs: SynthesisInputs,
     plan: _SearchPlan,
 ) -> list[AccessEdge] | None:
     """Home every demand vertex to its nearest backbone nodes in a single pass.
@@ -126,7 +126,7 @@ def assign_access(
 
 
 def backbone_physically_biconnectable(
-    backbone_ids: tuple[str, ...], inputs: DesignInputs
+    backbone_ids: tuple[str, ...], inputs: SynthesisInputs
 ) -> bool:
     """True if the backbone nodes can be wired into a city-survivable physical-fiber mesh.
 
@@ -142,13 +142,13 @@ def backbone_physically_biconnectable(
 
 
 def forced_backbone_resilience_error(
-    required: frozenset[str], inputs: DesignInputs, min_count: int
+    required: frozenset[str], inputs: SynthesisInputs, min_count: int
 ) -> str | None:
-    """Why the operator's forced backbone nodes can never form a resilient design, or None.
+    """Why the operator's forced backbone nodes can never form a resilient synthesis, or None.
 
     A forced node behind a single carrier city (sharing no block with the other forced
     nodes, or sitting in no cyclic block at all) makes every candidate set fail the
-    physical gate, so the search would end with an opaque "no feasible design". Caught up
+    physical gate, so the search would end with an opaque "no feasible synthesis". Caught up
     front, this names the offending nodes so the operator can fix ``etc/*.yml`` -- the
     reject rule wins over the force.
     """
@@ -163,7 +163,7 @@ def forced_backbone_resilience_error(
     if not common:
         return (
             "Forced backbone nodes share no common biconnected block of the carrier fiber "
-            f"graph, so no design can survive a single city loss: {names}"
+            f"graph, so no synthesis can survive a single city loss: {names}"
         )
     best = max(
         sum(
@@ -183,7 +183,7 @@ def forced_backbone_resilience_error(
 
 def evaluate_backbone(
     backbone_ids: tuple[str, ...],
-    inputs: DesignInputs,
+    inputs: SynthesisInputs,
     plan: _SearchPlan,
 ) -> list[AccessEdge] | None:
     """Score a backbone set's feasibility and demand homing without routing paths.
@@ -193,25 +193,25 @@ def evaluate_backbone(
     cannot reach its peers, since biconnectivity implies they are all mutually reachable),
     or the backbone is smaller than the configured number of homes per demand vertex (so
     ``assign_access`` cannot give each demand vertex that many distinct backbone nodes).
-    The design's paths are deferred to the winning set, since they do not affect the ranking.
+    The synthesis's paths are deferred to the winning set, since they do not affect the ranking.
     """
     if not backbone_physically_biconnectable(backbone_ids, inputs):
         return None
     return assign_access(backbone_ids, inputs, plan)
 
 
-def design_paths(
+def synthesis_paths(
     backbone_ids: tuple[str, ...],
-    inputs: DesignInputs,
+    inputs: SynthesisInputs,
     plan: _SearchPlan,
     physical_edges: dict[tuple[str, str], PhysicalEdge],
 ) -> BackboneMesh:
-    """Draw the backbone-to-backbone paths for a design, and the floor they are judged against.
+    """Draw the backbone-to-backbone paths for a synthesis, and the floor they are judged against.
 
     The operator's instructions are gathered here and handed over whole: the pairs they
     pinned, the pairs they struck out, how many ways out each site is bought, how far a
     path may run against the direct distance between its ends, and how many seats their
-    config allows. What comes back is the paths and the fewest miles any design meeting the
+    config allows. What comes back is the paths and the fewest miles any synthesis meeting the
     same requirements could have run (see :class:`synthesizer.backbone.BackboneMesh`).
     """
     backbone_set = set(backbone_ids)
@@ -227,12 +227,12 @@ def design_paths(
     return backbone_mesh(backbone_ids, inputs.all_distances, physical_edges, constraints)
 
 
-def build_design_for_backbone(
+def build_synthesis_for_backbone(
     backbone_ids: tuple[str, ...],
-    inputs: DesignInputs,
+    inputs: SynthesisInputs,
     plan: _SearchPlan,
-) -> Design | None:
-    """Assemble a full two-tier design for one fixed set of backbone PoPs.
+) -> Synthesis | None:
+    """Assemble a full two-tier synthesis for one fixed set of backbone PoPs.
 
     Returns None if a backbone node cannot reach enough peers to wire its mesh links, or
     the backbone is too small to give each demand vertex its configured number of homes.
@@ -240,6 +240,6 @@ def build_design_for_backbone(
     access_edges = evaluate_backbone(backbone_ids, inputs, plan)
     if access_edges is None:
         return None
-    mesh = design_paths(backbone_ids, inputs, plan, inputs.physical_edges)
-    draft = _DesignDraft(access_edges, mesh.paths, mesh.lower_bound_miles)
-    return finalize_design(backbone_ids, draft, inputs.physical_edges)
+    mesh = synthesis_paths(backbone_ids, inputs, plan, inputs.physical_edges)
+    draft = _SynthesisDraft(access_edges, mesh.paths, mesh.lower_bound_miles)
+    return finalize_synthesis(backbone_ids, draft, inputs.physical_edges)

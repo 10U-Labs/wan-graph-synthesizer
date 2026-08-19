@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from test_published_designs import removable_paths
+from test_published_syntheses import removable_paths
 
 
 def _published_network(crossings: list[tuple[str, ...]]) -> dict[str, Any]:
@@ -146,7 +146,7 @@ def test_fiber_that_already_splits_at_a_city_keeps_no_path_that_buys_nothing() -
     """Deep is reached through n whichever path is taken, so its second path buys it nothing.
 
     The demand about single points of failure asks whether a removal makes one, not whether
-    the design has one, so it cannot refuse a removal from fiber that already fails a city's
+    the synthesis has one, so it cannot refuse a removal from fiber that already fails a city's
     loss. Losing n cuts deep off with both paths in place, and each of the two is reported
     because each is judged with the other still there.
     """

@@ -15,7 +15,7 @@ published edges collection carries them beside the fiber: counted as segments th
 laid along.
 
 Two of the four cases are links the helper discards without recording that it did, and no
-published network will ever hold one: a real design joins no node to itself and names no
+published network will ever hold one: a real synthesis joins no node to itself and names no
 site its own fiber does not reach. They are tested because a helper that discarded every
 link would return the empty list a sound network returns, and the assertion standing on it
 could not tell the two apart.
@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from test_published_designs import detoured_links
+from test_published_syntheses import detoured_links
 
 _EDGES: list[dict[str, Any]] = [
     {"source_id": "west", "target_id": "hub", "distance_miles": 10.0,
@@ -41,7 +41,7 @@ _EDGES: list[dict[str, Any]] = [
 ]
 
 
-def _design(source: str, target: str, distance: float) -> dict[str, Any]:
+def _synthesis(source: str, target: str, distance: float) -> dict[str, Any]:
     """A published network of that fiber carrying one drawn link between two ids."""
     return {
         "edges": _EDGES,
@@ -63,7 +63,7 @@ def test_a_link_drawn_past_the_bound_is_reported_by_the_path_it_takes() -> None:
     Reported by its path, which is what names the detour to whoever reads the failure: the
     paths GitHub issue #44 produced ran through Paris and through Tokyo.
     """
-    assert [path for path, _ in detoured_links(_design("west", "east", 1000.0))] == [
+    assert [path for path, _ in detoured_links(_synthesis("west", "east", 1000.0))] == [
         "west -> east"
     ]
 
@@ -76,14 +76,14 @@ def test_a_link_is_not_measured_against_a_path_through_an_access_homing() -> Non
     laid over a demand site's homing, so the shortest path it is held to is the twenty
     miles of carrier fiber through ``hub``.
     """
-    assert not detoured_links(_design("west", "east", 40.0))
+    assert not detoured_links(_synthesis("west", "east", 40.0))
 
 
 def test_a_link_whose_two_ends_are_the_same_site_is_discarded() -> None:
     """A site joined to itself has no path over the fiber to be measured against."""
-    assert not detoured_links(_design("west", "west", 1000.0))
+    assert not detoured_links(_synthesis("west", "west", 1000.0))
 
 
 def test_a_link_naming_a_site_the_published_fiber_does_not_reach_is_discarded() -> None:
     """An endpoint no fiber segment leads to has no shortest path, so the bound says nothing."""
-    assert not detoured_links(_design("west", "ghost", 1000.0))
+    assert not detoured_links(_synthesis("west", "ghost", 1000.0))

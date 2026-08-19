@@ -1,6 +1,6 @@
 """Read a published WAN from the API and measure it the way an outside reader would.
 
-The delivered-design layer reads what the deployed synthesizer published and judges it.
+The delivered-synthesis layer reads what the deployed synthesizer published and judges it.
 This module is both halves of that job: the reader that asks the service for a tenant's
 network and for the state of its build, and the seven measurements that cannot be answered
 by reading a number back -- whether the fiber joins every backbone seat into one network,
@@ -57,7 +57,7 @@ SINUOSITY = 2.0
 ROUNDING_SLACK = 0.1
 
 # The label the published edges collection gives a segment of carrier fiber, as opposed to
-# the access homings served alongside it (see ``synthesizer.output.design_payload``).
+# the access homings served alongside it (see ``synthesizer.output.synthesis_payload``).
 FIBER = "carrier_physical"
 
 # The states the service reports while it is still deciding what a tenant's network is.
@@ -96,14 +96,14 @@ def _build_state(api: str, path: str) -> dict[str, Any]:
     return state
 
 
-def published_design(api: str, tenant: str, config: dict[str, Any]) -> dict[str, Any]:
+def published_synthesis(api: str, tenant: str, config: dict[str, Any]) -> dict[str, Any]:
     """One tenant's published network beside the demands its own config makes of it.
 
     A tenant whose build has not finished has no network to read, so its collections come
     back empty rather than fetched: the collection endpoints answer 404 until the first
     build lands, and the first test in the layer is the one that reports the tenant.
 
-    ``lower_bound_miles`` is the fewest miles of fiber any design meeting the same tenant's
+    ``lower_bound_miles`` is the fewest miles of fiber any synthesis meeting the same tenant's
     requirements could have run, which the build computes as the optimum of the
     linear-programming relaxation it solved and serves as ``backbone_lower_bound_miles``.
     It is read with ``.get`` for the same reason the collections are not fetched: a build
@@ -151,22 +151,22 @@ def vertex(node: dict[str, Any]) -> Vertex:
     return Vertex(node["id"], node["name"], node["kind"], (latitude, longitude))
 
 
-def worst_haul(design: dict[str, Any]) -> float:
+def worst_haul(synthesis: dict[str, Any]) -> float:
     """The farthest any site the target applies to sits from its nearest backbone node.
 
     Sites the operator has excused the distance constraint are left out, as they are in the
-    synthesizer's own stop condition, and a design carrying no demand at all reads zero.
+    synthesizer's own stop condition, and a synthesis carrying no demand at all reads zero.
     """
-    nodes = [vertex(node) for node in design["backbone"]]
+    nodes = [vertex(node) for node in synthesis["backbone"]]
     hauls: list[float] = [
         min(haversine_miles(vertex(site), node) for node in nodes)
-        for site in design["demand"]
+        for site in synthesis["demand"]
         if not site["exempt_from_distance_constraint"]
     ]
     return round(max(hauls, default=0.0), 1)
 
 
-def overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
+def overrun_links(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     """Every published backbone link drawn further than even a generous bound allows.
 
     A link is skipped rather than judged when it names a node the published backbone does
@@ -176,10 +176,10 @@ def overrun_links(design: dict[str, Any]) -> list[tuple[str, float]]:
     branches -- each of them discards a link and says nothing, and a helper discarding
     every link returns the empty list a sound network returns.
     """
-    coords = {node["id"]: vertex(node) for node in design["backbone"]}
-    allowed = SINUOSITY * design["max_backup_path_multiple"]
+    coords = {node["id"]: vertex(node) for node in synthesis["backbone"]}
+    allowed = SINUOSITY * synthesis["max_backup_path_multiple"]
     overrun = []
-    for link in design["links"]:
+    for link in synthesis["links"]:
         source = coords.get(link["source_id"])
         target = coords.get(link["target_id"])
         if source is None or target is None or source is target:
@@ -228,7 +228,7 @@ def independent_ways_out(
 
     The largest set of them that fail apart, searched exhaustively over the handful of links
     a backbone site holds. It is the same question ``synthesizer.validation`` asks of a
-    design being built, asked again out here of the network that was published, because a
+    synthesis being built, asked again out here of the network that was published, because a
     reader with no access to the build has to work out for themselves whether a second
     path between two sites bought anything.
     """
@@ -243,7 +243,7 @@ def independent_ways_out(
     )
 
 
-def overbuilt_pairs(design: dict[str, Any]) -> list[tuple[str, int]]:
+def overbuilt_pairs(synthesis: dict[str, Any]) -> list[tuple[str, int]]:
     """Every pair of backbone sites joined by a path that buys neither of them anything.
 
     Two sites that are joined are joined once. A second path between the same two sites is
@@ -276,20 +276,20 @@ def overbuilt_pairs(design: dict[str, Any]) -> list[tuple[str, int]]:
     the one pair it is.
     """
     drawn: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for link in design["links"]:
+    for link in synthesis["links"]:
         pair = tuple(sorted((link["source_id"], link["target_id"])))
         drawn.setdefault(pair, []).append(link)
-    names = {node["id"]: node["name"] for node in design["backbone"]}
-    asked = design["number_of_diverse_paths"]
+    names = {node["id"]: node["name"] for node in synthesis["backbone"]}
+    asked = synthesis["number_of_diverse_paths"]
     overbuilt: list[tuple[str, int]] = []
     for pair, paths in sorted(drawn.items()):
         if len(paths) < 2:
             continue
         spare = max(paths, key=lambda path: path["distance_miles"])
-        kept = [link for link in design["links"] if link is not spare]
+        kept = [link for link in synthesis["links"] if link is not spare]
         if not any(
             independent_ways_out(kept, end, names)
-            < min(asked, independent_ways_out(design["links"], end, names))
+            < min(asked, independent_ways_out(synthesis["links"], end, names))
             for end in pair
         ):
             overbuilt.append((" <-> ".join(pair), len(paths)))
@@ -371,7 +371,7 @@ def _cities_the_paths_cross(links: list[dict[str, Any]]) -> dict[str, set[str]]:
     """For each city the published paths cross, the cities they run straight on to.
 
     A published path names the cities it crosses in the order it crosses them, so each city
-    and the next one along is one hop of the fiber the design is standing on. All of those
+    and the next one along is one hop of the fiber the synthesis is standing on. All of those
     hops together are the fiber the paths run over, which is what a city's loss is asked
     about.
     """
@@ -382,13 +382,13 @@ def _cities_the_paths_cross(links: list[dict[str, Any]]) -> dict[str, set[str]]:
     ])
 
 
-def removable_paths(design: dict[str, Any]) -> list[tuple[str, float]]:
+def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     """Every published path whose removal would cost nobody anything at all.
 
     A path is fiber an operator holds and pays for every month, so one that buys no site a
     diverse path, joins nobody who was not already joined and relieves no single point of
     failure is miles ordered for nothing. Each path is taken out in turn and what remains is
-    put to the three demands the design was built to meet: every backbone site still holds
+    put to the three demands the synthesis was built to meet: every backbone site still holds
     as many independently failing links as it held with the path -- capped at the
     ``number_of_diverse_paths`` its tenant asked for, the way :func:`overbuilt_pairs` caps
     it, since a site whose fiber cannot reach that number is not asked to -- the paths still
@@ -411,22 +411,22 @@ def removable_paths(design: dict[str, Any]) -> list[tuple[str, float]]:
 
     A floor rather than the whole of the surplus. Each path is judged against a network
     still holding every other path, so two paths that could each go if the other stayed are
-    both kept, and the shortest design meeting the same three demands is shorter again than
+    both kept, and the shortest synthesis meeting the same three demands is shorter again than
     what this reports.
     """
-    names = {node["id"]: node["name"] for node in design["backbone"]}
+    names = {node["id"]: node["name"] for node in synthesis["backbone"]}
     sites = list(names)
-    asked = design["number_of_diverse_paths"]
+    asked = synthesis["number_of_diverse_paths"]
     held_ways_out = {
-        site: min(asked, independent_ways_out(design["links"], site, names))
+        site: min(asked, independent_ways_out(synthesis["links"], site, names))
         for site in sites
     }
     survives_a_city_loss = not _holds_a_single_point_of_failure(
-        _cities_the_paths_cross(design["links"])
+        _cities_the_paths_cross(synthesis["links"])
     )
     removable: list[tuple[str, float]] = []
-    for spare in design["links"]:
-        kept = [link for link in design["links"] if link is not spare]
+    for spare in synthesis["links"]:
+        kept = [link for link in synthesis["links"] if link is not spare]
         if any(
             independent_ways_out(kept, site, names) < held_ways_out[site] for site in sites
         ):
@@ -441,7 +441,7 @@ def removable_paths(design: dict[str, Any]) -> list[tuple[str, float]]:
     return sorted(removable, key=lambda found: (-found[1], found[0]))
 
 
-def _published_fiber(design: dict[str, Any]) -> dict[str, dict[str, float]]:
+def _published_fiber(synthesis: dict[str, Any]) -> dict[str, dict[str, float]]:
     """The carrier fiber a published network runs over, segment by segment between sites.
 
     The access homings served in the same collection are left out. A homing joins a demand
@@ -450,7 +450,7 @@ def _published_fiber(design: dict[str, Any]) -> dict[str, dict[str, float]]:
     shorten the way between two backbone nodes by fiber no link could be laid along.
     """
     fiber: dict[str, dict[str, float]] = {}
-    for edge in design["edges"]:
+    for edge in synthesis["edges"]:
         if edge["edge_kind"] != FIBER:
             continue
         fiber.setdefault(edge["source_id"], {})[edge["target_id"]] = edge["distance_miles"]
@@ -482,13 +482,13 @@ def _shortest_fiber_miles(
     return math.inf
 
 
-def detoured_links(design: dict[str, Any]) -> list[tuple[str, float]]:
+def detoured_links(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     """Every published backbone link drawn further than its own fiber made necessary.
 
     Each link is measured against the shortest way over the carrier fiber the published
     network itself carries, which is the strongest statement about a drawn link that can
     be made from outside the build: an operator reading the collections can see the fiber
-    segments the design ordered, so they can see whether a link joining two sites took the
+    segments the synthesis ordered, so they can see whether a link joining two sites took the
     shortest of them or wandered.
 
     It is a bound on each link on its own, and not the question the proof answers. What the
@@ -500,24 +500,24 @@ def detoured_links(design: dict[str, Any]) -> list[tuple[str, float]]:
     needs nothing added to what is published to do it.
 
     Sound whichever way the published fiber is short of the carrier's. The denominator is
-    the shortest path over the segments the design ordered, which is never shorter than the
+    the shortest path over the segments the synthesis ordered, which is never shorter than the
     shortest path over all the fiber the synthesizer had, so a link the synthesizer's own
     bound allowed is allowed here too.
     """
-    fiber = _published_fiber(design)
-    allowed = design["max_backup_path_multiple"]
+    fiber = _published_fiber(synthesis)
+    allowed = synthesis["max_backup_path_multiple"]
     detoured = []
-    for link in design["links"]:
+    for link in synthesis["links"]:
         shortest = _shortest_fiber_miles(fiber, link["source_id"], link["target_id"])
         if shortest > 0 and link["distance_miles"] > allowed * shortest + ROUNDING_SLACK:
             detoured.append((" -> ".join(link["path"]), link["distance_miles"] / shortest))
     return detoured
 
 
-def backbone_groups(design: dict[str, Any]) -> list[list[str]]:
+def backbone_groups(synthesis: dict[str, Any]) -> list[list[str]]:
     """The backbone seats in each group of the fiber a published network ordered.
 
-    A WAN is one network or it is not a WAN. An operator handed a published design whose
+    A WAN is one network or it is not a WAN. An operator handed a published synthesis whose
     seats fall into two groups can carry no traffic at all between them, and nothing else
     published says so: the build reports success, and every seat in either group holds the
     diverse paths its tenant asked for, because it meets the count against peers inside its
@@ -531,10 +531,10 @@ def backbone_groups(design: dict[str, Any]) -> list[list[str]]:
     carrying no fiber at all is in the map with nothing beside it, so it comes back as the
     group of one it is rather than being missed.
     """
-    fiber = _published_fiber(design)
-    joined: dict[str, set[str]] = {node["id"]: set() for node in design["backbone"]}
+    fiber = _published_fiber(synthesis)
+    joined: dict[str, set[str]] = {node["id"]: set() for node in synthesis["backbone"]}
     joined |= {city: set(neighbors) for city, neighbors in fiber.items()}
-    unplaced = {node["id"] for node in design["backbone"]}
+    unplaced = {node["id"] for node in synthesis["backbone"]}
     groups: list[list[str]] = []
     while unplaced:
         reached = _reached(joined, min(unplaced))
@@ -543,7 +543,7 @@ def backbone_groups(design: dict[str, Any]) -> list[list[str]]:
     return groups
 
 
-def ordered_fiber_miles(design: dict[str, Any]) -> float:
+def ordered_fiber_miles(synthesis: dict[str, Any]) -> float:
     """The miles of carrier fiber a published network ordered, added up.
 
     What an operator holds and pays for every month is the fiber between their backbone
@@ -556,6 +556,6 @@ def ordered_fiber_miles(design: dict[str, Any]) -> float:
     backbone path can be laid along.
     """
     segments: list[float] = [
-        edge["distance_miles"] for edge in design["edges"] if edge["edge_kind"] == FIBER
+        edge["distance_miles"] for edge in synthesis["edges"] if edge["edge_kind"] == FIBER
     ]
     return sum(segments)

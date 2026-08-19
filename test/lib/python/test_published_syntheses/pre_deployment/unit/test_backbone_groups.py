@@ -1,8 +1,8 @@
 """Unit tests for the groups the fiber of a published network leaves its backbone seats in.
 
-A WAN is one network or it is not a WAN: an operator handed a design whose seats fall into
+A WAN is one network or it is not a WAN: an operator handed a synthesis whose seats fall into
 two groups can carry no traffic between them, and every other measurement in this module
-passes on such a design, because each seat meets its diverse path count against peers inside
+passes on such a synthesis, because each seat meets its diverse path count against peers inside
 its own group (GitHub issue #68).
 
 The helper sweeps the published carrier fiber and hands back the seats group by group. Two
@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from test_published_designs import backbone_groups
+from test_published_syntheses import backbone_groups
 
 
 def _seat(vertex_id: str) -> dict[str, Any]:

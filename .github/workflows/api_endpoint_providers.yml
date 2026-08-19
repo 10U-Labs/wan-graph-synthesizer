@@ -208,7 +208,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install tools
         run: pip install pylint boto3 boto3-stubs botocore-stubs pytest 'python-hcl2<8' pyyaml types-PyYAML
-      # lib/python/test_published_designs reads a published WAN from the API and measures
+      # lib/python/test_published_syntheses reads a published WAN from the API and measures
       # it with the synthesizer's own distance helper, so scripts/ and the synthesizer are
       # both on the path here: pylint reads every import it is asked to lint, and that
       # module imports the API base and the sender from scripts/seed.py.
@@ -330,7 +330,7 @@ jobs:
           test/lib/python/test_handler_contracts/pre_deployment/unit/
           test/lib/python/test_http_doubles/pre_deployment/unit/
           test/lib/python/test_module_utils/pre_deployment/unit/
-          test/lib/python/test_published_designs/pre_deployment/unit/
+          test/lib/python/test_published_syntheses/pre_deployment/unit/
           test/lib/python/test_s3_store_mock/pre_deployment/unit/
           test/lib/python/test_terraform_config/pre_deployment/unit/
           test/lib/python/test_terraform_drift/pre_deployment/unit/
@@ -340,7 +340,7 @@ jobs:
           --cov=lib/python/test_fixtures
           --cov=lib/python/test_handler_contracts
           --cov=lib/python/test_module_utils
-          --cov=lib/python/test_published_designs
+          --cov=lib/python/test_published_syntheses
           --cov=lib/python/test_s3_store_mock
           --cov=lib/python/test_terraform_config
           --cov=lib/python/test_terraform_drift
@@ -357,7 +357,7 @@ jobs:
           python3 -m pytest
           test/lib/python/test_handler_contracts/pre_deployment/integration/
           test/lib/python/test_http_doubles/pre_deployment/
-          test/lib/python/test_published_designs/pre_deployment/integration/
+          test/lib/python/test_published_syntheses/pre_deployment/integration/
           test/lib/python/test_terraform_config/pre_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error

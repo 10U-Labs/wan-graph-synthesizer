@@ -1,11 +1,11 @@
 """Shared test fixtures: vertex factories and an in-memory ring graph.
 
 Centralized so unit, integration, and e2e tests reuse identical inputs without
-duplicating data (which copy-paste detection would otherwise flag). Designs are driven
+duplicating data (which copy-paste detection would otherwise flag). Synthesiss are driven
 from in-memory ``Vertex``/``PhysicalEdge`` objects -- production reads the stored simple
-rows via :mod:`synthesizer.codec`; only the suite builds a design straight from objects.
+rows via :mod:`synthesizer.codec`; only the suite builds a synthesis straight from objects.
 
-The design is two tiers: a meshed ``backbone`` of selected carrier PoPs (each at a
+The synthesis is two tiers: a meshed ``backbone`` of selected carrier PoPs (each at a
 data-center city) and the demand that homes into it. Carrier PoPs carry a ``(name, ST)``
 city so the data-center gate can admit them; :func:`ring_datacenter_cities` covers every
 PoP the ring fixtures build, keeping the ring feasible.
@@ -20,14 +20,14 @@ from synthesizer.codec import OFF_NET_KIND, PROVIDER_KIND, SITE_KIND
 from synthesizer.input_graph import PhysicalEdge, Vertex, VertexInfo, edge_key
 from synthesizer.model import (
     KIND_ROADM,
-    Design,
-    DesignArtifacts,
-    DesignInputs,
-    DesignMetrics,
-    DesignParams,
+    Synthesis,
+    SynthesisArtifacts,
+    SynthesisInputs,
+    SynthesisMetrics,
+    SynthesisParams,
     ForcedLinks,
     OperatorLinks,
-    DesignPath,
+    SynthesisPath,
     RoleExclusions,
     SourceFiles,
     Tuning,
@@ -38,10 +38,10 @@ from synthesizer.graphs import (
     path_edge_keys,
 )
 from synthesizer.search_plan import _SearchPlan
-from synthesizer.synthesize import all_pairs_shortest, synthesize_two_tier_design
+from synthesizer.synthesize import all_pairs_shortest, synthesize_two_tier
 from synthesizer.overrides import apply_role_overrides
 from synthesizer.stages import dual_home, finalize
-from synthesizer.validation import validate_design
+from synthesizer.validation import validate_synthesis
 
 RING_COORDS = {
     "P0": (40.0, -100.0),
@@ -143,44 +143,44 @@ SHARED_TRANSIT_PATHS = [("a", "x", "b"), ("a", "x", "c"), ("b", "c")]
 DIVERSE_TRANSIT_PATHS = [("a", "x", "b"), ("a", "y", "c"), ("b", "c")]
 
 
-def meshed_backbone_design(
+def meshed_backbone_synthesis(
     paths: list[tuple[str, ...]], backbone_ids: tuple[str, ...]
-) -> Design:
-    """A design whose backbone mesh rides the given paths, one link per path.
+) -> Synthesis:
+    """A synthesis whose backbone mesh rides the given paths, one link per path.
 
     Shared by the tiers that judge a drawn mesh rather than build one: each path's ends
     are its link's endpoints, so the cities in between are the link's transit.
 
     The fiber the paths run over is carried too, segment by segment, which is what
-    ``synthesizer.assemble.finalize_design`` puts there in a real build. A design listing
+    ``synthesizer.assemble.finalize_synthesis`` puts there in a real build. A synthesis listing
     paths and no fiber is one no build produces and one whose sites nothing joins, so the
     connectivity gate in ``synthesizer.stages.finalize`` reads it as a site per group.
     """
-    return Design(
+    return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=(),
         access_edges=[],
         physical_edge_keys={key for path in paths for key in path_edge_keys(path)},
         path_uses=[
-            DesignPath("backbone_mesh", path[0], path[-1], path, 1.0) for path in paths
+            SynthesisPath("backbone_mesh", path[0], path[-1], path, 1.0) for path in paths
         ],
-        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+        metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
 
 
 # A backbone in two groups: fiber joins a to b through the transit city t, and c to d, and
 # nothing joins the two pairs. The case the connectivity gate is there for -- every site
 # holds the one link its own fiber can carry, so the diverse path count is met on both sides
-# while the design is two networks. The transit city is seated in neither group, which is
+# while the synthesis is two networks. The transit city is seated in neither group, which is
 # what a message naming the seats in each group has to leave out.
 SPLIT_BACKBONE = ("a", "b", "c", "d")
 SPLIT_BACKBONE_CITIES = "abcdt"
 SPLIT_BACKBONE_SEGMENTS = {("a", "t"): 50.0, ("t", "b"): 50.0, ("c", "d"): 100.0}
 
 
-def split_backbone_design() -> Design:
-    """A design whose four backbone sites fall into two groups no fiber joins."""
-    return Design(
+def split_backbone_synthesis() -> Synthesis:
+    """A synthesis whose four backbone sites fall into two groups no fiber joins."""
+    return Synthesis(
         backbone_ids=SPLIT_BACKBONE,
         transit_ids=(),
         access_edges=[],
@@ -188,7 +188,7 @@ def split_backbone_design() -> Design:
             edge_key(left, right) for left, right in SPLIT_BACKBONE_SEGMENTS
         },
         path_uses=[],
-        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+        metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
 
 
@@ -208,15 +208,15 @@ def physical_edges_from(
     return edges
 
 
-def ring_params() -> DesignParams:
-    """Design parameters that solve the ring with a two-node backbone."""
-    return DesignParams(min_backbone_count=2, datacenter_cities=ring_datacenter_cities())
+def ring_params() -> SynthesisParams:
+    """Synthesis parameters that solve the ring with a two-node backbone."""
+    return SynthesisParams(min_backbone_count=2, datacenter_cities=ring_datacenter_cities())
 
 
-def forced_off_net_case() -> tuple[Vertex, DesignParams]:
+def forced_off_net_case() -> tuple[Vertex, SynthesisParams]:
     """An off-net site forced as backbone, plus params admitting its city to the gate."""
     site = off_net_site("Dulles Hub", 40.5, -100.0)
-    params = DesignParams(
+    params = SynthesisParams(
         min_backbone_count=2,
         forced_backbone_names=("Dulles Hub",),
         datacenter_cities=ring_datacenter_cities()
@@ -233,45 +233,45 @@ def _ring_inputs() -> RingInputs:
     return ring_vertices(), ring_physical_edges()
 
 
-def run_design(
+def run_synthesis(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-    params: DesignParams,
+    params: SynthesisParams,
     off_net_sites: list[Vertex] | None = None,
-) -> DesignArtifacts:
-    """Drive the whole pipeline from in-memory inputs -- the suite's design driver.
+) -> SynthesisArtifacts:
+    """Drive the whole pipeline from in-memory inputs -- the suite's synthesis driver.
 
     Mirrors the steps the Fargate entrypoint runs inline (dual-home -> overrides ->
     synthesize -> finalize); kept in test support because no shipped code drives a
-    design from raw objects. Operator pins arrive through ``params``; the written-link
+    synthesis from raw objects. Operator pins arrive through ``params``; the written-link
     path is exercised separately via :func:`forced_link_artifacts`.
     """
     vertices, physical_edges = dual_home(vertices, physical_edges, params, off_net_sites or [])
     vertices, physical_edges, overrides = apply_role_overrides(vertices, physical_edges, params)
-    design = synthesize_two_tier_design(vertices, physical_edges, params, overrides)
-    vertices, physical_edges, design, validation = finalize(
-        vertices, physical_edges, design, params, overrides.degree_exempt_backbone_ids
+    synthesis = synthesize_two_tier(vertices, physical_edges, params, overrides)
+    vertices, physical_edges, synthesis, validation = finalize(
+        vertices, physical_edges, synthesis, params, overrides.degree_exempt_backbone_ids
     )
-    return DesignArtifacts(vertices, physical_edges, design, validation)
+    return SynthesisArtifacts(vertices, physical_edges, synthesis, validation)
 
 
-def mesh_paths(artifacts: DesignArtifacts) -> list[DesignPath]:
-    """The backbone paths of a finished design, without the access paths homing into it.
+def mesh_paths(artifacts: SynthesisArtifacts) -> list[SynthesisPath]:
+    """The backbone paths of a finished synthesis, without the access paths homing into it.
 
-    A design carries both, and almost every assertion about a backbone is about the first
+    A synthesis carries both, and almost every assertion about a backbone is about the first
     kind alone. Read here rather than in each test file because four of them ask for it in
     the same words.
     """
-    return [use for use in artifacts.design.path_uses if use.purpose == "backbone_mesh"]
+    return [use for use in artifacts.synthesis.path_uses if use.purpose == "backbone_mesh"]
 
 
-def design_over_segments(
+def synthesis_over_segments(
     site_ids: tuple[str, ...],
     segments: dict[tuple[str, str], float],
     number_of_diverse_paths: int,
     transit_ids: tuple[str, ...] = (),
     min_backbone_count: int | None = None,
-) -> DesignArtifacts:
+) -> SynthesisArtifacts:
     """Run the whole pipeline over a segment map written by hand, every site in the backbone.
 
     Several integration tests in this suite work the same way: name a few sites, price the
@@ -285,13 +285,13 @@ def design_over_segments(
     """
     cities = site_ids + transit_ids
     fewest = len(site_ids) if min_backbone_count is None else min_backbone_count
-    return run_design(
+    return run_synthesis(
         [
             carrier_pop(city, 38.0, -115.0 + 2.0 * index)
             for index, city in enumerate(cities)
         ],
         physical_edges_from(segments),
-        DesignParams(
+        SynthesisParams(
             min_backbone_count=fewest,
             max_backbone_count=len(site_ids),
             forced_backbone_names=site_ids,
@@ -302,11 +302,11 @@ def design_over_segments(
     )
 
 
-def ring_artifacts() -> DesignArtifacts:
+def ring_artifacts() -> SynthesisArtifacts:
     """Run the synthesizer over the in-memory ring and bundle the artifacts."""
     vertices, edges = _ring_inputs()
-    design = synthesize_two_tier_design(vertices, edges, ring_params())
-    return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
+    synthesis = synthesize_two_tier(vertices, edges, ring_params())
+    return SynthesisArtifacts(vertices, edges, synthesis, validate_synthesis(vertices, synthesis))
 
 
 def ring_inputs_with_roadm(roadm_id: str) -> RingInputs:
@@ -320,30 +320,30 @@ def ring_inputs_with_roadm(roadm_id: str) -> RingInputs:
 
 
 def _forced_artifacts(
-    params: DesignParams,
+    params: SynthesisParams,
     inputs: RingInputs | None = None,
     links: OperatorLinks = OperatorLinks(),
-) -> DesignArtifacts:
+) -> SynthesisArtifacts:
     """Run the ring synthesizer with operator pins resolved through the CLI's path.
 
-    Resolving via ``apply_role_overrides`` -- the same step ``run_design`` takes --
+    Resolving via ``apply_role_overrides`` -- the same step ``run_synthesis`` takes --
     means the artifacts reflect genuinely honored force-backbone requests rather than
     emergent selections. Validation goes through ``finalize`` for the same reason: the
     report then answers to the degrees ``params`` configures, not to the defaults.
     """
     vertices, edges = inputs if inputs is not None else _ring_inputs()
     vertices, edges, overrides = apply_role_overrides(vertices, edges, params, links)
-    design = synthesize_two_tier_design(vertices, edges, params, overrides)
-    vertices, edges, design, validation = finalize(
-        vertices, edges, design, params, overrides.degree_exempt_backbone_ids
+    synthesis = synthesize_two_tier(vertices, edges, params, overrides)
+    vertices, edges, synthesis, validation = finalize(
+        vertices, edges, synthesis, params, overrides.degree_exempt_backbone_ids
     )
-    return DesignArtifacts(vertices, edges, design, validation)
+    return SynthesisArtifacts(vertices, edges, synthesis, validation)
 
 
-def forced_backbone_artifacts(name: str) -> DesignArtifacts:
+def forced_backbone_artifacts(name: str) -> SynthesisArtifacts:
     """Ring artifacts with one PoP forced onto the backbone."""
     return _forced_artifacts(
-        DesignParams(
+        SynthesisParams(
             min_backbone_count=2,
             forced_backbone_names=(name,),
             datacenter_cities=ring_datacenter_cities(),
@@ -351,13 +351,13 @@ def forced_backbone_artifacts(name: str) -> DesignArtifacts:
     )
 
 
-def forced_roadm_backbone_artifacts(name: str) -> DesignArtifacts:
+def forced_roadm_backbone_artifacts(name: str) -> SynthesisArtifacts:
     """Ring artifacts forcing a transit-eligible ROADM onto the backbone.
 
     ROADMs are eligible like any other point, and a force always wins -- the mechanism
     the AFGSC Great Falls/Minot pins use.
     """
-    params = DesignParams(
+    params = SynthesisParams(
         min_backbone_count=2,
         forced_backbone_names=(name,),
         datacenter_cities=ring_datacenter_cities(),
@@ -365,10 +365,10 @@ def forced_roadm_backbone_artifacts(name: str) -> DesignArtifacts:
     return _forced_artifacts(params, ring_inputs_with_roadm(name))
 
 
-def prohibited_backbone_artifacts(name: str) -> DesignArtifacts:
+def prohibited_backbone_artifacts(name: str) -> SynthesisArtifacts:
     """Ring artifacts barring one PoP from the backbone."""
     return _forced_artifacts(
-        DesignParams(
+        SynthesisParams(
             min_backbone_count=2,
             exclusions=RoleExclusions(prohibited_backbone_names=(name,)),
             datacenter_cities=ring_datacenter_cities(),
@@ -389,15 +389,15 @@ def ring_inputs_with_demand(access_id: str, at_pop: str) -> RingInputs:
 
 
 def forced_link_artifacts(
-    params: DesignParams, links: OperatorLinks, inputs: RingInputs | None = None
-) -> DesignArtifacts:
+    params: SynthesisParams, links: OperatorLinks, inputs: RingInputs | None = None
+) -> SynthesisArtifacts:
     """Ring artifacts for operator pins plus written links, resolved via overrides."""
     return _forced_artifacts(params, inputs, links)
 
 
 # A four-PoP square around one central PoP. Short spokes to the centre and longer ring
 # edges make every diagonal backbone-mesh link run through the centre, so once the four
-# corners are the backbone the centre carries four of the design's lines as a transit
+# corners are the backbone the centre carries four of the synthesis's lines as a transit
 # node. The convergence pass (issue #4) then promotes the centre when it is a data-center
 # city. Coordinates are a degenerate diamond; distances are pinned in
 # :func:`convergence_hub_inputs` so the diagonals are strictly shorter through the centre.
@@ -426,11 +426,11 @@ def convergence_hub_artifacts(
     promote_hub: bool = True,
     max_backbone_count: int | None = None,
     promote_convergences: bool = True,
-) -> DesignArtifacts:
+) -> SynthesisArtifacts:
     """Run the synthesizer with the four corners forced and the centre left transit.
 
     The diagonal backbone-mesh links run through the centre, so it carries four of the
-    design's lines. When ``promote_hub`` is set the centre is a data-center city and the
+    synthesis's lines. When ``promote_hub`` is set the centre is a data-center city and the
     convergence pass promotes it into the backbone and redraws; otherwise the centre is
     barred from the gate and stays transit. A ``max_backbone_count`` of four (the four
     forced corners) leaves no room for the promotion, so the centre stays transit even
@@ -443,7 +443,7 @@ def convergence_hub_artifacts(
     )
     if promote_hub:
         datacenter_cities = datacenter_cities | {(_HUB_CENTER, _FIXTURE_STATE)}
-    params = DesignParams(
+    params = SynthesisParams(
         min_backbone_count=2,
         max_backbone_count=max_backbone_count,
         forced_backbone_names=_HUB_CORNERS,
@@ -451,8 +451,8 @@ def convergence_hub_artifacts(
         promote_high_degree_convergences=promote_convergences,
     )
     vertices, edges, overrides = apply_role_overrides(vertices, edges, params)
-    design = synthesize_two_tier_design(vertices, edges, params, overrides)
-    return DesignArtifacts(vertices, edges, design, validate_design(vertices, design))
+    synthesis = synthesize_two_tier(vertices, edges, params, overrides)
+    return SynthesisArtifacts(vertices, edges, synthesis, validate_synthesis(vertices, synthesis))
 
 
 def sample_sources() -> SourceFiles:
@@ -460,14 +460,14 @@ def sample_sources() -> SourceFiles:
     return SourceFiles((Path("vertices/lumen.csv"),), Path("edges.csv"))
 
 
-def design_inputs_from_edges(
+def synthesis_inputs_from_edges(
     edge_ids: list[str],
     edges: dict[tuple[str, str], PhysicalEdge],
     eligible: set[str],
     access_vertices: list[Vertex] | None = None,
     coords: dict[str, tuple[float, float]] | None = None,
-) -> DesignInputs:
-    """Build DesignInputs over a mileage-weighted graph for direct synthesizer tests.
+) -> SynthesisInputs:
+    """Build SynthesisInputs over a mileage-weighted graph for direct synthesizer tests.
 
     ``edge_ids`` are the carrier PoPs (the backbone candidates). ``edges`` may also
     wire the demand vertices into the physical graph -- in the two-tier model demand
@@ -478,7 +478,7 @@ def design_inputs_from_edges(
     pops = [carrier_pop(vertex_id, *places.get(vertex_id, (0.0, 0.0))) for vertex_id in edge_ids]
     adjacency = build_adjacency(edges)
     distances, predecessors = all_pairs_shortest(pops, adjacency)
-    return DesignInputs(
+    return SynthesisInputs(
         access_vertices=access_vertices if access_vertices is not None else [],
         carrier_pops=pops,
         physical_edges=edges,
@@ -677,16 +677,16 @@ def shared_hub_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
     return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in SHARED_HUB_PEER_SITES)
 
 
-def shared_hub_peer_artifacts(asked_for: int = 2) -> DesignArtifacts:
-    """The design the whole pipeline settles on over the four-site graph.
+def shared_hub_peer_artifacts(asked_for: int = 2) -> SynthesisArtifacts:
+    """The synthesis the whole pipeline settles on over the four-site graph.
 
     Every site is seated and the seats are capped at the four, so the tenant's config says
     each site has peers to reach and every pair of them is allowed one path.
     """
-    return run_design(
+    return run_synthesis(
         shared_hub_peer_vertices(),
         SHARED_HUB_PEER_EDGES,
-        DesignParams(
+        SynthesisParams(
             min_backbone_count=len(SHARED_HUB_PEER_SITES),
             max_backbone_count=len(SHARED_HUB_PEER_SITES),
             forced_backbone_names=SHARED_HUB_PEER_SITES,
@@ -781,9 +781,9 @@ def express_datacenter_cities() -> frozenset[tuple[str, str]]:
     return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in EXPRESS_ELIGIBLE)
 
 
-def funnel_inputs() -> DesignInputs:
-    """The disagreement graph as design inputs, for scoring one site at a time."""
-    return design_inputs_from_edges(
+def funnel_inputs() -> SynthesisInputs:
+    """The disagreement graph as synthesis inputs, for scoring one site at a time."""
+    return synthesis_inputs_from_edges(
         FUNNEL_IDS, FUNNEL_EDGES, set(FUNNEL_ELIGIBLE), coords=FUNNEL_COORDS
     )
 
@@ -811,8 +811,8 @@ TWO_POCKET_IDS = ["a", "b", "c", "d", "e", "f"]
 # one after it, so no test could reach a search that runs long enough for a cap to bind.
 #
 # Left to finish, the search buys seven segments running 159 miles, which is exactly the
-# floor it publishes -- there is no shorter design meeting the same requirements. Stopped at
-# 24 passes it buys thirteen segments running 291 against that same floor, and the design
+# floor it publishes -- there is no shorter synthesis meeting the same requirements. Stopped at
+# 24 passes it buys thirteen segments running 291 against that same floor, and the synthesis
 # drawn over them orders 176 miles of fiber an operator pays for every month.
 MANY_PASS_SEGMENTS = {
     ("a", "c"): 32.0, ("a", "e"): 22.0, ("a", "f"): 18.0, ("a", "g"): 25.0,
@@ -827,7 +827,7 @@ MANY_PASS_SEGMENTS = {
 }
 # The five seats, and the seven cities the fiber crosses that carry a path without taking a
 # seat. Every seat has two ways out on this fiber, so none of them is lowered to what the
-# carrier can carry and the finished design is one no site is short in.
+# carrier can carry and the finished synthesis is one no site is short in.
 MANY_PASS_SITES = ("c", "d", "j", "k", "l")
 MANY_PASS_TRANSIT = ("a", "b", "e", "f", "g", "h", "i")
 # What the search buys once it is allowed to finish, and the miles those segments run.

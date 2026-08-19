@@ -1,4 +1,4 @@
-"""Unit tests for resolving the WAN designer configuration."""
+"""Unit tests for resolving the WAN synthesizer configuration."""
 
 from __future__ import annotations
 
@@ -26,18 +26,18 @@ def _config(data: dict[str, Any]) -> AppConfig:
     """Resolve a single in-memory config mapping (with required fields) for one test.
 
     ``restrict_backbone_to_data_centers`` (like the two redundancy degrees) is required
-    with no default, so it is injected into the design section unless the test overrides
-    it -- letting each test focus on the field under test. A non-mapping ``design`` is
+    with no default, so it is injected into the synthesis section unless the test overrides
+    it -- letting each test focus on the field under test. A non-mapping ``synthesis`` is
     passed through so the "section must be a mapping" rejection still fires.
     """
     merged = dict(data)
     merged["tuning"] = {**_REQUIRED_TUNING, **data.get("tuning", {})}
-    design = data.get("design", {})
-    if isinstance(design, dict):
-        merged["design"] = {
+    synthesis = data.get("synthesis", {})
+    if isinstance(synthesis, dict):
+        merged["synthesis"] = {
             "restrict_backbone_to_data_centers": True,
             "promote_high_degree_convergences_to_backbone_nodes": True,
-            **design,
+            **synthesis,
         }
     return config_from_data(merged)
 
@@ -97,13 +97,13 @@ def test_reads_label() -> None:
 
 
 def test_reads_min_backbone_count() -> None:
-    """A min_backbone_count value is read from the design section."""
-    assert _config({"design": {"min_backbone_count": 5}}).params.min_backbone_count == 5
+    """A min_backbone_count value is read from the synthesis section."""
+    assert _config({"synthesis": {"min_backbone_count": 5}}).params.min_backbone_count == 5
 
 
 def test_reads_max_backbone_count() -> None:
-    """A max_backbone_count value is read from the design section."""
-    assert _config({"design": {"max_backbone_count": 7}}).params.max_backbone_count == 7
+    """A max_backbone_count value is read from the synthesis section."""
+    assert _config({"synthesis": {"max_backbone_count": 7}}).params.max_backbone_count == 7
 
 
 def test_default_access_backbone_links() -> None:
@@ -139,7 +139,7 @@ def test_the_old_mesh_degree_key_is_refused() -> None:
     """
     with pytest.raises(ValueError, match="backbone_number_of_diverse_paths"):
         config_from_data({
-            "design": {
+            "synthesis": {
                 "restrict_backbone_to_data_centers": True,
                 "promote_high_degree_convergences_to_backbone_nodes": True,
             },
@@ -152,16 +152,16 @@ def test_the_old_mesh_degree_key_is_refused() -> None:
 
 
 def test_reads_forced_backbone() -> None:
-    """A forced_backbone list is read into the design params."""
+    """A forced_backbone list is read into the synthesis params."""
     assert _config(
-        {"design": {"forced_backbone": ["Atlanta, GA"]}}
+        {"synthesis": {"forced_backbone": ["Atlanta, GA"]}}
     ).params.forced_backbone_names == ("Atlanta, GA",)
 
 
 def test_reads_degree_exempt_backbone() -> None:
-    """A degree_exempt_backbone list is read into the design params."""
+    """A degree_exempt_backbone list is read into the synthesis params."""
     assert _config(
-        {"design": {"degree_exempt_backbone": ["San Jose, CA"]}}
+        {"synthesis": {"degree_exempt_backbone": ["San Jose, CA"]}}
     ).params.degree_exempt_backbone_names == ("San Jose, CA",)
 
 
@@ -173,7 +173,7 @@ def test_default_exempts_no_backbone_node_from_the_degree() -> None:
 def test_degree_exempt_backbone_must_be_a_list() -> None:
     """A non-list degree_exempt_backbone value is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"degree_exempt_backbone": "San Jose, CA"}})
+        _config({"synthesis": {"degree_exempt_backbone": "San Jose, CA"}})
 
 
 def test_default_has_no_forced_connections() -> None:
@@ -184,7 +184,7 @@ def test_default_has_no_forced_connections() -> None:
 def test_reads_forced_connections() -> None:
     """A forced_connections list is parsed into the backbone list of written links."""
     connection = {"source": "Dallas, TX", "target": "Denver, CO"}
-    assert _config({"design": {"forced_connections": [connection]}}).links.backbone == (
+    assert _config({"synthesis": {"forced_connections": [connection]}}).links.backbone == (
         NamedLink("Dallas, TX", "Denver, CO"),
     )
 
@@ -192,19 +192,19 @@ def test_reads_forced_connections() -> None:
 def test_forced_connections_must_be_a_list() -> None:
     """A non-list forced_connections value is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"forced_connections": {"source": "A"}}})
+        _config({"synthesis": {"forced_connections": {"source": "A"}}})
 
 
 def test_forced_connection_must_be_a_mapping() -> None:
     """A forced_connections entry that is not a mapping is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"forced_connections": ["Dallas, TX"]}})
+        _config({"synthesis": {"forced_connections": ["Dallas, TX"]}})
 
 
 def test_forced_connection_requires_a_source_and_target() -> None:
     """A forced_connections entry missing an endpoint is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"forced_connections": [{"source": "A"}]}})
+        _config({"synthesis": {"forced_connections": [{"source": "A"}]}})
 
 
 def test_forced_connection_ignores_a_leftover_type() -> None:
@@ -217,7 +217,7 @@ def test_forced_connection_ignores_a_leftover_type() -> None:
     define -- would fail every WAN build in that window.
     """
     connection = {"source": "A", "target": "B", "type": "access-backbone"}
-    assert _config({"design": {"forced_connections": [connection]}}).links.backbone == (
+    assert _config({"synthesis": {"forced_connections": [connection]}}).links.backbone == (
         NamedLink("A", "B"),
     )
 
@@ -231,10 +231,10 @@ def test_reads_forced_homes() -> None:
     """A forced_homes list is parsed into the access list of written links.
 
     No tenant writes one today, so this is the only thing holding the path up: an access
-    site pinned onto a named backbone node has to parse before it can reach the design.
+    site pinned onto a named backbone node has to parse before it can reach the synthesis.
     """
     home = {"source": "Kirtland, NM", "target": "Denver, CO"}
-    assert _config({"design": {"forced_homes": [home]}}).links.access == (
+    assert _config({"synthesis": {"forced_homes": [home]}}).links.access == (
         NamedLink("Kirtland, NM", "Denver, CO"),
     )
 
@@ -242,13 +242,13 @@ def test_reads_forced_homes() -> None:
 def test_forced_homes_must_be_a_list() -> None:
     """A non-list forced_homes value is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"forced_homes": {"source": "A"}}})
+        _config({"synthesis": {"forced_homes": {"source": "A"}}})
 
 
 def test_a_forced_home_is_not_read_as_a_mesh_pair() -> None:
     """A forced_homes entry never lands among the pinned mesh pairs."""
     home = {"source": "Kirtland, NM", "target": "Denver, CO"}
-    assert len(_config({"design": {"forced_homes": [home]}}).links.backbone) == 0
+    assert len(_config({"synthesis": {"forced_homes": [home]}}).links.backbone) == 0
 
 
 def test_default_has_no_excluded_connections() -> None:
@@ -258,8 +258,8 @@ def test_default_has_no_excluded_connections() -> None:
 
 def test_reads_excluded_connections() -> None:
     """An excluded_connections entry is parsed into the pruned list of written links."""
-    design = {"excluded_connections": [{"source": "Seattle, WA", "target": "Boise, ID"}]}
-    assert _config({"design": design}).links.removed_backbone == (
+    synthesis = {"excluded_connections": [{"source": "Seattle, WA", "target": "Boise, ID"}]}
+    assert _config({"synthesis": synthesis}).links.removed_backbone == (
         NamedLink("Seattle, WA", "Boise, ID"),
     )
 
@@ -270,66 +270,66 @@ def test_default_has_no_prohibited_backbone() -> None:
 
 
 def test_reads_restrict_backbone_to_data_centers_true() -> None:
-    """A restrict_backbone_to_data_centers=true design gates the backbone to data centers."""
+    """A restrict_backbone_to_data_centers=true synthesis gates the backbone to data centers."""
     assert _config(
-        {"design": {"restrict_backbone_to_data_centers": True}}
+        {"synthesis": {"restrict_backbone_to_data_centers": True}}
     ).restrict_backbone_to_datacenters is True
 
 
 def test_reads_restrict_backbone_to_data_centers_false() -> None:
-    """A restrict_backbone_to_data_centers=false design opens the backbone to any city."""
+    """A restrict_backbone_to_data_centers=false synthesis opens the backbone to any city."""
     assert _config(
-        {"design": {"restrict_backbone_to_data_centers": False}}
+        {"synthesis": {"restrict_backbone_to_data_centers": False}}
     ).restrict_backbone_to_datacenters is False
 
 
 def test_restrict_backbone_to_data_centers_must_be_a_boolean() -> None:
     """A non-boolean restrict_backbone_to_data_centers value is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"restrict_backbone_to_data_centers": "yes"}})
+        _config({"synthesis": {"restrict_backbone_to_data_centers": "yes"}})
 
 
 def test_restrict_backbone_to_data_centers_is_required() -> None:
-    """A design omitting restrict_backbone_to_data_centers is rejected (no default)."""
+    """A synthesis omitting restrict_backbone_to_data_centers is rejected (no default)."""
     with pytest.raises(ValueError):
         config_from_data({"tuning": _REQUIRED_TUNING})
 
 
 def test_reads_promote_high_degree_convergences_true() -> None:
-    """A promote...=true design lets the convergence pass seat high-degree hubs."""
+    """A promote...=true synthesis lets the convergence pass seat high-degree hubs."""
     assert _config(
-        {"design": {"promote_high_degree_convergences_to_backbone_nodes": True}}
+        {"synthesis": {"promote_high_degree_convergences_to_backbone_nodes": True}}
     ).params.promote_high_degree_convergences is True
 
 
 def test_reads_promote_high_degree_convergences_false() -> None:
-    """A promote...=false design turns the convergence promotion pass off."""
+    """A promote...=false synthesis turns the convergence promotion pass off."""
     assert _config(
-        {"design": {"promote_high_degree_convergences_to_backbone_nodes": False}}
+        {"synthesis": {"promote_high_degree_convergences_to_backbone_nodes": False}}
     ).params.promote_high_degree_convergences is False
 
 
 def test_promote_high_degree_convergences_must_be_a_boolean() -> None:
     """A non-boolean promote_high_degree_convergences_to_backbone_nodes value is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"promote_high_degree_convergences_to_backbone_nodes": "yes"}})
+        _config({"synthesis": {"promote_high_degree_convergences_to_backbone_nodes": "yes"}})
 
 
 def test_promote_high_degree_convergences_is_required() -> None:
-    """A design omitting promote_high_degree_convergences_to_backbone_nodes is rejected."""
+    """A synthesis omitting promote_high_degree_convergences_to_backbone_nodes is rejected."""
     with pytest.raises(ValueError):
         config_from_data(
             {
                 "tuning": _REQUIRED_TUNING,
-                "design": {"restrict_backbone_to_data_centers": True},
+                "synthesis": {"restrict_backbone_to_data_centers": True},
             }
         )
 
 
 def test_reads_prohibited_backbone() -> None:
-    """A prohibited_backbone list is read into the design params."""
-    design = {"prohibited_backbone": ["Denver, CO", "Boise, ID"]}
-    assert _config({"design": design}).params.exclusions.prohibited_backbone_names == (
+    """A prohibited_backbone list is read into the synthesis params."""
+    synthesis = {"prohibited_backbone": ["Denver, CO", "Boise, ID"]}
+    assert _config({"synthesis": synthesis}).params.exclusions.prohibited_backbone_names == (
         "Denver, CO",
         "Boise, ID",
     )
@@ -338,17 +338,17 @@ def test_reads_prohibited_backbone() -> None:
 def test_prohibited_backbone_must_be_a_list_of_strings() -> None:
     """A prohibited_backbone value that is not a list of strings is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"prohibited_backbone": "Denver, CO"}})
+        _config({"synthesis": {"prohibited_backbone": "Denver, CO"}})
 
 
 def test_reads_settings_compass_sector_count() -> None:
-    """A settings compass_sector_count value is read into the design params."""
+    """A settings compass_sector_count value is read into the synthesis params."""
     tuning = _config({"settings": {"compass_sector_count": 6}}).params.tuning
     assert tuning.compass_sector_count == 6
 
 
 def test_reads_tuning_coverage_target() -> None:
-    """A tuning backbone_coverage_target_miles value is read into the design params."""
+    """A tuning backbone_coverage_target_miles value is read into the synthesis params."""
     assert _config(
         {"tuning": {"backbone_coverage_target_miles": 250}}
     ).params.tuning.backbone_coverage_target_miles == 250
@@ -483,7 +483,7 @@ def test_missing_coverage_target_is_rejected() -> None:
         config_from_data(
             {
                 "tuning": {"backbone_number_of_diverse_paths": 3, "access_backbone_links": 2},
-                "design": {"restrict_backbone_to_data_centers": True},
+                "synthesis": {"restrict_backbone_to_data_centers": True},
             }
         )
 
@@ -495,7 +495,7 @@ def test_non_number_coverage_target_is_rejected() -> None:
 
 
 def test_reads_tuning_max_backup_path_multiple() -> None:
-    """A tuning backbone_max_backup_path_multiple value is read into the design params."""
+    """A tuning backbone_max_backup_path_multiple value is read into the synthesis params."""
     assert _config(
         {"tuning": {"backbone_max_backup_path_multiple": 4}}
     ).params.tuning.backbone_max_backup_path_multiple == 4.0
@@ -511,7 +511,7 @@ def test_missing_max_backup_path_multiple_is_rejected() -> None:
                     "access_backbone_links": 2,
                     "backbone_coverage_target_miles": 600,
                 },
-                "design": {"restrict_backbone_to_data_centers": True},
+                "synthesis": {"restrict_backbone_to_data_centers": True},
             }
         )
 
@@ -532,7 +532,7 @@ def test_max_backup_path_multiple_of_one_is_rejected() -> None:
     """A bound of exactly one is rejected: it admits only the shortest path.
 
     A protect path takes a detour by definition, so a bound that leaves no room for one
-    would refuse every design rather than bounding it, and an operator who wrote it has
+    would refuse every synthesis rather than bounding it, and an operator who wrote it has
     almost certainly not meant to forbid path diversity outright.
     """
     with pytest.raises(ValueError):
@@ -550,7 +550,7 @@ def test_fractional_coverage_target_is_rejected() -> None:
     """A coverage target carrying a fraction of a mile is rejected.
 
     The target is compared against a great-circle haul standing in for a last-mile
-    build, so the design has no sub-mile resolution for a fraction to mean anything
+    build, so the synthesis has no sub-mile resolution for a fraction to mean anything
     in; a decimal point states a precision that is not there.
     """
     with pytest.raises(ValueError):
@@ -560,13 +560,13 @@ def test_fractional_coverage_target_is_rejected() -> None:
 def test_section_must_be_a_mapping() -> None:
     """A non-mapping section is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": "not a mapping"})
+        _config({"synthesis": "not a mapping"})
 
 
 def test_forced_backbone_must_be_a_list() -> None:
     """A non-list forced_backbone value is rejected."""
     with pytest.raises(ValueError):
-        _config({"design": {"forced_backbone": "Atlanta, GA"}})
+        _config({"synthesis": {"forced_backbone": "Atlanta, GA"}})
 
 
 def _parts(**overrides: Any) -> dict[str, Any]:

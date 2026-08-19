@@ -1,10 +1,10 @@
-"""The synthesizer's design vocabulary: tiers, tuning, routing, and validation.
+"""The synthesizer's synthesis vocabulary: tiers, tuning, routing, and validation.
 
 These types build on the input-graph types in ``synthesizer.input_graph``
 (``Vertex`` / ``PhysicalEdge`` and the geographic helpers); everything here is the
 synthesizer's own in-memory representation, layered on top of them.
 
-The design is two tiers: a meshed ``backbone`` of selected carrier PoPs (each at a
+The synthesis is two tiers: a meshed ``backbone`` of selected carrier PoPs (each at a
 data-center city) and the demand that homes into it. Demand is labelled ``tenant``
 (tenant sites) or ``provider`` (provider regions); both home to the backbone identically.
 """
@@ -27,7 +27,7 @@ class AccessEdge:
     target: str
     distance_miles: float
 
-# Why a path between two backbone nodes is in the design. A site is drawn with exactly the
+# Why a path between two backbone nodes is in the synthesis. A site is drawn with exactly the
 # number of ways out its tenant asked for, so any path it holds beyond that number is one
 # somebody else's requirement put there, and there are only two things that can have.
 # Carrying the cause on the path is what lets the report name it rather than leave an
@@ -36,16 +36,16 @@ class AccessEdge:
 # There were five of these until GitHub issue #60. Three of them named the pass that added
 # the path -- a join holding the backbone together, a detour around a city carrying the
 # whole network, a second path to a peer already reached -- and those passes are gone: the
-# fiber is now chosen for the whole design at once (see :mod:`synthesizer.survivable`), so
-# every path in a design is one some site's own requirement produced or one the operator
+# fiber is now chosen for the whole synthesis at once (see :mod:`synthesizer.survivable`), so
+# every path in a synthesis is one some site's own requirement produced or one the operator
 # wrote down.
 LINK_FOR_TARGET = "site_target"  # a site reached for it to meet its own target
 LINK_FOR_PIN = "operator_pin"  # the operator wrote it into etc/*.yml
 
 
 @dataclass(frozen=True)
-class DesignPath:
-    """One path the design ordered, over the physical graph, and why it exists.
+class SynthesisPath:
+    """One path the synthesis ordered, over the physical graph, and why it exists.
 
     ``reason`` is why a ``backbone_mesh`` link exists, one of the five constants above.
     ``requested_by`` names the sites that reached for it and is empty unless ``reason`` is
@@ -62,15 +62,15 @@ class DesignPath:
     requested_by: tuple[str, ...] = ()
 
 @dataclass
-class DesignMetrics:
-    """Mileage totals and the synthesis score for a design.
+class SynthesisMetrics:
+    """Mileage totals and the synthesis score for a synthesis.
 
     ``backbone_lower_bound_miles`` is the fewest fiber miles any backbone meeting this
     tenant's requirements over this carrier fiber could have run, computed as the answer to
     the linear-programming relaxation the fiber was chosen by (see
     :mod:`synthesizer.survivable`). It is published beside ``physical_miles`` because a
-    design is only as good as the shortest design there is, and until that number travels
-    with the design nobody reading it can say how close this one came. A design assembled
+    synthesis is only as good as the shortest synthesis there is, and until that number travels
+    with the synthesis nobody reading it can say how close this one came. A synthesis assembled
     without a fiber choice behind it -- a fixture, a hand-built draft -- carries no floor
     and reads zero.
     """
@@ -81,15 +81,15 @@ class DesignMetrics:
     backbone_lower_bound_miles: float = 0.0
 
 @dataclass
-class Design:
-    """A complete two-tier design: the backbone, the demand it carries, paths, metrics."""
+class Synthesis:
+    """A complete two-tier synthesis: the backbone, the demand it carries, paths, metrics."""
 
     backbone_ids: tuple[str, ...]
     transit_ids: tuple[str, ...]
     access_edges: list[AccessEdge]
     physical_edge_keys: set[tuple[str, str]]
-    path_uses: list[DesignPath]
-    metrics: DesignMetrics
+    path_uses: list[SynthesisPath]
+    metrics: SynthesisMetrics
 
 @dataclass(frozen=True)
 class SearchMemoryBudget:
@@ -103,7 +103,7 @@ class SearchMemoryBudget:
 class Tuning:
     """Algorithm dials plus the required redundancy degrees and coverage target.
 
-    The two degrees are operator requirements the design must meet, each its own
+    The two degrees are operator requirements the synthesis must meet, each its own
     REST resource (``backbone-number-of-diverse-paths`` / ``access-homing-degree``) with no
     default at the config layer; the values here are construction fallbacks only.
     ``backbone_number_of_diverse_paths`` is how many other backbone nodes each backbone node
@@ -163,7 +163,7 @@ class RoleExclusions:
     prohibited_backbone_names: tuple[str, ...] = ()
 
 @dataclass(frozen=True)
-class DesignParams:
+class SynthesisParams:
     """Operator choices plus the algorithm :class:`Tuning` for the synthesis.
 
     ``datacenter_cities`` are the ``(municipality, state)`` pairs a colocation
@@ -177,8 +177,8 @@ class DesignParams:
     PoPs either way; ``None`` only lifts the city filter.
 
     ``promote_high_degree_convergences`` toggles the convergence promotion pass: when
-    ``True`` a carrier PoP where enough of the design's own lines converge is forced into
-    the backbone and the design is redrawn; when ``False`` the pass is skipped and such a
+    ``True`` a carrier PoP where enough of the synthesis's own lines converge is forced into
+    the backbone and the synthesis is redrawn; when ``False`` the pass is skipped and such a
     hub stays a transit node. It is required (no default) at the config layer; the field
     default here is a construction fallback only.
 
@@ -259,7 +259,7 @@ class RoleOverrides:
     forced_links: ForcedLinks = field(default_factory=ForcedLinks)
 
 @dataclass(frozen=True)
-class DesignInputs:
+class SynthesisInputs:
     """Pre-computed vertex, edge, and shortest-path context shared across backbone sets."""
 
     access_vertices: list[Vertex]
@@ -295,7 +295,7 @@ class MeshRequirements:
 
 
 class ValidationReport(TypedDict):
-    """Structured results of validating a design against the hard requirements."""
+    """Structured results of validating a synthesis against the hard requirements."""
 
     connected: bool
     component_count: int
@@ -318,7 +318,7 @@ class ValidationReport(TypedDict):
 
 @dataclass(frozen=True)
 class InputFiles:
-    """All file paths a WAN map's design is computed from.
+    """All file paths a WAN map's synthesis is computed from.
 
     ``vertex_files`` pairs each tenant with its per-tenant vertices CSV; the
     tenant is carried here because the CSVs no longer hold a ``tenant`` column.
@@ -339,12 +339,12 @@ class SourceFiles:
     edge_path: Path
 
 @dataclass(frozen=True)
-class DesignArtifacts:
-    """A completed design bundled with the vertices and edges it was built from."""
+class SynthesisArtifacts:
+    """A completed synthesis bundled with the vertices and edges it was built from."""
 
     vertices: list[Vertex]
     physical_edges: dict[tuple[str, str], PhysicalEdge]
-    design: Design
+    synthesis: Synthesis
     validation: ValidationReport
 
 KIND_POP = "PoP"

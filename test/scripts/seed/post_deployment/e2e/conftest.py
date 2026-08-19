@@ -1,9 +1,9 @@
 """The published networks seed asked for, paired with what each tenant's config demands.
 
-``delivered_designs`` reads what the synthesizer published for every tenant the roster in
+``delivered_syntheses`` reads what the synthesizer published for every tenant the roster in
 ``etc/`` declares. The roster is the list of tenants and ``seed`` supplies the
 file-stem-to-tenant-id rule, so a tenant added to git is one this tier starts asking about
-with no edit here. The reading itself is ``test_published_designs.published_design``, which
+with no edit here. The reading itself is ``test_published_syntheses.published_synthesis``, which
 asks the API for each tenant's build state and its five published collections; nothing here
 opens the store the synthesizer writes to. Each entry is a plain mapping of ten keys:
 ``tenant``, the ``target_miles``, ``max_backup_path_multiple``, ``seat_cap`` and pinned ``forced``
@@ -22,7 +22,7 @@ import yaml
 
 import seed
 from seed import DEFAULT_API, _slug
-from test_published_designs import published_design, settled
+from test_published_syntheses import published_synthesis, settled
 
 # How long the tenants are given to finish building, and how often they are asked. The
 # builds are started by the ``seeding`` job in .github/workflows/seed.yml, which the one
@@ -43,27 +43,27 @@ def _roster() -> dict[str, dict[str, Any]]:
     }
 
 
-def _read_designs() -> list[dict[str, Any]]:
+def _read_syntheses() -> list[dict[str, Any]]:
     """Every declared tenant's published network beside the demands its config makes of it."""
     return [
-        published_design(DEFAULT_API, tenant, config)
+        published_synthesis(DEFAULT_API, tenant, config)
         for tenant, config in _roster().items()
     ]
 
 
-@pytest.fixture(name="delivered_designs")
-def delivered_designs_fixture() -> list[dict[str, Any]]:
+@pytest.fixture(name="delivered_syntheses")
+def delivered_syntheses_fixture() -> list[dict[str, Any]]:
     """Return the published networks, once every tenant's build has finished.
 
-    Sampling mid-build would fail on the timing rather than on the designs, so each tenant
+    Sampling mid-build would fail on the timing rather than on the syntheses, so each tenant
     is given until the deadline to finish and only then read. A build that has recorded
     ``fail`` or ``timeout`` is finished: waiting cannot improve either and the tier should
     report it.
     """
     deadline = time.monotonic() + _BUILD_DEADLINE_SECONDS
-    designs = _read_designs()
-    while (not all(settled(design["status"]) for design in designs)
+    syntheses = _read_syntheses()
+    while (not all(settled(synthesis["status"]) for synthesis in syntheses)
             and time.monotonic() < deadline):
         time.sleep(_BUILD_POLL_SECONDS)
-        designs = _read_designs()
-    return designs
+        syntheses = _read_syntheses()
+    return syntheses

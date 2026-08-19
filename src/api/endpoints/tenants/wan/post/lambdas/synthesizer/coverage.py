@@ -8,7 +8,7 @@ true, and decides which node to add.
 Two questions decide a round and they are asked in that order: coverage says which
 candidates are admissible, and fiber says which of those is worth seating. Both are written
 up where they are answered, in :func:`grow_backbone_for_coverage` and
-:func:`best_coverage_candidate`. What the delivered design did about the target is
+:func:`best_coverage_candidate`. What the delivered synthesis did about the target is
 reported by :func:`coverage_report`, since growth can stop without having met it.
 """
 
@@ -18,8 +18,8 @@ import logging
 from typing import TypedDict
 
 from synthesizer.input_graph import Vertex, haversine_miles
-from synthesizer.model import Design, DesignInputs, DesignParams
-from synthesizer.assemble import build_design_for_backbone, evaluate_backbone
+from synthesizer.model import Synthesis, SynthesisInputs, SynthesisParams
+from synthesizer.assemble import build_synthesis_for_backbone, evaluate_backbone
 from synthesizer.ceiling import BackupPathLimit, PathProofInputs, independent_path_ceiling
 from synthesizer.search_plan import _SearchPlan
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class CoverageReport(TypedDict):
-    """What a delivered design does about the coverage target it was built to."""
+    """What a delivered synthesis does about the coverage target it was built to."""
 
     target_miles: float
     worst_haul_miles: float
@@ -61,7 +61,7 @@ def coverage_haul_profile(
     Sites the operator marked exempt from the distance constraint (OCONUS) are dropped:
     each may sit farther than any backbone node can reach, so counting one would hold growth
     open to the node cap. They still drive hub scoring and home to their nearest node
-    elsewhere; only coverage ignores them. An all-exempt design reads as empty.
+    elsewhere; only coverage ignores them. An all-exempt synthesis reads as empty.
 
     The whole list rather than its worst entry, because one number cannot say whether a hub
     helped anybody. Two sites that need separate hubs and whose hauls sit within a mile of
@@ -69,7 +69,7 @@ def coverage_haul_profile(
     worst number by the gap between them and by nothing else -- a hub bringing a site four
     hundred miles closer reads as having achieved four tenths of a mile, and a second site
     at exactly equal haul makes it read as having achieved nothing at all. Compared position
-    by position, the same hub is plainly the better design: the two lists first differ where
+    by position, the same hub is plainly the better synthesis: the two lists first differ where
     the rescued site used to be.
     """
     covered = [v for v in access_vertices if not v.exempt_from_distance_constraint]
@@ -87,13 +87,13 @@ def coverage_report(
     pop_by_id: dict[str, Vertex],
     target_miles: float,
 ) -> CoverageReport:
-    """Measure a finished design against the coverage target it was built to.
+    """Measure a finished synthesis against the coverage target it was built to.
 
     Growth ends on one of four things -- the target met, the seat cap reached, the
-    candidates exhausted, or no candidate improving on the design in hand -- and only the
-    first is success. Rather than carry which one fired, this measures the design that came
+    candidates exhausted, or no candidate improving on the synthesis in hand -- and only the
+    first is success. Rather than carry which one fired, this measures the synthesis that came
     out: the worst haul over the sites the target applies to, and how many of them sit
-    outside it. A design that stopped short then says so somewhere a caller can read it,
+    outside it. A synthesis that stopped short then says so somewhere a caller can read it,
     instead of being published under the same word as one that met the target.
     """
     profile = coverage_haul_profile(backbone_ids, access_vertices, pop_by_id)
@@ -109,7 +109,7 @@ def coverage_report(
 def coverage_candidate_hauls(
     backbone_ids: tuple[str, ...],
     free: list[str],
-    inputs: DesignInputs,
+    inputs: SynthesisInputs,
     plan: _SearchPlan,
     pop_by_id: dict[str, Vertex],
 ) -> list[tuple[tuple[float, ...], str]]:
@@ -180,7 +180,7 @@ def best_coverage_candidate(
     Among the candidates left, the one whose fiber can carry the most independently failing
     links wins (see :func:`candidate_mesh_ceiling`). A hub is chosen for what its fiber can
     do rather than for where it sits, which is the position the base backbone search already
-    takes when it ranks sets by strength, and the reason the spec forbids mileage as a design
+    takes when it ranks sets by strength, and the reason the spec forbids mileage as a synthesis
     cost. A city that satisfies coverage and then cannot hold the links a backbone node is
     required to hold has not solved the problem, it has moved it.
 
@@ -206,21 +206,21 @@ def best_coverage_candidate(
 
 def grow_backbone_for_coverage(
     base_ids: tuple[str, ...],
-    inputs: DesignInputs,
+    inputs: SynthesisInputs,
     plan: _SearchPlan,
-    params: DesignParams,
+    params: SynthesisParams,
     pop_by_id: dict[str, Vertex],
-) -> Design:
+) -> Synthesis:
     """Add backbone nodes beyond the strength-chosen base until demand is close enough.
 
     While some demand vertex the target applies to is farther than
     ``backbone_coverage_target_miles`` from every selected backbone node, seat one more
-    candidate and rebuild the design around it. Extra nodes are thus coverage-driven:
+    candidate and rebuild the synthesis around it. Extra nodes are thus coverage-driven:
     strength still chooses the base backbone, and the operator's coverage target is a
     constraint on how far the backbone may leave demand, not a mileage cost minimized over
     candidate sets. Growth stops once every non-exempt demand vertex is within target, the
     backbone reaches ``max_backbone_count``, no remaining candidate leaves any site nearer
-    than the design already does, or the candidates are exhausted. Only the first of those
+    than the synthesis already does, or the candidates are exhausted. Only the first of those
     is success, which is why :func:`coverage_report` measures what came out.
 
     Two questions decide a round and they are asked in that order. Which candidates are
@@ -250,20 +250,20 @@ def grow_backbone_for_coverage(
     :func:`best_coverage_candidate`), because a hub that meets the distance requirement and
     then cannot hold the links a backbone node owes has not solved anything.
 
-    The design itself is drawn once, at the end, over whatever the rounds settled on. Every
+    The synthesis itself is drawn once, at the end, over whatever the rounds settled on. Every
     round asks its questions of the backbone's ids -- where the sites are, which candidates
-    are admissible, which is best connected -- and none of them reads a drawn design, so
-    drawing one per round was drawing a design nobody looked at. It cost little while the
-    paths were laid a pair at a time; the fiber for a whole design is now chosen at once
+    are admissible, which is best connected -- and none of them reads a drawn synthesis, so
+    drawing one per round was drawing a synthesis nobody looked at. It cost little while the
+    paths were laid a pair at a time; the fiber for a whole synthesis is now chosen at once
     (see :mod:`synthesizer.survivable`), which is the expensive step of a build, and a
     backbone that grows from three seats to thirty-four would have paid it thirty-one times
     over.
 
-    The seats it starts from come in as ids rather than as a design for the same reason.
+    The seats it starts from come in as ids rather than as a synthesis for the same reason.
     Choosing the fiber for a base backbone and then seating one more node past it drew a
-    whole design nobody read, which cost DOW 234 of its 438 seconds and put that tenant
+    whole synthesis nobody read, which cost DOW 234 of its 438 seconds and put that tenant
     past the fifteen minutes AWS allows a Lambda (GitHub issue #72). Growth that seats
-    nothing draws the same one design over the same seats, so there is no shorter path
+    nothing draws the same one synthesis over the same seats, so there is no shorter path
     through here to keep.
     """
     target_miles = params.tuning.backbone_coverage_target_miles
@@ -306,7 +306,7 @@ def grow_backbone_for_coverage(
         backbone_ids = tuple(sorted((*backbone_ids, best_id)))
         free.remove(best_id)
         logger.info("Added node %s for coverage; now %d nodes", best_id, len(backbone_ids))
-    grown = build_design_for_backbone(backbone_ids, inputs, plan)
+    grown = build_synthesis_for_backbone(backbone_ids, inputs, plan)
     # The base seats and every candidate seated above passed evaluate_backbone, so this builds.
     assert grown is not None
     return grown

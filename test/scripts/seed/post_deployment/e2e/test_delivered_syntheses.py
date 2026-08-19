@@ -11,7 +11,7 @@ etc/minuteman.yml, with no code changed at all.
 Nothing else asks this. The three files left under
 test/api/endpoints/tenants/wan/post/post_deployment/integration/ stop at the shape of the
 deployment: the synthesizer exists, its runtime and memory match the declaration, and its
-role can reach the store -- and none of that reads a design. A synthesizer that publishes a
+role can reach the store -- and none of that reads a synthesis. A synthesizer that publishes a
 network missing its coverage target by more than a factor of two passes every one of those
 assertions, because the build was accepted and the status said ``success``, which is
 exactly
@@ -20,7 +20,7 @@ how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles ag
 
 The measurement itself is not here. Eight of the fourteen questions below are answered by
 recomputing a number from the published collections rather than by reading one back, and
-that recomputation lives in lib/python/test_published_designs/, where a unit tier can hold
+that recomputation lives in lib/python/test_published_syntheses/, where a unit tier can hold
 it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
 broken one depending on which way its error runs, and this tier has no second source of the
 answer with which to notice; leaving it here left it graded only by the deployment it
@@ -28,8 +28,8 @@ exists to grade (GitHub issue #50). What that module does not do is measure thro
 ``synthesizer.coverage``: the report under test is what that module produced, so
 recomputing with it would only establish that it agrees with itself.
 
-``test_no_design_stopped_short_of_its_target_with_a_seat_left_to_spend`` is the one that
-would have failed on the old DAF build. A design that ends
+``test_no_synthesis_stopped_short_of_its_target_with_a_seat_left_to_spend`` is the one that
+would have failed on the old DAF build. A synthesis that ends
 below its target has either spent every backbone seat its operator allowed or given up
 early, and only the second is a defect. Minuteman was the first kind: it pins six cities
 into a backbone capped at six, so the coverage pass had nothing left to seat and missed a
@@ -42,7 +42,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from test_published_designs import (
+from test_published_syntheses import (
     FIBER,
     backbone_groups,
     detoured_links,
@@ -59,31 +59,31 @@ from test_published_designs import (
 _ROUNDED_TO = 0.001
 
 
-def _rounding_slack(design: dict[str, Any]) -> float:
-    """How far the two mileages a design is judged by can differ on rounding alone.
+def _rounding_slack(synthesis: dict[str, Any]) -> float:
+    """How far the two mileages a synthesis is judged by can differ on rounding alone.
 
     A build quotes every mileage to a thousandth of a mile, and it quotes the two numbers
     compared below in different places: the floor once, and each fiber segment on its own,
-    with the miles a design ordered being those rounded segments added up. So a design of
+    with the miles a synthesis ordered being those rounded segments added up. So a synthesis of
     many segments carries many roundings while the floor carries one, and the two can part
     company by that much with nothing whatever wrong. Two-Node landed exactly on its floor
     and published 3,884.264 miles against 3,884.265.
 
-    Nothing real hides under this. A design that genuinely falls short of its floor is short
+    Nothing real hides under this. A synthesis that genuinely falls short of its floor is short
     by at least the fiber it failed to buy, and the shortest segment on any of the six maps
     runs miles rather than thousandths.
     """
-    segments = sum(1 for edge in design["edges"] if edge["edge_kind"] == FIBER)
+    segments = sum(1 for edge in synthesis["edges"] if edge["edge_kind"] == FIBER)
     return (segments + 1) * _ROUNDED_TO / 2
 
 
 def _tenants_outside(
-    delivered_designs: list[dict[str, Any]],
+    delivered_syntheses: list[dict[str, Any]],
     allowed: Callable[[float, float, float], bool],
 ) -> dict[str, tuple[float, float]]:
     """Every finished network whose ordered fiber miles sit outside what its floor allows.
 
-    ``lower_bound_miles`` is the fewest miles any design meeting that tenant's requirements
+    ``lower_bound_miles`` is the fewest miles any synthesis meeting that tenant's requirements
     could run, and the two questions asked of it below -- not too far above it, not below it
     at all -- are the same measurement read in opposite directions. Each finding names the
     tenant, the miles it ordered and the floor it ordered them against.
@@ -92,13 +92,13 @@ def _tenants_outside(
     rather than compared against nothing.
     """
     measured = {
-        design["tenant"]: (
-            ordered_fiber_miles(design),
-            design["lower_bound_miles"],
-            _rounding_slack(design),
+        synthesis["tenant"]: (
+            ordered_fiber_miles(synthesis),
+            synthesis["lower_bound_miles"],
+            _rounding_slack(synthesis),
         )
-        for design in delivered_designs
-        if design["lower_bound_miles"] is not None
+        for synthesis in delivered_syntheses
+        if synthesis["lower_bound_miles"] is not None
     }
     return {
         tenant: (miles, floor)
@@ -107,55 +107,57 @@ def _tenants_outside(
     }
 
 
-def _published_cities(design: dict[str, Any]) -> set[str]:
+def _published_cities(synthesis: dict[str, Any]) -> set[str]:
     """The cities the published backbone seats, by the ``City, ST`` names a config pins by."""
-    return {node["name"] for node in design["backbone"]}
+    return {node["name"] for node in synthesis["backbone"]}
 
 
 def test_every_tenant_the_roster_declares_has_a_published_network(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """No tenant git declares is left without a WAN the synthesizer finished building."""
     unfinished = {
-        design["tenant"]: design["status"].get("status")
-        for design in delivered_designs
-        if design["status"].get("status") != "success"
+        synthesis["tenant"]: synthesis["status"].get("status")
+        for synthesis in delivered_syntheses
+        if synthesis["status"].get("status") != "success"
     }
     assert unfinished == {}
 
 
 def test_every_published_network_is_one_network(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """The fiber a tenant ordered joins every backbone site it seated to all the others.
 
-    A design in two groups is two networks handed over as one, and the operator who
+    A synthesis in two groups is two networks handed over as one, and the operator who
     receives it can carry no traffic between them. Nothing else in this file would notice:
     ``f-35`` sat in two halves with no fiber between Ashburn, VA and Salt Lake City, UT
     while passing every other assertion here, because each site met its diverse path count
     against peers inside its own half (GitHub issue #68).
     """
     split = {
-        design["tenant"]: groups
-        for design in delivered_designs
-        if len(groups := backbone_groups(design)) > 1
+        synthesis["tenant"]: groups
+        for synthesis in delivered_syntheses
+        if len(groups := backbone_groups(synthesis)) > 1
     }
     assert split == {}
 
 
 def test_every_published_network_reports_the_coverage_it_delivered(
-        delivered_designs: list[dict[str, Any]]) -> None:
-    """A published status says what the design did about its target, not only ``success``.
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    """A published status says what the synthesis did about its target, not only ``success``.
 
     That one word was all a reader outside the synthesizer used to get, and it read the same
     whether the coverage pass met the target or ran out of things to try.
     """
     silent = [
-        design["tenant"] for design in delivered_designs if "coverage" not in design["status"]
+        synthesis["tenant"]
+        for synthesis in delivered_syntheses
+        if "coverage" not in synthesis["status"]
     ]
     assert silent == []
 
 
 def test_every_report_is_measured_against_the_target_its_tenant_declares(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """Each published network has caught up with the target its tenant's config sets.
 
     The number travels from ``etc/`` through seed, the knobs resource and the tuning block
@@ -167,15 +169,15 @@ def test_every_report_is_measured_against_the_target_its_tenant_declares(
     and was left where it fell.
     """
     reported = {
-        design["tenant"]: design["status"]["coverage"]["target_miles"]
-        for design in delivered_designs
+        synthesis["tenant"]: synthesis["status"]["coverage"]["target_miles"]
+        for synthesis in delivered_syntheses
     }
-    declared = {design["tenant"]: design["target_miles"] for design in delivered_designs}
+    declared = {synthesis["tenant"]: synthesis["target_miles"] for synthesis in delivered_syntheses}
     assert reported == declared
 
 
 def test_every_city_a_tenant_pins_is_seated_in_its_published_backbone(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """Each city named in a tenant's ``backbone.forced.nodes`` is in its backbone tier.
 
     A pinned city is the one requirement an operator states as a plain fact about the
@@ -186,31 +188,31 @@ def test_every_city_a_tenant_pins_is_seated_in_its_published_backbone(
     (GitHub issue #47).
     """
     unseated = {
-        design["tenant"]: sorted(set(design["forced"]) - _published_cities(design))
-        for design in delivered_designs
-        if not set(design["forced"]) <= _published_cities(design)
+        synthesis["tenant"]: sorted(set(synthesis["forced"]) - _published_cities(synthesis))
+        for synthesis in delivered_syntheses
+        if not set(synthesis["forced"]) <= _published_cities(synthesis)
     }
     assert unseated == {}
 
 
 def test_the_reported_worst_haul_is_the_one_the_published_network_delivers(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """The worst haul a status claims is the worst haul its own published network has.
 
     Measured off the backbone and the sites as published, so the claim is checked against
     the artifact an operator reads rather than against the run that wrote it.
     """
     mismeasured = [
-        (design["tenant"], worst_haul(design))
-        for design in delivered_designs
-        if worst_haul(design) != design["status"]["coverage"]["worst_haul_miles"]
+        (synthesis["tenant"], worst_haul(synthesis))
+        for synthesis in delivered_syntheses
+        if worst_haul(synthesis) != synthesis["status"]["coverage"]["worst_haul_miles"]
     ]
     assert mismeasured == []
 
 
-def test_no_design_stopped_short_of_its_target_with_a_seat_left_to_spend(
-        delivered_designs: list[dict[str, Any]]) -> None:
-    """A design that ended below its coverage target had spent every seat it was allowed.
+def test_no_synthesis_stopped_short_of_its_target_with_a_seat_left_to_spend(
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    """A synthesis that ended below its coverage target had spent every seat it was allowed.
 
     This is the assertion the defect had to get past. Growth that halts with seats still
     free has decided no remaining candidate is worth taking, and on the old DAF build that
@@ -218,16 +220,16 @@ def test_no_design_stopped_short_of_its_target_with_a_seat_left_to_spend(
     target applied to more than twice as far out as the target allowed.
     """
     gave_up_early = [
-        (design["tenant"], len(design["backbone"]), design["seat_cap"])
-        for design in delivered_designs
-        if not design["status"]["coverage"]["met"]
-        and len(design["backbone"]) < design["seat_cap"]
+        (synthesis["tenant"], len(synthesis["backbone"]), synthesis["seat_cap"])
+        for synthesis in delivered_syntheses
+        if not synthesis["status"]["coverage"]["met"]
+        and len(synthesis["backbone"]) < synthesis["seat_cap"]
     ]
     assert gave_up_early == []
 
 
 def test_no_published_link_runs_further_than_its_tenant_allows(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """No backbone link wanders far past the direct distance between the two sites it joins.
 
     This is the assertion GitHub issue #44 had to get past. DAF's published network
@@ -244,21 +246,21 @@ def test_no_published_link_runs_further_than_its_tenant_allows(
     catches every path the defect produced, the nearest of which ran twelve times.
     """
     overrun = {
-        design["tenant"]: overrun_links(design)
-        for design in delivered_designs
-        if overrun_links(design)
+        synthesis["tenant"]: overrun_links(synthesis)
+        for synthesis in delivered_syntheses
+        if overrun_links(synthesis)
     }
     assert overrun == {}
 
 
 def test_no_published_link_wanders_past_the_fiber_its_own_network_carries(
-        delivered_designs: list[dict[str, Any]]) -> None:
-    """No backbone link runs far past the shortest way over the fiber the design ordered.
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    """No backbone link runs far past the shortest way over the fiber the synthesis ordered.
 
     The assertion above measures each link against the straight line between its two sites,
     which is why it has to be loosened to six times the tenant's bound: real fiber does not
     fly. This one measures it against fiber -- the published ``edges`` collection carries
-    every fiber segment the design ordered, so the shortest way between the two sites is
+    every fiber segment the synthesis ordered, so the shortest way between the two sites is
     recomputable from outside the build and the tenant's own ``max_backup_path_multiple`` can be
     applied to it without slack.
 
@@ -271,15 +273,15 @@ def test_no_published_link_wanders_past_the_fiber_its_own_network_carries(
     synthesizer publishes.
     """
     wandering = {
-        design["tenant"]: detoured_links(design)
-        for design in delivered_designs
-        if detoured_links(design)
+        synthesis["tenant"]: detoured_links(synthesis)
+        for synthesis in delivered_syntheses
+        if detoured_links(synthesis)
     }
     assert wandering == {}
 
 
 def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """No live tenant reports a site holding fewer independent links than it was asked for.
 
     A site is asked for the smaller of the tenant's own diverse-path number and the count of
@@ -295,20 +297,20 @@ def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(
     rather than answered it.
     """
     short = {
-        design["tenant"]: design["status"]["diverse_paths"]["short"]
-        for design in delivered_designs
+        synthesis["tenant"]: synthesis["status"]["diverse_paths"]["short"]
+        for synthesis in delivered_syntheses
     }
     assert {tenant: sites for tenant, sites in short.items() if sites} == {}
 
 
 def test_no_published_network_draws_a_pair_more_paths_than_its_tenant_bought(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """No two backbone sites are joined by a path that buys neither of them a path.
 
     Two sites that are joined are joined once, and a second path between them earns its
     monthly cost only where a single city's loss would not take it along with the first. So
     each pair's longest path is set aside and both ends are measured without it (see
-    ``test_published_designs.overbuilt_pairs``): where neither end loses a way out it was
+    ``test_published_syntheses.overbuilt_pairs``): where neither end loses a way out it was
     asked for, nobody needed the path. Twenty-one pairs across DAF, F-35, AFGSC and
     Minuteman were of that kind, 17,013 path miles of them, and passed here while this
     counted paths against the tenant's number instead (GitHub issue #59).
@@ -326,15 +328,15 @@ def test_no_published_network_draws_a_pair_more_paths_than_its_tenant_bought(
     now, which is the finding.
     """
     overbuilt = {
-        design["tenant"]: overbuilt_pairs(design)
-        for design in delivered_designs
-        if overbuilt_pairs(design)
+        synthesis["tenant"]: overbuilt_pairs(synthesis)
+        for synthesis in delivered_syntheses
+        if overbuilt_pairs(synthesis)
     }
     assert overbuilt == {}
 
 
 def test_no_published_network_holds_a_path_that_buys_nobody_a_diverse_path(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """No published path could be taken out with every site and every city no worse off.
 
     A path is fiber the operator holds and pays for every month, and it earns that only
@@ -342,7 +344,7 @@ def test_no_published_network_holds_a_path_that_buys_nobody_a_diverse_path(
     its tenant asked for, a site its place in the one network the backbone is, or the
     fiber the standing it has against the loss of any one city. So each path is taken out
     in turn and what remains is put to those three demands (see
-    ``test_published_designs.removable_paths``); a path all three still hold without is a
+    ``test_published_syntheses.removable_paths``); a path all three still hold without is a
     path nobody needed.
 
     This is the assertion that would have reported the 54 paths against the six real maps
@@ -350,70 +352,70 @@ def test_no_published_network_holds_a_path_that_buys_nobody_a_diverse_path(
     and it goes on reporting as the maps grow and tenants are added (GitHub issue #60).
     The nine questions asked before it each judge one path on its own: is this one inside
     the tenant's backup path multiple, is this one the shortest way over the fiber the
-    design ordered. A network can hold any number of unneeded paths and answer yes to every
+    synthesis ordered. A network can hold any number of unneeded paths and answer yes to every
     one of them. The tenth is the only one that judges a path against the rest of the
-    design, and it examines only pairs of sites holding more than one path between them
+    synthesis, and it examines only pairs of sites holding more than one path between them
     (GitHub issue #59), while all 54 are the only path between their two sites, so it never
     looked at one of them.
     """
-    spare = {design["tenant"]: removable_paths(design) for design in delivered_designs}
+    spare = {synthesis["tenant"]: removable_paths(synthesis) for synthesis in delivered_syntheses}
     assert {tenant: paths for tenant, paths in spare.items() if paths} == {}
 
 
 def test_no_published_network_runs_more_than_twice_the_fewest_miles_it_could_have(
-        delivered_designs: list[dict[str, Any]]) -> None:
+        delivered_syntheses: list[dict[str, Any]]) -> None:
     """Every published network ordered at most twice the fiber miles it could have ordered.
 
-    Each build publishes the floor its own design is judged against. ``lower_bound_miles``
+    Each build publishes the floor its own synthesis is judged against. ``lower_bound_miles``
     is the optimum of the linear-programming relaxation the build solved, which is the
-    fewest miles of fiber any design meeting the same tenant's requirements could run, and
-    holding the fiber the design ordered against it turns "the design is close to the
+    fewest miles of fiber any synthesis meeting the same tenant's requirements could run, and
+    holding the fiber the synthesis ordered against it turns "the synthesis is close to the
     shortest one there is" from a claim about an algorithm into a statement a test can make
     on the six real maps (GitHub issue #60).
 
     That is the half an approximation cannot report about itself. The factor of two is a
     property of the method rather than of the code that runs it, so an implementation that
-    has lost the guarantee through a defect goes on publishing designs that look perfectly
+    has lost the guarantee through a defect goes on publishing syntheses that look perfectly
     well formed from every other angle -- which is how 54 paths buying nobody a diverse
     path stayed invisible from out here. This is where it shows, and the finding names the
     tenant, the miles it ordered and the floor it ordered them against.
     """
     assert _tenants_outside(
-        delivered_designs, lambda miles, floor, _slack: miles <= 2 * floor
+        delivered_syntheses, lambda miles, floor, _slack: miles <= 2 * floor
     ) == {}
 
 
 def test_no_published_network_runs_fewer_miles_than_the_floor_it_publishes(
-        delivered_designs: list[dict[str, Any]]) -> None:
-    """Every published network ordered at least the fiber miles it says no design can go below.
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    """Every published network ordered at least the fiber miles it says no synthesis can go below.
 
-    ``lower_bound_miles`` is the fewest miles any design meeting that tenant's requirements
-    could run, so a design below it is not a design that came in under target -- it is
-    arithmetic that has come apart, and the only thing it can mean is that the design does
+    ``lower_bound_miles`` is the fewest miles any synthesis meeting that tenant's requirements
+    could run, so a synthesis below it is not a synthesis that came in under target -- it is
+    arithmetic that has come apart, and the only thing it can mean is that the synthesis does
     not meet the requirements it was built for. An operator reading such a network has been
     handed one that does not do what they asked, with nothing on it saying so.
 
     This is the direction the assertion above does not test, and the two are not
-    interchangeable. That one fires when a design runs too long, and it caught Two-Node at
+    interchangeable. That one fires when a synthesis runs too long, and it caught Two-Node at
     2.078 times its floor.
 
     It is held to the precision the two numbers are published at, which ``_rounding_slack``
     works out. Two-Node and Minuteman both land exactly on their floors now and both publish
     a total one thousandth of a mile under them, because the floor is rounded once and the
     ordered miles are rounded segment by segment and then added up. Landing on the floor is
-    the best a design can do, so reading that as a shortfall would fail the very networks
+    the best a synthesis can do, so reading that as a shortfall would fail the very networks
     this exists to pass.
 
     What it can catch is bounded by which floor a tenant publishes, and that is worth being
     exact about. Both numbers come out of the same search, so while the search was being cut
-    off early the published floor was too low and moved with the design that was too small:
+    off early the published floor was too low and moved with the synthesis that was too small:
     F-35 published 6,664.009 miles against a published floor of 6,359.323 and passes here,
-    though a finished search floors it at 7,772.795 and the delivered design was 1,108.786
-    miles below the fewest miles any working design could hold. So this would not have
+    though a finished search floors it at 7,772.795 and the delivered synthesis was 1,108.786
+    miles below the fewest miles any working synthesis could hold. So this would not have
     caught F-35 as it stood, and GitHub issue #63 was wrong to say it would. It bites from
     the moment that search is allowed to finish, because the floor a tenant publishes is
-    then the real one and a design under it is arithmetic that has come apart.
+    then the real one and a synthesis under it is arithmetic that has come apart.
     """
     assert _tenants_outside(
-        delivered_designs, lambda miles, floor, slack: miles >= floor - slack
+        delivered_syntheses, lambda miles, floor, slack: miles >= floor - slack
     ) == {}

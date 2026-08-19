@@ -7,7 +7,7 @@
 The substrate is just every carrier's points and connections unioned, each row tagged
 with the carrier it came from (taken from its endpoint path) so a connection resolves to
 its own carrier's points. Cross-carrier colocation is resolved later, per tenant, by the
-synthesizer. So the merge needs no design logic and stays a self-contained (stdlib +
+synthesizer. So the merge needs no synthesis logic and stays a self-contained (stdlib +
 boto3) single-file Lambda.
 """
 

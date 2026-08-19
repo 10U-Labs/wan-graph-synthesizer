@@ -6,14 +6,14 @@ and every step from the path proof to the validation report has to agree that tw
 over the one pair are the two paths asked for.
 
 No one unit can show that. The proof, the selection, the routing, the resilience repair and
-the report each looked right on their own while the design they made together carried five
+the report each looked right on their own while the synthesis they made together carried five
 paths between Ashburn, VA and Salt Lake City, UT against a tenant asking for one path and
 was reported as meeting it (GitHub issue #58). So the whole pipeline is run here and the
-finished design is asserted.
+finished synthesis is asserted.
 
 The fiber joins the two sites three ways that share no city, at 200, 400 and 1,800 miles.
 Three is more than the tenant asked for, which is what makes the count worth asserting: a
-design that treats the number as a floor takes all three, and one that stops at a single
+synthesis that treats the number as a floor takes all three, and one that stops at a single
 path and repairs it afterwards takes two paths plus a detour per single point of failure city. The
 1,800-mile way round is there so that which two were taken can be asserted as well as how
 many.
@@ -36,13 +36,13 @@ _SEGMENTS = {
     ("a", "long"): 900.0, ("long", "b"): 900.0,
 }
 _TRANSIT = ("north", "south", "long")
-ARTIFACTS = fixtures.design_over_segments(_SITES, _SEGMENTS, _ASKED_FOR, _TRANSIT)
+ARTIFACTS = fixtures.synthesis_over_segments(_SITES, _SEGMENTS, _ASKED_FOR, _TRANSIT)
 _MESH = fixtures.mesh_paths(ARTIFACTS)
 
 
 def test_the_backbone_is_the_two_sites() -> None:
     """Only the two sites sit at data-center cities, so the transit cities take no seat."""
-    assert sorted(ARTIFACTS.design.backbone_ids) == ["a", "b"]
+    assert sorted(ARTIFACTS.synthesis.backbone_ids) == ["a", "b"]
 
 
 def test_the_pair_is_drawn_with_the_paths_the_tenant_asked_for() -> None:
@@ -65,9 +65,9 @@ def test_both_paths_are_ones_the_two_sites_reached_for_themselves() -> None:
     """Two paths over one pair is what a two-site backbone asking for two paths buys.
 
     There was a fifth reason a path could carry until GitHub issue #60 -- a detour added
-    afterwards to keep a city off the only path -- and a design that drew one path and then
+    afterwards to keep a city off the only path -- and a synthesis that drew one path and then
     repaired it would have shown up here as that reason rather than as the tenant's own
-    number. The fiber is chosen for the whole design at once now, so the two paths are the
+    number. The fiber is chosen for the whole synthesis at once now, so the two paths are the
     two the sites were bought and neither is a repair of the other.
     """
     assert [use.reason for use in _MESH] == [LINK_FOR_TARGET, LINK_FOR_TARGET]

@@ -1,4 +1,4 @@
-"""Integration test: a design that falls into two groups is refused, not published.
+"""Integration test: a synthesis that falls into two groups is refused, not published.
 
 A published WAN is what an operator builds from, so one whose sites cannot all reach each
 other is worse than no WAN at all: it reads as a finished national network and carries no
@@ -13,9 +13,9 @@ real config assembly and the real ``finalize``, and what is asserted is what the
 afterwards.
 
 The carrier map is two triangles no fiber joins -- three cities in Virginia and three in
-Utah -- and the design bought every segment of it. Each site therefore holds the two
+Utah -- and the synthesis bought every segment of it. Each site therefore holds the two
 independently failing links its tenant asks for, inside its own triangle, which is what
-makes the case worth driving: every other finding in the report passes and the design is
+makes the case worth driving: every other finding in the report passes and the synthesis is
 still two networks.
 """
 
@@ -31,13 +31,13 @@ from repo_utils import REPO_ROOT
 from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
 from synthesizer.input_graph import PhysicalEdge, Vertex
-from synthesizer.model import Design, DesignMetrics, is_carrier_pop
+from synthesizer.model import Synthesis, SynthesisMetrics, is_carrier_pop
 
 _PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/post/lambdas/synthesizer/handler.py"
 _TENANT = "split"
 
 # Three cities in Virginia and three in Utah, each triangle wired to itself and to nothing
-# else, so no design over this map can be one network.
+# else, so no synthesis over this map can be one network.
 _CITIES = {
     "Ashburn": ("VA", 39.0438, -77.4874),
     "Sterling": ("VA", 39.0062, -77.4286),
@@ -77,7 +77,7 @@ def _fiber_rows() -> list[dict[str, Any]]:
 
 # The six resources naming sites and links the operator has pinned, prohibited or excused.
 # This tenant pins nothing, so each is delivered as the empty document seed writes for a
-# config that names nobody, and the design is left to the map.
+# config that names nobody, and the synthesis is left to the map.
 _NAMES_NOBODY = (
     "forced-backbone-nodes",
     "forced-connections",
@@ -124,16 +124,16 @@ def _store() -> dict[str, bytes]:
     return {key: json.dumps(value).encode("utf-8") for key, value in objects.items()}
 
 
-def _design_over_every_segment(
+def _synthesis_over_every_segment(
     vertices: list[Vertex], physical_edges: dict[tuple[str, str], PhysicalEdge], *_rest: Any
-) -> Design:
-    """A design seating every carrier point and buying every segment of fiber on offer.
+) -> Synthesis:
+    """A synthesis seating every carrier point and buying every segment of fiber on offer.
 
     This stands in for the fiber choice, which is the step a split comes out of: the map
     holds no fiber between the two triangles, so the segments bought leave the six sites in
     two groups however many of them are taken.
     """
-    return Design(
+    return Synthesis(
         backbone_ids=tuple(
             sorted(vertex.id for vertex in vertices if is_carrier_pop(vertex))
         ),
@@ -141,7 +141,7 @@ def _design_over_every_segment(
         access_edges=[],
         physical_edge_keys=set(physical_edges),
         path_uses=[],
-        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+        metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
 
 
@@ -150,22 +150,22 @@ def store_fixture(monkeypatch: pytest.MonkeyPatch) -> dict[str, bytes]:
     """Run the whole build over the two-triangle map and return the store it left behind."""
     monkeypatch.setenv("STORE_BUCKET", "test-bucket")
     module = load_module_from_path("split_backbone_handler", _PATH)
-    monkeypatch.setattr(module, "synthesize_two_tier_design", _design_over_every_segment)
+    monkeypatch.setattr(module, "synthesize_two_tier", _synthesis_over_every_segment)
     objects = _store()
     with patch("boto3.client", return_value=fake_s3(objects)):
         module.lambda_handler({"tenant": _TENANT}, None)
     return objects
 
 
-def test_a_design_in_two_groups_publishes_no_wan(store: dict[str, bytes]) -> None:
+def test_a_synthesis_in_two_groups_publishes_no_wan(store: dict[str, bytes]) -> None:
     """The build writes no WAN, so no operator is ever handed the two-piece network."""
     assert f"tenants/{_TENANT}/wan.json" not in store
 
 
-def test_the_recorded_reason_names_the_groups_the_design_fell_into(
+def test_the_recorded_reason_names_the_groups_the_synthesis_fell_into(
     store: dict[str, bytes]
 ) -> None:
-    """The ``fail`` status says the design fell into two groups, not merely that it failed.
+    """The ``fail`` status says the synthesis fell into two groups, not merely that it failed.
 
     Without this the test above would pass just as well on a build that died loading its
     own inputs, and the gate would be unproven.

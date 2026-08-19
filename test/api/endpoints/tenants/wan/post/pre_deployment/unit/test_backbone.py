@@ -1,18 +1,18 @@
 """Unit tests for the paths a backbone is drawn with over the fiber it was chosen with.
 
 ``synthesizer.backbone`` no longer decides anything one pair of sites at a time. The fiber
-is chosen for the whole design at once by ``synthesizer.survivable``, each site's ways out
+is chosen for the whole synthesis at once by ``synthesizer.survivable``, each site's ways out
 are read off that fiber, and every path nobody needs is taken back out. So the cases here
 are about the finished list of paths rather than about the order four passes ran in: which
 pairs ended up joined, which fiber each path took, and which paths were dropped again.
 
 Two graphs carry almost all of it. The square is four sites on a ring of hundred-mile
-segments with two chords at two hundred and fifty, so the only design that gives every site
+segments with two chords at two hundred and fifty, so the only synthesis that gives every site
 two ways out is the ring itself and both the count and the mileage are forced. The
 shared-egress graph is the shape GitHub issue #60 is about: the fewest-mile way from ``hub``
 to ``q`` runs through ``m``, which is a city ``hub`` already stands on to reach ``p``, and a
-slightly longer way through ``n`` does not. A design that decides one pair at a time takes
-the shorter way and leaves ``hub`` with one way out; a design that chooses the whole thing
+slightly longer way through ``n`` does not. A synthesis that decides one pair at a time takes
+the shorter way and leaves ``hub`` with one way out; a synthesis that chooses the whole thing
 at once takes the longer one.
 """
 
@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import fixtures
 from synthesizer.input_graph import PhysicalEdge, edge_key
-from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, DesignPath
+from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, SynthesisPath
 from synthesizer.backbone import (
     BackboneConstraints,
     BackboneMesh,
@@ -57,7 +57,7 @@ def _mesh_miles(mesh: BackboneMesh) -> float:
     return sum(use.distance_miles for use in mesh.paths)
 
 
-def _joining(mesh: BackboneMesh, left: str, right: str) -> DesignPath:
+def _joining(mesh: BackboneMesh, left: str, right: str) -> SynthesisPath:
     """The path the mesh drew between one pair of sites."""
     return next(
         use
@@ -104,9 +104,9 @@ def test_the_square_runs_the_fewest_miles_its_fiber_allows() -> None:
 
 
 def test_the_square_publishes_the_floor_it_was_judged_against() -> None:
-    """The fewest miles any design meeting the same requirements could run is four hundred.
+    """The fewest miles any synthesis meeting the same requirements could run is four hundred.
 
-    Each of the four sites needs two ways out, so the segments the design holds add to at
+    Each of the four sites needs two ways out, so the segments the synthesis holds add to at
     least four however they are shared out, and the four shortest are the ring.
     """
     assert round(_SQUARE.lower_bound_miles, 3) == 400.0
@@ -118,7 +118,7 @@ def test_the_square_runs_no_further_than_twice_the_floor() -> None:
 
 
 def test_every_path_the_square_draws_says_a_site_reached_for_it() -> None:
-    """No path is in the design on the tool's own account; each one answers a site's number."""
+    """No path is in the synthesis on the tool's own account; each one answers a site's number."""
     assert {use.reason for use in _SQUARE.paths} == {LINK_FOR_TARGET}
 
 
@@ -140,7 +140,7 @@ def test_no_path_the_square_holds_could_be_taken_back_out() -> None:
 # miles a segment, and reaches ``q`` again through ``n`` at eleven. Drawing hub-to-q on its
 # own takes the twenty-mile way through ``m``, which leaves both of hub's paths riding one
 # city; the twenty-two-mile way through ``n`` is the one that gives hub a second way out. The
-# p-to-q segment closes the ring, so a whole-design choice buys five segments and 52 miles.
+# p-to-q segment closes the ring, so a whole-synthesis choice buys five segments and 52 miles.
 _EGRESS_SITES = ("hub", "p", "q")
 _EGRESS_EDGES = physical({
     ("hub", "m"): 10.0, ("m", "p"): 10.0, ("m", "q"): 10.0,
@@ -157,13 +157,13 @@ def test_the_longer_way_round_a_shared_city_is_the_one_drawn() -> None:
     This is the narrowest statement of the defect. The way through ``m`` is shorter and is
     built from a segment hub's path to ``p`` already rides, so taking it would leave one
     city's loss taking both of hub's paths. Deciding the pair on its own cannot see that;
-    deciding the whole design can.
+    deciding the whole synthesis can.
     """
     assert ("hub", "n", "q") in {use.path for use in _EGRESS.paths}
 
 
 def test_the_shorter_way_round_that_shared_city_is_not_bought_at_all() -> None:
-    """The m-to-q segment is fiber the finished design never orders."""
+    """The m-to-q segment is fiber the finished synthesis never orders."""
     assert edge_key("m", "q") not in {
         edge_key(*pair) for use in _EGRESS.paths for pair in zip(use.path, use.path[1:])
     }
@@ -174,19 +174,19 @@ def test_the_shared_egress_graph_joins_all_three_pairs_once() -> None:
     assert len(_EGRESS.paths) == 3
 
 
-def test_the_shared_egress_design_runs_the_miles_its_five_segments_cost() -> None:
+def test_the_shared_egress_synthesis_runs_the_miles_its_five_segments_cost() -> None:
     """Fifty-two miles, which is the five segments the choice bought read back as paths."""
     assert _mesh_miles(_EGRESS) == 52.0
 
 
-def test_no_path_the_shared_egress_design_holds_could_be_taken_back_out() -> None:
+def test_no_path_the_shared_egress_synthesis_holds_could_be_taken_back_out() -> None:
     """Every one of the three paths is the second way out of one of the three sites."""
     assert _needed(_EGRESS.paths, _EGRESS_SITES, 2) == _EGRESS.paths
 
 
 # The square again with one pair struck out by the operator, and again with one pinned. A
 # pruned pair is a pair no path may end at, and a pinned pair is one that is joined whatever
-# the choice of fiber said; the chord is pinned rather than a ring segment because no design
+# the choice of fiber said; the chord is pinned rather than a ring segment because no synthesis
 # over this graph reaches for it, so what the pin does cannot be mistaken for what the
 # choice would have done anyway.
 _PRUNED = _drawn(_SQUARE_SITES, _SQUARE_EDGES, BackboneConstraints(
@@ -211,7 +211,7 @@ def test_a_pruned_pair_leaves_the_rest_of_the_backbone_drawn() -> None:
 
 
 def test_a_pinned_pair_is_joined_however_the_fiber_was_chosen() -> None:
-    """No design over this graph reaches for the chord, so the pin is what joins the pair."""
+    """No synthesis over this graph reaches for the chord, so the pin is what joins the pair."""
     assert edge_key("w", "y") in _pairs(_PINNED_CHORD)
 
 
@@ -230,13 +230,13 @@ def test_a_pinned_path_is_never_taken_back_out_as_unneeded() -> None:
     assert len(_PINNED_CHORD.paths) == 5
 
 
-def test_a_pin_over_fiber_the_design_would_have_bought_anyway_is_still_a_pin() -> None:
+def test_a_pin_over_fiber_the_synthesis_would_have_bought_anyway_is_still_a_pin() -> None:
     """The pinned pair is one the ring joins too, and the pin is what the path is recorded as."""
     assert _joining(_PINNED_SEGMENT, "w", "x").reason == LINK_FOR_PIN
 
 
 # Two sites the carrier's fiber never joins, pinned together by an operator who was wrong
-# about the map. It is the one thing a pin cannot ask for, and the design says so by drawing
+# about the map. It is the one thing a pin cannot ask for, and the synthesis says so by drawing
 # nothing rather than by failing.
 _ISLANDS = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
 _ISLAND_PIN = _drawn(("a", "c"), _ISLANDS, BackboneConstraints(
@@ -250,7 +250,7 @@ def test_a_backbone_the_fiber_never_joins_is_drawn_with_no_paths() -> None:
 
 
 def test_a_backbone_the_fiber_never_joins_is_floored_at_nothing() -> None:
-    """There is no fiber to choose from, so the fewest miles any design could run is none."""
+    """There is no fiber to choose from, so the fewest miles any synthesis could run is none."""
     assert _ISLAND_PIN.lower_bound_miles == 0.0
 
 
@@ -266,13 +266,13 @@ def test_path_geometry_miles_adds_up_the_segments_a_path_crosses() -> None:
     assert path_geometry_miles(("w", "x", "y"), _SQUARE_EDGES) == 200.0
 
 
-# Four hand-built designs the assembly would never produce, each one holding a path that has
+# Four hand-built syntheses the assembly would never produce, each one holding a path that has
 # to be judged on a different ground. Written out rather than synthesized because each is a
-# design some other fiber choice could hand over, and the test is what the judgement does
+# synthesis some other fiber choice could hand over, and the test is what the judgement does
 # with it rather than how it came to be.
-def _use(source: str, target: str, path: tuple[str, ...], miles: float) -> DesignPath:
+def _use(source: str, target: str, path: tuple[str, ...], miles: float) -> SynthesisPath:
     """One drawn path between two sites, over the cities named."""
-    return DesignPath("backbone_mesh", source, target, path, miles)
+    return SynthesisPath("backbone_mesh", source, target, path, miles)
 
 
 _RING_PLUS_CHORD = [
@@ -324,11 +324,11 @@ def test_a_path_whose_loss_would_break_the_backbone_in_two_is_kept() -> None:
     assert _needed(_CHAIN, ("a", "b", "c", "d"), 1) == _CHAIN
 
 
-def test_a_design_that_never_survived_a_city_loss_is_not_held_to_surviving_one() -> None:
+def test_a_synthesis_that_never_survived_a_city_loss_is_not_held_to_surviving_one() -> None:
     """A chain cannot survive any city's loss, so that cannot be a reason to keep a path.
 
     Read the other way round, this is what keeps the judgement honest on the fiber a site
-    behind a single point of failure really has: a design that never survived a city's loss
+    behind a single point of failure really has: a synthesis that never survived a city's loss
     is not made to keep a path on the pretence that it did.
     """
     doubled = [*_CHAIN, _use("a", "b", ("a", "b"), 9.0)]

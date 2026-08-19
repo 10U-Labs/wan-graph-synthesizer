@@ -1,4 +1,4 @@
-"""Resolve the WAN designer configuration from an already-parsed mapping.
+"""Resolve the WAN synthesizer configuration from an already-parsed mapping.
 
 Everything the operator tunes -- the input paths, the role pins and exclusions,
 the backbone count, and the algorithm dials -- arrives as one parsed mapping (the
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from synthesizer.model import (
-    DesignParams,
+    SynthesisParams,
     InputFiles,
     NamedLink,
     OperatorLinks,
@@ -38,7 +38,7 @@ DEFAULT_REGIONAL_EDGES = ["data/edges/dcn.csv", "data/edges/vision_net.csv"]
 
 @dataclass(frozen=True)
 class AppConfig:
-    """A fully resolved configuration: file paths, design params, pinned edges.
+    """A fully resolved configuration: file paths, synthesis params, pinned edges.
 
     ``links`` carries the three lists of operator-written links -- pinned mesh pairs,
     forced homes, and pruned mesh pairs -- each still named rather than resolved to ids,
@@ -46,7 +46,7 @@ class AppConfig:
     """
 
     input_files: InputFiles
-    params: DesignParams
+    params: SynthesisParams
     restrict_backbone_to_datacenters: bool  # required; the handler maps it to a gate or None
     label: str = ""
     links: OperatorLinks = field(default_factory=OperatorLinks)
@@ -92,7 +92,7 @@ def _required_int(data: dict[str, Any], key: str) -> int:
     required on the same terms -- every tenant must state how far the backbone must
     grow to cover its demand -- and is an integer because the growth stop test
     compares it against a great-circle haul standing in for a last-mile build, which
-    is wrong by tens of miles, so a fraction of one states a resolution the design
+    is wrong by tens of miles, so a fraction of one states a resolution the synthesis
     does not have.
     """
     if key not in data:
@@ -113,10 +113,10 @@ def _required_ratio(data: dict[str, Any], key: str) -> float:
 
     A ratio rather than a mileage, so a fraction is meaningful here where it is not on the
     coverage target -- the number multiplies a distance instead of standing in for one, and
-    2.5 states a real bound rather than a precision the design does not have.
+    2.5 states a real bound rather than a precision the synthesis does not have.
 
     At or below one the bound admits nothing but the shortest path. That is not a tight
-    bound but a contradiction: a protect path is a detour by definition, so every design
+    bound but a contradiction: a protect path is a detour by definition, so every synthesis
     would be refused rather than bounded, and an operator writing it has not meant to
     forbid path diversity outright.
     """
@@ -130,14 +130,14 @@ def _required_ratio(data: dict[str, Any], key: str) -> float:
     return float(value)
 
 
-def _connection_list(design: dict[str, Any], key: str) -> tuple[NamedLink, ...]:
+def _connection_list(synthesis: dict[str, Any], key: str) -> tuple[NamedLink, ...]:
     """Parse one list of operator connection mappings, rejecting bad shapes.
 
     Each entry maps string ``source``/``target`` and nothing else: the key it is written
     under says which tier it acts on, so there is nothing left for the entry to declare.
     An absent ``key`` defaults to an empty list (no connections).
     """
-    value = design.get(key, [])
+    value = synthesis.get(key, [])
     if not isinstance(value, list):
         raise ValueError(f"config key '{key}' must be a list")
     connections: list[NamedLink] = []
@@ -150,7 +150,7 @@ def _connection_list(design: dict[str, Any], key: str) -> tuple[NamedLink, ...]:
     return tuple(connections)
 
 
-def _operator_links(design: dict[str, Any]) -> OperatorLinks:
+def _operator_links(synthesis: dict[str, Any]) -> OperatorLinks:
     """Parse the three lists of operator-written links, one per tier they act on.
 
     ``forced_connections`` pins mesh pairs, ``forced_homes`` pins a demand vertex onto a
@@ -159,9 +159,9 @@ def _operator_links(design: dict[str, Any]) -> OperatorLinks:
     tiers differ in how the names are resolved, which is the overrides layer's job.
     """
     return OperatorLinks(
-        backbone=_connection_list(design, "forced_connections"),
-        access=_connection_list(design, "forced_homes"),
-        removed_backbone=_connection_list(design, "excluded_connections"),
+        backbone=_connection_list(synthesis, "forced_connections"),
+        access=_connection_list(synthesis, "forced_homes"),
+        removed_backbone=_connection_list(synthesis, "excluded_connections"),
     )
 
 
@@ -223,7 +223,7 @@ def _sector_count(settings: dict[str, Any], default: int) -> int:
     The count both cuts the compass into sectors and divides the sector tally in the
     strength score, so zero is a division by zero and a fraction is a sector geometry
     nothing can produce. Parse time is the only place either can be refused before a
-    design run starts.
+    synthesis run starts.
     """
     value = settings.get("compass_sector_count", default)
     if not isinstance(value, int) or isinstance(value, bool) or value < 1:
@@ -239,7 +239,7 @@ def _memory_share(settings: dict[str, Any], default: float) -> float:
     exists to prevent, reached by changing the setting meant to prevent it. At 0 every
     backbone size is refused with an error that talks about a RAM budget and never
     mentions configuration. Parse time is the only point either can be refused before a
-    design run starts; failing inside ``enumeration_limit`` would waste the graph load.
+    synthesis run starts; failing inside ``enumeration_limit`` would waste the graph load.
     """
     value = settings.get("backbone_search_memory_share", default)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -261,7 +261,7 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
     so it falls back to the dataclass default rather than quietly continuing to steer
     the search. A settings document carrying a key the resource does not define -- a
     typo, or a name from before a rename -- is refused outright, since defaulting past
-    it would run the design on values nobody chose (see :func:`_checked_settings`).
+    it would run the synthesis on values nobody chose (see :func:`_checked_settings`).
     """
     base = Tuning()
     settings = _checked_settings(settings)
@@ -285,21 +285,21 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
 
 
 def _params(
-    design: dict[str, Any], tuning: dict[str, Any], settings: dict[str, Any]
-) -> DesignParams:
-    """Resolve the design, tuning and settings configuration into :class:`DesignParams`."""
-    base = DesignParams()
-    return DesignParams(
-        min_backbone_count=design.get("min_backbone_count", base.min_backbone_count),
-        max_backbone_count=design.get("max_backbone_count", base.max_backbone_count),
-        forced_backbone_names=_str_list(design, "forced_backbone", []),
-        degree_exempt_backbone_names=_str_list(design, "degree_exempt_backbone", []),
+    synthesis: dict[str, Any], tuning: dict[str, Any], settings: dict[str, Any]
+) -> SynthesisParams:
+    """Resolve the synthesis, tuning and settings configuration into :class:`SynthesisParams`."""
+    base = SynthesisParams()
+    return SynthesisParams(
+        min_backbone_count=synthesis.get("min_backbone_count", base.min_backbone_count),
+        max_backbone_count=synthesis.get("max_backbone_count", base.max_backbone_count),
+        forced_backbone_names=_str_list(synthesis, "forced_backbone", []),
+        degree_exempt_backbone_names=_str_list(synthesis, "degree_exempt_backbone", []),
         exclusions=RoleExclusions(
-            prohibited_backbone_names=_str_list(design, "prohibited_backbone", []),
+            prohibited_backbone_names=_str_list(synthesis, "prohibited_backbone", []),
         ),
         tuning=_tuning(tuning, settings),
         promote_high_degree_convergences=_required_bool(
-            design, "promote_high_degree_convergences_to_backbone_nodes"
+            synthesis, "promote_high_degree_convergences_to_backbone_nodes"
         ),
     )
 
@@ -311,15 +311,15 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
     partial (even empty) mapping still yields a valid configuration. ``datacenter_cities``
     is threaded by the synthesizer handler, not parsed from these documents.
     """
-    design = _mapping(data, "design")
+    synthesis = _mapping(data, "synthesis")
     return AppConfig(
         input_files=_input_files(_mapping(data, "inputs")),
-        params=_params(design, _mapping(data, "tuning"), _mapping(data, "settings")),
+        params=_params(synthesis, _mapping(data, "tuning"), _mapping(data, "settings")),
         restrict_backbone_to_datacenters=_required_bool(
-            design, "restrict_backbone_to_data_centers"
+            synthesis, "restrict_backbone_to_data_centers"
         ),
         label=str(data.get("label", "")),
-        links=_operator_links(design),
+        links=_operator_links(synthesis),
     )
 
 
@@ -353,7 +353,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     from the merged carriers, not from these documents.
     """
     count = _mapping(parts, "backbone-node-count")
-    design: dict[str, Any] = {
+    synthesis: dict[str, Any] = {
         "forced_backbone": parts.get("forced-backbone-nodes", []),
         "degree_exempt_backbone": parts.get("degree-exempt-backbone-nodes", []),
         "prohibited_backbone": parts.get("prohibited-backbone-nodes", []),
@@ -363,14 +363,14 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     }
     placement = _mapping(parts, "backbone-placement")
     if "restrict" in placement:
-        design["restrict_backbone_to_data_centers"] = placement["restrict"]
+        synthesis["restrict_backbone_to_data_centers"] = placement["restrict"]
     promotion = _mapping(parts, "convergence-promotion")
     if "promote" in promotion:
-        design["promote_high_degree_convergences_to_backbone_nodes"] = promotion["promote"]
+        synthesis["promote_high_degree_convergences_to_backbone_nodes"] = promotion["promote"]
     if "min" in count:
-        design["min_backbone_count"] = count["min"]
+        synthesis["min_backbone_count"] = count["min"]
     if "max" in count:
-        design["max_backbone_count"] = count["max"]
+        synthesis["max_backbone_count"] = count["max"]
     tuning = {
         **_mapping(parts, "knobs"),
         "backbone_number_of_diverse_paths": _degree(parts, "backbone-number-of-diverse-paths"),
@@ -379,7 +379,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     label = parts.get("label", {})
     label_text = label.get("label", "") if isinstance(label, dict) else str(label)
     return config_from_data({
-        "design": design,
+        "synthesis": synthesis,
         "tuning": tuning,
         "settings": _mapping(parts, "settings"),
         "label": label_text,

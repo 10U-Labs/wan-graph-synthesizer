@@ -1,24 +1,24 @@
 """Integration test: how far a whole synthesis will path a link to make it diverse.
 
 The unit tier can show the proof refuses a path past the operator's backup path multiple. It
-cannot show the refusal survives the pipeline: the fiber for the whole design is chosen
+cannot show the refusal survives the pipeline: the fiber for the whole synthesis is chosen
 first, over the segments the bound leaves usable, and the paths are read off that fiber
 afterwards -- two steps that could each put the crossing back. So the same graph is run
-through the whole design here and the drawn links are asserted rather than the proof.
+through the whole synthesis here and the drawn links are asserted rather than the proof.
 
 The first graph is ``fixtures.CROSSING_EDGES``: three sites twenty miles apart overland
 through ``pdx``, and a thousand miles apart through ``tok`` offshore. Every overland path
 shares ``pdx``, so the crossing is the only thing that makes a second link independent, and
-a design that will buy diversity at any price takes it.
+a synthesis that will buy diversity at any price takes it.
 
 The second is ``fixtures.DISTANT_PEER_EDGES``, and it is here for the other half of the
 question: whether the count and the mesh agree. The count says how many links a site should
 hold and the mesh lays them, and a site credited with a path the mesh may not lay is asked
-for a link nobody can wire -- a shortfall reported against the design that no fiber closes.
+for a link nobody can wire -- a shortfall reported against the synthesis that no fiber closes.
 Neither unit is wrong on its own, so only a tier holding both can see it (GitHub issue #45).
 
-The third is ``fixtures.EXPRESS_EDGES``, and it asks how many fiber miles the finished design
-orders. The fiber choice and the reading of paths off it are separate steps, so a design can
+The third is ``fixtures.EXPRESS_EDGES``, and it asks how many fiber miles the finished synthesis
+orders. The fiber choice and the reading of paths off it are separate steps, so a synthesis can
 choose the shorter fiber and still draw a longer path over it. Here both ways of wiring the
 ring are allowed by the bound and hold the same number of independent links, so the mileage
 is the only thing separating them (GitHub issue #57).
@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import fixtures
 from synthesizer.input_graph import PhysicalEdge, Vertex
-from synthesizer.model import DesignArtifacts, DesignParams, Tuning
+from synthesizer.model import SynthesisArtifacts, SynthesisParams, Tuning
 
 _SEATS = 3
 
@@ -38,18 +38,18 @@ def _artifacts(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     datacenter_cities: frozenset[tuple[str, str]],
     multiple: float,
-) -> DesignArtifacts:
-    """The design the whole pipeline settles on over one graph at one backup path multiple.
+) -> SynthesisArtifacts:
+    """The synthesis the whole pipeline settles on over one graph at one backup path multiple.
 
     All three sites are seated, so the question is only how their links are drawn and what
     each is held to. The convergence promotion is off and there are no demand vertices, so
     nothing grows the backbone past the three and the mesh is the whole of what the run
     decides.
     """
-    return fixtures.run_design(
+    return fixtures.run_synthesis(
         vertices,
         physical_edges,
-        DesignParams(
+        SynthesisParams(
             min_backbone_count=_SEATS,
             max_backbone_count=_SEATS,
             datacenter_cities=datacenter_cities,
@@ -61,7 +61,7 @@ def _artifacts(
     )
 
 
-def _crossing(multiple: float) -> DesignArtifacts:
+def _crossing(multiple: float) -> SynthesisArtifacts:
     """The crossing graph at one bound, which is the only thing that varies between runs."""
     return _artifacts(
         fixtures.crossing_vertices(),
@@ -87,25 +87,25 @@ EXPRESS = _artifacts(
 )
 
 
-def _cities_crossed(artifacts: DesignArtifacts) -> set[str]:
+def _cities_crossed(artifacts: SynthesisArtifacts) -> set[str]:
     """Every city the backbone's drawn mesh links pass through."""
     return {
         city
-        for use in artifacts.design.path_uses
+        for use in artifacts.synthesis.path_uses
         if use.purpose == "backbone_mesh"
         for city in use.path
     }
 
 
-def _mesh_miles(artifacts: DesignArtifacts) -> float:
-    """The fiber miles every backbone-to-backbone link in a design runs on, added up."""
+def _mesh_miles(artifacts: SynthesisArtifacts) -> float:
+    """The fiber miles every backbone-to-backbone link in a synthesis runs on, added up."""
     return sum(
-        use.distance_miles for use in artifacts.design.path_uses
+        use.distance_miles for use in artifacts.synthesis.path_uses
         if use.purpose == "backbone_mesh"
     )
 
 
-def test_the_bounded_design_paths_no_link_through_the_crossing() -> None:
+def test_the_bounded_synthesis_paths_no_link_through_the_crossing() -> None:
     """No mesh link reaches tok, though taking it is the only way to a second diverse path."""
     assert "tok" not in _cities_crossed(BOUNDED)
 
@@ -120,7 +120,7 @@ def test_a_bound_wide_enough_still_takes_the_crossing() -> None:
     assert "tok" in _cities_crossed(UNBOUNDED)
 
 
-def test_the_bounded_design_still_wires_every_site_into_one_backbone() -> None:
+def test_the_bounded_synthesis_still_wires_every_site_into_one_backbone() -> None:
     """Refusing the crossing leaves a connected mesh, not a backbone in pieces."""
     assert BOUNDED.validation["connected"]
 
@@ -145,7 +145,7 @@ def test_the_unbounded_ceiling_counts_the_crossing() -> None:
 
 
 def test_no_site_is_asked_for_a_link_the_bound_will_not_let_the_mesh_lay() -> None:
-    """The distant-peer design reports nobody short of their target of independent links.
+    """The distant-peer synthesis reports nobody short of their target of independent links.
 
     ``sea`` can hold one: both its ways out to a peer it may use run through ``pdx``, and
     the way round through ``tok`` is two thousand miles of fiber to cover twenty. Asked for
@@ -169,21 +169,22 @@ def test_the_distant_peer_ceiling_is_the_one_its_usable_fiber_carries() -> None:
     assert limited == {"sea": 1}
 
 
-def test_the_finished_design_orders_the_fewest_fiber_miles_it_can_be_wired_with() -> None:
-    """The ring design's three links run six miles in all, not the fifteen the express segments do.
+def test_the_finished_synthesis_orders_the_fewest_fiber_miles_it_can_be_wired_with() -> None:
+    """The ring synthesis's three links run six miles in all, not the fifteen the express
+    segments do.
 
-    The unit tier pins what the proof hands over; this pins that the design orders it. The
-    fiber is chosen first and the paths are read off it afterwards, and a design that bought
+    The unit tier pins what the proof hands over; this pins that the synthesis orders it. The
+    fiber is chosen first and the paths are read off it afterwards, and a synthesis that bought
     the ring and then drew an express segment anyway would cost the operator the whole saving
     while every other assertion here still passed.
     """
     assert _mesh_miles(EXPRESS) == 6.0
 
 
-def test_the_ring_design_holds_every_site_to_the_two_links_its_fiber_carries() -> None:
+def test_the_ring_synthesis_holds_every_site_to_the_two_links_its_fiber_carries() -> None:
     """Nobody comes up short, so the six miles bought the same protection fifteen would.
 
-    Without this the assertion above would pass on a design that saved its miles by wiring
+    Without this the assertion above would pass on a synthesis that saved its miles by wiring
     fewer links, which is not a saving at all: a link not laid is protection not bought, and
     the point of choosing the shorter set is that it costs the site none of its paths.
     """

@@ -9,8 +9,8 @@ answer is the fewest miles, and there is never a tie for a solver to break.
 
 The one program with no answer is the same two columns under a floor of three. Nothing is
 bought twice, so two whole segments hold two, and a row asking for more than that is a row
-no design could ever meet -- which the module raises by name rather than returning, because
-a design built on a silent zero would be fiber nobody can order.
+no synthesis could ever meet -- which the module raises by name rather than returning, because
+a synthesis built on a silent zero would be fiber nobody can order.
 
 A program can also be written a few rows at a time, because the search that writes the rows
 does not know them when it starts. That is a second way of asking the same question and it
@@ -96,7 +96,7 @@ def test_a_floor_no_amount_of_buying_could_reach_is_raised_by_name() -> None:
     Nothing is bought twice, so this is a requirement that was never capped against the fiber
     actually there. It is a defect in whoever wrote the row rather than a finding about the
     fiber, and it is raised where it happens so that the caller reads which requirement it was
-    rather than a design that quietly bought nothing.
+    rather than a synthesis that quietly bought nothing.
     """
     with pytest.raises(ValueError, match="capped against the fiber"):
         _answer((SegmentRow((_LONG, _SHORT), 3.0),))
@@ -140,10 +140,10 @@ def test_a_column_let_go_of_is_no_longer_held_whole_and_the_answer_comes_back_do
 
     A round of buying asks what the fewest miles are given the segments it has already
     settled on, so those are held at a whole segment while it runs. The floor published with
-    the finished design may take none of that for granted -- it is the fewest miles any
-    design meeting the requirements could run, whatever this particular search happened to
+    the finished synthesis may take none of that for granted -- it is the fewest miles any
+    synthesis meeting the requirements could run, whatever this particular search happened to
     buy -- so every column is let go before it is computed. A column that stayed held would
-    put the search's own choices into the number the design is judged against.
+    put the search's own choices into the number the synthesis is judged against.
     """
     growing = GrowingSegmentProgram(_TWO_COLUMNS)
     growing.add_rows(_EVERY_ROW)
@@ -191,7 +191,7 @@ def test_a_pass_that_gives_up_is_asked_again_and_comes_back_with_the_answer(
     one of them -- the 713th, over 624 segments and 5,879 rows -- never comes back at all:
     the solver has been carried through every pass before it and the basis it starts from
     has gone bad. The program itself is easy, and a solver handed it fresh answers in 0.682
-    seconds. So the tenant was recorded as ``fail`` and published no network, on a design
+    seconds. So the tenant was recorded as ``fail`` and published no network, on a synthesis
     that is there to be built, for want of asking one question twice (GitHub issue #70).
     """
     assert _out_of_time_at_once(monkeypatch).solve().miles == pytest.approx(6.0)

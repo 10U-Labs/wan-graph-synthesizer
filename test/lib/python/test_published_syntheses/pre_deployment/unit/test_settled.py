@@ -13,7 +13,7 @@ eight settings invisible (GitHub issue #47).
 
 from __future__ import annotations
 
-from test_published_designs import settled
+from test_published_syntheses import settled
 
 
 def test_a_build_the_service_has_only_accepted_is_not_settled() -> None:

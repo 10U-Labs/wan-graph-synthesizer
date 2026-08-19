@@ -12,11 +12,11 @@ from dataclasses import replace
 from typing import cast
 
 import fixtures
-from fixtures import run_design
+from fixtures import run_synthesis
 from synthesizer.input_graph import edge_key
 from synthesizer.model import (
-    DesignArtifacts,
-    DesignParams,
+    SynthesisArtifacts,
+    SynthesisParams,
     NamedLink,
     OperatorLinks,
     Tuning,
@@ -37,10 +37,10 @@ PROHIBITED = fixtures.prohibited_backbone_artifacts("P4")
 # and the ring is already 2-edge-connected without it. The link can only be the pin.
 #
 # The degree is two because each ring PoP has two fiber directions, so two links is the
-# most any of them can hold independently and a three-link design over this graph is
+# most any of them can hold independently and a three-link synthesis over this graph is
 # refused (see ``test_the_ring_cannot_meet_a_degree_its_fiber_cannot_carry``).
 _RING_BACKBONE = ("P0", "P1", "P2", "P3", "P4", "P5")
-_MESHED_RING = DesignParams(
+_MESHED_RING = SynthesisParams(
     min_backbone_count=2,
     forced_backbone_names=_RING_BACKBONE,
     datacenter_cities=fixtures.ring_datacenter_cities(),
@@ -54,7 +54,7 @@ UNFORCED_RING = fixtures.forced_link_artifacts(_MESHED_RING, OperatorLinks())
 # The same ring plus one demand vertex sitting on P0, so P0 is its nearest node and the
 # opposite P3 is its farthest. With two homes per site, distance alone never reaches P3,
 # so a home there can only be the operator's pin -- carried from the `forced-homes` list
-# through `apply_role_overrides` and into the design's access edges.
+# through `apply_role_overrides` and into the synthesis's access edges.
 _DEMAND_RING = fixtures.ring_inputs_with_demand("S1", "P0")
 FORCED_HOME = fixtures.forced_link_artifacts(
     _MESHED_RING, OperatorLinks(access=(NamedLink("S1", "P3"),)), _DEMAND_RING
@@ -62,18 +62,18 @@ FORCED_HOME = fixtures.forced_link_artifacts(
 UNFORCED_HOME = fixtures.forced_link_artifacts(_MESHED_RING, OperatorLinks(), _DEMAND_RING)
 
 
-def _homes_of(artifacts: DesignArtifacts, access_id: str) -> set[str]:
-    """The backbone nodes a demand vertex homes to in a finished design."""
+def _homes_of(artifacts: SynthesisArtifacts, access_id: str) -> set[str]:
+    """The backbone nodes a demand vertex homes to in a finished synthesis."""
     return {
-        edge.target for edge in artifacts.design.access_edges if edge.source == access_id
+        edge.target for edge in artifacts.synthesis.access_edges if edge.source == access_id
     }
 
 
-def _peers_of(artifacts: DesignArtifacts, node: str) -> set[str]:
+def _peers_of(artifacts: SynthesisArtifacts, node: str) -> set[str]:
     """Every backbone node sharing a finished mesh link with ``node``."""
     return {
         end
-        for pair in backbone_mesh_pairs(artifacts.design)
+        for pair in backbone_mesh_pairs(artifacts.synthesis)
         if node in pair
         for end in pair
         if end != node
@@ -82,12 +82,12 @@ def _peers_of(artifacts: DesignArtifacts, node: str) -> set[str]:
 
 def test_the_opposite_pair_is_never_meshed_on_its_own() -> None:
     """Without the pin the opposite pair is unmeshed, so the forced case cannot pass by luck."""
-    assert edge_key("P0", "P3") not in backbone_mesh_pairs(UNFORCED_RING.design)
+    assert edge_key("P0", "P3") not in backbone_mesh_pairs(UNFORCED_RING.synthesis)
 
 
 def test_forced_backbone_connection_appears_in_the_mesh() -> None:
     """A forced backbone-backbone connection is present in the drawn backbone mesh."""
-    assert edge_key("P0", "P3") in backbone_mesh_pairs(FORCED_BACKBONE_LINK.design)
+    assert edge_key("P0", "P3") in backbone_mesh_pairs(FORCED_BACKBONE_LINK.synthesis)
 
 
 def test_the_opposite_backbone_is_never_a_home_on_its_own() -> None:
@@ -95,14 +95,14 @@ def test_the_opposite_backbone_is_never_a_home_on_its_own() -> None:
     assert "P3" not in _homes_of(UNFORCED_HOME, "S1")
 
 
-def test_a_forced_home_is_honored_in_the_finished_design() -> None:
-    """A forced home reaches the design's access edges, over the PoP the site sits on."""
+def test_a_forced_home_is_honored_in_the_finished_synthesis() -> None:
+    """A forced home reaches the synthesis's access edges, over the PoP the site sits on."""
     assert "P3" in _homes_of(FORCED_HOME, "S1")
 
 
 def test_forced_pop_is_placed_in_the_backbone() -> None:
     """A PoP named on the force-backbone list is honored as a backbone node."""
-    assert "P3" in FORCED.design.backbone_ids
+    assert "P3" in FORCED.synthesis.backbone_ids
 
 
 def test_forced_roadm_is_seated_in_the_backbone() -> None:
@@ -111,22 +111,22 @@ def test_forced_roadm_is_seated_in_the_backbone() -> None:
     ROADMs are eligible like any other point, and a force always wins regardless; this
     is the mechanism the AFGSC Great Falls and Minot ROADM pins rely on.
     """
-    assert "P3" in FORCED_ROADM.design.backbone_ids
+    assert "P3" in FORCED_ROADM.synthesis.backbone_ids
 
 
 def test_prohibited_pop_is_kept_off_the_backbone() -> None:
     """A prohibited PoP never reaches the backbone."""
-    assert "P4" not in PROHIBITED.design.backbone_ids
+    assert "P4" not in PROHIBITED.synthesis.backbone_ids
 
 
 def test_honors_the_backbone_count_minimum() -> None:
-    """The design has at least the minimum number of backbone nodes."""
-    assert len(ARTIFACTS.design.backbone_ids) >= 2
+    """The synthesis has at least the minimum number of backbone nodes."""
+    assert len(ARTIFACTS.synthesis.backbone_ids) >= 2
 
 
 def test_degree_one_spur_is_not_a_backbone_node() -> None:
     """A degree-one spur is never selected as a backbone node."""
-    assert "P6" not in ARTIFACTS.design.backbone_ids
+    assert "P6" not in ARTIFACTS.synthesis.backbone_ids
 
 
 def test_backbone_meets_the_mesh_link_target() -> None:
@@ -134,8 +134,8 @@ def test_backbone_meets_the_mesh_link_target() -> None:
     assert ARTIFACTS.validation["backbone_meets_mesh_link_target"] is True
 
 
-def test_design_is_connected() -> None:
-    """The whole ring design validates as a single connected component."""
+def test_synthesis_is_connected() -> None:
+    """The whole ring synthesis validates as a single connected component."""
     assert ARTIFACTS.validation["connected"] is True
 
 
@@ -157,7 +157,7 @@ _RING_AT_THREE = fixtures.forced_link_artifacts(
 def test_a_degree_the_ring_cannot_carry_is_lowered_rather_than_refused() -> None:
     """Every ring PoP has two ways out, so three is a number no exemption need excuse.
 
-    A ring node's ceiling is two, so two is what it is asked for and the design the
+    A ring node's ceiling is two, so two is what it is asked for and the synthesis the
     operator wanted is built. The degree the tool cannot honour is the ground's answer,
     not a defect: refusing here used to make the operator name each node by hand.
     """
@@ -182,27 +182,27 @@ _CHORDED_PAIRS = {
 _CHORDED_BACKBONE = ("P0", "P1", "P2", "P3", "P4", "P5")
 
 
-def _chorded_design(exempt: tuple[str, ...] = ()) -> DesignArtifacts:
+def _chorded_synthesis(exempt: tuple[str, ...] = ()) -> SynthesisArtifacts:
     """Synthesize the chorded ring at three diverse paths, exempting the named nodes."""
     vertices = [
         fixtures.carrier_pop(name, *fixtures.RING_COORDS[name]) for name in _CHORDED_BACKBONE
     ]
-    params = DesignParams(
+    params = SynthesisParams(
         min_backbone_count=2,
         forced_backbone_names=_CHORDED_BACKBONE,
         degree_exempt_backbone_names=exempt,
         datacenter_cities=fixtures.ring_datacenter_cities(),
         tuning=Tuning(backbone_number_of_diverse_paths=3),
     )
-    return run_design(vertices, fixtures.physical_edges_from(_CHORDED_PAIRS), params)
+    return run_synthesis(vertices, fixtures.physical_edges_from(_CHORDED_PAIRS), params)
 
 
-EXEMPT_SPUR = _chorded_design(("P5",))
-CHORDED = _chorded_design()
+EXEMPT_SPUR = _chorded_synthesis(("P5",))
+CHORDED = _chorded_synthesis()
 
 
 def test_the_chorded_ring_is_no_longer_refused_at_its_one_spur() -> None:
-    """P5's ceiling is two, so nobody has to exempt it for the design to be built.
+    """P5's ceiling is two, so nobody has to exempt it for the synthesis to be built.
 
     This is the case the exemption list existed for and no longer has to cover: the
     shortfall was the ground's all along, and the tool can see that for itself.
@@ -228,7 +228,7 @@ def test_a_chorded_node_ends_above_the_number_because_a_peer_asked() -> None:
     it -- so what is worth pinning is that it happens, not who it happens to.
     """
     assert max(
-        diverse_path_count(CHORDED.design.path_uses, node) for node in _CHORDED_BACKBONE
+        diverse_path_count(CHORDED.synthesis.path_uses, node) for node in _CHORDED_BACKBONE
     ) > 3
 
 
@@ -256,10 +256,10 @@ def test_every_link_past_the_number_is_attributed_to_a_peer() -> None:
 def test_no_chorded_node_finishes_below_what_its_own_fiber_allows() -> None:
     """Every node ends at the smaller of the tenant degree and its ceiling, none under it.
 
-    This is the guarantee the whole pipeline owes and the one that decides whether a design
+    This is the guarantee the whole pipeline owes and the one that decides whether a synthesis
     is built at all. A node under that number is not a fact about the ground -- the ceiling
     has already given the ground its say -- so it is the tool falling short of what it can
-    see is possible, and it refuses the design over it. The mesh is built along the very
+    see is possible, and it refuses the synthesis over it. The mesh is built along the very
     paths the ceiling proved exist, so a node holds as many independent links as its own
     fiber was already known to carry, rather than as many as choosing peers by distance
     happened to leave it with.
@@ -269,12 +269,12 @@ def test_no_chorded_node_finishes_below_what_its_own_fiber_allows() -> None:
     assert [
         node
         for node in _CHORDED_BACKBONE
-        if diverse_path_count(CHORDED.design.path_uses, node) < min(3, capped.get(node, 3))
+        if diverse_path_count(CHORDED.synthesis.path_uses, node) < min(3, capped.get(node, 3))
     ] == []
 
 
-def test_exempting_the_spur_lets_the_design_finalize() -> None:
-    """With P5 exempt the mesh target is met, so the design the operator wanted is built."""
+def test_exempting_the_spur_lets_the_synthesis_finalize() -> None:
+    """With P5 exempt the mesh target is met, so the synthesis the operator wanted is built."""
     assert EXEMPT_SPUR.validation["backbone_meets_independent_mesh_link_target"] is True
 
 
@@ -292,22 +292,22 @@ def test_the_exempt_spur_picks_its_own_two_fiber_directions() -> None:
     assert {"P0", "P4"} <= _peers_of(EXEMPT_SPUR, "P5")
 
 
-def _forced_off_net_artifacts() -> DesignArtifacts:
+def _forced_off_net_artifacts() -> SynthesisArtifacts:
     """Synthesize over the ring with an off-net site forced as a backbone node."""
     site, params = fixtures.forced_off_net_case()
-    return run_design(
+    return run_synthesis(
         fixtures.ring_vertices(), fixtures.ring_physical_edges(), params, off_net_sites=[site]
     )
 
 
 def test_forced_off_net_site_is_seated_in_the_backbone() -> None:
     """A forced off-net site's local-fiber twin lands in the backbone."""
-    design = _forced_off_net_artifacts().design
-    assert any(node.startswith("offnet_") for node in design.backbone_ids)
+    synthesis = _forced_off_net_artifacts().synthesis
+    assert any(node.startswith("offnet_") for node in synthesis.backbone_ids)
 
 
-def test_off_net_design_validates_connected() -> None:
-    """A design with an off-net backbone twin validates as a connected whole."""
+def test_off_net_synthesis_validates_connected() -> None:
+    """A synthesis with an off-net backbone twin validates as a connected whole."""
     artifacts = _forced_off_net_artifacts()
     assert artifacts.validation["connected"] is True
 
@@ -318,52 +318,52 @@ NON_DATACENTER_HUB = fixtures.convergence_hub_artifacts(promote_hub=False)
 
 def test_promoted_convergence_hub_is_seated_in_the_backbone() -> None:
     """The data-center transit hub carrying >= 3 lines is promoted into the backbone."""
-    assert "hub_dc" in CONVERGENCE_HUB.design.backbone_ids
+    assert "hub_dc" in CONVERGENCE_HUB.synthesis.backbone_ids
 
 
-def test_promoted_convergence_design_validates_connected() -> None:
-    """The design with the promoted hub still validates end-to-end as connected."""
+def test_promoted_convergence_synthesis_validates_connected() -> None:
+    """The synthesis with the promoted hub still validates end-to-end as connected."""
     assert CONVERGENCE_HUB.validation["connected"] is True
 
 
 def test_convergence_promotion_reaches_a_fixpoint() -> None:
-    """The returned design is stable: a further convergence pass promotes nothing."""
+    """The returned synthesis is stable: a further convergence pass promotes nothing."""
     carrier_pops = [v for v in CONVERGENCE_HUB.vertices if is_carrier_pop(v)]
     cities = frozenset(
         (pop.info.municipality, pop.info.state) for pop in carrier_pops
     )
-    assert convergence_promotion_ids(CONVERGENCE_HUB.design, carrier_pops, cities) == set()
+    assert convergence_promotion_ids(CONVERGENCE_HUB.synthesis, carrier_pops, cities) == set()
 
 
 def test_non_data_center_convergence_hub_is_not_promoted() -> None:
     """The same >= 3-line crossing with no data center is never promoted to backbone."""
-    assert "hub_dc" not in NON_DATACENTER_HUB.design.backbone_ids
+    assert "hub_dc" not in NON_DATACENTER_HUB.synthesis.backbone_ids
 
 
 def test_non_data_center_convergence_hub_stays_transit() -> None:
-    """The unpromoted >= 3-line crossing remains a transit node in the design."""
-    assert "hub_dc" in NON_DATACENTER_HUB.design.transit_ids
+    """The unpromoted >= 3-line crossing remains a transit node in the synthesis."""
+    assert "hub_dc" in NON_DATACENTER_HUB.synthesis.transit_ids
 
 
-def _open_gate_artifacts() -> DesignArtifacts:
+def _open_gate_artifacts() -> SynthesisArtifacts:
     """Synthesize over the ring with the gate open (datacenter_cities=None) and P3 forced.
 
     ``datacenter_cities=None`` is the operator's free-for-all: no data-center set is
     supplied at all, so a forced PoP would be rejected under the default gate yet is
     accepted here. Drives the full deployed pipeline (dual-home -> overrides ->
-    synthesize -> finalize) via ``run_design``.
+    synthesize -> finalize) via ``run_synthesis``.
     """
-    params = DesignParams(
+    params = SynthesisParams(
         min_backbone_count=2, forced_backbone_names=("P3",), datacenter_cities=None
     )
-    return run_design(fixtures.ring_vertices(), fixtures.ring_physical_edges(), params)
+    return run_synthesis(fixtures.ring_vertices(), fixtures.ring_physical_edges(), params)
 
 
 def test_open_gate_seats_a_forced_non_data_center_backbone() -> None:
     """With the gate open, a forced PoP at no data-center city is seated in the backbone."""
-    assert "P3" in _open_gate_artifacts().design.backbone_ids
+    assert "P3" in _open_gate_artifacts().synthesis.backbone_ids
 
 
-def test_open_gate_design_validates_connected() -> None:
-    """The open-gate design validates end-to-end as a single connected component."""
+def test_open_gate_synthesis_validates_connected() -> None:
+    """The open-gate synthesis validates end-to-end as a single connected component."""
     assert _open_gate_artifacts().validation["connected"] is True

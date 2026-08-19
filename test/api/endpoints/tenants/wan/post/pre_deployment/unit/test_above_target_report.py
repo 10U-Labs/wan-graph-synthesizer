@@ -9,7 +9,7 @@ they were handed is bigger than the one they ordered.
 There were five until GitHub issue #60. Three of them named a pass that added a link after
 the fact -- a join holding the backbone together, a detour around a city carrying the whole
 network, a second path to a peer already reached -- and those passes are gone, the fiber
-being chosen for the whole design at once now. What is left is a peer that reached for this
+being chosen for the whole synthesis at once now. What is left is a peer that reached for this
 site, and the operator's own pin.
 
 Each test below hands site ``a`` the two links it asked for plus one more, varying only
@@ -26,20 +26,20 @@ import fixtures
 from synthesizer.model import (
     LINK_FOR_PIN,
     LINK_FOR_TARGET,
-    Design,
-    DesignMetrics,
+    Synthesis,
+    SynthesisMetrics,
     MeshRequirements,
-    DesignPath,
+    SynthesisPath,
 )
-from synthesizer.validation import validate_design
+from synthesizer.validation import validate_synthesis
 
 _SITES = ("a", "b", "c", "d")
 _TARGET = 2
 
 
-def _link(peer: str, reason: str, requested_by: tuple[str, ...] = ()) -> DesignPath:
+def _link(peer: str, reason: str, requested_by: tuple[str, ...] = ()) -> SynthesisPath:
     """One drawn mesh link from ``a`` to ``peer``, carrying why it is there."""
-    return DesignPath("backbone_mesh", "a", peer, ("a", peer), 1.0, reason, requested_by)
+    return SynthesisPath("backbone_mesh", "a", peer, ("a", peer), 1.0, reason, requested_by)
 
 
 # The two links site a reached for itself, which are the two its tenant asked for.
@@ -49,26 +49,26 @@ _ASKED_FOR = [
 ]
 
 
-def _above_target(*extra: DesignPath) -> list[dict[str, object]]:
-    """The above-target rows for a design giving site a its two links plus ``extra``."""
-    design = Design(
+def _above_target(*extra: SynthesisPath) -> list[dict[str, object]]:
+    """The above-target rows for a synthesis giving site a its two links plus ``extra``."""
+    synthesis = Synthesis(
         backbone_ids=_SITES,
         transit_ids=(),
         access_edges=[],
         physical_edge_keys=set(),
         path_uses=[*_ASKED_FOR, *extra],
-        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+        metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
-    report = validate_design(
+    report = validate_synthesis(
         [fixtures.carrier_pop(site) for site in _SITES],
-        design,
+        synthesis,
         targets=MeshRequirements(_TARGET),
     )
     return report["backbone_diverse_paths_above_target"]
 
 
 def test_a_site_holding_exactly_what_it_asked_for_is_not_reported() -> None:
-    """Two links against a target of two is the design working, not a thing to report."""
+    """Two links against a target of two is the synthesis working, not a thing to report."""
     assert not _above_target()
 
 

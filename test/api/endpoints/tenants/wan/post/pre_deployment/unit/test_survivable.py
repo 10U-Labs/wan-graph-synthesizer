@@ -1,9 +1,9 @@
 """Unit tests for choosing the fiber a whole backbone is built from in one decision.
 
-What this module settles is which of the carrier's fiber segments a tenant's design stands
-on, so every graph here is shaped to force one answer rather than to leave two designs of
+What this module settles is which of the carrier's fiber segments a tenant's synthesis stands
+on, so every graph here is shaped to force one answer rather than to leave two syntheses of
 equal mileage for a solver to pick between. A four-site ring is the clearest of them: every
-site is owed two ways out, each site has exactly two segments, and the only design meeting
+site is owed two ways out, each site has exactly two segments, and the only synthesis meeting
 that is the whole ring, whose mileage is the ring's own. The rest are that ring with one
 part changed -- a long chord nothing needs, a chain that leaves a site behind one city, two
 triangles held apart by a single segment, a pair with two ways round it -- so that each
@@ -16,9 +16,9 @@ part-way. Twelve cities of carrier fiber with five backbone seats takes 26 passe
 what makes it the fixture that notices (GitHub issue #63).
 
 The floor published with the choice is asserted as a number only where the graph forces the
-number, and as an inequality over every fixture at the end. No design meeting the same
+number, and as an inequality over every fixture at the end. No synthesis meeting the same
 requirements can run fewer miles than the floor, and a floor above the fiber actually bought
-would be a claim the design cannot be as short as it already is.
+would be a claim the synthesis cannot be as short as it already is.
 """
 
 from __future__ import annotations
@@ -153,7 +153,7 @@ def test_a_backbone_with_no_sites_is_floored_at_nothing_rather_than_at_what_is_o
 
 
 # A four-site ring, one mile a segment. Each site has two segments and is owed two ways out,
-# so every segment is on the only design that meets the requirement and the answer is forced
+# so every segment is on the only synthesis that meets the requirement and the answer is forced
 # whole. The same ring with a ten-mile chord across it is the fixture beside it: the chord
 # buys nobody a way out the ring has not already bought, so a choice that is a choice leaves
 # it, and a choice that simply takes the fiber it was offered does not.
@@ -170,16 +170,16 @@ def test_a_ring_is_bought_whole_because_nothing_short_of_it_gives_two_ways_out()
     """Four sites owed two ways out each over four segments, so all four are bought.
 
     Withdraw any one segment and the two sites it joined hold one way out apiece, which is
-    less than the tenant asked for. The design is the ring because there is no other.
+    less than the tenant asked for. The synthesis is the ring because there is no other.
     """
     assert _RING_CHOICE.segments == _RING_SEGMENTS
 
 
 def test_the_floor_under_the_ring_is_the_mileage_of_the_ring_itself() -> None:
-    """Four one-mile segments and no design meeting the requirement without all four.
+    """Four one-mile segments and no synthesis meeting the requirement without all four.
 
-    The floor is the number a finished design is published against, so a floor under four
-    here would let a design run longer than it should and still read as close to ideal.
+    The floor is the number a finished synthesis is published against, so a floor under four
+    here would let a synthesis run longer than it should and still read as close to ideal.
     """
     assert _RING_CHOICE.lower_bound_miles == pytest.approx(4.0)
 
@@ -207,7 +207,7 @@ def test_a_site_behind_a_single_point_of_failure_is_asked_for_what_its_fiber_can
 
     Left at the two its tenant asked for, the row for ``a`` would ask for two units over the
     single segment it stands on, which holds one, and the program would have no answer at
-    all -- a build that fails rather than a design with an honest shortfall in it. The
+    all -- a build that fails rather than a synthesis with an honest shortfall in it. The
     shortfall is then reported by
     ``synthesizer.validation.backbone_mesh_independence_deficient``.
     """
@@ -228,7 +228,7 @@ def test_a_pair_allowed_two_ways_between_them_is_given_both_ways_round() -> None
     """One peer to reach and two ways out asked for, so both ways round the pair are bought.
 
     With one way out per peer the fiber through ``p`` would answer the whole requirement and
-    ``q`` would be left where it is, which is the design Two-Node would have been given: a
+    ``q`` would be left where it is, which is the synthesis Two-Node would have been given: a
     backbone of Ashburn, VA and Salt Lake City, UT joined once and asked for twice (GitHub
     issue #58).
     """
@@ -273,12 +273,12 @@ _MANY_PASS_CHOICE = _chosen(_MANY_PASS, fixtures.MANY_PASS_SITES)
 _MANY_PASS_FIBER = admissible_fiber(_MANY_PASS_INPUTS)
 
 
-def test_a_search_that_runs_long_enough_buys_the_shortest_design_there_is() -> None:
+def test_a_search_that_runs_long_enough_buys_the_shortest_synthesis_there_is() -> None:
     """This map's choice runs the 159 miles of its own floor, so nothing shorter meets it.
 
-    The floor is the fewest miles any design meeting these requirements could run, so a
-    choice that lands on it is not close to the shortest design -- it is the shortest
-    design. Reaching it takes 26 passes of writing down a requirement the answer missed and
+    The floor is the fewest miles any synthesis meeting these requirements could run, so a
+    choice that lands on it is not close to the shortest synthesis -- it is the shortest
+    synthesis. Reaching it takes 26 passes of writing down a requirement the answer missed and
     solving again.
 
     A limit of 24 passes stood in the module until GitHub issue #63 and stopped this search
@@ -297,9 +297,9 @@ def test_the_fiber_a_long_search_settles_on_meets_every_requirement_asked_of_it(
 
     The miles above say the choice is the shortest one there is; this says it is a choice at
     all. Both are needed, because the cheapest way to run few miles is to buy fiber that
-    leaves a site short, and a design is measured for that only much later, by
+    leaves a site short, and a synthesis is measured for that only much later, by
     ``synthesizer.validation.backbone_mesh_independence_deficient``, on a report an operator
-    reads rather than on the fiber the design stands on.
+    reads rather than on the fiber the synthesis stands on.
     """
     assert not _shortfalls(
         _requirements(_MANY_PASS_INPUTS, _MANY_PASS_FIBER),
@@ -320,12 +320,12 @@ _CASES: tuple[tuple[str, FiberChoice, dict[tuple[str, str], PhysicalEdge]], ...]
 
 
 def test_no_choice_is_floored_above_the_fiber_it_actually_bought() -> None:
-    """Every design here runs at least the miles its own floor says no design can go below.
+    """Every synthesis here runs at least the miles its own floor says no synthesis can go below.
 
     The floor is the relaxation's answer over every requirement the search wrote down, and
-    the design is one answer to those same requirements, so the design cannot be shorter than
+    the synthesis is one answer to those same requirements, so the synthesis cannot be shorter than
     the floor. A floor above the fiber bought would be arithmetic that has come apart, and it
-    would be published on every design as ``backbone_lower_bound_miles`` and read as a
+    would be published on every synthesis as ``backbone_lower_bound_miles`` and read as a
     tenant's network being shorter than anything that could meet its own requirements.
     """
     assert [

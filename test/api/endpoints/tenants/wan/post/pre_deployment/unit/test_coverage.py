@@ -7,10 +7,10 @@ from dataclasses import replace
 import pytest
 
 import fixtures
-from fixtures import design_inputs_from_edges, search_plan
+from fixtures import synthesis_inputs_from_edges, search_plan
 from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
 from synthesizer.graphs import build_adjacency
-from synthesizer.model import DesignParams, Tuning
+from synthesizer.model import SynthesisParams, Tuning
 from synthesizer.coverage import (
     CoverageReport,
     best_coverage_candidate,
@@ -68,7 +68,7 @@ def test_the_coverage_profile_ignores_exempt_sites() -> None:
     )
 
 
-def test_an_all_exempt_design_has_no_worst_haul() -> None:
+def test_an_all_exempt_synthesis_has_no_worst_haul() -> None:
     """Every site lifted out of the target leaves an empty profile, which reads as zero."""
     assert coverage_worst_haul(()) == 0.0
 
@@ -85,7 +85,7 @@ def test_coverage_candidate_hauls_drops_an_infeasible_addition() -> None:
             ("c1", "c2"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0, ("z", "y"): 1.0,
         }
     )
-    inputs = design_inputs_from_edges(
+    inputs = synthesis_inputs_from_edges(
         ["c1", "c2", "z", "y"], edges, {"c1", "c2", "z"}, [access("s", 0.0, 0.05)]
     )
     hauls = coverage_candidate_hauls(("c1", "c2"), ["z"], inputs, search_plan([]), {
@@ -113,7 +113,7 @@ _RANKING_SITES = [
     access("far", 0.0, 2.0),
     access("near1", 0.0, -1.0), access("near2", 0.05, -1.0), access("near3", -0.05, -1.0),
 ]
-# Forty degrees out and exempt from the target: it dominates every distance in the design
+# Forty degrees out and exempt from the target: it dominates every distance in the synthesis
 # and none of them are its business, so it must have no say in which candidate wins.
 _OCONUS_SITE = replace(access("oconus", 0.0, -40.0), exempt_from_distance_constraint=True)
 
@@ -122,7 +122,7 @@ def _ranking_hauls(
     candidates: list[str], sites: list[Vertex]
 ) -> list[tuple[tuple[float, ...], str]]:
     """Score each candidate over the ranking geometry against the given demand."""
-    inputs = design_inputs_from_edges(
+    inputs = synthesis_inputs_from_edges(
         _RANKING_IDS, _RANKING_EDGES, set(_RANKING_IDS), sites, _RANKING_COORDS
     )
     return coverage_candidate_hauls(
@@ -202,11 +202,11 @@ _GROWTH_SITES = [access("east_site", 0.0, 7.5), access("west_site", 0.0, -7.49)]
 
 def _grown(candidates: list[str], target_miles: int) -> tuple[str, ...]:
     """The backbone growth settles on over that geometry, offered these candidates."""
-    inputs = design_inputs_from_edges(
+    inputs = synthesis_inputs_from_edges(
         _GROWTH_IDS, _GROWTH_EDGES, set(_GROWTH_IDS), _GROWTH_SITES, _GROWTH_COORDS
     )
     plan = search_plan(candidates)
-    params = DesignParams(
+    params = SynthesisParams(
         min_backbone_count=2, tuning=Tuning(backbone_coverage_target_miles=target_miles)
     )
     grown = grow_backbone_for_coverage(
@@ -238,28 +238,28 @@ def test_growth_stops_when_no_candidate_leaves_any_site_nearer() -> None:
 
 
 # One hub with a site well inside any sane target and another well outside it, so the same
-# design reads as having met a loose target and missed a tight one.
+# synthesis reads as having met a loose target and missed a tight one.
 _REPORT_POPS = {"hub": pop("hub", 40.0, -100.0)}
 _REPORT_SITES = [access("near", 40.0, -100.5), access("far", 40.0, -95.0)]
 
 
 def _report(target_miles: float) -> CoverageReport:
-    """What that design reports about itself against the given target."""
+    """What that synthesis reports about itself against the given target."""
     return coverage_report(("hub",), _REPORT_SITES, _REPORT_POPS, target_miles)
 
 
-def test_a_design_that_stopped_short_reports_the_target_unmet() -> None:
-    """A design leaving a site outside the target says so rather than reading as finished."""
+def test_a_synthesis_that_stopped_short_reports_the_target_unmet() -> None:
+    """A synthesis leaving a site outside the target says so rather than reading as finished."""
     assert _report(100.0)["met"] is False
 
 
-def test_a_design_inside_the_target_reports_it_met() -> None:
+def test_a_synthesis_inside_the_target_reports_it_met() -> None:
     """Every site within the target is what success looks like, and the report says it."""
     assert _report(400.0)["met"] is True
 
 
 def test_the_report_counts_the_sites_left_outside_the_target() -> None:
-    """How many sites the design gave up on, which "not met" alone does not say."""
+    """How many sites the synthesis gave up on, which "not met" alone does not say."""
     assert _report(100.0)["sites_above_target"] == 1
 
 

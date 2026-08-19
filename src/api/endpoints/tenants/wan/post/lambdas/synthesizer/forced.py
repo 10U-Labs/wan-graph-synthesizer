@@ -2,7 +2,7 @@
 
 The overrides layer resolves the operator's forced connections into a
 :class:`~synthesizer.model.ForcedLinks` bundle; these helpers consume it while
-the synthesizer draws a design, so the pinned edges are honored: backbone-backbone
+the synthesizer draws a synthesis, so the pinned edges are honored: backbone-backbone
 pairs forced into or pruned from the mesh, and access-backbone links pinned as homes.
 They depend only on the model, so the synthesizer imports them without a cycle.
 """
@@ -36,7 +36,7 @@ def forced_backbone_pairs(
 
     A candidate backbone set that seats only one endpoint cannot carry the link, so the
     pin simply does not apply there; the forced-backbone pins are what guarantee both
-    endpoints are seated in the design that wins.
+    endpoints are seated in the synthesis that wins.
     """
     return _pairs_within(backbone_set, links.backbone)
 

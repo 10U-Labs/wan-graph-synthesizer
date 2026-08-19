@@ -13,8 +13,8 @@ paths (:func:`independent_paths`) and the ceiling is their number, rather than t
 being thrown away once they have been counted.
 
 Because they are wired, their length is part of the answer. A path this module returns is
-fiber the design orders: ``synthesizer.backbone.backbone_mesh`` reads a site's ways out off
-the fiber the design bought by calling :func:`independent_paths` over it, and draws them
+fiber the synthesis orders: ``synthesizer.backbone.backbone_mesh`` reads a site's ways out off
+the fiber the synthesis bought by calling :func:`independent_paths` over it, and draws them
 segment for segment. So the flow is a minimum-cost maximum flow, mileage on each arc: it
 returns the largest set of paths no one city's loss takes two of, and out of every set that
 size it returns the one running the fewest fiber miles. Callers may rely on both halves.
@@ -35,7 +35,7 @@ Under the operator's backup path multiple that argument holds one step less far.
 paths the bound allows may be counted, and the largest set of disjoint paths that each
 respect a length bound is NP-hard to find, so the number is the best such set this search
 came across rather than the most there are (see :func:`independent_paths`). It is a close
-answer and not a proved one, and where it errs low the node is named in the design's report
+answer and not a proved one, and where it errs low the node is named in the synthesis's report
 rather than quietly held to less.
 
 Two details the count turns on. A path is normally charged for the peer it ends at as well
@@ -536,7 +536,7 @@ def paths_per_peer(seat_cap: int | None, seats: int, paths_wanted: int) -> int:
 
     The seats the operator allows are what count them, not the seats a run filled, wherever
     the operator has said: ``seat_cap`` is ``backbone.node_count.max`` from the tenant's
-    ``etc/`` file. The two differ whenever a design seats fewer sites than its cap, and it
+    ``etc/`` file. The two differ whenever a synthesis seats fewer sites than its cap, and it
     is the config that says what kind of network is being bought -- a tenant that allows
     ninety-nine sites has bought a network where a site reaches other peers, whatever one
     run seated, so reading the run instead would let a pair of its sites be joined twice

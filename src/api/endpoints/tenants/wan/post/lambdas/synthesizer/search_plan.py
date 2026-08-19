@@ -21,8 +21,8 @@ class _SearchPlan:
     ``forced_links`` carries the operator's resolved pins for routing.
     ``seat_cap`` is the most backbone sites the operator allows, which decides how many
     paths one pair of sites is drawn with (see
-    :func:`synthesizer.ceiling.paths_per_peer`). It is a design choice rather than a dial,
-    so it comes off ``DesignParams.max_backbone_count`` rather than out of ``tuning``.
+    :func:`synthesizer.ceiling.paths_per_peer`). It is a synthesis choice rather than a dial,
+    so it comes off ``SynthesisParams.max_backbone_count`` rather than out of ``tuning``.
 
     The nodes the diverse path count is not asked of are not here: the exemption acts in
     validation, which the handler reaches directly, and selection treats every node

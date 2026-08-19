@@ -1,10 +1,10 @@
 """The synthesizer's input-graph types and primitive helpers.
 
 The vertex/edge dataclasses and geographic helpers that describe the graph the
-synthesizer designs against: a :class:`Vertex` is an access site, cloud region, or
+synthesizer syntheses against: a :class:`Vertex` is an access site, cloud region, or
 carrier PoP; a :class:`PhysicalEdge` is fiber between two PoPs.
 :mod:`synthesizer.codec` builds these from the stored JSON rows. The
-synthesizer's own design vocabulary -- tiers, tuning, validation -- lives in
+synthesizer's own synthesis vocabulary -- tiers, tuning, validation -- lives in
 ``synthesizer.model``.
 """
 

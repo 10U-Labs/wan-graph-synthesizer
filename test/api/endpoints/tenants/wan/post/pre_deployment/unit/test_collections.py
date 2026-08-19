@@ -6,46 +6,46 @@ from typing import Any
 
 import fixtures
 from synthesizer import collections as gc
-from synthesizer.model import Design, DesignMetrics
-from synthesizer.output import design_payload
+from synthesizer.model import Synthesis, SynthesisMetrics
+from synthesizer.output import synthesis_payload
 
 
 def _payload() -> dict[str, Any]:
-    return design_payload(fixtures.sample_sources(), fixtures.ring_artifacts())
+    return synthesis_payload(fixtures.sample_sources(), fixtures.ring_artifacts())
 
 
-def _design(backbone_ids: tuple[str, ...], transit_ids: tuple[str, ...]) -> Design:
-    """A minimal design carrying only the tier ids vertex_role reads."""
-    return Design(backbone_ids, transit_ids, [], set(), [], DesignMetrics(0.0, 0.0, 0.0))
+def _synthesis(backbone_ids: tuple[str, ...], transit_ids: tuple[str, ...]) -> Synthesis:
+    """A minimal synthesis carrying only the tier ids vertex_role reads."""
+    return Synthesis(backbone_ids, transit_ids, [], set(), [], SynthesisMetrics(0.0, 0.0, 0.0))
 
 
 def test_vertex_role_backbone_for_selected_pop() -> None:
     """A carrier PoP in the backbone set is labelled backbone."""
-    assert gc.vertex_role(fixtures.carrier_pop("a"), _design(("a",), ())) == "backbone"
+    assert gc.vertex_role(fixtures.carrier_pop("a"), _synthesis(("a",), ())) == "backbone"
 
 
 def test_vertex_role_transit_for_routing_only_pop() -> None:
     """A carrier PoP only used to path is labelled transit."""
-    assert gc.vertex_role(fixtures.carrier_pop("a"), _design((), ("a",))) == "transit"
+    assert gc.vertex_role(fixtures.carrier_pop("a"), _synthesis((), ("a",))) == "transit"
 
 
 def test_vertex_role_unused_for_unselected_pop() -> None:
     """A carrier PoP neither selected nor crossed by a path is labelled unused."""
-    assert gc.vertex_role(fixtures.carrier_pop("a"), _design((), ())) == "unused"
+    assert gc.vertex_role(fixtures.carrier_pop("a"), _synthesis((), ())) == "unused"
 
 
 def test_vertex_role_tenant_for_a_site() -> None:
     """A tenant-site demand vertex is labelled tenant."""
-    assert gc.vertex_role(fixtures.access_vertex("s"), _design((), ())) == "tenant"
+    assert gc.vertex_role(fixtures.access_vertex("s"), _synthesis((), ())) == "tenant"
 
 
 def test_vertex_role_provider_for_a_provider_region() -> None:
     """A provider-region demand vertex is labelled provider."""
-    assert gc.vertex_role(fixtures.provider_vertex("r"), _design((), ())) == "provider"
+    assert gc.vertex_role(fixtures.provider_vertex("r"), _synthesis((), ())) == "provider"
 
 
 def test_vertices_returns_the_payload_vertices() -> None:
-    """vertices() exposes the design payload's vertex list."""
+    """vertices() exposes the synthesis payload's vertex list."""
     payload = _payload()
     assert gc.vertices(payload) == payload["vertices"]
 
@@ -71,8 +71,8 @@ def test_provider_nodes_are_all_tier_provider() -> None:
     assert all(vertex["tier_role"] == "provider" for vertex in gc.provider_nodes(_payload()))
 
 
-def test_backbone_links_exist_for_a_meshed_design() -> None:
-    """A design whose backbone is meshed exposes at least one backbone-to-backbone link."""
+def test_backbone_links_exist_for_a_meshed_synthesis() -> None:
+    """A synthesis whose backbone is meshed exposes at least one backbone-to-backbone link."""
     assert gc.backbone_links(_payload())
 
 

@@ -1,4 +1,4 @@
-"""Unit tests for assembling a design from one fixed set of backbone PoPs."""
+"""Unit tests for assembling a synthesis from one fixed set of backbone PoPs."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from fixtures import (
     TRIANGLE,
     TWO_POCKET_EDGES,
     TWO_POCKET_IDS,
-    design_inputs_from_edges,
+    synthesis_inputs_from_edges,
     search_plan,
 )
-from synthesizer.model import AccessEdge, DesignInputs, ForcedLinks
+from synthesizer.model import AccessEdge, SynthesisInputs, ForcedLinks
 from synthesizer.assemble import (
     assign_access,
     backbone_physically_biconnectable,
-    build_design_for_backbone,
+    build_synthesis_for_backbone,
     forced_backbone_resilience_error,
     nearest_pop_id,
 )
@@ -32,9 +32,9 @@ def test_nearest_pop_id_picks_the_closest() -> None:
     assert nearest_pop_id(access("s", 0.0, 0.0), pops) == "near"
 
 
-def _dual_inputs(s_coord: tuple[float, float] = (0.0, 0.05)) -> DesignInputs:
+def _dual_inputs(s_coord: tuple[float, float] = (0.0, 0.05)) -> SynthesisInputs:
     """A two-PoP backbone with one graph-connected demand vertex ``s``."""
-    return design_inputs_from_edges(
+    return synthesis_inputs_from_edges(
         ["c1", "c2"], DUAL_EDGES, {"c1", "c2"},
         [access("s", *s_coord)], {"c1": (0.0, 0.0), "c2": (0.0, 0.1)},
     )
@@ -67,7 +67,7 @@ def test_assign_access_homes_to_the_configured_count() -> None:
             ("s", "c1"): 1.0, ("s", "c2"): 1.0, ("s", "c3"): 1.0,
         }
     )
-    inputs = design_inputs_from_edges(
+    inputs = synthesis_inputs_from_edges(
         ["c1", "c2", "c3"], triple_edges, {"c1", "c2", "c3"},
         [access("s", 0.0, 0.05)], {"c1": (0.0, 0.0), "c2": (0.0, 0.1), "c3": (0.0, 0.2)},
     )
@@ -84,45 +84,45 @@ def test_assign_access_leads_with_a_forced_home() -> None:
     }
 
 
-def test_build_design_returns_none_without_homing() -> None:
-    """build_design_for_backbone returns None when the backbone is too small to home.
+def test_build_synthesis_returns_none_without_homing() -> None:
+    """build_synthesis_for_backbone returns None when the backbone is too small to home.
 
     With a single backbone node and a homing degree of two, no demand vertex can reach
-    two distinct backbone nodes, so the design is infeasible.
+    two distinct backbone nodes, so the synthesis is infeasible.
     """
     inputs = _dual_inputs()
     plan = search_plan([], access_backbone_links=2)
-    assert build_design_for_backbone(("c1",), inputs, plan) is None
+    assert build_synthesis_for_backbone(("c1",), inputs, plan) is None
 
 
-def test_build_design_returns_none_when_nodes_are_not_meshed() -> None:
-    """build_design_for_backbone returns None when a node cannot reach the others."""
+def test_build_synthesis_returns_none_when_nodes_are_not_meshed() -> None:
+    """build_synthesis_for_backbone returns None when a node cannot reach the others."""
     edges = physical(
         {
             ("c1", "g1"): 1.0, ("c2", "g1"): 1.0, ("c1", "g2"): 1.0, ("c2", "g2"): 1.0,
             ("c3", "z"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0,
         }
     )
-    inputs = design_inputs_from_edges(
+    inputs = synthesis_inputs_from_edges(
         ["c1", "c2", "c3", "g1", "g2", "z"], edges, {"c1", "c2", "c3"}, [access("s")]
     )
-    assert build_design_for_backbone(("c1", "c2", "c3"), inputs, search_plan([])) is None
+    assert build_synthesis_for_backbone(("c1", "c2", "c3"), inputs, search_plan([])) is None
 
 
-def test_build_design_builds_a_full_design() -> None:
-    """build_design_for_backbone assembles a design when the backbone is feasible."""
-    design = build_design_for_backbone(("c1", "c2"), _dual_inputs(), search_plan([]))
-    assert design is not None and set(design.backbone_ids) == {"c1", "c2"}
+def test_build_synthesis_builds_a_full_synthesis() -> None:
+    """build_synthesis_for_backbone assembles a synthesis when the backbone is feasible."""
+    synthesis = build_synthesis_for_backbone(("c1", "c2"), _dual_inputs(), search_plan([]))
+    assert synthesis is not None and set(synthesis.backbone_ids) == {"c1", "c2"}
 
 
-def _two_pocket_inputs() -> DesignInputs:
+def _two_pocket_inputs() -> SynthesisInputs:
     """Inputs over two fiber pockets joined by a single bridge segment."""
-    return design_inputs_from_edges(TWO_POCKET_IDS, TWO_POCKET_EDGES, set(TWO_POCKET_IDS))
+    return synthesis_inputs_from_edges(TWO_POCKET_IDS, TWO_POCKET_EDGES, set(TWO_POCKET_IDS))
 
 
-def _bowtie_inputs() -> DesignInputs:
+def _bowtie_inputs() -> SynthesisInputs:
     """Inputs over a bowtie: two triangles sharing one cut city."""
-    return design_inputs_from_edges(_BOWTIE_IDS, _BOWTIE_EDGES, set(_BOWTIE_IDS))
+    return synthesis_inputs_from_edges(_BOWTIE_IDS, _BOWTIE_EDGES, set(_BOWTIE_IDS))
 
 
 def test_physically_biconnectable_within_one_block() -> None:
@@ -151,15 +151,15 @@ def test_not_biconnectable_with_no_backbone_nodes() -> None:
 
 
 def test_forced_resilience_error_for_forced_nodes_split_across_pockets() -> None:
-    """Forced nodes in different pockets can never form a resilient design."""
+    """Forced nodes in different pockets can never form a resilient synthesis."""
     assert forced_backbone_resilience_error(
         frozenset({"a", "d"}), _two_pocket_inputs(), 2
     ) is not None
 
 
-def _triangle_inputs() -> DesignInputs:
+def _triangle_inputs() -> SynthesisInputs:
     """Inputs over a single 2-edge-connected triangle pocket of three eligible PoPs."""
-    return design_inputs_from_edges(["a", "b", "c"], TRIANGLE, {"a", "b", "c"})
+    return synthesis_inputs_from_edges(["a", "b", "c"], TRIANGLE, {"a", "b", "c"})
 
 
 def test_forced_resilience_error_for_a_pocket_too_small_for_the_floor() -> None:

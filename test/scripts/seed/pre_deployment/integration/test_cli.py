@@ -9,7 +9,7 @@ not in end to end, where it used to be filed. It is several real units against
 each other with nothing deployed, which
 docs/tenets/tests/PRE_DEPLOYMENT_INTEGRATION_TESTS.md places here, and it never
 stands in for the question docs/tenets/tests/E2E_TESTS.md asks: what a caller
-receives from the deployed program. test_delivered_designs.py under
+receives from the deployed program. test_delivered_syntheses.py under
 ../../post_deployment/e2e/ is the tier that asks it (GitHub issue #49).
 """
 

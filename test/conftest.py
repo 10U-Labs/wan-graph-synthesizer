@@ -1,4 +1,4 @@
-"""Shared pytest fixtures and import path setup for the WAN designer tests."""
+"""Shared pytest fixtures and import path setup for the WAN synthesizer tests."""
 
 from __future__ import annotations
 

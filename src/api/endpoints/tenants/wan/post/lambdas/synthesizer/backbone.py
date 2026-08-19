@@ -1,9 +1,9 @@
-"""Draw the backbone's paths over the fiber the whole design was chosen with.
+"""Draw the backbone's paths over the fiber the whole synthesis was chosen with.
 
 Every backbone node owes its tenant a number of ways out that no one city's loss takes two
-of, and an operator pays for every path they hold. So the design owes them the paths they
+of, and an operator pays for every path they hold. So the synthesis owes them the paths they
 asked for and nothing besides. This module produces that list of paths, and it does it in
-two steps: the fiber to buy is chosen for the whole design at once by
+two steps: the fiber to buy is chosen for the whole synthesis at once by
 :mod:`synthesizer.survivable`, and the paths are then read off that fiber, one site at a
 time, as the ways out each site actually holds over it.
 
@@ -18,7 +18,7 @@ or leaving one city carrying the network. The paths came from every pass, so no 
 the defect; the sequence was.
 
 What is left after the choice is ordinary reading. A site's ways out over the fiber the
-design bought are the fewest-mile set of paths out of it that no one city's loss takes two
+synthesis bought are the fewest-mile set of paths out of it that no one city's loss takes two
 of, which is what :func:`synthesizer.ceiling.independent_paths` already computes, and the
 tenant's number says how many of them are drawn. A path and its reverse are the same fiber
 and are drawn once. An operator's pin is honoured whatever the choice said. And a path no
@@ -44,7 +44,7 @@ from synthesizer.graphs import (
     path_edge_keys,
     reconstruct_path,
 )
-from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, DesignPath
+from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, SynthesisPath
 from synthesizer.survivable import FiberInputs, choose_fiber
 from synthesizer.validation import diverse_path_count
 
@@ -86,19 +86,19 @@ class BackboneMesh:
     """The paths a backbone is drawn with, beside the fewest miles it could have run.
 
     ``lower_bound_miles`` is the answer to the linear-programming relaxation the fiber was
-    chosen by (see :mod:`synthesizer.survivable`): no design meeting the same requirements
+    chosen by (see :mod:`synthesizer.survivable`): no synthesis meeting the same requirements
     over the same fiber runs fewer miles than that. It travels with the paths because a
-    design is only as good as the shortest design there is, and until that number is
+    synthesis is only as good as the shortest synthesis there is, and until that number is
     published nobody outside the build can say how close this one came.
     """
 
-    paths: list[DesignPath]
+    paths: list[SynthesisPath]
     lower_bound_miles: float
 
 
 @dataclass(frozen=True)
 class _DrawnFiber:
-    """The fiber a design bought, beside the carrier fiber it was chosen out of.
+    """The fiber a synthesis bought, beside the carrier fiber it was chosen out of.
 
     Both are here because a site's ways out are read off the bought fiber and held against
     what the carrier's whole fiber could have given it (see :func:`_ways_out_of`).
@@ -110,7 +110,7 @@ class _DrawnFiber:
     constraints: BackboneConstraints
 
 
-def _fiber_of(paths: list[DesignPath]) -> tuple[set[str], set[tuple[str, str]]]:
+def _fiber_of(paths: list[SynthesisPath]) -> tuple[set[str], set[tuple[str, str]]]:
     """The cities a set of paths crosses and the fiber segments they run over."""
     segments: set[tuple[str, str]] = set()
     for use in paths:
@@ -118,14 +118,14 @@ def _fiber_of(paths: list[DesignPath]) -> tuple[set[str], set[tuple[str, str]]]:
     return {city for segment in segments for city in segment}, segments
 
 
-def _one_network(paths: list[DesignPath], backbone_ids: tuple[str, ...]) -> bool:
+def _one_network(paths: list[SynthesisPath], backbone_ids: tuple[str, ...]) -> bool:
     """Whether the fiber these paths run over joins every backbone node into one network."""
     cities, segments = _fiber_of(paths)
     return len(connected_components(cities | set(backbone_ids), segments)) == 1
 
 
 def _no_single_point_of_failure(
-    paths: list[DesignPath], backbone_ids: tuple[str, ...]
+    paths: list[SynthesisPath], backbone_ids: tuple[str, ...]
 ) -> bool:
     """Whether no one city's loss would split the fiber these paths run over."""
     cities, segments = _fiber_of(paths)
@@ -136,11 +136,11 @@ def _pinned_path(
     pair: tuple[str, str],
     adjacency: dict[str, list[tuple[str, float]]],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-) -> DesignPath | None:
+) -> SynthesisPath | None:
     """The shortest path over the carrier's fiber for one pair the operator pinned.
 
     A pin is an instruction rather than a proposal, so it is drawn whatever the choice of
-    fiber said and its own fiber is added to the design. A pair the carrier's fiber cannot
+    fiber said and its own fiber is added to the synthesis. A pair the carrier's fiber cannot
     join at all is the one thing a pin cannot ask for, and nothing is drawn for it.
     """
     near, far = pair
@@ -148,7 +148,7 @@ def _pinned_path(
     path = reconstruct_path(near, far, predecessors)
     if not path:
         return None
-    return DesignPath(
+    return SynthesisPath(
         "backbone_mesh", near, far, path,
         path_geometry_miles(path, physical_edges), LINK_FOR_PIN,
     )
@@ -185,7 +185,7 @@ def _proved_over(
 
 
 def _ways_out_of(site: str, drawn: _DrawnFiber) -> list[tuple[str, ...]]:
-    """The paths ``site`` is drawn with: what it holds over the fiber the design bought.
+    """The paths ``site`` is drawn with: what it holds over the fiber the synthesis bought.
 
     Unless the carrier's whole fiber would have given it more, in which case that is what
     it is drawn with instead. The choice of fiber answers how many ways out a site needs
@@ -193,9 +193,9 @@ def _ways_out_of(site: str, drawn: _DrawnFiber) -> list[tuple[str, ...]]:
     the paths back does measure them, so a site can come out of the bought fiber holding
     fewer ways out than the carrier's fiber proves it could hold. A site short of what its
     own fiber supports is the one shortfall
-    :func:`synthesizer.stages.finalize` refuses a design over, and it is a shortfall nobody
+    :func:`synthesizer.stages.finalize` refuses a synthesis over, and it is a shortfall nobody
     can close by buying anything -- so the site is drawn along the paths its fiber proves
-    and the design orders the segments they run on.
+    and the synthesis orders the segments they run on.
 
     Both sets are cut to the tenant's number before they are compared, or a site whose
     fiber offers a third way out would be judged short every time and drawn with fiber
@@ -206,8 +206,8 @@ def _ways_out_of(site: str, drawn: _DrawnFiber) -> list[tuple[str, ...]]:
     return bought if len(bought) >= len(carrier) else carrier
 
 
-def _laid(drawn: _DrawnFiber, pinned: list[DesignPath]) -> list[DesignPath]:
-    """Every distinct path the design holds, each naming the sites that reached for it.
+def _laid(drawn: _DrawnFiber, pinned: list[SynthesisPath]) -> list[SynthesisPath]:
+    """Every distinct path the synthesis holds, each naming the sites that reached for it.
 
     A path and its reverse are the same fiber, so the two sites at its ends reaching for it
     is one path drawn once with both of them recorded against it. That record is what lets
@@ -215,7 +215,7 @@ def _laid(drawn: _DrawnFiber, pinned: list[DesignPath]) -> list[DesignPath]:
     is holding because a peer needed it, which is the whole of what an operator reading a
     network larger than the one they asked for is owed.
     """
-    laid: dict[tuple[str, ...], DesignPath] = {
+    laid: dict[tuple[str, ...], SynthesisPath] = {
         min(use.path, use.path[::-1]): use for use in pinned
     }
     for site in sorted(drawn.backbone_ids):
@@ -223,7 +223,7 @@ def _laid(drawn: _DrawnFiber, pinned: list[DesignPath]) -> list[DesignPath]:
             key = min(path, path[::-1])
             held = laid.get(key)
             if held is None:
-                laid[key] = DesignPath(
+                laid[key] = SynthesisPath(
                     "backbone_mesh", path[0], path[-1], path,
                     path_geometry_miles(path, drawn.carrier), LINK_FOR_TARGET, (site,),
                 )
@@ -235,8 +235,8 @@ def _laid(drawn: _DrawnFiber, pinned: list[DesignPath]) -> list[DesignPath]:
 
 
 def _needed(
-    paths: list[DesignPath], backbone_ids: tuple[str, ...], target: int
-) -> list[DesignPath]:
+    paths: list[SynthesisPath], backbone_ids: tuple[str, ...], target: int
+) -> list[SynthesisPath]:
     """The paths left once every path nobody needs has been taken out, longest first.
 
     A path earns the fiber it runs on when taking it out would cost some backbone node a
@@ -273,8 +273,8 @@ def _bought_fiber(
     physical_edges: dict[tuple[str, str], PhysicalEdge],
     all_distances: dict[str, dict[str, float]],
     constraints: BackboneConstraints,
-) -> tuple[frozenset[tuple[str, str]], float, list[DesignPath]]:
-    """The fiber the design buys, the floor under it, and the paths the operator pinned.
+) -> tuple[frozenset[tuple[str, str]], float, list[SynthesisPath]]:
+    """The fiber the synthesis buys, the floor under it, and the paths the operator pinned.
 
     The pins are drawn over the carrier's whole fiber rather than over what the choice
     bought, and their own segments join what was bought. An operator who writes a pair into
@@ -318,7 +318,7 @@ def backbone_mesh(
     and every path no site needs is taken back out (see :func:`_needed`). What is published
     is what is left, which is why a published network now holds no path an outside reader
     can remove without costing somebody something -- the property
-    ``test_published_designs.removable_paths`` measures against the six live maps.
+    ``test_published_syntheses.removable_paths`` measures against the six live maps.
 
     A backbone the carrier's fiber says nothing about draws nothing, and a node it says
     nothing about is left out while the rest are drawn. The shortfall is

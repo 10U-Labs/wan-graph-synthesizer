@@ -5,10 +5,10 @@
 existence, configuration, and wiring layers share the call. The synthesizer's name is
 derived from the wan dispatcher name, matching the deploy-time derived name.
 
-Every fixture here reads the shape of what was deployed and none of them reads a design.
+Every fixture here reads the shape of what was deployed and none of them reads a synthesis.
 Whether the configs in ``etc/`` synthesize into the networks they ask for is asked by
-test/scripts/seed/post_deployment/e2e/test_delivered_designs.py, which carries its own
-``delivered_designs`` fixture and sits with the configs it measures (GitHub issue #49).
+test/scripts/seed/post_deployment/e2e/test_delivered_syntheses.py, which carries its own
+``delivered_syntheses`` fixture and sits with the configs it measures (GitHub issue #49).
 """
 from __future__ import annotations
 

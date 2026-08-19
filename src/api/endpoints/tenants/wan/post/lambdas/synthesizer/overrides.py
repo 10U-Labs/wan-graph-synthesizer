@@ -14,7 +14,7 @@ from collections.abc import Set as AbstractSet
 
 from synthesizer.input_graph import PhysicalEdge, Vertex, edge_key
 from synthesizer.model import (
-    DesignParams,
+    SynthesisParams,
     ForcedLinks,
     NamedLink,
     OperatorLinks,
@@ -80,7 +80,7 @@ def _reject_non_datacenter_pins(
 
 def _resolve_operator_pins(
     vertices: list[Vertex],
-    params: DesignParams,
+    params: SynthesisParams,
 ) -> tuple[set[str], set[str], set[str]]:
     """Resolve operator backbone pins, gated by the data-center cities.
 
@@ -138,7 +138,7 @@ def _forced_home_pair(
 
     The source must be a demand vertex -- something that is not a carrier PoP -- and the
     target a PoP the operator also forced onto the backbone, since a home can only lead to
-    a node the design is guaranteed to seat. The pair is ordered because its two ends are
+    a node the synthesis is guaranteed to seat. The pair is ordered because its two ends are
     not interchangeable, unlike a mesh pair's ``edge_key``.
     """
     if connection.source not in access_name_to_id:
@@ -212,7 +212,7 @@ def resolve_forced_links(
 def apply_role_overrides(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-    params: DesignParams,
+    params: SynthesisParams,
     links: OperatorLinks = OperatorLinks(),
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
     """Resolve operator pins into the search's role overrides.

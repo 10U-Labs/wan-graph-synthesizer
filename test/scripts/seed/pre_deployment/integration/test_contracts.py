@@ -170,7 +170,7 @@ def test_pipeline_writes_each_tenant_the_backup_path_multiple_its_config_declare
     The same two-spellings problem as the coverage target, and the same reason it cannot be
     checked in either file alone: the config names it ``backbone.max_backup_path_multiple``
     and the synthesizer reads ``backbone_max_backup_path_multiple``. A tenant whose
-    multiple never arrives is a failed build rather than a design that quietly paths the
+    multiple never arrives is a failed build rather than a synthesis that quietly paths the
     long way, since the synthesizer requires the key, but the failure would name the store
     and not this seam.
     """
@@ -351,7 +351,7 @@ def _ceiling_bounds(
     and its seat cap are both passed in and a two-seat tenant asking for two paths is
     measured on whether its fiber joins the two cities two ways rather than skipped for
     having pinned only two. Two-Node is that tenant, and the seat cap is what the build
-    reads, so measuring without it would hold a city to a bound the design never applies.
+    reads, so measuring without it would hold a city to a bound the synthesis never applies.
 
     What keeps a pin honest while it is the only one is the synthesizer itself, which seats
     a pin only where the carrier graph gives it two links (``compute_eligible_backbone_ids``)
@@ -359,7 +359,7 @@ def _ceiling_bounds(
     (``forced_backbone_resilience_error``).
 
     The tenant's own backup path multiple is applied, because the real run applies it: a
-    ceiling measured over fiber the design may not use is not a floor under the real one
+    ceiling measured over fiber the synthesis may not use is not a floor under the real one
     but a number above it, and a tenant could clear this contract on paths its build would
     refuse. Adding pins can only admit more fiber segments, since a segment is withheld only when no
     peer at all can reach it inside its budget, so the bound stays a floor under the real
@@ -400,7 +400,7 @@ def test_no_tenant_exempts_a_city_its_own_fiber_already_accounts_for() -> None:
     Neither file settles this alone: the config says which cities are excused the degree,
     and only the carrier files say which of them could have met it. A city that cannot is
     held to what its fiber carries and passes on that, so excusing it changes no outcome
-    and costs the report the line that would have explained the design. A city that can is
+    and costs the report the line that would have explained the synthesis. A city that can is
     a different matter, and the exemption is then the only reason a real shortfall goes
     unmentioned -- so an exemption is worth keeping only where the fiber does not already
     account for the gap.
@@ -423,7 +423,7 @@ def test_every_pinned_city_can_carry_the_diversity_its_tenant_asks_for() -> None
     The base backbone is now ranked by how many diverse paths a site's fiber can carry
     rather than by how many fiber segments touch it, which makes this the question the ranking is
     trying to answer -- and a pin is the one site the ranking never gets to decide, because
-    an operator has already decided it. So a pin is the place a design can still start out
+    an operator has already decided it. So a pin is the place a synthesis can still start out
     short, and neither file can say on its own: the config names the cities, the carrier
     files say what their fiber does.
 
@@ -453,7 +453,7 @@ def _demand(config: dict[str, Any]) -> list[Vertex]:
 
     Loaded through the synthesizer's own readers, so the exemption that excuses an OCONUS
     site the target is the one the coverage pass honours rather than a second reading of the
-    same column. Off-net candidates are not here: they are seats the design may fabricate,
+    same column. Off-net candidates are not here: they are seats the synthesis may fabricate,
     not places asking to be served.
     """
     inputs = config["inputs"]
@@ -465,7 +465,7 @@ def _demand(config: dict[str, Any]) -> list[Vertex]:
 def _seats_for_coverage(config: dict[str, Any], carriers: list[Vertex]) -> int:
     """How many backbone seats a tenant's own coverage target needs before it is met.
 
-    The pinned cities are seated first, since the design has no choice about them, and
+    The pinned cities are seated first, since the synthesis has no choice about them, and
     carrier points are then taken greedily, each round the point that brings in the most
     places still outside the target. Greedy returns an upper bound on the smallest such
     set, which is the direction that matters: a tenant whose cap clears this number
@@ -516,9 +516,9 @@ def test_no_tenant_caps_its_backbone_below_the_coverage_target_it_asks_for() -> 
     A tenant states two things that have to agree, and neither file settles it alone: the
     config sets the target and the seat cap, and only the carrier maps say how many points
     it takes to bring every site inside that distance. Where the cap is the smaller of the
-    two the coverage pass runs out of seats before it runs out of target, and the design it
+    two the coverage pass runs out of seats before it runs out of target, and the synthesis it
     publishes misses by whatever the pins happened to leave. Nothing objects, because both
-    numbers are legal on their own and the design is the honest answer to the pair.
+    numbers are legal on their own and the synthesis is the honest answer to the pair.
 
     Minuteman was the tenant that failed this. It pinned six cities into a backbone capped
     at six and asked for 400 miles, so the coverage pass began with no seat to spend and

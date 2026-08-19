@@ -1,15 +1,15 @@
 """Unit tests for the miles of carrier fiber a published network ordered.
 
-The helper adds up the fiber a published design runs over, which is the size of the network
+The helper adds up the fiber a published synthesis runs over, which is the size of the network
 in the only unit anything here is measured in and the figure the floor a build publishes
-under itself is held against: a design running more than twice the fewest miles that could
+under itself is held against: a synthesis running more than twice the fewest miles that could
 meet its tenant's requirements has lost the guarantee its own build claims (GitHub issue
 #60).
 
 What it must not add up is the access homings the published edges collection carries beside
 the fiber. A homing joins a demand site to the backbone node it is served from, so its
 miles are the haul into the network rather than fiber between backbone sites, and counting
-them would inflate every design by every site homed into it. Both kinds are below, under the
+them would inflate every synthesis by every site homed into it. Both kinds are below, under the
 two labels the synthesizer publishes homings by and the one it publishes fiber by.
 """
 
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from test_published_designs import ordered_fiber_miles
+from test_published_syntheses import ordered_fiber_miles
 
 
 def _segment(kind: str, near: str, far: str, miles: float) -> dict[str, Any]:

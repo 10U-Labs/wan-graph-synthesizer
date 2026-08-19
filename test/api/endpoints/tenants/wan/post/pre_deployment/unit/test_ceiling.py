@@ -114,7 +114,7 @@ def test_a_site_seated_below_the_seats_its_config_allows_takes_one_path_to_a_pee
     """A tenant that allows six seats has bought a network of peers, not a pair joined twice.
 
     The seats the config allows are what say whether a site has another peer to reach, and
-    a run that seated two of six is a design short of sites. Counting the sites it seated
+    a run that seated two of six is a synthesis short of sites. Counting the sites it seated
     instead would have this site double up on the one peer in front of it (GitHub issue #59).
     """
     ground = PathProofInputs(_ONE_PEER, _TWIN_PATHS, paths_wanted=2, seat_cap=6)
@@ -193,7 +193,7 @@ def test_the_paths_proved_are_the_shortest_set_of_that_size() -> None:
 
     This is the assertion the whole of GitHub issue #57 reduces to. The paths are laid
     verbatim by ``synthesizer.backbone.backbone_mesh``, so the fiber this picks is
-    fiber the design orders, and picking the express segments ordered fifty times as much of
+    fiber the synthesis orders, and picking the express segments ordered fifty times as much of
     it for exactly the same protection.
     """
     assert sum(

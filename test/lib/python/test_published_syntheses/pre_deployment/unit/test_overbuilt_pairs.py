@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from test_published_designs import overbuilt_pairs
+from test_published_syntheses import overbuilt_pairs
 
 
 def _link(source: str, target: str, *transit: str) -> dict[str, Any]:
@@ -42,7 +42,7 @@ def _link(source: str, target: str, *transit: str) -> dict[str, Any]:
     }
 
 
-def _design(links: list[dict[str, Any]], allowed: int = 2) -> dict[str, Any]:
+def _synthesis(links: list[dict[str, Any]], allowed: int = 2) -> dict[str, Any]:
     """A published network drawing the paths given, between the sites they name."""
     sites = sorted({link[end] for link in links for end in ("source_id", "target_id")})
     return {
@@ -64,62 +64,62 @@ _SPARE_PATH = [
 
 def test_a_pair_holding_a_path_neither_end_needs_is_reported_with_its_count() -> None:
     """Both ends keep the two paths they bought without it, so nobody needed the second."""
-    assert overbuilt_pairs(_design(_SPARE_PATH)) == [("east <-> west", 2)]
+    assert overbuilt_pairs(_synthesis(_SPARE_PATH)) == [("east <-> west", 2)]
 
 
 def test_a_pair_whose_second_path_is_a_ways_out_is_not_reported() -> None:
     """Two sites and nobody else: without the second path each holds one path of two."""
-    design = _design([_link("west", "east", "m1"), _link("west", "east", "m2")])
-    assert not overbuilt_pairs(design)
+    synthesis = _synthesis([_link("west", "east", "m1"), _link("west", "east", "m2")])
+    assert not overbuilt_pairs(synthesis)
 
 
 def test_a_second_path_crossing_the_same_city_as_the_first_is_reported() -> None:
     """It fails with the first, so it is a path bought and no protection gained."""
-    design = _design([
+    synthesis = _synthesis([
         _link("west", "east", "m1"),
         _link("west", "east", "m1", "x"),
         _link("west", "north", "m3"),
         _link("east", "north", "m4"),
     ])
-    assert overbuilt_pairs(design) == [("east <-> west", 2)]
+    assert overbuilt_pairs(synthesis) == [("east <-> west", 2)]
 
 
 def test_a_pair_joined_once_is_not_reported() -> None:
     """One path between two sites is what joining them costs, whatever else is going on."""
-    assert not overbuilt_pairs(_design([_link("west", "east", "m1")]))
+    assert not overbuilt_pairs(_synthesis([_link("west", "east", "m1")]))
 
 
 def test_paths_served_under_either_order_of_the_two_ends_count_as_one_pair() -> None:
     """Three paths split across both orders are three paths between one pair."""
-    design = _design([
+    synthesis = _synthesis([
         _link("west", "east", "m1"),
         _link("east", "west", "m2"),
         _link("west", "east", "m5"),
         _link("west", "north", "m3"),
         _link("east", "north", "m4"),
     ])
-    assert overbuilt_pairs(design) == [("east <-> west", 3)]
+    assert overbuilt_pairs(synthesis) == [("east <-> west", 3)]
 
 
 def test_paths_between_different_pairs_are_counted_apart() -> None:
     """Two pairs at one path each is two sound pairs, not one pair at two."""
-    design = _design([_link("west", "east", "m1"), _link("west", "north", "m3")])
-    assert not overbuilt_pairs(design)
+    synthesis = _synthesis([_link("west", "east", "m1"), _link("west", "north", "m3")])
+    assert not overbuilt_pairs(synthesis)
 
 
 def test_every_overbuilt_pair_is_reported_not_only_the_first() -> None:
     """A network overbuilt in two places has both named, in order of the pair."""
-    design = _design([
+    synthesis = _synthesis([
         *_SPARE_PATH,
         _link("north", "south", "m6"),
         _link("north", "south", "m7"),
         _link("west", "south", "m8"),
     ])
-    assert [pair for pair, _count in overbuilt_pairs(design)] == [
+    assert [pair for pair, _count in overbuilt_pairs(synthesis)] == [
         "east <-> west", "north <-> south"
     ]
 
 
 def test_a_network_carrying_no_links_reports_nothing() -> None:
     """A tenant whose build has not landed has no paths to count and no finding to make."""
-    assert not overbuilt_pairs(_design([]))
+    assert not overbuilt_pairs(_synthesis([]))

@@ -21,7 +21,7 @@ import pytest
 
 from seed import DEFAULT_API
 from test_http_doubles import FakeResponse
-from test_published_designs import published_design
+from test_published_syntheses import published_synthesis
 
 # One tenant's config as ``etc/`` declares it, cut down to the block the reader reads.
 _CONFIG: dict[str, Any] = {
@@ -83,7 +83,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "tenants/daf/provider-nodes": [_REGION],
         "tenants/daf/edges": [_SEGMENT],
     }))
-    assert published_design(DEFAULT_API, "daf", _CONFIG) == {
+    assert published_synthesis(DEFAULT_API, "daf", _CONFIG) == {
         "tenant": "daf",
         "target_miles": 200,
         "max_backup_path_multiple": 3.0,
@@ -109,9 +109,9 @@ def test_a_tenant_whose_build_has_not_published_is_read_with_no_network(
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
         "tenants/daf/wan": {"status": "synthesizing", "tenant": "daf"},
     }))
-    design = published_design(DEFAULT_API, "daf", _CONFIG)
+    synthesis = published_synthesis(DEFAULT_API, "daf", _CONFIG)
     assert [
-        design["backbone"], design["demand"], design["links"], design["edges"]
+        synthesis["backbone"], synthesis["demand"], synthesis["links"], synthesis["edges"]
     ] == [[], [], [], []]
 
 
@@ -125,6 +125,6 @@ def test_a_build_the_service_refuses_to_serve_is_read_as_what_it_says_went_wrong
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
         "tenants/daf/wan": {"status": "fail", "reason": "no valid WAN is possible"},
     }, code=422))
-    assert published_design(DEFAULT_API, "daf", _CONFIG)["status"] == {
+    assert published_synthesis(DEFAULT_API, "daf", _CONFIG)["status"] == {
         "status": "fail", "reason": "no valid WAN is possible",
     }

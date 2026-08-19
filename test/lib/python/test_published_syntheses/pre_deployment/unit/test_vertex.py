@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from synthesizer.input_graph import Vertex
-from test_published_designs import vertex
+from test_published_syntheses import vertex
 
 
 def test_a_published_node_is_rebuilt_as_the_vertex_it_describes() -> None:

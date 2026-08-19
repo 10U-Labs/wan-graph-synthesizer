@@ -4,7 +4,7 @@ The measuring helpers reach into a published document by name -- a node's id, na
 and coordinates, a demand site's exemption flag, a link's two endpoints, distance and
 path, and a fiber segment's two ends, length and whether it is carrier fiber or an access
 homing. Those names are a contract with ``synthesizer.collections``, which
-slices the design payload into the collections the store holds, and nothing holds the two
+slices the synthesis payload into the collections the store holds, and nothing holds the two
 sides against each other. A field renamed on the producing side surfaces today as a
 ``KeyError`` in the middle of a live post-deployment run, an hour and a deployment after
 the push that caused it; a field that became optional surfaces as nothing at all, because
@@ -23,7 +23,7 @@ from typing import Any
 import fixtures
 from synthesizer import collections as published
 from synthesizer.model import OperatorLinks, Tuning
-from synthesizer.output import design_payload
+from synthesizer.output import synthesis_payload
 
 # The suite's ring parameters with every one of its PoPs seated, so the payload carries a
 # record of each kind the helpers read: a backbone node, a demand site homed onto it, and
@@ -34,7 +34,7 @@ _SEATED_RING = replace(
     forced_backbone_names=("P0", "P1", "P2", "P3", "P4", "P5"),
     tuning=Tuning(backbone_number_of_diverse_paths=2),
 )
-_PAYLOAD = design_payload(
+_PAYLOAD = synthesis_payload(
     fixtures.sample_sources(),
     fixtures.forced_link_artifacts(
         _SEATED_RING, OperatorLinks(), fixtures.ring_inputs_with_demand("S1", "P0")
@@ -62,7 +62,7 @@ def _subjects() -> list[tuple[str, list[dict[str, Any]], tuple[str, ...]]]:
 
 
 def test_every_collection_the_helpers_read_has_a_record_in_it() -> None:
-    """The design under test publishes all four collections, so the contract below binds.
+    """The synthesis under test publishes all four collections, so the contract below binds.
 
     Without this the field check passes on a payload carrying no links at all, which is
     the same shape of vacuous pass the helpers themselves can produce.

@@ -18,7 +18,7 @@ jobs:
           ${{ github.workspace }}/lib/python
           ${{ github.workspace }}/src/api/endpoints/tenants/wan/post/lambdas/synthesizer
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
-          ${{ github.workspace }}/test/lib/python/test_published_designs
+          ${{ github.workspace }}/test/lib/python/test_published_syntheses
           ${{ github.workspace }}/test/lib/python/repo_utils
           ${{ github.workspace }}/test/lib/python/test_fixtures
           ${{ github.workspace }}/test/lib/python/test_module_utils
@@ -49,7 +49,7 @@ jobs:
           assert-one-assert-per-pytest
           --verbose
           ${{ github.workspace }}/test/api/endpoints/tenants/wan/post
-          ${{ github.workspace }}/test/lib/python/test_published_designs
+          ${{ github.workspace }}/test/lib/python/test_published_syntheses
           ${{ github.workspace }}/test/lib/python/repo_utils
           ${{ github.workspace }}/test/lib/python/test_fixtures
           ${{ github.workspace }}/test/lib/python/test_module_utils
@@ -79,7 +79,7 @@ jobs:
           --threshold 0 --reporters console
           --ignore "test/**/pre_deployment/unit/test_handler.py"
           test/api/endpoints/tenants/wan/post
-          test/lib/python/test_published_designs
+          test/lib/python/test_published_syntheses
           test/lib/python/repo_utils
           test/lib/python/test_fixtures
           test/lib/python/test_module_utils
@@ -128,7 +128,7 @@ jobs:
           MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m mypy --strict --ignore-missing-imports
           --explicit-package-bases test/api/endpoints/tenants/wan/post
-          test/lib/python/test_published_designs
+          test/lib/python/test_published_syntheses
           test/lib/python/repo_utils
           test/lib/python/test_fixtures
           test/lib/python/test_module_utils
@@ -155,7 +155,7 @@ jobs:
         run: pip install boto3 boto3-stubs pytest 'python-hcl2<8' pyyaml
       # These three files measure the shape of what was just deployed: the synthesizer
       # exists, its runtime and memory match the declaration, and its role can reach the
-      # store. None of them reads a design. Whether the configs in etc/ synthesize into the
+      # store. None of them reads a synthesis. Whether the configs in etc/ synthesize into the
       # networks they ask for is asked by test/scripts/seed/post_deployment/e2e/, which runs
       # in seed.yml after its seeding job: measuring a published network is only meaningful
       # once the config it is measured against has been delivered and rebuilt, and seeding
@@ -194,7 +194,7 @@ jobs:
       # `except Exception`. The synthesizer's contract is to record the tenant's status
       # in S3 -- "synthesizing" when it starts, "success" once the WAN is published, and
       # "fail" on ANY failure -- so a customer polling for their WAN always reaches a terminal
-      # answer. The expected failure (an infeasible design) is a ValueError, but it
+      # answer. The expected failure (an infeasible synthesis) is a ValueError, but it
       # is not the only thing that can go wrong: reading the substrate and tenant
       # inputs from S3 can raise a boto error, and an unforeseen bug can raise
       # anything at all. If such an error were allowed to escape, the synthesizer would
@@ -207,7 +207,7 @@ jobs:
       # `# pylint: disable` comments and linter config files, the suppression is
       # expressed as a command-line flag on this job's pylint run.
       #
-      # --max-attributes is raised to 8 for the same reason. DesignInputs is the
+      # --max-attributes is raised to 8 for the same reason. SynthesisInputs is the
       # precomputed read-only context the whole backbone search shares -- vertices,
       # edges, adjacency, the all-pairs shortest paths, and the carrier graph's
       # 2-edge-connected component map (the fiber-resilience oracle). These are one
@@ -234,7 +234,7 @@ jobs:
           PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint --recursive=y
           test/api/endpoints/tenants/wan/post
-          test/lib/python/test_published_designs
+          test/lib/python/test_published_syntheses
           test/lib/python/repo_utils
           test/lib/python/test_fixtures
           test/lib/python/test_module_utils
@@ -350,7 +350,7 @@ jobs:
           test/lib/python/test_handler_contracts/pre_deployment/unit/
           test/lib/python/test_http_doubles/pre_deployment/unit/
           test/lib/python/test_module_utils/pre_deployment/unit/
-          test/lib/python/test_published_designs/pre_deployment/unit/
+          test/lib/python/test_published_syntheses/pre_deployment/unit/
           test/lib/python/test_s3_store_mock/pre_deployment/unit/
           test/lib/python/test_terraform_config/pre_deployment/unit/
           test/lib/python/test_terraform_drift/pre_deployment/unit/
@@ -360,7 +360,7 @@ jobs:
           --cov=lib/python/test_fixtures
           --cov=lib/python/test_handler_contracts
           --cov=lib/python/test_module_utils
-          --cov=lib/python/test_published_designs
+          --cov=lib/python/test_published_syntheses
           --cov=lib/python/test_s3_store_mock
           --cov=lib/python/test_terraform_config
           --cov=lib/python/test_terraform_drift
@@ -377,7 +377,7 @@ jobs:
           python3 -m pytest
           test/lib/python/test_handler_contracts/pre_deployment/integration/
           test/lib/python/test_http_doubles/pre_deployment/
-          test/lib/python/test_published_designs/pre_deployment/integration/
+          test/lib/python/test_published_syntheses/pre_deployment/integration/
           test/lib/python/test_terraform_config/pre_deployment/integration/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
@@ -462,7 +462,7 @@ on:
       - test/fixtures.py
       - lib/python/**
       - lib/opentofu/common/**
-      # The list of what the API serves. The delivered-design layer's reader is held
+      # The list of what the API serves. The delivered-synthesis layer's reader is held
       # against it before deployment, so a path renamed or withdrawn here has to be able
       # to fail that check.
       - src/www/api/openapi.json

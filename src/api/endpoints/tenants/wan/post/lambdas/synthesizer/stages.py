@@ -1,7 +1,7 @@
-"""The WAN design pipeline as composable steps.
+"""The WAN synthesis pipeline as composable steps.
 
 The synthesizer composes these over the JSON-loaded graph:
-``dual_home`` -> ``apply_role_overrides`` -> ``synthesize_two_tier_design`` ->
+``dual_home`` -> ``apply_role_overrides`` -> ``synthesize_two_tier`` ->
 ``finalize``.
 """
 
@@ -10,20 +10,20 @@ from __future__ import annotations
 from synthesizer.ceiling import BackupPathLimit, PathProofInputs, diverse_path_ceilings
 from synthesizer.graphs import build_adjacency, distances_from
 from synthesizer.input_graph import PhysicalEdge, Vertex
-from synthesizer.model import Design, DesignParams, MeshRequirements, ValidationReport
+from synthesizer.model import Synthesis, SynthesisParams, MeshRequirements, ValidationReport
 from synthesizer.on_net_fabrication import fabricate_missing_on_net_nodes
 from synthesizer.offnet import realize_off_net_sites
 from synthesizer.validation import (
     backbone_names_by_group,
     node_mesh_target,
-    validate_design,
+    validate_synthesis,
 )
 
 
 def dual_home(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-    params: DesignParams,
+    params: SynthesisParams,
     off_net_sites: list[Vertex],
 ) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
     """Attach demand to the carrier graph: fabricate on-net nodes, then off-net seats.
@@ -53,27 +53,27 @@ def dual_home(
 def finalize(
     vertices: list[Vertex],
     physical_edges: dict[tuple[str, str], PhysicalEdge],
-    design: Design,
-    params: DesignParams,
+    synthesis: Synthesis,
+    params: SynthesisParams,
     degree_exempt: frozenset[str] = frozenset(),
 ) -> tuple[
-    list[Vertex], dict[tuple[str, str], PhysicalEdge], Design, ValidationReport
+    list[Vertex], dict[tuple[str, str], PhysicalEdge], Synthesis, ValidationReport
 ]:
-    """Validate the design over the real fiber, refusing one no operator could build from.
+    """Validate the synthesis over the real fiber, refusing one no operator could build from.
 
     Two things are refused here, and a refusal means the build is recorded as ``fail`` and
-    nothing is published. The first is a design in more than one group: a network whose
+    nothing is published. The first is a synthesis in more than one group: a network whose
     sites cannot all reach one another is not one network, and an operator handed it can
     carry no traffic between the groups. Every site can still hold every link it was asked
     for while that is true -- a site meets its count against peers inside its own group --
     so the diverse path count below does not see the split and cannot (GitHub issue #68).
 
-    The second is a design that misses its diverse path count. Resilience is the operator's
+    The second is a synthesis that misses its diverse path count. Resilience is the operator's
     two required redundancy degrees, enforced over the real fiber and reported by
-    :func:`validate_design`; there is no silent edge augmentation.
+    :func:`validate_synthesis`; there is no silent edge augmentation.
 
-    ``backbone_number_of_diverse_paths`` is a count of links that fail independently, so a design
-    where some backbone node cannot reach its target is not a design that meets the
+    ``backbone_number_of_diverse_paths`` is a count of links that fail independently, so a synthesis
+    where some backbone node cannot reach its target is not a synthesis that meets the
     configuration and is refused by name.
 
     What each node's target is, though, is not the configured degree flat. The ceilings are
@@ -96,25 +96,25 @@ def finalize(
         number_of_diverse_paths=params.tuning.backbone_number_of_diverse_paths,
         degree_exempt=degree_exempt,
         ceilings=diverse_path_ceilings(PathProofInputs(
-            design.backbone_ids,
+            synthesis.backbone_ids,
             adjacency,
             BackupPathLimit(
                 params.tuning.backbone_max_backup_path_multiple,
-                distances_from(adjacency, design.backbone_ids),
+                distances_from(adjacency, synthesis.backbone_ids),
             ),
             params.tuning.backbone_number_of_diverse_paths,
             params.max_backbone_count,
         )),
     )
-    validation = validate_design(
-        vertices, design, params.tuning.access_backbone_links, targets
+    validation = validate_synthesis(
+        vertices, synthesis, params.tuning.access_backbone_links, targets
     )
     if not validation["connected"]:
         groups = "; ".join(
-            ", ".join(names) for names in backbone_names_by_group(vertices, design)
+            ", ".join(names) for names in backbone_names_by_group(vertices, synthesis)
         )
         raise ValueError(
-            f"Design falls into {validation['component_count']} groups "
+            f"Synthesis falls into {validation['component_count']} groups "
             f"no fiber joins: {groups}"
         )
     deficient = validation["backbone_mesh_independence_deficient"]
@@ -127,4 +127,4 @@ def finalize(
         raise ValueError(
             f"Too few independently failing backbone mesh links at: {shortfalls}"
         )
-    return vertices, physical_edges, design, validation
+    return vertices, physical_edges, synthesis, validation

@@ -1,4 +1,4 @@
-"""Unit tests for the design validation checks.
+"""Unit tests for the synthesis validation checks.
 
 The two requirements under test: every demand vertex must home to exactly the configured
 number of distinct backbone nodes, and every backbone node must wire to its configured
@@ -8,13 +8,13 @@ number of nearest backbone nodes on the mesh.
 from __future__ import annotations
 
 import fixtures
-from synthesizer.validation import demand_without_backbone_redundancy, validate_design
+from synthesizer.validation import demand_without_backbone_redundancy, validate_synthesis
 from synthesizer.model import (
     AccessEdge,
-    Design,
-    DesignMetrics,
+    Synthesis,
+    SynthesisMetrics,
     MeshRequirements,
-    DesignPath,
+    SynthesisPath,
     ValidationReport,
 )
 from synthesizer.input_graph import Vertex, edge_key
@@ -25,32 +25,32 @@ def make_pop(vertex_id: str) -> Vertex:
     return Vertex(id=vertex_id, name=vertex_id, kind="PoP", coords=(0.0, 0.0))
 
 
-def build_design(
+def build_synthesis(
     backbone_ids: tuple[str, ...],
     transit_ids: tuple[str, ...],
     access_edges: list[AccessEdge],
     physical_pairs: list[tuple[str, str]],
-) -> Design:
-    """Test helper: build a Design from tier ids, access edges, and physical pairs."""
-    return Design(
+) -> Synthesis:
+    """Test helper: build a Synthesis from tier ids, access edges, and physical pairs."""
+    return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=transit_ids,
         access_edges=access_edges,
         physical_edge_keys={edge_key(left, right) for left, right in physical_pairs},
         path_uses=[],
-        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+        metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
 
 
 # A diamond: demand vertex A reaches B1 via X and B2 via Y, plus a backbone mesh link.
-GOOD = build_design(
+GOOD = build_synthesis(
     backbone_ids=("B1", "B2"),
     transit_ids=("X", "Y"),
     access_edges=[AccessEdge("A", "B1", 1.0), AccessEdge("A", "B2", 1.0)],
     physical_pairs=[("X", "B1"), ("Y", "B2"), ("B1", "B2")],
 )
 # Demand vertex A homes to only one backbone node, so it lacks redundancy.
-SINGLE_HOMED = build_design(
+SINGLE_HOMED = build_synthesis(
     backbone_ids=("B1", "B2"),
     transit_ids=(),
     access_edges=[AccessEdge("A", "B1", 1.0)],
@@ -61,26 +61,26 @@ GOOD_VERTICES = [make_pop(name) for name in ("A", "X", "Y", "B1", "B2")]
 SINGLE_VERTICES = [make_pop(name) for name in ("A", "B1", "B2")]
 
 
-def test_good_design_homes_demand_with_redundancy() -> None:
+def test_good_synthesis_homes_demand_with_redundancy() -> None:
     """A demand vertex homed to two backbone nodes meets the redundancy requirement."""
-    report = validate_design(GOOD_VERTICES, GOOD)
+    report = validate_synthesis(GOOD_VERTICES, GOOD)
     assert report["access_vertices_with_required_backbone_links"] is True
 
 
-def test_good_design_has_no_missing_redundancy() -> None:
+def test_good_synthesis_has_no_missing_redundancy() -> None:
     """A demand vertex homed to two backbone nodes is not flagged as deficient."""
     assert not demand_without_backbone_redundancy(GOOD, 2)
 
 
 def test_backbone_mesh_two_edge_connected_with_fewer_than_two_nodes() -> None:
     """A backbone with fewer than two nodes is trivially two-edge-connected."""
-    design = build_design(("B1",), (), [], [])
-    report = validate_design([make_pop("B1")], design)
+    synthesis = build_synthesis(("B1",), (), [], [])
+    report = validate_synthesis([make_pop("B1")], synthesis)
     assert report["backbone_mesh_two_edge_connected"] is True
 
 
 # A demand vertex "s" homed to three backbone nodes, for the configurable-count check.
-TRIPLE_HOMED = build_design(
+TRIPLE_HOMED = build_synthesis(
     backbone_ids=("B1", "B2", "B3"),
     transit_ids=(),
     access_edges=[AccessEdge("s", target, 1.0) for target in ("B1", "B2", "B3")],
@@ -91,7 +91,7 @@ TRIPLE_HOMED_VERTICES = [make_pop(name) for name in ("s", "B1", "B2", "B3")]
 
 def test_homing_passes_at_the_configured_count() -> None:
     """Demand homed to the configured number of backbone nodes passes the check."""
-    report = validate_design(TRIPLE_HOMED_VERTICES, TRIPLE_HOMED, access_backbone_links=3)
+    report = validate_synthesis(TRIPLE_HOMED_VERTICES, TRIPLE_HOMED, access_backbone_links=3)
     assert report["access_vertices_with_required_backbone_links"] is True
 
 
@@ -106,7 +106,7 @@ def test_homing_fails_above_the_configured_count() -> None:
 
 def test_homing_fails_below_the_configured_count() -> None:
     """A single-homed demand vertex fails the two-link redundancy requirement."""
-    report = validate_design(SINGLE_VERTICES, SINGLE_HOMED)
+    report = validate_synthesis(SINGLE_VERTICES, SINGLE_HOMED)
     assert report["access_vertices_with_required_backbone_links"] is False
 
 
@@ -115,17 +115,17 @@ def test_missing_redundancy_names_the_failing_demand_vertex() -> None:
     assert demand_without_backbone_redundancy(SINGLE_HOMED, 2) == ["A"]
 
 
-def _mesh_design(backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> Design:
-    """A design whose only paths are the given backbone-to-backbone mesh links."""
-    return Design(
+def _mesh_synthesis(backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> Synthesis:
+    """A synthesis whose only paths are the given backbone-to-backbone mesh links."""
+    return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=(),
         access_edges=[],
         physical_edge_keys={edge_key(left, right) for left, right in pairs},
         path_uses=[
-            DesignPath("backbone_mesh", left, right, (left, right), 1.0) for left, right in pairs
+            SynthesisPath("backbone_mesh", left, right, (left, right), 1.0) for left, right in pairs
         ],
-        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+        metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
 
 
@@ -136,10 +136,10 @@ def _mesh_report(
     degree_exempt: frozenset[str] = frozenset(),
     ceilings: dict[str, int] | None = None,
 ) -> ValidationReport:
-    """Validate a backbone-only design defined by its mesh links."""
-    return validate_design(
+    """Validate a backbone-only synthesis defined by its mesh links."""
+    return validate_synthesis(
         [make_pop(name) for name in backbone_ids],
-        _mesh_design(backbone_ids, pairs),
+        _mesh_synthesis(backbone_ids, pairs),
         targets=MeshRequirements(backbone_number_of_diverse_paths, degree_exempt, ceilings),
     )
 
@@ -201,7 +201,7 @@ def test_the_report_names_the_exempt_nodes() -> None:
 
 
 def test_the_report_names_no_exempt_node_by_default() -> None:
-    """A design exempting nobody says so, rather than leaving the reader to infer it."""
+    """A synthesis exempting nobody says so, rather than leaving the reader to infer it."""
     assert _mesh_report(*_HEALTHY)["backbone_degree_exempt"] == []
 
 
@@ -244,7 +244,7 @@ def test_the_report_measures_no_node_the_substrate_said_nothing_about() -> None:
 
 
 # The report of nodes holding more links than were asked for is driven by what put each
-# link there, which a hand-built mesh does not record, so it is exercised over designs that
+# link there, which a hand-built mesh does not record, so it is exercised over syntheses that
 # do carry it -- see ``test_above_target_report.py``.
 
 
@@ -255,9 +255,9 @@ def test_small_backbone_is_exempt_from_the_mesh_rule() -> None:
 
 def _independence_report(paths: list[tuple[str, ...]]) -> ValidationReport:
     """Validate one of the shared/diverse drawn meshes against a two-link target."""
-    return validate_design(
+    return validate_synthesis(
         [make_pop(name) for name in (*fixtures.SHARED_TRANSIT_BACKBONE, "x", "y")],
-        fixtures.meshed_backbone_design(paths, fixtures.SHARED_TRANSIT_BACKBONE),
+        fixtures.meshed_backbone_synthesis(paths, fixtures.SHARED_TRANSIT_BACKBONE),
         targets=MeshRequirements(2),
     )
 
@@ -289,62 +289,62 @@ def test_healthy_backbone_is_two_edge_connected() -> None:
 
 def test_bridged_backbone_is_not_two_edge_connected() -> None:
     """A backbone with a bridge (a chain) is flagged as not 2-edge-connected."""
-    chain = _mesh_design(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
-    report = validate_design([make_pop(n) for n in ("C1", "C2", "C3")], chain)
+    chain = _mesh_synthesis(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
+    report = validate_synthesis([make_pop(n) for n in ("C1", "C2", "C3")], chain)
     assert report["backbone_mesh_two_edge_connected"] is False
 
 
-def _drawn_design(backbone_ids: tuple[str, ...], path_uses: list[DesignPath]) -> Design:
-    """A backbone-only design defined directly by the fiber its paths run over."""
-    return Design(
+def _drawn_synthesis(backbone_ids: tuple[str, ...], path_uses: list[SynthesisPath]) -> Synthesis:
+    """A backbone-only synthesis defined directly by the fiber its paths run over."""
+    return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=(),
         access_edges=[],
         physical_edge_keys=set(),
         path_uses=path_uses,
-        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+        metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
 
 
 # Logical links A-B and A-C both path over the shared first hop A-X, so the city-pair
 # mesh (A-B, A-C, B-C) is a triangle -- logically 2-edge-connected -- while the physical
 # fiber hangs A off the lone segment A-X. A non-mesh path use rides along, ignored.
-_SHARED_CORRIDOR = _drawn_design(
+_SHARED_CORRIDOR = _drawn_synthesis(
     ("A", "B", "C"),
     [
-        DesignPath("backbone_mesh", "A", "B", ("A", "X", "B"), 2.0),
-        DesignPath("backbone_mesh", "A", "C", ("A", "X", "C"), 2.0),
-        DesignPath("backbone_mesh", "B", "C", ("B", "C"), 1.0),
-        DesignPath("access", "B", "C", ("B", "C"), 1.0),
+        SynthesisPath("backbone_mesh", "A", "B", ("A", "X", "B"), 2.0),
+        SynthesisPath("backbone_mesh", "A", "C", ("A", "X", "C"), 2.0),
+        SynthesisPath("backbone_mesh", "B", "C", ("B", "C"), 1.0),
+        SynthesisPath("access", "B", "C", ("B", "C"), 1.0),
     ],
 )
 # Backbone A-B carried over two segment-disjoint corridors -- the direct A-B and the detour
 # A-Y-B -- so the physical fiber survives the loss of either.
-_DISJOINT_PATHS = _drawn_design(
+_DISJOINT_PATHS = _drawn_synthesis(
     ("A", "B"),
     [
-        DesignPath("backbone_mesh", "A", "B", ("A", "B"), 1.0),
-        DesignPath("backbone_mesh", "A", "B", ("A", "Y", "B"), 2.0),
+        SynthesisPath("backbone_mesh", "A", "B", ("A", "B"), 1.0),
+        SynthesisPath("backbone_mesh", "A", "B", ("A", "Y", "B"), 2.0),
     ],
 )
 
 
 def test_shared_physical_corridor_is_not_two_edge_connected() -> None:
     """Logical links sharing one fiber segment offer no real redundancy, so the check fails."""
-    report = validate_design([make_pop(n) for n in ("A", "X", "B", "C")], _SHARED_CORRIDOR)
+    report = validate_synthesis([make_pop(n) for n in ("A", "X", "B", "C")], _SHARED_CORRIDOR)
     assert report["backbone_mesh_two_edge_connected"] is False
 
 
 def test_segment_disjoint_paths_are_two_edge_connected() -> None:
     """Two segment-disjoint corridors between the backbone nodes survive any single cut."""
-    report = validate_design([make_pop(n) for n in ("A", "B", "Y")], _DISJOINT_PATHS)
+    report = validate_synthesis([make_pop(n) for n in ("A", "B", "Y")], _DISJOINT_PATHS)
     assert report["backbone_mesh_two_edge_connected"] is True
 
 
 def test_backbone_mesh_two_vertex_connected_with_fewer_than_two_nodes() -> None:
     """A backbone with fewer than two nodes is trivially two-vertex-connected."""
-    design = build_design(("B1",), (), [], [])
-    report = validate_design([make_pop("B1")], design)
+    synthesis = build_synthesis(("B1",), (), [], [])
+    report = validate_synthesis([make_pop("B1")], synthesis)
     assert report["backbone_mesh_two_vertex_connected"] is True
 
 
@@ -355,30 +355,30 @@ def test_healthy_backbone_is_two_vertex_connected() -> None:
 
 def test_chain_backbone_is_not_two_vertex_connected() -> None:
     """A backbone with a cut city (a chain's middle) is flagged as not city-survivable."""
-    chain = _mesh_design(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
-    report = validate_design([make_pop(n) for n in ("C1", "C2", "C3")], chain)
+    chain = _mesh_synthesis(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
+    report = validate_synthesis([make_pop(n) for n in ("C1", "C2", "C3")], chain)
     assert report["backbone_mesh_two_vertex_connected"] is False
 
 
 def test_an_undrawn_backbone_node_is_not_two_vertex_connected() -> None:
     """A backbone node no drawn segment reaches reads as disconnected, so the check fails."""
-    design = _mesh_design(("C1", "C2", "C3"), [("C1", "C2")])
-    report = validate_design([make_pop(n) for n in ("C1", "C2", "C3")], design)
+    synthesis = _mesh_synthesis(("C1", "C2", "C3"), [("C1", "C2")])
+    report = validate_synthesis([make_pop(n) for n in ("C1", "C2", "C3")], synthesis)
     assert report["backbone_mesh_two_vertex_connected"] is False
 
 
 # A bowtie: two backbone triangles {B1,B2,H} and {H,B3,B4} sharing the transit city H. No
 # segment is a bridge, so the fiber survives any single segment's loss; but H is a cut city
 # whose loss splits the backbone -- where segment- and city-survivability diverge.
-_BOWTIE_DESIGN = _drawn_design(
+_BOWTIE_SYNTHESIS = _drawn_synthesis(
     ("B1", "B2", "B3", "B4"),
     [
-        DesignPath("backbone_mesh", "B1", "B2", ("B1", "B2"), 1.0),
-        DesignPath("backbone_mesh", "B2", "H", ("B2", "H"), 1.0),
-        DesignPath("backbone_mesh", "B1", "H", ("B1", "H"), 1.0),
-        DesignPath("backbone_mesh", "H", "B3", ("H", "B3"), 1.0),
-        DesignPath("backbone_mesh", "B3", "B4", ("B3", "B4"), 1.0),
-        DesignPath("backbone_mesh", "H", "B4", ("H", "B4"), 1.0),
+        SynthesisPath("backbone_mesh", "B1", "B2", ("B1", "B2"), 1.0),
+        SynthesisPath("backbone_mesh", "B2", "H", ("B2", "H"), 1.0),
+        SynthesisPath("backbone_mesh", "B1", "H", ("B1", "H"), 1.0),
+        SynthesisPath("backbone_mesh", "H", "B3", ("H", "B3"), 1.0),
+        SynthesisPath("backbone_mesh", "B3", "B4", ("B3", "B4"), 1.0),
+        SynthesisPath("backbone_mesh", "H", "B4", ("H", "B4"), 1.0),
     ],
 )
 _BOWTIE_VERTICES = [make_pop(name) for name in ("B1", "B2", "B3", "B4", "H")]
@@ -386,18 +386,18 @@ _BOWTIE_VERTICES = [make_pop(name) for name in ("B1", "B2", "B3", "B4", "H")]
 
 def test_bowtie_backbone_is_two_edge_connected() -> None:
     """A bowtie has no bridge, so the fiber survives any single segment's loss."""
-    report = validate_design(_BOWTIE_VERTICES, _BOWTIE_DESIGN)
+    report = validate_synthesis(_BOWTIE_VERTICES, _BOWTIE_SYNTHESIS)
     assert report["backbone_mesh_two_edge_connected"] is True
 
 
 def test_bowtie_backbone_is_not_two_vertex_connected() -> None:
     """The bowtie's shared city is a cut, so the fiber does not survive that city's loss."""
-    report = validate_design(_BOWTIE_VERTICES, _BOWTIE_DESIGN)
+    report = validate_synthesis(_BOWTIE_VERTICES, _BOWTIE_SYNTHESIS)
     assert report["backbone_mesh_two_vertex_connected"] is False
 
 
-# Two disjoint physical edges leave the design graph in two components.
-_DISCONNECTED = build_design(
+# Two disjoint physical edges leave the synthesis graph in two components.
+_DISCONNECTED = build_synthesis(
     backbone_ids=("B1", "B2", "B3", "B4"),
     transit_ids=(),
     access_edges=[],
@@ -406,34 +406,34 @@ _DISCONNECTED = build_design(
 _DISCONNECTED_VERTICES = [make_pop(name) for name in ("B1", "B2", "B3", "B4")]
 
 
-def test_disconnected_design_reports_multiple_components() -> None:
-    """A design in two pieces is reported with a component count above one."""
-    report = validate_design(_DISCONNECTED_VERTICES, _DISCONNECTED)
+def test_disconnected_synthesis_reports_multiple_components() -> None:
+    """A synthesis in two pieces is reported with a component count above one."""
+    report = validate_synthesis(_DISCONNECTED_VERTICES, _DISCONNECTED)
     assert report["component_count"] == 2
 
 
-def test_disconnected_design_skips_articulation_search() -> None:
-    """With more than one component the design has no articulation points listed."""
-    report = validate_design(_DISCONNECTED_VERTICES, _DISCONNECTED)
+def test_disconnected_synthesis_skips_articulation_search() -> None:
+    """With more than one component the synthesis has no articulation points listed."""
+    report = validate_synthesis(_DISCONNECTED_VERTICES, _DISCONNECTED)
     assert report["articulation_points"] == []
 
 
 def test_degree_deficient_vertex_is_named() -> None:
     """A vertex with fewer than two distinct neighbours is named as degree-deficient."""
-    report = validate_design(_DISCONNECTED_VERTICES, _DISCONNECTED)
+    report = validate_synthesis(_DISCONNECTED_VERTICES, _DISCONNECTED)
     assert {item["id"] for item in report["degree_deficient_vertices"]} == {
         "B1", "B2", "B3", "B4",
     }
 
 
-def test_empty_design_reports_zero_min_degree() -> None:
-    """A design including no vertices reports a minimum neighbour degree of zero."""
-    empty = build_design((), (), [], [])
-    assert validate_design([], empty)["min_distinct_neighbor_degree"] == 0
+def test_empty_synthesis_reports_zero_min_degree() -> None:
+    """A synthesis including no vertices reports a minimum neighbour degree of zero."""
+    empty = build_synthesis((), (), [], [])
+    assert validate_synthesis([], empty)["min_distinct_neighbor_degree"] == 0
 
 
 def test_articulation_point_is_flagged() -> None:
-    """A cut vertex whose loss splits the design is reported as an articulation point."""
-    chain = _mesh_design(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
-    report = validate_design([make_pop(n) for n in ("C1", "C2", "C3")], chain)
+    """A cut vertex whose loss splits the synthesis is reported as an articulation point."""
+    chain = _mesh_synthesis(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
+    report = validate_synthesis([make_pop(n) for n in ("C1", "C2", "C3")], chain)
     assert {item["id"] for item in report["articulation_points"]} == {"C2"}

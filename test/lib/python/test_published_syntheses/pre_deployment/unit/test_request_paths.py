@@ -7,7 +7,7 @@ the front of this list rather than building a second copy of the same path.
 
 from __future__ import annotations
 
-from test_published_designs import request_paths
+from test_published_syntheses import request_paths
 
 
 def test_the_build_state_is_asked_for_before_the_collections_it_gates() -> None:

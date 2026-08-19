@@ -85,7 +85,7 @@ def undirected_adjacency(
     return adjacency
 
 def connected_components(vertex_ids: set[str], edges: set[tuple[str, str]]) -> list[list[str]]:
-    """Return the connected components of the design graph as sorted id lists."""
+    """Return the connected components of the synthesis graph as sorted id lists."""
     adjacency = undirected_adjacency(vertex_ids, edges)
     remaining = set(adjacency)
     components: list[list[str]] = []
@@ -279,7 +279,7 @@ def is_two_vertex_connected(vertex_ids: set[str], edges: set[tuple[str, str]]) -
     return not articulation_points(vertex_ids, edges)
 
 def articulation_points(vertex_ids: set[str], edges: set[tuple[str, str]]) -> set[str]:
-    """Return cut vertices whose removal would disconnect the design graph."""
+    """Return cut vertices whose removal would disconnect the synthesis graph."""
     adjacency = undirected_adjacency(vertex_ids, edges)
     visited: set[str] = set()
     discovery: dict[str, int] = {}
