@@ -1,12 +1,12 @@
 """WAN create endpoint: start a tenant's synthesizer and report its status.
 
     POST /wan-graph-synthesizer/tenants/{tenant}/wan -> 202; start the create
-    GET  /wan-graph-synthesizer/tenants/{tenant}/wan -> the WAN's status (422 on ``fail``)
+    GET  /wan-graph-synthesizer/tenants/{tenant}/wan -> the WAN's status (422 with no WAN)
 
 The synthesize math takes longer than API Gateway's ~29s cap, so a POST async-invokes
 the synthesizer Lambda and returns immediately; the synthesizer writes the finished WAN
-and a status marker to S3. A GET reads that marker -- 422 when no valid WAN was possible,
-404 before the first create. Self-contained (stdlib + boto3); single-file Lambda.
+and a status marker to S3. A GET reads that marker -- 422 when the build finished without
+a WAN, 404 before the first create. Self-contained (stdlib + boto3); single-file Lambda.
 """
 
 import json
@@ -21,6 +21,14 @@ logger.setLevel(logging.INFO)
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+
+# The two ways a build ends with no WAN to serve. ``fail`` is the synthesizer deciding no
+# valid WAN is possible for the tenant; ``timeout`` is AWS killing the invocation part-way,
+# recorded by the failure handler at its on_failure destination. They tell the caller
+# different things -- one to change the tenant's config, one to try again -- but neither
+# leaves a WAN behind, so the GET answers 422 for both rather than 200 with a body the
+# caller has to read to find out there is nothing in it.
+STATUSES_WITH_NO_WAN = frozenset({"fail", "timeout"})
 
 
 def _s3() -> Any:
@@ -66,7 +74,7 @@ def _start_create(tenant: str) -> None:
 
     ``InvocationType="Event"`` fires the synthesizer and returns at once, so the POST
     answers within API Gateway's timeout; the synthesizer moves the status to
-    ``synthesizing`` and then ``success``/``fail`` as it runs.
+    ``synthesizing`` and then ``success``/``fail``/``timeout`` as it runs.
     """
     _write_status(tenant, {"status": "creating", "tenant": tenant})
     _lambda().invoke(
@@ -77,7 +85,7 @@ def _start_create(tenant: str) -> None:
 
 
 def _read_status(tenant: str) -> dict[str, Any]:
-    """Serve a tenant's WAN status: 422 on ``fail``, 404 before any create."""
+    """Serve a tenant's WAN status: 422 when no WAN was built, 404 before any create."""
     client = _s3()
     try:
         body = client.get_object(
@@ -86,7 +94,7 @@ def _read_status(tenant: str) -> dict[str, Any]:
     except client.exceptions.NoSuchKey:
         return _response(404, {"error": f"no wan: {tenant}"})
     status = json.loads(body)
-    code = 422 if status.get("status") == "fail" else 200
+    code = 422 if status.get("status") in STATUSES_WITH_NO_WAN else 200
     return _response(code, status)
 
 

@@ -57,7 +57,8 @@ def delivered_designs_fixture() -> list[dict[str, Any]]:
 
     Sampling mid-build would fail on the timing rather than on the designs, so each tenant
     is given until the deadline to finish and only then read. A build that has recorded
-    ``fail`` is finished: waiting cannot improve it and the tier should report it.
+    ``fail`` or ``timeout`` is finished: waiting cannot improve either and the tier should
+    report it.
     """
     deadline = time.monotonic() + _BUILD_DEADLINE_SECONDS
     designs = _read_designs()

@@ -109,6 +109,21 @@ def test_wan_get_422_when_no_valid_wan(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response["statusCode"] == 422
 
 
+def test_wan_get_422_when_the_build_was_killed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A build AWS killed reports 422 as well: it is finished and has no WAN to serve.
+
+    ``timeout`` and ``fail`` are two different endings -- one is the synthesizer being cut
+    off part-way, the other is it deciding no valid network is possible -- and the reader
+    is told which. Neither leaves a network behind, so both are 422 rather than 200 with a
+    body the caller has to read to discover there is nothing there.
+    """
+    module = _wan(monkeypatch)
+    killed = {"tenants/f-35/wan-status.json": json.dumps({"status": "timeout"}).encode()}
+    with patch("boto3.client", side_effect=write_clients(killed, [])):
+        response = module.lambda_handler({"pathParameters": {"tenant": "f-35"}}, None)
+    assert response["statusCode"] == 422
+
+
 def test_wan_404_when_no_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
     """A request without a tenant path parameter is a 404."""
     module = _wan(monkeypatch)

@@ -123,8 +123,10 @@ resource "aws_lambda_function" "synthesizer" {
 # The failure handler: a tiny Lambda wired to the synthesizer's async on_failure
 # destination. AWS delivers a failed synthesizer invocation here only when it did NOT
 # return -- a 900s timeout, an out-of-memory kill, or an unhandled crash -- because those
-# kill the sandbox before the synthesizer's `except` can record "fail", leaving the WAN
-# stuck on "synthesizing" forever. It reuses the synthesizer's deployment package but is its
+# kill the sandbox before the synthesizer's `except` can record anything at all, leaving
+# the WAN stuck on "synthesizing" forever. It records "timeout", which is a different
+# ending from the "fail" the synthesizer writes when it decides no valid WAN is possible:
+# one asks the operator to change the tenant's config, the other to try again. It reuses the synthesizer's deployment package but is its
 # own function, entered at a different handler and running as its own write-only role.
 resource "aws_iam_role" "failure_handler" {
   name = "wan-graph-synthesizer-failure-handler"
@@ -175,7 +177,7 @@ resource "aws_lambda_function" "failure_handler" {
   # It writes a single S3 object; the default envelope is ample.
   timeout     = 30
   memory_size = 128
-  description = "WAN failure handler: record the terminal status when the synthesizer dies."
+  description = "WAN failure handler: record the timeout status when AWS kills the synthesizer."
 
   environment {
     variables = {
@@ -210,7 +212,7 @@ resource "aws_iam_role_policy" "synthesizer_destination" {
 
 # Pin async retries to zero and route a failed invocation to the failure handler. A
 # timeout kill can't be caught in-process, so retrying would only re-stamp "synthesizing"
-# without ever reaching a terminal status; the destination records "fail" instead.
+# without ever reaching a terminal status; the destination records "timeout" instead.
 resource "aws_lambda_function_event_invoke_config" "synthesizer" {
   function_name          = aws_lambda_function.synthesizer.function_name
   maximum_retry_attempts = 0

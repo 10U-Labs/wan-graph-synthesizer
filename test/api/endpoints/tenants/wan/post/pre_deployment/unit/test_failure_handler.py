@@ -2,7 +2,9 @@
 
 The failure handler is the synthesizer's async ``on_failure`` destination: given the
 failed invocation's event (carrying the original ``{"tenant": ...}`` request), it records
-the tenant's WAN as ``fail`` so a stuck ``synthesizing`` can never persist. S3 is faked;
+the tenant's WAN as ``timeout`` so a stuck ``synthesizing`` can never persist. Every event
+that reaches it is a build AWS killed, which is a different ending from the synthesizer
+deciding no valid network is possible and is recorded under a different word. S3 is faked;
 no network.
 """
 
@@ -42,14 +44,25 @@ def _run(module: Any, event: dict[str, Any]) -> dict[str, bytes]:
     return objects
 
 
-def test_records_the_fail_status(failure_handler: Any) -> None:
-    """A dead synthesizer invocation is recorded as ``fail``."""
+def test_records_the_timeout_status(failure_handler: Any) -> None:
+    """A synthesizer invocation AWS killed is recorded as ``timeout``, not as ``fail``."""
     objects = _run(failure_handler, _event())
-    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "fail"
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "timeout"
+
+
+def test_records_timeout_when_aws_reports_no_condition(failure_handler: Any) -> None:
+    """With no condition reported the ending is the same one, so the word is the same.
+
+    The handler is the async ``on_failure`` destination and is entered only for an
+    invocation that did not return, so whether AWS names a condition changes the ``reason``
+    sentence and nothing else.
+    """
+    objects = _run(failure_handler, _event(condition=None))
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "timeout"
 
 
 def test_writes_to_the_wan_status_key(failure_handler: Any) -> None:
-    """The ``fail`` status is written to the tenant's WAN status key."""
+    """The ``timeout`` status is written to the tenant's WAN status key."""
     objects = _run(failure_handler, _event())
     assert "tenants/f-35/wan-status.json" in objects
 
