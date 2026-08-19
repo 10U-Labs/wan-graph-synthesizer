@@ -6,7 +6,17 @@ access:
 backbone:
   coverage_target_miles: 745
   forced:
-    connections: []
+    connections:
+      - source: Ashburn, VA
+        target: Cheyenne, WY
+      - source: Cheyenne, WY
+        target: Great Falls, MT
+      - source: Cheyenne, WY
+        target: Minot, ND
+      - source: Hillsboro, OR
+        target: Salt Lake City, UT
+      - source: Salt Lake City, UT
+        target: San Jose, CA
     nodes:
       - Ashburn, VA
       - Boston, MA
