@@ -48,10 +48,7 @@ session tool's local memory only what is true of one machine alone.
 - [seed-races-routing-deploy](seed-races-routing-deploy.md) — a new
   tenant resource can 403 in `seed` before `api_common_routing` publishes
   its route
-- [seed-skip-cascade-needs-guards](seed-skip-cascade-needs-guards.md) —
-  a skipped gate silently skips every descendant without a status-check
-  `if`
-- [only-raw-map-commits-skip-the-tests](only-raw-map-commits-skip-the-tests.md) — a push touching only `data/raw/` skips every test tier; a config-only push no longer does
+- [seed-tests-every-push](seed-tests-every-push.md) — every push that starts `seed.yml` runs every tier; the `determining-testing` and `concluding-testing-*` jobs that skipped some of them are deleted
 - [where-a-test-runs-follows-what-starts-it](where-a-test-runs-follows-what-starts-it.md) — a test runs in the workflow the change it guards arrives on; API shape in the endpoint's workflow, rebuilt WANs in `seed`, and a shared module in every workflow that imports it
 - [shared-modules-are-tested-first](shared-modules-are-tested-first.md) — `test-repo-libraries` runs every module's tests under `test/lib/python/` ahead of every job whose tests import them
 - [every-check-is-its-own-job](every-check-is-its-own-job.md) — the eleven static-analysis checks are eleven jobs that start together, so one push reports every finding it has

@@ -63,12 +63,7 @@ Every static-analysis check is a job of its own, so one push reports every findi
 
 Adding a new per-tenant store resource can fail the first `seed` run on the new PUT: `seed`, `api_common_routing` and `api_endpoint_tenants` are independent workflows on the same push, so seeding can beat both the route and the handler that stores it. The code says which is behind — `HTTP 403` is a route API Gateway does not define yet, `HTTP 404` is the old handler not knowing the collection. Wait for both, then `gh run rerun <run-id> --failed`. A later commit that misses `etc/`, `openapi.json` and `seed.py` will not re-trigger `seed` at all.
 
-In `seed.yml`, a skipped `concluding-*` gate skip-cascades transitively to
-every descendant. An ordinary expression `if` does not break the cascade;
-each downstream job needs its own status-check function, normally
-`if: ${{ !cancelled() && needs.<parent>.result == 'success' }}`.
-
-A `seed` run whose push touched only `data/raw/` reports success without testing the code that seeds: `determining-testing` sets `testing-necessary=false` and `unit-tests` and `integration-tests` both skip. The nine static-analysis checks, `yamllint` and `test-repo-libraries` are gated on nothing and still run, so the nine shared modules under `lib/python/` are still tested. `seeding` still runs, through `concluding-testing-unnecessary`, and `e2e-tests` after it — so the published networks are still measured, but nothing that would have caught a broken `scripts/seed.py` before it wrote to the live API ran first. `gh run rerun` recomputes the same decision, so force one with `gh workflow run seed.yml --ref main`, which has no `github.event.before` and so runs every tier. The exclusion covered all of `data/` and `etc/` until the integration tier gained a contract that reads both, so a config-only push tests now; do not assume it skips.
+Every push that starts `seed.yml` runs every tier, so no run reports success without testing the code that seeds. The three jobs that once decided otherwise are deleted (GitHub issue #73): `determining-testing`, which diffed the push and set `testing-necessary=false` when every changed path was under `data/raw/`, and the `concluding-testing-necessary` and `concluding-testing-unnecessary` gates that branched on it. `unit-tests` and `integration-tests` now carry `needs: test-repo-libraries` and no `if` at all, and `seeding` names all twelve gates in one flat `and` beside `github.ref == 'refs/heads/main'`. A skip still cascades transitively to every descendant wherever one is possible and an ordinary expression `if` does not break it, so a job under one that can skip needs its own status-check function, normally `if: ${{ !cancelled() && needs.<parent>.result == 'success' }}` — which is what `e2e-tests` carries against a `seeding` that skips off `main`.
 
 Shared machinery is tested in every workflow that imports it, and before the tests that stand on it. A module under `lib/python/` has no workflow of its own and no single consumer, so its subtree under `test/lib/python/` runs in each workflow whose own tests import it — transitively, since `test_handler_contracts` imports `test_module_utils` and `test_s3_store_mock`, and `test_terraform_config` sits under `test_fixtures.aws` and `test_terraform_drift`. Each of the eleven workflows that run Python tests carries a `test-repo-libraries` job for this: it starts when the workflow does, runs all nine modules' tests rather than the subset that workflow imports, and is named in the `needs:` of every job there whose tests import them, written out rather than left to arrive down the chain. It gates each module with a `--cov=lib/python/<module>` of its own, so a module arriving without tests fails rather than being carried by its neighbours' numbers, and each workflow lists `test/lib/python/**` in its `paths`. A workflow of its own for these modules cannot be made to work, because GitHub Actions orders nothing between workflows started by the same push, and an expression `if` reading the job's result is not a substitute for the `needs:` edge.
 
@@ -79,8 +74,7 @@ Longer:
 [shared-modules-are-tested-first](docs/claude/memories/shared-modules-are-tested-first.md),
 [where-a-test-runs-follows-what-starts-it](docs/claude/memories/where-a-test-runs-follows-what-starts-it.md),
 [seed-races-routing-deploy](docs/claude/memories/seed-races-routing-deploy.md),
-[seed-skip-cascade-needs-guards](docs/claude/memories/seed-skip-cascade-needs-guards.md),
-[only-raw-map-commits-skip-the-tests](docs/claude/memories/only-raw-map-commits-skip-the-tests.md).
+[seed-tests-every-push](docs/claude/memories/seed-tests-every-push.md).
 
 ## Markdown
 

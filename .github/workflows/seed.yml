@@ -45,22 +45,6 @@ jobs:
           ${{ github.workspace }}/test/scripts/seed
           ${{ github.workspace }}/test/lib/python/repo_utils
           ${{ github.workspace }}/test/lib/python/test_http_doubles
-  concluding-testing-necessary:
-    if: ${{ !cancelled() && needs.determining-testing.outputs.testing-necessary == 'true' }}
-    name: concluding-testing-necessary
-    needs: determining-testing
-    runs-on: ubuntu-latest
-    steps:
-      - name: No-op
-        run: 'true'
-  concluding-testing-unnecessary:
-    if: ${{ !cancelled() && needs.determining-testing.outputs.testing-necessary == 'false' }}
-    name: concluding-testing-unnecessary
-    needs: determining-testing
-    runs-on: ubuntu-latest
-    steps:
-      - name: No-op
-        run: 'true'
   copy-paste-source:
     name: copy-paste-source
     runs-on: ubuntu-latest
@@ -85,52 +69,6 @@ jobs:
           --reporters console test/scripts/seed/
           test/lib/python/repo_utils
           test/lib/python/test_http_doubles
-  determining-testing:
-    # This job needs test-repo-libraries, which is what puts the shared modules under
-    # lib/python/ ahead of every other job in the workflow. Nothing here reads them — the
-    # step below diffs the push — but the two concluding-* gates hang off this job and
-    # everything that tests or seeds hangs off those, so a red test-repo-libraries skips
-    # this job, skips both gates, and skips seeding with them. That holds on the
-    # data/raw/-only push too, where unit-tests and integration-tests skip and this edge is
-    # the only thing standing between a broken shared module and a PUT to the live API.
-    name: determining-testing
-    needs: test-repo-libraries
-    outputs:
-      testing-necessary: ${{ steps.decide.outputs.testing-necessary }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - id: decide
-        # The exclusion is data/raw/ and nothing wider. It once covered all of data/ and
-        # etc/, on the reasoning that no test read either, and that reasoning expired: the
-        # integration tier now asserts a tenant's backbone knobs against what the carrier
-        # files say its fiber can carry, so a push editing only etc/ is the likeliest way
-        # to break that contract and was exactly the push that skipped it. data/raw/ is
-        # still sound to exclude, holding the carriers' published maps that the cleaned
-        # vertices and edges were transcribed from, which no code opens.
-        #
-        # A manual run carries no github.event.before, so it has no previous commit to
-        # diff against and every tier runs. That is what `gh workflow run seed.yml --ref
-        # main` is for, and asking the event directly is what keeps it true: the rest of
-        # this condition is about hashes, and rewriting it must not take the escape hatch
-        # away by accident. cat-file covers every hash a push can leave — the all-zero one
-        # a new branch sends, and one this checkout does not hold after a force push.
-        name: Decide whether static analysis and tests are necessary
-        run: |
-          base='${{ github.event.before }}'
-          head='${{ github.sha }}'
-          if [ '${{ github.event_name }}' = workflow_dispatch ] \
-              || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
-            necessary=true
-          elif git diff --name-only "$base" "$head" \
-              | grep -qvE '^data/raw/'; then
-            necessary=true
-          else
-            necessary=false
-          fi
-          echo "testing-necessary=$necessary" | tee -a "$GITHUB_OUTPUT"
   # Whether each tenant's published network is the one its config in etc/ asked for. That
   # question belongs to this workflow and to no other: a push editing etc/ starts this one
   # alone, and seeding is what delivers the edit and rebuilds the WANs, so this is the only
@@ -162,14 +100,8 @@ jobs:
           --import-mode=importlib --confcutdir=test
           --verbose
   integration-tests:
-    if: >-
-      ${{ !cancelled()
-      && needs.concluding-testing-necessary.result == 'success'
-      && needs.test-repo-libraries.result == 'success' }}
     name: integration-tests
-    needs:
-      - concluding-testing-necessary
-      - test-repo-libraries
+    needs: test-repo-libraries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -246,14 +178,11 @@ jobs:
           --fail-on=C,R,W --fail-under=10.0
   seeding:
     # Every gate in the workflow is named here as well as in needs:, because the nine checks
-    # and the three test jobs are independent of each other now and any one of them can be
-    # the only red job in the run. The nine checks and test-repo-libraries are gated on
-    # nothing and run on every push, red or green, so they are and-ed in ahead of the two
-    # arms rather than inside one of them. The arms are the two ways a push can reach this
-    # job: determining-testing said testing was necessary and unit-tests and
-    # integration-tests both passed, or it said testing was unnecessary, skipped those two,
-    # and concluding-testing-unnecessary is the only result there is to read. The yamllint
-    # job is named in neither, so a red one does not stop this job PUTting to the live API.
+    # and the three test jobs are independent of each other and any one of them can be the
+    # only red job in the run. All twelve run on every push this workflow starts, so they are
+    # and-ed in flat: there is no longer a push that reaches this job having tested less than
+    # another one did. The yamllint job is named neither here nor in needs:, so a red one
+    # does not stop this job PUTting to the live API.
     if: >-
       ${{ !cancelled() && github.ref == 'refs/heads/main'
       && needs.assert-no-inline-directives.result == 'success'
@@ -261,20 +190,18 @@ jobs:
       && needs.assert-one-assert-per-pytest.result == 'success'
       && needs.copy-paste-source.result == 'success'
       && needs.copy-paste-tests.result == 'success'
+      && needs.integration-tests.result == 'success'
       && needs.mypy-source.result == 'success'
       && needs.mypy-tests.result == 'success'
       && needs.pylint-source.result == 'success'
       && needs.pylint-tests.result == 'success'
       && needs.test-repo-libraries.result == 'success'
-      && (needs.concluding-testing-unnecessary.result == 'success'
-      || (needs.unit-tests.result == 'success'
-      && needs.integration-tests.result == 'success')) }}
+      && needs.unit-tests.result == 'success' }}
     name: seeding
     needs:
       - assert-no-inline-directives
       - assert-no-linter-config-files
       - assert-one-assert-per-pytest
-      - concluding-testing-unnecessary
       - copy-paste-source
       - copy-paste-tests
       - integration-tests
@@ -316,16 +243,14 @@ jobs:
   # GitHub issue #56 redrew the edges around this job. The static-analysis checks are jobs
   # now rather than steps of one static-analysis job, and all nine start when the workflow
   # does, gated on nothing: a check costs seconds, produces nothing anyone waits on, and is
-  # worth running even on the push that needs no testing. This job is gated on nothing
+  # worth running even on a push that changes one line. This job is gated on nothing
   # either, and it is first: it carries no needs: and no if:, so it starts when the
-  # workflow does and runs whatever the push touched, including the data/raw/-only push
-  # where every other test job skips.
+  # workflow does.
   #
-  # Everything that tests or seeds is behind it. determining-testing needs this job, both
-  # concluding-* gates need determining-testing, and unit-tests, integration-tests and
-  # seeding are behind those, so one red job here skips the rest of the run. unit-tests and
-  # integration-tests name this job in their own needs: as well as
-  # concluding-testing-necessary, and e2e-tests names it beside seeding, rather than
+  # Everything that tests or seeds is behind it. unit-tests and integration-tests each name
+  # this job in a needs: of their own and carry no if at all, so a red one skips them both,
+  # and seeding needs those two along with the nine checks, so one red job here skips the
+  # rest of the run. e2e-tests names this job beside seeding, rather than
   # letting the edge arrive down the chain: a reader facing eleven red consumers has to be
   # told which shared module broke them, where one red job and ten skipped ones has already
   # told them. Deploying past a broken module costs more than a wrong report, too — seeding
@@ -387,14 +312,8 @@ jobs:
           --cov-report=term-missing
           --cov-fail-under=100
   unit-tests:
-    if: >-
-      ${{ !cancelled()
-      && needs.concluding-testing-necessary.result == 'success'
-      && needs.test-repo-libraries.result == 'success' }}
     name: unit-tests
-    needs:
-      - concluding-testing-necessary
-      - test-repo-libraries
+    needs: test-repo-libraries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
