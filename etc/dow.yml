@@ -41,7 +41,7 @@ backbone:
   prohibited:
     connections: []
     nodes: []
-  promote_high_degree_convergences: true
+  promote_high_degree_convergences: false
   restrict_to_data_centers: false
 inputs:
   forced: data/vertices/forced/inexistent.csv
