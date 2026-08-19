@@ -4,27 +4,17 @@ access:
     connections: []
   homing_degree: 2
 backbone:
-  coverage_target_miles: 400
+  coverage_target_miles: 745
   forced:
     connections: []
     nodes:
       - Ashburn, VA
       - Boston, MA
-      - Cincinnati, OH
-      - Colorado Springs, CO
-      - Dallas, TX
-      - Fort Worth, TX
       - Hillsboro, OR
-      - Jacksonville, FL
-      - Las Vegas, NV
       - Los Angeles, CA
-      - McLean, VA
       - New York, NY
-      - Pittsburgh, PA
-      - Salt Lake City, UT
       - San Jose, CA
       - Seattle, WA
-      - Tallahassee, FL
   max_backup_path_multiple: 3
   node_count:
     max: 99
