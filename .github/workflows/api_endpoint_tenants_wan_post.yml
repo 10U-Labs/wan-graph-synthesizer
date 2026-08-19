@@ -192,13 +192,13 @@ jobs:
       # post/lambdas/synthesizer/handler.py is the synthesizer Lambda that builds a tenant's
       # WAN, and it deliberately wraps the whole build in a catch-all
       # `except Exception`. The synthesizer's contract is to record the tenant's status
-      # in S3 -- "building" when it starts, "ready" on success, and "failed" on ANY
+      # in S3 -- "synthesizing" when it starts, "ready" on success, and "failed" on ANY
       # failure -- so that a customer polling for their WAN always reaches a terminal
       # answer. The expected failure (an infeasible design) is a ValueError, but it
       # is not the only thing that can go wrong: reading the substrate and tenant
       # inputs from S3 can raise a boto error, and an unforeseen bug can raise
       # anything at all. If such an error were allowed to escape, the synthesizer would
-      # exit with the status still on "building", and the customer would wait forever
+      # exit with the status still on "synthesizing", and the customer would wait forever
       # for a result that never resolves. The catch-all is what guarantees every
       # run ends by writing a terminal status. pylint flags catch-all handlers
       # because they usually hide bugs, which is a sound default, but here turning

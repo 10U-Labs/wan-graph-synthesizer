@@ -2,7 +2,8 @@
 
 The heavy design pipeline is stubbed (it is exercised by the synthesizer engine tests);
 these tests cover the handler's own orchestration and S3 I/O: it reads the tenant from
-the invoke event, moves the status to ``building``, and publishes ``ready``/``failed``.
+the invoke event, moves the status to ``synthesizing``, and publishes ``ready`` or
+``failed``.
 """
 
 from __future__ import annotations
@@ -223,6 +224,31 @@ def test_the_ready_status_carries_the_sites_short_of_their_target(
     assert status["diverse_paths"]["short"] == []
 
 
+def test_the_status_says_synthesizing_while_the_build_runs(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The word a caller polling the GET sees for as long as the work is being done.
+
+    It is the only sign the synthesizer picked the work up at all, and a build that never
+    wrote it would look to a caller exactly like one the dispatcher never started. It is
+    read from inside the build here because the store keeps only the last status written,
+    so every other test in this file reads a build that has already finished.
+    """
+    _stub_pipeline(synthesizer, monkeypatch)
+    objects = _inputs(synthesizer)
+    polled: list[dict[str, Any]] = []
+
+    def _read_the_status_mid_build(*_args: Any) -> Any:
+        """Stand in for the long step, reading what a caller would see while it runs."""
+        polled.append(json.loads(objects["tenants/f-35/wan-status.json"]))
+        return object()
+
+    monkeypatch.setattr(synthesizer, "synthesize_two_tier_design", _read_the_status_mid_build)
+    with patch("boto3.client", return_value=fake_s3(objects)):
+        synthesizer.lambda_handler({"tenant": "f-35"}, None)
+    assert polled[0]["status"] == "synthesizing"
+
+
 def test_records_failed_when_no_valid_wan(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -262,7 +288,7 @@ def test_records_failed_when_the_design_falls_into_more_than_one_group(
     """A design in two groups is recorded as failed, which is how the gate is seen outside.
 
     The refusal happens inside the build, so a caller polling the GET learns of it only
-    through this status; without it the tenant would sit at ``building`` forever.
+    through this status; without it the tenant would sit at ``synthesizing`` forever.
     """
     objects = _run_split_backbone(synthesizer, monkeypatch)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"

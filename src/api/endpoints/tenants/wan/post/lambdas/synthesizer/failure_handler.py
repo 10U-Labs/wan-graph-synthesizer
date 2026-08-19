@@ -6,7 +6,7 @@ timeout, an out-of-memory kill, or an unhandled crash -- none of which run the
 synthesizer's own ``except`` block (a caught error is a normal return and never reaches
 this handler). Read the tenant from the original request payload and write the terminal
 ``failed`` status the dispatcher's GET serves as 422, so a build can never stay stuck on
-``building`` forever.
+``synthesizing`` forever.
 """
 
 from __future__ import annotations

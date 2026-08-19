@@ -210,8 +210,8 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     """Build the tenant's WAN and publish it, or record why it failed.
 
     The dispatcher async-invokes this with ``{"tenant": ...}``. The status is moved to
-    ``building`` first -- the in-progress marker the GET reads -- then ``ready`` once the
-    WAN is published, or ``failed`` if the build raises.
+    ``synthesizing`` first -- the in-progress marker the GET reads -- then ``ready`` once
+    the WAN is published, or ``failed`` if the build raises.
 
     A ``ready`` status carries the coverage the design delivered. Growth toward the
     operator's target can stop short of it, and a build that gave up used to be published
@@ -234,11 +234,11 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     client = boto3.client("s3", region_name="us-east-2")
     tenant = event["tenant"]
     status_key = f"tenants/{tenant}/wan-status.json"
-    _write_json(client, status_key, {"status": "building", "tenant": tenant})
+    _write_json(client, status_key, {"status": "synthesizing", "tenant": tenant})
     logger.info("Build started for %s", tenant)
     # Any failure (an infeasible design raises ValueError, but an S3 read error or
     # an unforeseen bug can raise anything) must be recorded as the WAN's status
-    # rather than crash the invocation and leave the tenant stuck "building" forever.
+    # rather than crash the invocation and leave the tenant stuck "synthesizing" forever.
     try:
         wan, delivered = _build_wan(client, tenant)
     except Exception as exc:

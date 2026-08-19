@@ -88,7 +88,7 @@ def test_synthesizer_async_retries_are_disabled(synth_main: dict[str, object]) -
     """The synthesizer's async invocation config pins retries to zero.
 
     A wall-clock timeout kills the sandbox before the handler can record ``failed``, so a
-    retry would only re-stamp ``building`` and never reach a terminal status.
+    retry would only re-stamp ``synthesizing`` and never reach a terminal status.
     """
     invoke_config = _resource(
         synth_main, "aws_lambda_function_event_invoke_config", "synthesizer")

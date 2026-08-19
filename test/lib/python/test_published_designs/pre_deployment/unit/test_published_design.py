@@ -107,7 +107,7 @@ def test_a_tenant_whose_build_has_not_published_is_read_with_no_network(
     running into an error that stops every test in the layer instead of one report.
     """
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
-        "tenants/daf/wan": {"status": "building", "tenant": "daf"},
+        "tenants/daf/wan": {"status": "synthesizing", "tenant": "daf"},
     }))
     design = published_design(DEFAULT_API, "daf", _CONFIG)
     assert [

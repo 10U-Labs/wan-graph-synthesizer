@@ -62,9 +62,9 @@ FIBER = "carrier_physical"
 
 # The states the service reports while it is still deciding what a tenant's network is.
 # The POST that starts a build records ``creating`` before it answers, and the synthesizer
-# records ``building`` when it picks the work up, so a tenant in neither state has a
+# records ``synthesizing`` when it picks the work up, so a tenant in neither state has a
 # network that is finished -- published, or failed and reported as failed.
-UNFINISHED = frozenset({"creating", "building"})
+UNFINISHED = frozenset({"creating", "synthesizing"})
 
 # The published collections this module reads, under the names the API serves them by.
 COLLECTIONS = ("backbone-nodes", "backbone-links", "tenant-nodes", "provider-nodes", "edges")
@@ -136,8 +136,8 @@ def settled(status: dict[str, Any]) -> bool:
 
     A reader that arrives while a build is running would measure a network the operator
     has already replaced, so it waits. What it waits for is the build itself and nothing
-    else: the state moves out of ``creating`` and ``building`` exactly once per build, and
-    the build was started by the seed run that delivered the config it was built from.
+    else: the state moves out of ``creating`` and ``synthesizing`` exactly once per build,
+    and the build was started by the seed run that delivered the config it was built from.
     Nothing here enumerates the settings a tenant declares, so a setting added to ``etc/``
     tomorrow cannot leave this reading a network built before it existed.
     """

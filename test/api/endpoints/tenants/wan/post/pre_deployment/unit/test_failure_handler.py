@@ -2,8 +2,8 @@
 
 The failure handler is the synthesizer's async ``on_failure`` destination: given the
 failed invocation's event (carrying the original ``{"tenant": ...}`` request), it records
-the tenant's WAN as ``failed`` so a stuck ``building`` can never persist. S3 is faked; no
-network.
+the tenant's WAN as ``failed`` so a stuck ``synthesizing`` can never persist. S3 is faked;
+no network.
 """
 
 from __future__ import annotations

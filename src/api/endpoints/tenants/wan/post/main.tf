@@ -124,7 +124,7 @@ resource "aws_lambda_function" "synthesizer" {
 # destination. AWS delivers a failed synthesizer invocation here only when it did NOT
 # return -- a 900s timeout, an out-of-memory kill, or an unhandled crash -- because those
 # kill the sandbox before the synthesizer's `except` can record "failed", leaving the WAN
-# stuck on "building" forever. It reuses the synthesizer's deployment package but is its
+# stuck on "synthesizing" forever. It reuses the synthesizer's deployment package but is its
 # own function, entered at a different handler and running as its own write-only role.
 resource "aws_iam_role" "failure_handler" {
   name = "wan-graph-synthesizer-failure-handler"
@@ -209,7 +209,7 @@ resource "aws_iam_role_policy" "synthesizer_destination" {
 }
 
 # Pin async retries to zero and route a failed invocation to the failure handler. A
-# timeout kill can't be caught in-process, so retrying would only re-stamp "building"
+# timeout kill can't be caught in-process, so retrying would only re-stamp "synthesizing"
 # without ever reaching a terminal status; the destination records "failed" instead.
 resource "aws_lambda_function_event_invoke_config" "synthesizer" {
   function_name          = aws_lambda_function.synthesizer.function_name

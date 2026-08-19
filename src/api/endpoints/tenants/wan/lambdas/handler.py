@@ -65,8 +65,8 @@ def _start_create(tenant: str) -> None:
     """Mark the WAN as creating and async-invoke the synthesizer.
 
     ``InvocationType="Event"`` fires the synthesizer and returns at once, so the POST
-    answers within API Gateway's timeout; the synthesizer moves the status to ``building``
-    and then ``ready``/``failed`` as it runs.
+    answers within API Gateway's timeout; the synthesizer moves the status to
+    ``synthesizing`` and then ``ready``/``failed`` as it runs.
     """
     _write_status(tenant, {"status": "creating", "tenant": tenant})
     _lambda().invoke(

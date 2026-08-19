@@ -29,8 +29,8 @@ from test_published_designs import published_design, settled
 # test file that uses this fixture runs after: the POST that starts a build records
 # ``creating`` before it answers, so by the time seeding returns every tenant is at
 # ``creating`` or later and there is no earlier build left to mistake for the current one.
-# Waiting for the state to leave ``creating`` and ``building`` is then the whole of the
-# question (GitHub issue #47).
+# Waiting for the state to leave ``creating`` and ``synthesizing`` is then the whole of
+# the question (GitHub issue #47).
 _BUILD_DEADLINE_SECONDS = 900
 _BUILD_POLL_SECONDS = 20
 
