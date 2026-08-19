@@ -7,10 +7,10 @@ by reading a number back -- whether the fiber joins every backbone seat into one
 what the worst haul of a published network really is, whether any published link wanders
 further from the straight line than its tenant allows, whether any of them wanders further
 than the fiber it runs over made necessary, whether any pair of sites was drawn with more
-paths between them than the tenant bought, whether any path at all could be taken out with
-no site losing a diverse path, no site cut off and no city's loss newly splitting the fiber,
-and how many miles of carrier fiber the network ordered, which is the figure the floor a
-build publishes under itself is there to be held against.
+paths between them than the tenant bought, whether any path the operator did not pin could
+be taken out with no site losing a diverse path, no site cut off and no city's loss newly
+splitting the fiber, and how many miles of carrier fiber the network ordered, which is the
+figure the floor a build publishes under itself is there to be held against.
 
 The reading goes through the API and not through the S3 bucket the synthesizer writes to.
 The bucket holds only what the synthesizer chose to publish, which is three of the eight
@@ -108,6 +108,13 @@ def published_synthesis(api: str, tenant: str, config: dict[str, Any]) -> dict[s
     linear-programming relaxation it solved and serves as ``backbone_lower_bound_miles``.
     It is read with ``.get`` for the same reason the collections are not fetched: a build
     that has not finished has decided no such number yet, and carries none.
+
+    ``forced_paths`` is the pairs of backbone sites the operator wrote into
+    ``backbone.forced.connections``, carried in the shape ``etc/`` writes them. They come
+    from the config and not off the published links, which carry ``"reason":
+    "operator_pin"`` for a pinned path: a build that pinned a path nobody asked it to pin is
+    a defect this module is here to report, and reading the label the build wrote on its own
+    work would hide exactly that (GitHub issue #78).
     """
     state_path, *collection_paths = request_paths(tenant)
     state = _build_state(api, state_path)
@@ -123,6 +130,7 @@ def published_synthesis(api: str, tenant: str, config: dict[str, Any]) -> dict[s
         "number_of_diverse_paths": backbone["number_of_diverse_paths"],
         "seat_cap": backbone["node_count"]["max"],
         "forced": backbone.get("forced", {}).get("nodes", []),
+        "forced_paths": backbone.get("forced", {}).get("connections", []),
         "status": state,
         "lower_bound_miles": state.get("backbone_lower_bound_miles"),
         "backbone": published.get("backbone-nodes", []),
@@ -397,6 +405,15 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     the cities it crosses and the miles it runs, longest first, so the failure names the
     fiber and its length.
 
+    A path the operator asked for is never reported. ``backbone.forced.connections`` in a
+    tenant's config names pairs of sites the synthesis has to join whatever the rest of the
+    build would rather do, which makes it the one path nobody has to justify; the
+    synthesizer skips it for that reason when it prunes its own work
+    (``synthesizer.backbone._needed``). Asking the three demands of it instead reported all
+    four pairs DAF had pinned as fiber nobody needed, 2,454 of the miles it had ordered on
+    purpose, and the only answer available to the finding was to delete the requirement that
+    caused it (GitHub issue #78).
+
     54 of the 192 paths in the six published networks are of that kind, 23,917 of their
     83,927 miles -- 28 per cent of the fiber the six tenants pay for buys no backbone site a
     diverse path (GitHub issue #60). They come from every pass of the build rather than from
@@ -417,6 +434,9 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     names = {node["id"]: node["name"] for node in synthesis["backbone"]}
     sites = list(names)
     asked = synthesis["number_of_diverse_paths"]
+    pinned = {
+        frozenset((pair["source"], pair["target"])) for pair in synthesis["forced_paths"]
+    }
     held_ways_out = {
         site: min(asked, independent_ways_out(synthesis["links"], site, names))
         for site in sites
@@ -426,6 +446,8 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     )
     removable: list[tuple[str, float]] = []
     for spare in synthesis["links"]:
+        if frozenset((names[spare["source_id"]], names[spare["target_id"]])) in pinned:
+            continue
         kept = [link for link in synthesis["links"] if link is not spare]
         if any(
             independent_ways_out(kept, site, names) < held_ways_out[site] for site in sites

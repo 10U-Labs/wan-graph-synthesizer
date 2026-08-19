@@ -17,7 +17,9 @@ cities it crosses by name and its two ends by id.
 
 Each of the three demands a removal has to meet has a case that refuses one, because a
 helper refusing every removal would report the empty list a sound network reports and the
-assertion standing on it could not tell the two apart.
+assertion standing on it could not tell the two apart. A fourth reason keeps a path whatever
+the three say: the operator wrote the pair into their own config and pays for it on purpose
+(GitHub issue #78).
 """
 
 from __future__ import annotations
@@ -27,12 +29,18 @@ from typing import Any
 from test_published_syntheses import removable_paths
 
 
-def _published_network(crossings: list[tuple[str, ...]]) -> dict[str, Any]:
+def _published_network(
+    crossings: list[tuple[str, ...]], forced: tuple[tuple[str, str], ...] = ()
+) -> dict[str, Any]:
     """A published network holding one path per run of cities given.
 
     Each path runs between the first and the last city of its run, both of which are
     backbone sites, and costs a hundred miles a hop, so a path round by two cities is the
     longer of two and the one reported first.
+
+    ``forced`` names the pairs of sites the tenant pinned in its own config, in the shape
+    ``etc/`` writes them, and defaults to none: a tenant that pinned nothing is what all but
+    three of the cases here are, and it is what every tenant but DAF is today.
     """
     drawn = [
         {
@@ -46,6 +54,7 @@ def _published_network(crossings: list[tuple[str, ...]]) -> dict[str, Any]:
     seated = sorted({end for cities in crossings for end in (cities[0], cities[-1])})
     return {
         "number_of_diverse_paths": 2,
+        "forced_paths": [{"source": source, "target": target} for source, target in forced],
         "backbone": [{"id": city, "name": city} for city in seated],
         "links": drawn,
     }
@@ -112,6 +121,44 @@ def test_every_path_nobody_needs_is_reported_and_the_longest_of_them_first() -> 
     assert removable_paths(
         _published_network(_SQUARE + [_SHORT_CROSSING, _LONG_CROSSING])
     ) == [("west -> p -> q -> east", 300.0), ("west -> g -> east", 200.0)]
+
+
+def test_a_path_the_operator_pinned_is_kept_though_the_three_demands_would_let_it_go() -> None:
+    """The 200-mile crossing nobody needed is kept once its tenant pins the pair it joins.
+
+    A pinned pair is a path the operator wrote into ``backbone.forced`` in ``etc/`` and buys
+    on purpose, so it is the one path nobody has to justify, and the synthesizer skips it
+    when it prunes its own work (``synthesizer.backbone._needed``). Reporting it told an
+    operator that their own requirement was fiber they had not ordered, and the only answer
+    to the finding was to delete the requirement (GitHub issue #78).
+    """
+    assert not removable_paths(
+        _published_network(_SQUARE + [_SHORT_CROSSING], (("west", "east"),))
+    )
+
+
+def test_a_pinned_pair_keeps_no_path_between_two_other_sites() -> None:
+    """One path of the square pinned leaves the crossing the 200 miles nobody ordered.
+
+    A pin names two sites, and a helper reading it as licence for the whole network would
+    report nothing at all for a tenant holding one -- which is the empty list a sound
+    network reports, and the assertion standing on it could not tell the two apart.
+    """
+    assert removable_paths(
+        _published_network(_SQUARE + [_SHORT_CROSSING], (("west", "north"),))
+    ) == [("west -> g -> east", 200.0)]
+
+
+def test_a_pinned_pair_written_the_other_way_round_is_the_same_pair() -> None:
+    """A config calling east the source and west the target pins the crossing west runs to.
+
+    Which of two sites a config names first is the operator's choice and a published path
+    runs from whichever end the build drew it from, so a pair read as ordered would report a
+    pinned path every time the two disagreed.
+    """
+    assert not removable_paths(
+        _published_network(_SQUARE + [_SHORT_CROSSING], (("east", "west"),))
+    )
 
 
 def test_a_path_a_site_would_lose_a_diverse_path_by_is_kept() -> None:

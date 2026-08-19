@@ -5,12 +5,13 @@
 file-stem-to-tenant-id rule, so a tenant added to git is one this tier starts asking about
 with no edit here. The reading itself is ``test_published_syntheses.published_synthesis``, which
 asks the API for each tenant's build state and its five published collections; nothing here
-opens the store the synthesizer writes to. Each entry is a plain mapping of ten keys:
-``tenant``, the ``target_miles``, ``max_backup_path_multiple``, ``seat_cap`` and pinned ``forced``
-cities the config sets, the ``status`` document the GET passes through, and the published
-``backbone``, ``demand``, ``links`` and ``edges`` collections that status can be measured
-against. A tenant whose build is not ``success`` has no network to read and carries all
-four empty.
+opens the store the synthesizer writes to. Each entry is a plain mapping of thirteen keys:
+``tenant``; the ``target_miles``, ``max_backup_path_multiple``, ``number_of_diverse_paths``,
+``seat_cap``, pinned ``forced`` cities and pinned ``forced_paths`` the config sets; the
+``status`` document the GET passes through and the ``lower_bound_miles`` it reports; and the
+published ``backbone``, ``demand``, ``links`` and ``edges`` collections that status can be
+measured against. A tenant whose build is not ``success`` has no network to read and carries
+all four empty.
 """
 from __future__ import annotations
 

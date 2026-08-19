@@ -30,7 +30,10 @@ _CONFIG: dict[str, Any] = {
         "max_backup_path_multiple": 3.0,
         "node_count": {"max": 6},
         "number_of_diverse_paths": 2,
-        "forced": {"nodes": ["Ashburn, VA"]},
+        "forced": {
+            "nodes": ["Ashburn, VA"],
+            "connections": [{"source": "Ashburn, VA", "target": "New York, NY"}],
+        },
     },
 }
 _NODE = {"id": "ash", "name": "Ashburn, VA", "kind": "PoP", "coords": [39.0, -77.5]}
@@ -67,13 +70,18 @@ def _answering(bodies: dict[str, Any], code: int = 200) -> Callable[..., FakeRes
 
 def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """A ``success`` tenant carries its five collections, the six git holds, and its floor.
+    """A ``success`` tenant carries its five collections, the seven git holds, and its floor.
 
     The two demand collections arrive as one, since every site the coverage target applies
     to is measured the same way whether the tenant or a cloud provider owns it. The floor
     comes out of the build's own status: it is the fewest fiber miles the same requirements
     could have been met with, and a network is only judged against it once it is read
     beside the network itself.
+
+    The pairs the operator pinned come out of the config and never off the published links,
+    which carry the build's own reason for each path. A build that pinned a path nobody
+    asked it to pin is a defect this module reports, so it cannot be the source of the list
+    the report is measured against (GitHub issue #78).
     """
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
         "tenants/daf/wan": _SUCCEEDED,
@@ -90,6 +98,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "number_of_diverse_paths": 2,
         "seat_cap": 6,
         "forced": ["Ashburn, VA"],
+        "forced_paths": [{"source": "Ashburn, VA", "target": "New York, NY"}],
         "status": _SUCCEEDED,
         "lower_bound_miles": 1250.0,
         "backbone": [_NODE],
