@@ -2,7 +2,7 @@
 
 The heavy design pipeline is stubbed (it is exercised by the synthesizer engine tests);
 these tests cover the handler's own orchestration and S3 I/O: it reads the tenant from
-the invoke event, moves the status to ``synthesizing``, and publishes ``ready`` or
+the invoke event, moves the status to ``synthesizing``, and publishes ``success`` or
 ``failed``.
 """
 
@@ -137,13 +137,15 @@ def test_publishes_the_backbone_links_collection(
     ]
 
 
-def test_marks_status_ready_on_success(synthesizer: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A successful build records a 'ready' status."""
+def test_marks_the_status_success_on_a_good_build(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A build that published its WAN records a 'success' status."""
     objects = _run(synthesizer, monkeypatch)
-    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "ready"
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "success"
 
 
-def test_the_ready_status_says_whether_the_coverage_target_was_met(
+def test_the_success_status_says_whether_the_coverage_target_was_met(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A published build records what it did about the target, not just that it finished.
@@ -156,7 +158,7 @@ def test_the_ready_status_says_whether_the_coverage_target_was_met(
     assert status["coverage"]["met"] is True
 
 
-def test_the_ready_status_carries_the_target_the_design_was_measured_against(
+def test_the_success_status_carries_the_target_the_design_was_measured_against(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The tenant's own coverage target travels with the measurement of its design."""
@@ -165,7 +167,7 @@ def test_the_ready_status_carries_the_target_the_design_was_measured_against(
     assert status["coverage"]["target_miles"] == 600
 
 
-def test_the_ready_status_carries_the_backup_path_multiple_the_build_ran_under(
+def test_the_success_status_carries_the_backup_path_multiple_the_build_ran_under(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The bound the links were drawn under travels with the network they were drawn for.
@@ -179,7 +181,7 @@ def test_the_ready_status_carries_the_backup_path_multiple_the_build_ran_under(
     assert status["max_backup_path_multiple"] == 3.0
 
 
-def test_the_ready_status_carries_the_floor_the_design_is_judged_against(
+def test_the_success_status_carries_the_floor_the_design_is_judged_against(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The fewest miles the same requirements could have been met with is published too.
@@ -194,7 +196,7 @@ def test_the_ready_status_carries_the_floor_the_design_is_judged_against(
     assert status["backbone_lower_bound_miles"] == 1250.0
 
 
-def test_the_ready_status_carries_what_each_site_was_asked_for(
+def test_the_success_status_carries_what_each_site_was_asked_for(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The count that set each site's target is published beside the network it shaped.
@@ -210,7 +212,7 @@ def test_the_ready_status_carries_what_each_site_was_asked_for(
     ]
 
 
-def test_the_ready_status_carries_the_sites_short_of_their_target(
+def test_the_success_status_carries_the_sites_short_of_their_target(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A shortfall the build found is published rather than left in the Lambda's log.

@@ -3,7 +3,7 @@
 A published WAN is what an operator builds from, so one whose sites cannot all reach each
 other is worse than no WAN at all: it reads as a finished national network and carries no
 traffic between its halves. Nothing outside the build would say so -- the status reads
-``ready``, every site holds the links it was asked for, and the split shows up only in a
+``success``, every site holds the links it was asked for, and the split shows up only in a
 finding nothing used to read (GitHub issue #68).
 
 The gate is in ``synthesizer.stages.finalize``, and a unit test can show it fires. What only

@@ -66,7 +66,7 @@ def _start_create(tenant: str) -> None:
 
     ``InvocationType="Event"`` fires the synthesizer and returns at once, so the POST
     answers within API Gateway's timeout; the synthesizer moves the status to
-    ``synthesizing`` and then ``ready``/``failed`` as it runs.
+    ``synthesizing`` and then ``success``/``failed`` as it runs.
     """
     _write_status(tenant, {"status": "creating", "tenant": tenant})
     _lambda().invoke(

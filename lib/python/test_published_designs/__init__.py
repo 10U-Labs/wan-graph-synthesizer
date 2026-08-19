@@ -112,7 +112,7 @@ def published_design(api: str, tenant: str, config: dict[str, Any]) -> dict[str,
     state = _build_state(api, state_path)
     published: dict[str, Any] = (
         {path.rsplit("/", 1)[-1]: _get(api, path) for path in collection_paths}
-        if state.get("status") == "ready" else {}
+        if state.get("status") == "success" else {}
     )
     backbone = config["backbone"]
     return {
@@ -518,7 +518,7 @@ def backbone_groups(design: dict[str, Any]) -> list[list[str]]:
 
     A WAN is one network or it is not a WAN. An operator handed a published design whose
     seats fall into two groups can carry no traffic at all between them, and nothing else
-    published says so: the build reports ready, and every seat in either group holds the
+    published says so: the build reports success, and every seat in either group holds the
     diverse paths its tenant asked for, because it meets the count against peers inside its
     own group. One list back is one network; two or more is the defect, and each list names
     the seats stranded together.

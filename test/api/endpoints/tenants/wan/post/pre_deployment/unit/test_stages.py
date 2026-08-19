@@ -162,7 +162,7 @@ def test_finalize_refuses_a_design_whose_sites_fall_into_more_than_one_group() -
     """A design an operator could carry no traffic across is refused rather than returned.
 
     Publishing it hands the operator two networks described as one, and nothing downstream
-    says so: the status reads ready and every other finding in the report passes.
+    says so: the status reads success and every other finding in the report passes.
     """
     with pytest.raises(ValueError, match="no fiber joins"):
         _finalize_split_backbone()

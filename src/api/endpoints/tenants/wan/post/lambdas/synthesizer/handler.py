@@ -210,10 +210,10 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     """Build the tenant's WAN and publish it, or record why it failed.
 
     The dispatcher async-invokes this with ``{"tenant": ...}``. The status is moved to
-    ``synthesizing`` first -- the in-progress marker the GET reads -- then ``ready`` once
-    the WAN is published, or ``failed`` if the build raises.
+    ``synthesizing`` first -- the in-progress marker the GET reads -- then ``success``
+    once the WAN is published, or ``failed`` if the build raises.
 
-    A ``ready`` status carries the coverage the design delivered. Growth toward the
+    A ``success`` status carries the coverage the design delivered. Growth toward the
     operator's target can stop short of it, and a build that gave up used to be published
     under the same one word as a build that met it, so nothing downstream could tell them
     apart without reading the synthesizer's own log.
@@ -246,6 +246,6 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         _write_json(client, status_key, {"status": "failed", "reason": str(exc)})
         return {"status": "failed", "tenant": tenant}
     _write_json(client, f"tenants/{tenant}/wan.json", wan)
-    _write_json(client, status_key, {"status": "ready", **delivered})
-    logger.info("Build ready for %s", tenant)
-    return {"status": "ready", "tenant": tenant}
+    _write_json(client, status_key, {"status": "success", **delivered})
+    logger.info("Build succeeded for %s", tenant)
+    return {"status": "success", "tenant": tenant}

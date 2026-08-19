@@ -13,7 +13,8 @@ test/api/endpoints/tenants/wan/post/post_deployment/integration/ stop at the sha
 deployment: the synthesizer exists, its runtime and memory match the declaration, and its
 role can reach the store -- and none of that reads a design. A synthesizer that publishes a
 network missing its coverage target by more than a factor of two passes every one of those
-assertions, because the build was accepted and the status said ``ready``, which is exactly
+assertions, because the build was accepted and the status said ``success``, which is
+exactly
 how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
 200-mile target.
 
@@ -117,7 +118,7 @@ def test_every_tenant_the_roster_declares_has_a_published_network(
     unfinished = {
         design["tenant"]: design["status"].get("status")
         for design in delivered_designs
-        if design["status"].get("status") != "ready"
+        if design["status"].get("status") != "success"
     }
     assert unfinished == {}
 
@@ -142,7 +143,7 @@ def test_every_published_network_is_one_network(
 
 def test_every_published_network_reports_the_coverage_it_delivered(
         delivered_designs: list[dict[str, Any]]) -> None:
-    """A published status says what the design did about its target, not only ``ready``.
+    """A published status says what the design did about its target, not only ``success``.
 
     That one word was all a reader outside the synthesizer used to get, and it read the same
     whether the coverage pass met the target or ran out of things to try.

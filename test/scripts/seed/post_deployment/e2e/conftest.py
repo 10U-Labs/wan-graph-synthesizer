@@ -9,8 +9,8 @@ opens the store the synthesizer writes to. Each entry is a plain mapping of ten 
 ``tenant``, the ``target_miles``, ``max_backup_path_multiple``, ``seat_cap`` and pinned ``forced``
 cities the config sets, the ``status`` document the GET passes through, and the published
 ``backbone``, ``demand``, ``links`` and ``edges`` collections that status can be measured
-against. A tenant whose build is not ``ready`` has no network to read and carries all four
-empty.
+against. A tenant whose build is not ``success`` has no network to read and carries all
+four empty.
 """
 from __future__ import annotations
 

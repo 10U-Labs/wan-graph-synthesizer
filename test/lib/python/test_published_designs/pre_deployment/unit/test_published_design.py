@@ -41,8 +41,8 @@ _SEGMENT = {
     "source_id": "ash", "target_id": "nyc", "distance_miles": 240.0,
     "edge_kind": "carrier_physical",
 }
-_READY = {
-    "status": "ready",
+_SUCCEEDED = {
+    "status": "success",
     "coverage": {"target_miles": 200, "met": True},
     "backbone_lower_bound_miles": 1250.0,
 }
@@ -67,7 +67,7 @@ def _answering(bodies: dict[str, Any], code: int = 200) -> Callable[..., FakeRes
 
 def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """A ``ready`` tenant carries its five collections, the six things git holds, and its floor.
+    """A ``success`` tenant carries its five collections, the six git holds, and its floor.
 
     The two demand collections arrive as one, since every site the coverage target applies
     to is measured the same way whether the tenant or a cloud provider owns it. The floor
@@ -76,7 +76,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
     beside the network itself.
     """
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
-        "tenants/daf/wan": _READY,
+        "tenants/daf/wan": _SUCCEEDED,
         "tenants/daf/backbone-nodes": [_NODE],
         "tenants/daf/backbone-links": [_LINK],
         "tenants/daf/tenant-nodes": [_SITE],
@@ -90,7 +90,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "number_of_diverse_paths": 2,
         "seat_cap": 6,
         "forced": ["Ashburn, VA"],
-        "status": _READY,
+        "status": _SUCCEEDED,
         "lower_bound_miles": 1250.0,
         "backbone": [_NODE],
         "demand": [_SITE, _REGION],
