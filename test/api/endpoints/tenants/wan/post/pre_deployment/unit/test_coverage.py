@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import cast
 
 import pytest
 
 import fixtures
 from fixtures import design_inputs_from_edges, search_plan
-from synthesizer.assemble import build_design_for_backbone
 from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
 from synthesizer.graphs import build_adjacency
-from synthesizer.model import Design, DesignParams, Tuning
+from synthesizer.model import DesignParams, Tuning
 from synthesizer.coverage import (
     CoverageReport,
     best_coverage_candidate,
@@ -208,12 +206,11 @@ def _grown(candidates: list[str], target_miles: int) -> tuple[str, ...]:
         _GROWTH_IDS, _GROWTH_EDGES, set(_GROWTH_IDS), _GROWTH_SITES, _GROWTH_COORDS
     )
     plan = search_plan(candidates)
-    base = cast(Design, build_design_for_backbone(("b1", "b2"), inputs, plan))
     params = DesignParams(
         min_backbone_count=2, tuning=Tuning(backbone_coverage_target_miles=target_miles)
     )
     grown = grow_backbone_for_coverage(
-        base, inputs, plan, params,
+        ("b1", "b2"), inputs, plan, params,
         {carrier.id: carrier for carrier in inputs.carrier_pops},
     )
     return tuple(sorted(grown.backbone_ids))

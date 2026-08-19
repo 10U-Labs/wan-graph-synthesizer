@@ -25,10 +25,12 @@ from synthesizer.model import (
     RoleOverrides,
     Tuning,
 )
+from synthesizer import backbone as backbone_module
+from synthesizer.survivable import FiberChoice, FiberInputs
 from synthesizer.synthesize import (
     backbone_combination_count,
     backbone_combinations,
-    best_design_at_size,
+    best_backbone_at_size,
     build_search_plan,
     convergence_promotion_ids,
     compute_eligible_backbone_ids,
@@ -305,16 +307,16 @@ def _mesh_inputs() -> DesignInputs:
         {"a": 10.0, "b": 10.0, "c": 10.0, "d": 10.0},  # equal: {a,b} wins least-last-mile
     ],
 )
-def test_best_design_at_size_selects_strongest_then_least_last_mile(
+def test_best_backbone_at_size_selects_strongest_then_least_last_mile(
     strength: dict[str, float],
 ) -> None:
     """Backbone nodes are chosen by strength first, with last-mile only breaking ties."""
     plan = search_plan(["a", "b", "c", "d"], strength=strength)
-    design = best_design_at_size(_mesh_inputs(), plan, 2)
-    assert design is not None and set(design.backbone_ids) == {"a", "b"}
+    seats = best_backbone_at_size(_mesh_inputs(), plan, 2)
+    assert seats is not None and set(seats) == {"a", "b"}
 
 
-def test_best_design_at_size_returns_none_when_nothing_feasible() -> None:
+def test_best_backbone_at_size_returns_none_when_nothing_feasible() -> None:
     """With no feasible backbone set at a size, the search returns None for that size.
 
     The two candidate backbone PoPs sit in separate components, so neither can reach the
@@ -322,7 +324,7 @@ def test_best_design_at_size_returns_none_when_nothing_feasible() -> None:
     """
     edges = physical({("c1", "x"): 1.0, ("c2", "y"): 1.0})
     inputs = design_inputs_from_edges(["c1", "c2", "x", "y"], edges, {"c1", "c2"}, [access("s")])
-    assert best_design_at_size(inputs, search_plan(["c1", "c2"]), 2) is None
+    assert best_backbone_at_size(inputs, search_plan(["c1", "c2"]), 2) is None
 
 
 def test_required_backbone_is_fixed_into_every_set() -> None:
@@ -444,6 +446,59 @@ def _far_demand_inputs_plan(exempt: bool = False) -> tuple[DesignInputs, _Search
         strength={"cc1": 3.0, "cc2": 3.0, "cw": 1.0, "ce": 1.0},
     )
     return inputs, plan
+
+
+def _fiber_choices(monkeypatch: pytest.MonkeyPatch, target_miles: int) -> int:
+    """How many times a search over the far-demand geometry chooses fiber.
+
+    Choosing the fiber for a whole backbone is the expensive step of a build, so how often
+    one synthesis does it is the whole question here. It is counted where it is called,
+    ``synthesizer.backbone.choose_fiber``, and the real answer is passed through, since a
+    stand-in that returned fiber of its own would decide the design rather than measure it.
+    """
+    inputs, plan = _far_demand_inputs_plan()
+    params = DesignParams(
+        min_backbone_count=2,
+        datacenter_cities=frozenset(),
+        tuning=Tuning(backbone_coverage_target_miles=target_miles),
+    )
+    counted: list[tuple[str, ...]] = []
+    chosen = backbone_module.choose_fiber
+
+    def counting(fiber_inputs: FiberInputs) -> FiberChoice:
+        counted.append(fiber_inputs.backbone_ids)
+        return chosen(fiber_inputs)
+
+    monkeypatch.setattr(backbone_module, "choose_fiber", counting)
+    search_best_design(inputs, params, plan)
+    return len(counted)
+
+
+def test_a_search_that_grows_past_the_floor_still_chooses_its_fiber_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A backbone grown from two seats to four buys fiber for the four and for nothing else.
+
+    A design used to be drawn for the strength-chosen base backbone and thrown away the
+    moment coverage seated a node past it, which is half of what a build costs: 234 of
+    DOW's 438 seconds, and the reason that tenant ran past the fifteen minutes AWS allows
+    a Lambda and published no network at all (GitHub issue #72). The 300-mile target here
+    is the one that grows this geometry to four seats.
+    """
+    assert _fiber_choices(monkeypatch, 300) == 1
+
+
+def test_a_search_that_seats_nothing_past_the_floor_chooses_its_fiber_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A backbone that never grows buys fiber once, for the seats it started and ended with.
+
+    Growth that seats nothing used to hand back the design the base build had already
+    drawn, and now draws the one design itself over the same seats. Both are one choice of
+    fiber, and asserting it says the shorter path was removed without a second build
+    arriving in its place.
+    """
+    assert _fiber_choices(monkeypatch, 100_000) == 1
 
 
 def test_search_holds_at_the_floor_under_a_permissive_target() -> None:

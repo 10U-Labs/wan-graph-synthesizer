@@ -205,7 +205,7 @@ def best_coverage_candidate(
 
 
 def grow_backbone_for_coverage(
-    base: Design,
+    base_ids: tuple[str, ...],
     inputs: DesignInputs,
     plan: _SearchPlan,
     params: DesignParams,
@@ -258,9 +258,16 @@ def grow_backbone_for_coverage(
     (see :mod:`synthesizer.survivable`), which is the expensive step of a build, and a
     backbone that grows from three seats to thirty-four would have paid it thirty-one times
     over.
+
+    The seats it starts from come in as ids rather than as a design for the same reason.
+    Choosing the fiber for a base backbone and then seating one more node past it drew a
+    whole design nobody read, which cost DOW 234 of its 438 seconds and put that tenant
+    past the fifteen minutes AWS allows a Lambda (GitHub issue #72). Growth that seats
+    nothing draws the same one design over the same seats, so there is no shorter path
+    through here to keep.
     """
     target_miles = params.tuning.backbone_coverage_target_miles
-    backbone_ids = base.backbone_ids
+    backbone_ids = base_ids
     free = [pop_id for pop_id in plan.backbone_candidates if pop_id not in backbone_ids]
     logger.info(
         "Growing backbone for coverage: %d candidates, %.0f mi target", len(free), target_miles
@@ -299,9 +306,7 @@ def grow_backbone_for_coverage(
         backbone_ids = tuple(sorted((*backbone_ids, best_id)))
         free.remove(best_id)
         logger.info("Added node %s for coverage; now %d nodes", best_id, len(backbone_ids))
-    if backbone_ids == base.backbone_ids:
-        return base
     grown = build_design_for_backbone(backbone_ids, inputs, plan)
-    # Every candidate seated above passed evaluate_backbone, so its design builds.
+    # The base seats and every candidate seated above passed evaluate_backbone, so this builds.
     assert grown is not None
     return grown

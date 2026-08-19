@@ -52,11 +52,7 @@ from synthesizer.graphs import (
     build_adjacency,
     dijkstra,
 )
-from synthesizer.assemble import (
-    build_design_for_backbone,
-    evaluate_backbone,
-    forced_backbone_resilience_error,
-)
+from synthesizer.assemble import evaluate_backbone, forced_backbone_resilience_error
 from synthesizer.coverage import grow_backbone_for_coverage
 from synthesizer.search_plan import _SearchPlan
 from synthesizer.strength import backbone_strength, diverse_path_bounds
@@ -193,20 +189,27 @@ def backbone_combinations(plan: _SearchPlan, size: int) -> list[tuple[str, ...]]
     ]
 
 
-def best_design_at_size(
+def best_backbone_at_size(
     inputs: DesignInputs,
     plan: _SearchPlan,
     size: int,
-) -> Design | None:
-    """Strongest feasible design using exactly ``size`` backbone nodes, or None.
+) -> tuple[str, ...] | None:
+    """The seats of the strongest feasible backbone of exactly ``size`` nodes, or None.
 
     Any operator-forced backbone nodes are fixed into every candidate set; the rest
     are chosen by strength (the spec forbids mileage as a design cost), with total
     last-mile only breaking ties among equally strong sets. Backbone sets are tried
     strongest-first and scored cheaply (feasibility plus demand homing, no paths
     drawn). Because strength is non-increasing down that order, the moment a feasible
-    set is in hand the search stops as soon as a candidate is strictly weaker. The paths
-    are drawn only for the winning set.
+    set is in hand the search stops as soon as a candidate is strictly weaker.
+
+    Seats come back rather than a design because nothing here needs one. Coverage growth
+    reads the seats and rebuilds over whatever it settles on, so a design drawn here is
+    thrown away the moment a node is seated past this size -- 234 of DOW's 438 seconds,
+    which is what put that tenant past the fifteen minutes AWS allows a Lambda (GitHub
+    issue #72). Feasibility does not need one either: ``build_design_for_backbone``
+    returns ``None`` in exactly the case ``evaluate_backbone`` does, and every candidate
+    set below has already been through ``evaluate_backbone``.
     """
     combos = sorted(
         backbone_combinations(plan, size),
@@ -234,9 +237,7 @@ def best_design_at_size(
                 "  set %d/%d: new best strength %.3f, last-mile %.0f mi",
                 index, len(combos), strength, access_miles,
             )
-    if best_set is None:
-        return None
-    return build_design_for_backbone(best_set, inputs, plan)
+    return best_set
 
 
 def total_memory_bytes() -> int:
@@ -280,7 +281,7 @@ def search_best_design(
     the search may use, or the design is refused rather than risk exhausting memory.
     """
     limit = enumeration_limit(total_memory_bytes(), params)
-    base: Design | None = None
+    base: tuple[str, ...] | None = None
     max_size = len(plan.backbone_candidates)
     if params.max_backbone_count is not None:
         max_size = min(max_size, params.max_backbone_count)
@@ -297,9 +298,9 @@ def search_best_design(
             "Synthesizing %d demand vertices; %d backbone, %d required; %d sets (limit %d)",
             len(inputs.access_vertices), size, len(plan.required_backbone), sets, limit,
         )
-        base = best_design_at_size(inputs, plan, size)
+        base = best_backbone_at_size(inputs, plan, size)
         if base is not None:
-            logger.info("Feasible at %d nodes; growing for coverage", len(base.backbone_ids))
+            logger.info("Feasible at %d nodes; growing for coverage", len(base))
             break
     if base is None:
         raise ValueError(
