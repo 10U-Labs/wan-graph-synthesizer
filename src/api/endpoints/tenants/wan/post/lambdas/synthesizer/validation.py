@@ -470,6 +470,27 @@ def neighbor_degrees(
             neighbors[right].add(left)
     return {vertex_id: len(value) for vertex_id, value in neighbors.items()}
 
+def backbone_names_by_group(vertices: list[Vertex], design: Design) -> list[list[str]]:
+    """The backbone sites in each group of a design, named, one list per group.
+
+    A design is meant to be one network: every site reaching every other over the fiber the
+    design bought. One that falls into two or more groups is two or more networks handed
+    over as one, and the operator who receives it cannot carry traffic from a site in one
+    group to a site in the other at all. This says which sites ended up on which side, which
+    is what a refusal has to name for anybody to act on it.
+
+    Groups holding no backbone site are listed as empty rather than dropped, so the number
+    of lists is the number of groups the design fell into.
+    """
+    names = {vertex.id: vertex.name for vertex in vertices}
+    seated = set(design.backbone_ids)
+    return [
+        [names[vertex_id] for vertex_id in group if vertex_id in seated]
+        for group in connected_components(
+            included_vertex_ids(design), design_edge_set(design)
+        )
+    ]
+
 def validate_design(
     vertices: list[Vertex],
     design: Design,

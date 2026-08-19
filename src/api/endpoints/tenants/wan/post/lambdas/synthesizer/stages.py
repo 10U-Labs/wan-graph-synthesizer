@@ -13,7 +13,11 @@ from synthesizer.input_graph import PhysicalEdge, Vertex
 from synthesizer.model import Design, DesignParams, MeshRequirements, ValidationReport
 from synthesizer.on_net_fabrication import fabricate_missing_on_net_nodes
 from synthesizer.offnet import realize_off_net_sites
-from synthesizer.validation import node_mesh_target, validate_design
+from synthesizer.validation import (
+    backbone_names_by_group,
+    node_mesh_target,
+    validate_design,
+)
 
 
 def dual_home(
@@ -55,11 +59,18 @@ def finalize(
 ) -> tuple[
     list[Vertex], dict[tuple[str, str], PhysicalEdge], Design, ValidationReport
 ]:
-    """Validate the design over the real fiber, refusing one that misses its diverse path count.
+    """Validate the design over the real fiber, refusing one no operator could build from.
 
-    Resilience is the operator's two required redundancy degrees, enforced over the
-    real fiber and reported by :func:`validate_design`; there is no silent edge
-    augmentation.
+    Two things are refused here, and a refusal means the build is recorded as failed and
+    nothing is published. The first is a design in more than one group: a network whose
+    sites cannot all reach one another is not one network, and an operator handed it can
+    carry no traffic between the groups. Every site can still hold every link it was asked
+    for while that is true -- a site meets its count against peers inside its own group --
+    so the diverse path count below does not see the split and cannot (GitHub issue #68).
+
+    The second is a design that misses its diverse path count. Resilience is the operator's
+    two required redundancy degrees, enforced over the real fiber and reported by
+    :func:`validate_design`; there is no silent edge augmentation.
 
     ``backbone_number_of_diverse_paths`` is a count of links that fail independently, so a design
     where some backbone node cannot reach its target is not a design that meets the
@@ -98,6 +109,14 @@ def finalize(
     validation = validate_design(
         vertices, design, params.tuning.access_backbone_links, targets
     )
+    if not validation["connected"]:
+        groups = "; ".join(
+            ", ".join(names) for names in backbone_names_by_group(vertices, design)
+        )
+        raise ValueError(
+            f"Design falls into {validation['component_count']} groups "
+            f"no fiber joins: {groups}"
+        )
     deficient = validation["backbone_mesh_independence_deficient"]
     if deficient:
         shortfalls = ", ".join(

@@ -2,15 +2,15 @@
 
 The delivered-design layer reads what the deployed synthesizer published and judges it.
 This module is both halves of that job: the reader that asks the service for a tenant's
-network and for the state of its build, and the six measurements that cannot be answered
-by reading a number back -- what the worst haul of a published network really is, whether
-any published link wanders further from the straight line than its tenant allows, whether
-any of them wanders further than the fiber it runs over made necessary, whether
-any pair of sites was drawn with more paths between them than the tenant bought, whether
-any path at all could be taken out with no site losing a diverse path, no site cut off and
-no city's loss newly splitting the fiber, and how many miles of carrier fiber the network
-ordered, which is the figure the floor a build publishes under itself is there to be held
-against.
+network and for the state of its build, and the seven measurements that cannot be answered
+by reading a number back -- whether the fiber joins every backbone seat into one network,
+what the worst haul of a published network really is, whether any published link wanders
+further from the straight line than its tenant allows, whether any of them wanders further
+than the fiber it runs over made necessary, whether any pair of sites was drawn with more
+paths between them than the tenant bought, whether any path at all could be taken out with
+no site losing a diverse path, no site cut off and no city's loss newly splitting the fiber,
+and how many miles of carrier fiber the network ordered, which is the figure the floor a
+build publishes under itself is there to be held against.
 
 The reading goes through the API and not through the S3 bucket the synthesizer writes to.
 The bucket holds only what the synthesizer chose to publish, which is three of the eight
@@ -511,6 +511,35 @@ def detoured_links(design: dict[str, Any]) -> list[tuple[str, float]]:
         if shortest > 0 and link["distance_miles"] > allowed * shortest + ROUNDING_SLACK:
             detoured.append((" -> ".join(link["path"]), link["distance_miles"] / shortest))
     return detoured
+
+
+def backbone_groups(design: dict[str, Any]) -> list[list[str]]:
+    """The backbone seats in each group of the fiber a published network ordered.
+
+    A WAN is one network or it is not a WAN. An operator handed a published design whose
+    seats fall into two groups can carry no traffic at all between them, and nothing else
+    published says so: the build reports ready, and every seat in either group holds the
+    diverse paths its tenant asked for, because it meets the count against peers inside its
+    own group. One list back is one network; two or more is the defect, and each list names
+    the seats stranded together.
+
+    A sweep runs out over the fiber from the first seat not yet placed in a group, and takes
+    every seat it reaches. The access homings are left out for the reason
+    :func:`_published_fiber` gives: a homing is the haul into the network from a demand
+    site, so a seat reached only through one is a seat the fiber does not join. A seat
+    carrying no fiber at all is in the map with nothing beside it, so it comes back as the
+    group of one it is rather than being missed.
+    """
+    fiber = _published_fiber(design)
+    joined: dict[str, set[str]] = {node["id"]: set() for node in design["backbone"]}
+    joined |= {city: set(neighbors) for city, neighbors in fiber.items()}
+    unplaced = {node["id"] for node in design["backbone"]}
+    groups: list[list[str]] = []
+    while unplaced:
+        reached = _reached(joined, min(unplaced))
+        groups.append(sorted(unplaced & reached))
+        unplaced -= reached
+    return groups
 
 
 def ordered_fiber_miles(design: dict[str, Any]) -> float:

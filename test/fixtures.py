@@ -159,6 +159,30 @@ def meshed_backbone_design(
     )
 
 
+# A backbone in two groups: fiber joins a to b through the transit city t, and c to d, and
+# nothing joins the two pairs. The case the connectivity gate is there for -- every site
+# holds the one link its own fiber can carry, so the diverse path count is met on both sides
+# while the design is two networks. The transit city is seated in neither group, which is
+# what a message naming the seats in each group has to leave out.
+SPLIT_BACKBONE = ("a", "b", "c", "d")
+SPLIT_BACKBONE_CITIES = "abcdt"
+SPLIT_BACKBONE_SEGMENTS = {("a", "t"): 50.0, ("t", "b"): 50.0, ("c", "d"): 100.0}
+
+
+def split_backbone_design() -> Design:
+    """A design whose four backbone sites fall into two groups no fiber joins."""
+    return Design(
+        backbone_ids=SPLIT_BACKBONE,
+        transit_ids=(),
+        access_edges=[],
+        physical_edge_keys={
+            edge_key(left, right) for left, right in SPLIT_BACKBONE_SEGMENTS
+        },
+        path_uses=[],
+        metrics=DesignMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
+    )
+
+
 def carrier_pops_by_id(vertex_ids: str) -> dict[str, Vertex]:
     """A carrier PoP per single-character id, keyed by id, for validation lookups."""
     return {vertex_id: carrier_pop(vertex_id) for vertex_id in vertex_ids}

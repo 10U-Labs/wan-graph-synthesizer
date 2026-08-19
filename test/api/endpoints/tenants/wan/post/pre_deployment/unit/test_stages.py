@@ -141,3 +141,34 @@ def test_finalize_reports_the_exempt_node_it_accepted() -> None:
     assert _finalize_shared_transit(frozenset({"a"}))["backbone_degree_exempt"] == [
         {"id": "a", "name": "a"}
     ]
+
+
+def _finalize_split_backbone() -> None:
+    """Finalize a backbone in two groups: a reaches b through t, c reaches d, and no more.
+
+    Each of the four seated sites holds the one link its own fiber can carry, so every site
+    meets the count it is asked for and the diverse path check has nothing to say. Only the
+    connectivity gate sees that the design is two networks rather than one.
+    """
+    finalize(
+        list(fixtures.carrier_pops_by_id(fixtures.SPLIT_BACKBONE_CITIES).values()),
+        fixtures.physical_edges_from(fixtures.SPLIT_BACKBONE_SEGMENTS),
+        fixtures.split_backbone_design(),
+        DesignParams(min_backbone_count=2),
+    )
+
+
+def test_finalize_refuses_a_design_whose_sites_fall_into_more_than_one_group() -> None:
+    """A design an operator could carry no traffic across is refused rather than returned.
+
+    Publishing it hands the operator two networks described as one, and nothing downstream
+    says so: the status reads ready and every other finding in the report passes.
+    """
+    with pytest.raises(ValueError, match="no fiber joins"):
+        _finalize_split_backbone()
+
+
+def test_the_refusal_says_how_many_groups_the_design_fell_into() -> None:
+    """The message names the count, since a refusal nobody can act on is half a gate."""
+    with pytest.raises(ValueError, match="falls into 2 groups"):
+        _finalize_split_backbone()

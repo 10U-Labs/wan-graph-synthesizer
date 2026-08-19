@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
+import fixtures
 import pytest
 
 from repo_utils import REPO_ROOT
@@ -20,6 +21,7 @@ from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
 from synthesizer.input_graph import Vertex
 from synthesizer.model import DesignParams, OperatorLinks, RoleOverrides
+from synthesizer.stages import finalize
 
 _PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/post/lambdas/synthesizer/handler.py"
 
@@ -226,6 +228,43 @@ def test_records_failed_when_no_valid_wan(
 ) -> None:
     """When the synthesizer reports infeasibility, the status is recorded as failed."""
     objects = _run(synthesizer, monkeypatch, fail=True)
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
+
+
+def _run_split_backbone(module: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, bytes]:
+    """Run a build whose design falls into two groups, with the real finalize gating it.
+
+    Everything the design is made of is stubbed as it is everywhere else in this file; what
+    is not stubbed is ``finalize``, because the gate under test is the one it holds. The
+    design it is handed is four backbone sites whose fiber joins a to b through the
+    transit city t and c to d, with nothing between the two pairs.
+    """
+    _stub_pipeline(module, monkeypatch)
+    graph = list(fixtures.carrier_pops_by_id(fixtures.SPLIT_BACKBONE_CITIES).values())
+    fiber = fixtures.physical_edges_from(fixtures.SPLIT_BACKBONE_SEGMENTS)
+    monkeypatch.setattr(module, "dual_home", lambda *_a: (graph, fiber))
+    monkeypatch.setattr(
+        module, "apply_role_overrides", lambda *_a: (graph, fiber, RoleOverrides())
+    )
+    monkeypatch.setattr(
+        module, "synthesize_two_tier_design", lambda *_a: fixtures.split_backbone_design()
+    )
+    monkeypatch.setattr(module, "finalize", finalize)
+    objects = _inputs(module)
+    with patch("boto3.client", return_value=fake_s3(objects)):
+        module.lambda_handler({"tenant": "f-35"}, None)
+    return objects
+
+
+def test_records_failed_when_the_design_falls_into_more_than_one_group(
+    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A design in two groups is recorded as failed, which is how the gate is seen outside.
+
+    The refusal happens inside the build, so a caller polling the GET learns of it only
+    through this status; without it the tenant would sit at ``building`` forever.
+    """
+    objects = _run_split_backbone(synthesizer, monkeypatch)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
 
 

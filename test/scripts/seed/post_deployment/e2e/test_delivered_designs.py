@@ -17,7 +17,7 @@ assertions, because the build was accepted and the status said ``ready``, which 
 how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
 200-mile target.
 
-The measurement itself is not here. Six of the twelve questions below are answered by
+The measurement itself is not here. Eight of the fourteen questions below are answered by
 recomputing a number from the published collections rather than by reading one back, and
 that recomputation lives in lib/python/test_published_designs/, where a unit tier can hold
 it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
@@ -43,6 +43,7 @@ from typing import Any
 
 from test_published_designs import (
     FIBER,
+    backbone_groups,
     detoured_links,
     ordered_fiber_miles,
     overbuilt_pairs,
@@ -119,6 +120,24 @@ def test_every_tenant_the_roster_declares_has_a_published_network(
         if design["status"].get("status") != "ready"
     }
     assert unfinished == {}
+
+
+def test_every_published_network_is_one_network(
+        delivered_designs: list[dict[str, Any]]) -> None:
+    """The fiber a tenant ordered joins every backbone site it seated to all the others.
+
+    A design in two groups is two networks handed over as one, and the operator who
+    receives it can carry no traffic between them. Nothing else in this file would notice:
+    ``f-35`` sat in two halves with no fiber between Ashburn, VA and Salt Lake City, UT
+    while passing every other assertion here, because each site met its diverse path count
+    against peers inside its own half (GitHub issue #68).
+    """
+    split = {
+        design["tenant"]: groups
+        for design in delivered_designs
+        if len(groups := backbone_groups(design)) > 1
+    }
+    assert split == {}
 
 
 def test_every_published_network_reports_the_coverage_it_delivered(
