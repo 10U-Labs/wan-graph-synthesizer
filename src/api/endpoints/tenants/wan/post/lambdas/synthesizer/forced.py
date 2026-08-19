@@ -1,6 +1,6 @@
-"""Apply operator-forced connections during the routing stage.
+"""Apply operator-forced paths during the routing stage.
 
-The overrides layer resolves the operator's forced connections into a
+``synthesizer.overrides`` resolves the operator's forced paths into a
 :class:`~synthesizer.model.ForcedLinks` bundle; these helpers consume it while
 the synthesizer draws a synthesis, so the pinned edges are honored: backbone-backbone
 pairs forced into or pruned from the mesh, and access-backbone links pinned as homes.

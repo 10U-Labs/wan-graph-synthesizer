@@ -52,10 +52,10 @@ logger = logging.getLogger(__name__)
 # precedence over ``knobs`` where a key appears in both.
 CONFIG_RESOURCES = (
     "forced-backbone-nodes",
-    "forced-connections",
+    "forced-paths",
     "forced-homes",
     "prohibited-backbone-nodes",
-    "prohibited-connections",
+    "prohibited-paths",
     "degree-exempt-backbone-nodes",
     "backbone-node-count",
     "backbone-number-of-diverse-paths",

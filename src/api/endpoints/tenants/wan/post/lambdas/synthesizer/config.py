@@ -130,38 +130,38 @@ def _required_ratio(data: dict[str, Any], key: str) -> float:
     return float(value)
 
 
-def _connection_list(synthesis: dict[str, Any], key: str) -> tuple[NamedLink, ...]:
-    """Parse one list of operator connection mappings, rejecting bad shapes.
+def _named_link_list(synthesis: dict[str, Any], key: str) -> tuple[NamedLink, ...]:
+    """Parse one list of operator-written pairs of site names, rejecting bad shapes.
 
     Each entry maps string ``source``/``target`` and nothing else: the key it is written
     under says which tier it acts on, so there is nothing left for the entry to declare.
-    An absent ``key`` defaults to an empty list (no connections).
+    An absent ``key`` defaults to an empty list (nothing written).
     """
     value = synthesis.get(key, [])
     if not isinstance(value, list):
         raise ValueError(f"config key '{key}' must be a list")
-    connections: list[NamedLink] = []
+    written: list[NamedLink] = []
     for item in value:
         if not isinstance(item, dict) or not all(
             isinstance(item.get(name), str) for name in ("source", "target")
         ):
             raise ValueError(f"each {key} entry must map source and target to strings")
-        connections.append(NamedLink(item["source"], item["target"]))
-    return tuple(connections)
+        written.append(NamedLink(item["source"], item["target"]))
+    return tuple(written)
 
 
 def _operator_links(synthesis: dict[str, Any]) -> OperatorLinks:
     """Parse the three lists of operator-written links, one per tier they act on.
 
-    ``forced_connections`` pins mesh pairs, ``forced_homes`` pins a demand vertex onto a
-    named backbone node, and ``excluded_connections`` prunes mesh pairs. Each is read the
-    same way, because after the split there is nothing tier-specific left to parse -- the
-    tiers differ in how the names are resolved, which is the overrides layer's job.
+    ``forced_paths`` pins mesh pairs, ``forced_homes`` pins a demand vertex onto a named
+    backbone node, and ``excluded_paths`` prunes mesh pairs. Each is read the same way,
+    because after the split there is nothing tier-specific left to parse -- the tiers differ
+    in how the names are resolved, which is what ``synthesizer.overrides`` does.
     """
     return OperatorLinks(
-        backbone=_connection_list(synthesis, "forced_connections"),
-        access=_connection_list(synthesis, "forced_homes"),
-        removed_backbone=_connection_list(synthesis, "excluded_connections"),
+        backbone=_named_link_list(synthesis, "forced_paths"),
+        access=_named_link_list(synthesis, "forced_homes"),
+        removed_backbone=_named_link_list(synthesis, "excluded_paths"),
     )
 
 
@@ -340,7 +340,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     """Assemble an :class:`AppConfig` from the per-resource tenant documents.
 
     Each operator concern is its own stored document (``forced-backbone-nodes``,
-    ``forced-homes``, ``prohibited-connections``, ``backbone-number-of-diverse-paths``, ``knobs``,
+    ``forced-homes``, ``prohibited-paths``, ``backbone-number-of-diverse-paths``, ``knobs``,
     ...). This reshapes those documents into the canonical mapping
     :func:`config_from_data` expects and delegates to it, so all parsing and validation
     stays in one place. The two redundancy degrees are required -- a missing one raises
@@ -357,9 +357,9 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
         "forced_backbone": parts.get("forced-backbone-nodes", []),
         "degree_exempt_backbone": parts.get("degree-exempt-backbone-nodes", []),
         "prohibited_backbone": parts.get("prohibited-backbone-nodes", []),
-        "forced_connections": parts.get("forced-connections", []),
+        "forced_paths": parts.get("forced-paths", []),
         "forced_homes": parts.get("forced-homes", []),
-        "excluded_connections": parts.get("prohibited-connections", []),
+        "excluded_paths": parts.get("prohibited-paths", []),
     }
     placement = _mapping(parts, "backbone-placement")
     if "restrict" in placement:

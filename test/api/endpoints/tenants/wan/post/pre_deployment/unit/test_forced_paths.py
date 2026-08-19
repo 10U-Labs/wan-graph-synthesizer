@@ -1,4 +1,4 @@
-"""Unit tests for operator-forced connections: resolution and routing wiring.
+"""Unit tests for operator-forced paths: resolution and routing wiring.
 
 These pin the mechanism -- names resolve to id-typed links against the seated tiers,
 and the synthesizer honors them -- rather than any particular city pin. Which tier a

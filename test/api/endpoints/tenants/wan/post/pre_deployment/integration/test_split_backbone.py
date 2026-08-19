@@ -80,10 +80,10 @@ def _fiber_rows() -> list[dict[str, Any]]:
 # config that names nobody, and the synthesis is left to the map.
 _NAMES_NOBODY = (
     "forced-backbone-nodes",
-    "forced-connections",
+    "forced-paths",
     "forced-homes",
     "prohibited-backbone-nodes",
-    "prohibited-connections",
+    "prohibited-paths",
     "degree-exempt-backbone-nodes",
 )
 

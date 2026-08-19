@@ -85,8 +85,8 @@ def test_the_opposite_pair_is_never_meshed_on_its_own() -> None:
     assert edge_key("P0", "P3") not in backbone_mesh_pairs(UNFORCED_RING.synthesis)
 
 
-def test_forced_backbone_connection_appears_in_the_mesh() -> None:
-    """A forced backbone-backbone connection is present in the drawn backbone mesh."""
+def test_a_forced_backbone_path_appears_in_the_mesh() -> None:
+    """A forced backbone-backbone path is present in the drawn backbone mesh."""
     assert edge_key("P0", "P3") in backbone_mesh_pairs(FORCED_BACKBONE_LINK.synthesis)
 
 

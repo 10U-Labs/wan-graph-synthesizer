@@ -1,12 +1,11 @@
 ---
 access:
   forced:
-    connections: []
+    homes: []
   homing_degree: 2
 backbone:
   coverage_target_miles: 745
   forced:
-    connections: []
     nodes:
       - Ashburn, VA
       - Boston, MA
@@ -19,14 +18,15 @@ backbone:
       - Salt Lake City, UT
       - San Jose, CA
       - Seattle, WA
+    paths: []
   max_backup_path_multiple: 3
   node_count:
     max: 1000
     min: 3
   number_of_diverse_paths: 2
   prohibited:
-    connections: []
     nodes: []
+    paths: []
   promote_high_degree_convergences: false
   restrict_to_data_centers: false
 inputs:

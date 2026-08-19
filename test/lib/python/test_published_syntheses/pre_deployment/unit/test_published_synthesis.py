@@ -32,7 +32,7 @@ _CONFIG: dict[str, Any] = {
         "number_of_diverse_paths": 2,
         "forced": {
             "nodes": ["Ashburn, VA"],
-            "connections": [{"source": "Ashburn, VA", "target": "New York, NY"}],
+            "paths": [{"source": "Ashburn, VA", "target": "New York, NY"}],
         },
     },
 }

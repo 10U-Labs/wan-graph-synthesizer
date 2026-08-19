@@ -39,7 +39,7 @@ from seed import (
 _TENANT_YML = """\
 access:
   forced:
-    connections:
+    homes:
       - source: Kirtland, NM
         target: Nellis, NV
   homing_degree: 1
@@ -48,22 +48,22 @@ backbone:
   degree_exempt:
     - Nellis, NV
   forced:
-    connections:
-      - source: Luke, AZ
-        target: Nellis, NV
     nodes:
       - Luke, AZ
+    paths:
+      - source: Luke, AZ
+        target: Nellis, NV
   max_backup_path_multiple: 2.5
   node_count:
     max: 3
     min: 3
   number_of_diverse_paths: 2
   prohibited:
-    connections:
-      - source: Luke, AZ
-        target: Edge, TX
     nodes:
       - Edge, TX
+    paths:
+      - source: Luke, AZ
+        target: Edge, TX
   promote_high_degree_convergences: false
   restrict_to_data_centers: true
 inputs:
@@ -468,12 +468,12 @@ def test_push_tenants_puts_the_forced_backbone_nodes_resource(
     assert bodies["tenants/f-35/forced-backbone-nodes"] == ["Luke, AZ"]
 
 
-def test_push_tenants_puts_the_forced_connections_resource(
+def test_push_tenants_puts_the_forced_paths_resource(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
-    """push_tenants reads the pinned links from the backbone block's forced pair."""
+    """push_tenants reads the pinned paths from the backbone block's forced pair."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/forced-connections"] == [
+    assert bodies["tenants/f-35/forced-paths"] == [
         {"source": "Luke, AZ", "target": "Nellis, NV"}]
 
 
@@ -499,12 +499,12 @@ def test_push_tenants_puts_the_prohibited_backbone_nodes_resource(
     assert bodies["tenants/f-35/prohibited-backbone-nodes"] == ["Edge, TX"]
 
 
-def test_push_tenants_puts_the_prohibited_connections_resource(
+def test_push_tenants_puts_the_prohibited_paths_resource(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
-    """push_tenants reads the pruned links from the backbone block's prohibited pair."""
+    """push_tenants reads the pruned paths from the backbone block's prohibited pair."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/prohibited-connections"] == [
+    assert bodies["tenants/f-35/prohibited-paths"] == [
         {"source": "Luke, AZ", "target": "Edge, TX"}]
 
 

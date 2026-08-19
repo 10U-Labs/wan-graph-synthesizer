@@ -176,38 +176,38 @@ def test_degree_exempt_backbone_must_be_a_list() -> None:
         _config({"synthesis": {"degree_exempt_backbone": "San Jose, CA"}})
 
 
-def test_default_has_no_forced_connections() -> None:
+def test_default_has_no_forced_paths() -> None:
     """The default config pins no mesh pairs."""
     assert len(default_config().links.backbone) == 0
 
 
-def test_reads_forced_connections() -> None:
-    """A forced_connections list is parsed into the backbone list of written links."""
-    connection = {"source": "Dallas, TX", "target": "Denver, CO"}
-    assert _config({"synthesis": {"forced_connections": [connection]}}).links.backbone == (
+def test_reads_forced_paths() -> None:
+    """A forced_paths list is parsed into the backbone list of written links."""
+    pinned = {"source": "Dallas, TX", "target": "Denver, CO"}
+    assert _config({"synthesis": {"forced_paths": [pinned]}}).links.backbone == (
         NamedLink("Dallas, TX", "Denver, CO"),
     )
 
 
-def test_forced_connections_must_be_a_list() -> None:
-    """A non-list forced_connections value is rejected."""
+def test_forced_paths_must_be_a_list() -> None:
+    """A non-list forced_paths value is rejected."""
     with pytest.raises(ValueError):
-        _config({"synthesis": {"forced_connections": {"source": "A"}}})
+        _config({"synthesis": {"forced_paths": {"source": "A"}}})
 
 
-def test_forced_connection_must_be_a_mapping() -> None:
-    """A forced_connections entry that is not a mapping is rejected."""
+def test_a_forced_path_must_be_a_mapping() -> None:
+    """A forced_paths entry that is not a mapping is rejected."""
     with pytest.raises(ValueError):
-        _config({"synthesis": {"forced_connections": ["Dallas, TX"]}})
+        _config({"synthesis": {"forced_paths": ["Dallas, TX"]}})
 
 
-def test_forced_connection_requires_a_source_and_target() -> None:
-    """A forced_connections entry missing an endpoint is rejected."""
+def test_a_forced_path_requires_a_source_and_target() -> None:
+    """A forced_paths entry missing an endpoint is rejected."""
     with pytest.raises(ValueError):
-        _config({"synthesis": {"forced_connections": [{"source": "A"}]}})
+        _config({"synthesis": {"forced_paths": [{"source": "A"}]}})
 
 
-def test_forced_connection_ignores_a_leftover_type() -> None:
+def test_a_forced_path_ignores_a_leftover_type() -> None:
     """A `type` still present on a stored entry is read past rather than refused.
 
     Tolerating it is what makes the split deployable. The stored documents and the Lambda
@@ -216,8 +216,8 @@ def test_forced_connection_ignores_a_leftover_type() -> None:
     with a `type`. Refusing the key -- as the settings resource refuses one it does not
     define -- would fail every WAN build in that window.
     """
-    connection = {"source": "A", "target": "B", "type": "access-backbone"}
-    assert _config({"synthesis": {"forced_connections": [connection]}}).links.backbone == (
+    pinned = {"source": "A", "target": "B", "type": "access-backbone"}
+    assert _config({"synthesis": {"forced_paths": [pinned]}}).links.backbone == (
         NamedLink("A", "B"),
     )
 
@@ -251,14 +251,14 @@ def test_a_forced_home_is_not_read_as_a_mesh_pair() -> None:
     assert len(_config({"synthesis": {"forced_homes": [home]}}).links.backbone) == 0
 
 
-def test_default_has_no_excluded_connections() -> None:
+def test_default_has_no_excluded_paths() -> None:
     """The default config prunes no mesh pairs."""
     assert len(default_config().links.removed_backbone) == 0
 
 
-def test_reads_excluded_connections() -> None:
-    """An excluded_connections entry is parsed into the pruned list of written links."""
-    synthesis = {"excluded_connections": [{"source": "Seattle, WA", "target": "Boise, ID"}]}
+def test_reads_excluded_paths() -> None:
+    """An excluded_paths entry is parsed into the pruned list of written links."""
+    synthesis = {"excluded_paths": [{"source": "Seattle, WA", "target": "Boise, ID"}]}
     assert _config({"synthesis": synthesis}).links.removed_backbone == (
         NamedLink("Seattle, WA", "Boise, ID"),
     )
@@ -573,10 +573,10 @@ def _parts(**overrides: Any) -> dict[str, Any]:
     """A full set of per-resource tenant documents for the assembler."""
     parts: dict[str, Any] = {
         "forced-backbone-nodes": [],
-        "forced-connections": [],
+        "forced-paths": [],
         "forced-homes": [],
         "prohibited-backbone-nodes": [],
-        "prohibited-connections": [],
+        "prohibited-paths": [],
         "backbone-node-count": {"min": 3, "max": 5},
         "backbone-number-of-diverse-paths": {"degree": 3},
         "access-homing-degree": {"degree": 2},
@@ -757,7 +757,7 @@ def test_app_config_from_parts_requires_convergence_promotion() -> None:
         app_config_from_parts(parts)
 
 
-def test_app_config_from_parts_parses_connections() -> None:
+def test_app_config_from_parts_parses_the_written_links() -> None:
     """The three link documents are parsed into the three lists of written links.
 
     Each stored document lands in its own list and only its own, which is the whole point
@@ -766,9 +766,9 @@ def test_app_config_from_parts_parses_connections() -> None:
     """
     parts = _parts(
         **{
-            "forced-connections": [{"source": "A", "target": "B"}],
+            "forced-paths": [{"source": "A", "target": "B"}],
             "forced-homes": [{"source": "S", "target": "B"}],
-            "prohibited-connections": [{"source": "C", "target": "D"}],
+            "prohibited-paths": [{"source": "C", "target": "D"}],
         }
     )
     assert app_config_from_parts(parts).links == OperatorLinks(

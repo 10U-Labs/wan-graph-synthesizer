@@ -457,17 +457,17 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/forced-connections": {
+    "/wan-graph-synthesizer/tenants/{tenant}/forced-paths": {
       "get": {
-        "summary": "A tenant's forced connections (input).",
+        "summary": "A tenant's forced paths (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The forced connections." } },
+        "responses": { "200": { "description": "The forced paths." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's forced connections (stores only).",
+        "summary": "Replace a tenant's forced paths (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The forced connections were replaced." } },
+        "responses": { "200": { "description": "The forced paths were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
@@ -513,17 +513,17 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-connections": {
+    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-paths": {
       "get": {
-        "summary": "A tenant's prohibited connections (input).",
+        "summary": "A tenant's prohibited paths (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The prohibited connections." } },
+        "responses": { "200": { "description": "The prohibited paths." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       },
       "put": {
-        "summary": "Replace a tenant's prohibited connections (stores only).",
+        "summary": "Replace a tenant's prohibited paths (stores only).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "The prohibited connections were replaced." } },
+        "responses": { "200": { "description": "The prohibited paths were replaced." } },
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },

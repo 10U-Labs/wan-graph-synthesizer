@@ -110,26 +110,26 @@ def _resolve_operator_pins(
 def _forced_backbone_endpoint(
     name: str, name_to_id: dict[str, str], forced_backbone: set[str]
 ) -> str:
-    """Resolve a forced-connection backbone endpoint, requiring it be a forced node."""
+    """Resolve a forced-path backbone endpoint, requiring it be a forced node."""
     if name not in name_to_id:
-        raise ValueError(f"forced-connection backbone not found in the Carrier graph: {name}")
+        raise ValueError(f"forced-path backbone not found in the Carrier graph: {name}")
     backbone_id = name_to_id[name]
     if backbone_id not in forced_backbone:
-        raise ValueError(f"forced-connection endpoint must be a forced backbone node: {name}")
+        raise ValueError(f"forced-path endpoint must be a forced backbone node: {name}")
     return backbone_id
 
 
 def _backbone_backbone_pair(
-    connection: NamedLink, name_to_id: dict[str, str], forced_backbone: set[str]
+    path: NamedLink, name_to_id: dict[str, str], forced_backbone: set[str]
 ) -> tuple[str, str]:
-    """Resolve a backbone-backbone connection's endpoints to a forced-backbone edge key."""
-    left = _forced_backbone_endpoint(connection.source, name_to_id, forced_backbone)
-    right = _forced_backbone_endpoint(connection.target, name_to_id, forced_backbone)
+    """Resolve a backbone-backbone path's endpoints to a forced-backbone edge key."""
+    left = _forced_backbone_endpoint(path.source, name_to_id, forced_backbone)
+    right = _forced_backbone_endpoint(path.target, name_to_id, forced_backbone)
     return edge_key(left, right)
 
 
 def _forced_home_pair(
-    connection: NamedLink,
+    home: NamedLink,
     access_name_to_id: dict[str, str],
     name_to_id: dict[str, str],
     forced_backbone: set[str],
@@ -141,30 +141,28 @@ def _forced_home_pair(
     a node the synthesis is guaranteed to seat. The pair is ordered because its two ends are
     not interchangeable, unlike a mesh pair's ``edge_key``.
     """
-    if connection.source not in access_name_to_id:
-        raise ValueError(f"forced-home access node not found: {connection.source}")
-    backbone = _forced_backbone_endpoint(connection.target, name_to_id, forced_backbone)
-    return access_name_to_id[connection.source], backbone
+    if home.source not in access_name_to_id:
+        raise ValueError(f"forced-home access node not found: {home.source}")
+    backbone = _forced_backbone_endpoint(home.target, name_to_id, forced_backbone)
+    return access_name_to_id[home.source], backbone
 
 
 def _excluded_backbone_endpoint(name: str, name_to_id: dict[str, str]) -> str:
     """Resolve an excluded backbone-backbone endpoint, requiring only a carrier PoP."""
     if name not in name_to_id:
-        raise ValueError(f"excluded-connection backbone not found in the Carrier graph: {name}")
+        raise ValueError(f"prohibited-path backbone not found in the Carrier graph: {name}")
     return name_to_id[name]
 
 
-def _removed_backbone_pair(
-    connection: NamedLink, name_to_id: dict[str, str]
-) -> tuple[str, str]:
-    """Resolve an excluded backbone-backbone connection's endpoints to an edge key."""
-    left = _excluded_backbone_endpoint(connection.source, name_to_id)
-    right = _excluded_backbone_endpoint(connection.target, name_to_id)
+def _removed_backbone_pair(path: NamedLink, name_to_id: dict[str, str]) -> tuple[str, str]:
+    """Resolve an excluded backbone-backbone path's endpoints to an edge key."""
+    left = _excluded_backbone_endpoint(path.source, name_to_id)
+    right = _excluded_backbone_endpoint(path.target, name_to_id)
     return edge_key(left, right)
 
 
 def _removed_backbone_links(
-    connections: tuple[NamedLink, ...],
+    paths: tuple[NamedLink, ...],
     name_to_id: dict[str, str],
 ) -> frozenset[tuple[str, str]]:
     """Resolve operator-pruned backbone-backbone pairs to edge keys.
@@ -173,9 +171,7 @@ def _removed_backbone_links(
     the pair is pruned only when the synthesizer seats both as backbone nodes, otherwise
     it is a no-op. Pinning the endpoints as forced backbone nodes is not required.
     """
-    return frozenset(
-        _removed_backbone_pair(connection, name_to_id) for connection in connections
-    )
+    return frozenset(_removed_backbone_pair(path, name_to_id) for path in paths)
 
 
 def resolve_forced_links(
@@ -189,8 +185,7 @@ def resolve_forced_links(
     to work out which tier an entry belongs to: the three lists arrive already separated,
     so each is simply resolved by the rule its own tier has. A forced endpoint must
     already be seated in the tier that rule requires, or a ``ValueError`` names the
-    offending connection; a pruned ``removed_backbone`` endpoint need only be a carrier
-    PoP.
+    offending pair; a pruned ``removed_backbone`` endpoint need only be a carrier PoP.
     """
     name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
     access_name_to_id = {
@@ -198,12 +193,12 @@ def resolve_forced_links(
     }
     return ForcedLinks(
         backbone=frozenset(
-            _backbone_backbone_pair(connection, name_to_id, forced_backbone)
-            for connection in links.backbone
+            _backbone_backbone_pair(path, name_to_id, forced_backbone)
+            for path in links.backbone
         ),
         access=frozenset(
-            _forced_home_pair(connection, access_name_to_id, name_to_id, forced_backbone)
-            for connection in links.access
+            _forced_home_pair(home, access_name_to_id, name_to_id, forced_backbone)
+            for home in links.access
         ),
         removed_backbone=_removed_backbone_links(links.removed_backbone, name_to_id),
     )

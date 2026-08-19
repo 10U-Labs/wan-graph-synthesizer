@@ -1,22 +1,11 @@
 ---
 access:
   forced:
-    connections: []
+    homes: []
   homing_degree: 2
 backbone:
   coverage_target_miles: 745
   forced:
-    connections:
-      - source: Ashburn, VA
-        target: Cheyenne, WY
-      - source: Cheyenne, WY
-        target: Great Falls, MT
-      - source: Cheyenne, WY
-        target: Minot, ND
-      - source: Hillsboro, OR
-        target: Salt Lake City, UT
-      - source: Salt Lake City, UT
-        target: San Jose, CA
     nodes:
       - Ashburn, VA
       - Atlanta, GA
@@ -31,14 +20,25 @@ backbone:
       - Salt Lake City, UT
       - San Jose, CA
       - Seattle, WA
+    paths:
+      - source: Ashburn, VA
+        target: Cheyenne, WY
+      - source: Cheyenne, WY
+        target: Great Falls, MT
+      - source: Cheyenne, WY
+        target: Minot, ND
+      - source: Hillsboro, OR
+        target: Salt Lake City, UT
+      - source: Salt Lake City, UT
+        target: San Jose, CA
   max_backup_path_multiple: 3
   node_count:
     max: 99
     min: 3
   number_of_diverse_paths: 2
   prohibited:
-    connections: []
     nodes: []
+    paths: []
   promote_high_degree_convergences: false
   restrict_to_data_centers: false
 inputs:

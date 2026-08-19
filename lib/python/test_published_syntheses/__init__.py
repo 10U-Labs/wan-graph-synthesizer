@@ -110,7 +110,7 @@ def published_synthesis(api: str, tenant: str, config: dict[str, Any]) -> dict[s
     that has not finished has decided no such number yet, and carries none.
 
     ``forced_paths`` is the pairs of backbone sites the operator wrote into
-    ``backbone.forced.connections``, carried in the shape ``etc/`` writes them. They come
+    ``backbone.forced.paths``, carried in the shape ``etc/`` writes them. They come
     from the config and not off the published links, which carry ``"reason":
     "operator_pin"`` for a pinned path: a build that pinned a path nobody asked it to pin is
     a defect this module is here to report, and reading the label the build wrote on its own
@@ -130,7 +130,7 @@ def published_synthesis(api: str, tenant: str, config: dict[str, Any]) -> dict[s
         "number_of_diverse_paths": backbone["number_of_diverse_paths"],
         "seat_cap": backbone["node_count"]["max"],
         "forced": backbone.get("forced", {}).get("nodes", []),
-        "forced_paths": backbone.get("forced", {}).get("connections", []),
+        "forced_paths": backbone.get("forced", {}).get("paths", []),
         "status": state,
         "lower_bound_miles": state.get("backbone_lower_bound_miles"),
         "backbone": published.get("backbone-nodes", []),
@@ -405,7 +405,7 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     the cities it crosses and the miles it runs, longest first, so the failure names the
     fiber and its length.
 
-    A path the operator asked for is never reported. ``backbone.forced.connections`` in a
+    A path the operator asked for is never reported. ``backbone.forced.paths`` in a
     tenant's config names pairs of sites the synthesis has to join whatever the rest of the
     build would rather do, which makes it the one path nobody has to justify; the
     synthesizer skips it for that reason when it prunes its own work

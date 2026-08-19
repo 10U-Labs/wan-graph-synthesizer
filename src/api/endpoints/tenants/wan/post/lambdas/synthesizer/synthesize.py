@@ -356,7 +356,7 @@ def build_search_plan(
     Required backbone nodes are the operator-forced backbone nodes plus any
     ``promoted_backbone_ids`` the convergence pass has fixed in (already eligible by
     construction). Every eligible PoP is a backbone candidate, ranked nationally by
-    strength. The operator's resolved forced-connection links ride along for the
+    strength. The operator's resolved forced-path links ride along for the
     routing stage. The nodes the diverse path count is not asked of do not: the exemption is
     validation's, and the handler carries it there itself.
     """

@@ -1,23 +1,23 @@
 ---
 access:
   forced:
-    connections: []
+    homes: []
   homing_degree: 2
 backbone:
   coverage_target_miles: 1090
   forced:
-    connections: []
     nodes:
       - Ashburn, VA
       - Salt Lake City, UT
+    paths: []
   max_backup_path_multiple: 3
   node_count:
     max: 2
     min: 2
   number_of_diverse_paths: 2
   prohibited:
-    connections: []
     nodes: []
+    paths: []
   promote_high_degree_convergences: false
   restrict_to_data_centers: false
 inputs:

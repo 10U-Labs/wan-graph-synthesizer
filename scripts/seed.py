@@ -201,21 +201,21 @@ def push_tenants(api: str) -> list[str]:
         backbone = config["backbone"]
         forced = backbone.get("forced", {})
         prohibited = backbone.get("prohibited", {})
-        homes = access.get("forced", {}).get("connections", [])
+        homes = access.get("forced", {}).get("homes", [])
         locations = _mapping_rows(inputs.get("locations", {}))
         regions = _rows(REPO_ROOT / inputs["providers"])
-        forced_path = inputs.get("forced")
-        off_net = _off_net_rows(forced_path) if forced_path else []
+        off_net_file = inputs.get("forced")
+        off_net = _off_net_rows(off_net_file) if off_net_file else []
         print(f"tenant {tid}: {len(locations)} sites, {len(regions)} regions, "
               f"{len(off_net)} off-net", flush=True)
         _put(api, f"tenants/{tid}/locations", locations)
         _put(api, f"tenants/{tid}/provider-regions", regions)
         _put(api, f"tenants/{tid}/off-net", off_net)
         _put(api, f"tenants/{tid}/forced-backbone-nodes", forced.get("nodes", []))
-        _put(api, f"tenants/{tid}/forced-connections", forced.get("connections", []))
+        _put(api, f"tenants/{tid}/forced-paths", forced.get("paths", []))
         _put(api, f"tenants/{tid}/forced-homes", homes)
         _put(api, f"tenants/{tid}/prohibited-backbone-nodes", prohibited.get("nodes", []))
-        _put(api, f"tenants/{tid}/prohibited-connections", prohibited.get("connections", []))
+        _put(api, f"tenants/{tid}/prohibited-paths", prohibited.get("paths", []))
         # The nodes held to no diverse path count. A config naming none says so with an empty
         # document rather than by leaving the resource absent, since the synthesizer
         # reads every config resource and a missing one is a failed build.
