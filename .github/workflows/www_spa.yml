@@ -5,6 +5,7 @@ concurrency:
 jobs:
   deploy:
     if: github.ref == 'refs/heads/main'
+    needs: [yamllint]
     permissions:
       contents: read
       id-token: write
@@ -27,10 +28,48 @@ jobs:
               '10ulabs.com')].Id | [0]" --output text)
           aws cloudfront create-invalidation --distribution-id "$DIST" \
             --paths "/wan-graph-synthesizer/*"
+  yamllint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Restore pip cache
+        uses: actions/cache@v5
+        with:
+          key: >-
+            pip-${{ github.job }}-${{
+            hashFiles('.github/workflows/www_spa.yml') }}
+          path: ~/.cache/pip
+          restore-keys: |
+            pip-${{ github.job }}-
+      - name: Install tools
+        run: >-
+          pip install
+          assert-no-inline-directives
+          assert-no-linter-config-files
+          yamllint
+      - name: Assert no inline yamllint disables
+        run: >-
+          assert-no-inline-directives
+          --tools yamllint
+          --verbose
+          .github/workflows/www_spa.yml
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/www_spa.yml
 name: www_spa
 'on':
   push:
     branches: [main]
     paths:
       - src/www/spa/**
+      - .github/workflows/www_spa.yml
   workflow_dispatch: {}
