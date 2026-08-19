@@ -61,7 +61,7 @@ def finalize(
 ]:
     """Validate the design over the real fiber, refusing one no operator could build from.
 
-    Two things are refused here, and a refusal means the build is recorded as failed and
+    Two things are refused here, and a refusal means the build is recorded as ``fail`` and
     nothing is published. The first is a design in more than one group: a network whose
     sites cannot all reach one another is not one network, and an operator handed it can
     carry no traffic between the groups. Every site can still hold every link it was asked

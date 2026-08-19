@@ -165,7 +165,7 @@ def test_a_design_in_two_groups_publishes_no_wan(store: dict[str, bytes]) -> Non
 def test_the_recorded_reason_names_the_groups_the_design_fell_into(
     store: dict[str, bytes]
 ) -> None:
-    """The failed status says the design fell into two groups, not merely that it failed.
+    """The ``fail`` status says the design fell into two groups, not merely that it failed.
 
     Without this the test above would pass just as well on a build that died loading its
     own inputs, and the gate would be unproven.

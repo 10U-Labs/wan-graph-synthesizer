@@ -123,8 +123,8 @@ def test_a_build_the_service_refuses_to_serve_is_read_as_what_it_says_went_wrong
     document, and that document is what says which tenant failed and why.
     """
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
-        "tenants/daf/wan": {"status": "failed", "reason": "no valid WAN is possible"},
+        "tenants/daf/wan": {"status": "fail", "reason": "no valid WAN is possible"},
     }, code=422))
     assert published_design(DEFAULT_API, "daf", _CONFIG)["status"] == {
-        "status": "failed", "reason": "no valid WAN is possible",
+        "status": "fail", "reason": "no valid WAN is possible",
     }

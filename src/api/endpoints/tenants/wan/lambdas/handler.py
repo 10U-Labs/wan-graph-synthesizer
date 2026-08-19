@@ -1,7 +1,7 @@
 """WAN create endpoint: start a tenant's synthesizer and report its status.
 
     POST /wan-graph-synthesizer/tenants/{tenant}/wan -> 202; start the create
-    GET  /wan-graph-synthesizer/tenants/{tenant}/wan -> the WAN's status (422 if failed)
+    GET  /wan-graph-synthesizer/tenants/{tenant}/wan -> the WAN's status (422 on ``fail``)
 
 The synthesize math takes longer than API Gateway's ~29s cap, so a POST async-invokes
 the synthesizer Lambda and returns immediately; the synthesizer writes the finished WAN
@@ -66,7 +66,7 @@ def _start_create(tenant: str) -> None:
 
     ``InvocationType="Event"`` fires the synthesizer and returns at once, so the POST
     answers within API Gateway's timeout; the synthesizer moves the status to
-    ``synthesizing`` and then ``success``/``failed`` as it runs.
+    ``synthesizing`` and then ``success``/``fail`` as it runs.
     """
     _write_status(tenant, {"status": "creating", "tenant": tenant})
     _lambda().invoke(
@@ -77,7 +77,7 @@ def _start_create(tenant: str) -> None:
 
 
 def _read_status(tenant: str) -> dict[str, Any]:
-    """Serve a tenant's WAN status: 422 when failed, 404 before any create."""
+    """Serve a tenant's WAN status: 422 on ``fail``, 404 before any create."""
     client = _s3()
     try:
         body = client.get_object(
@@ -86,7 +86,7 @@ def _read_status(tenant: str) -> dict[str, Any]:
     except client.exceptions.NoSuchKey:
         return _response(404, {"error": f"no wan: {tenant}"})
     status = json.loads(body)
-    code = 422 if status.get("status") == "failed" else 200
+    code = 422 if status.get("status") == "fail" else 200
     return _response(code, status)
 
 

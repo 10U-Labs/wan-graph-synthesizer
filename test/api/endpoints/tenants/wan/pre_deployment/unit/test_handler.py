@@ -103,7 +103,7 @@ def test_wan_get_200_while_creating(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_wan_get_422_when_no_valid_wan(monkeypatch: pytest.MonkeyPatch) -> None:
     """A failed create reports 422 (no valid WAN was possible)."""
     module = _wan(monkeypatch)
-    objects = {"tenants/f-35/wan-status.json": json.dumps({"status": "failed"}).encode()}
+    objects = {"tenants/f-35/wan-status.json": json.dumps({"status": "fail"}).encode()}
     with patch("boto3.client", side_effect=write_clients(objects, [])):
         response = module.lambda_handler({"pathParameters": {"tenant": "f-35"}}, None)
     assert response["statusCode"] == 422

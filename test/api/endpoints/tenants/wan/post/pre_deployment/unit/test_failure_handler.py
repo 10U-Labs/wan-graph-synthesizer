@@ -2,7 +2,7 @@
 
 The failure handler is the synthesizer's async ``on_failure`` destination: given the
 failed invocation's event (carrying the original ``{"tenant": ...}`` request), it records
-the tenant's WAN as ``failed`` so a stuck ``synthesizing`` can never persist. S3 is faked;
+the tenant's WAN as ``fail`` so a stuck ``synthesizing`` can never persist. S3 is faked;
 no network.
 """
 
@@ -42,14 +42,14 @@ def _run(module: Any, event: dict[str, Any]) -> dict[str, bytes]:
     return objects
 
 
-def test_records_failed_status(failure_handler: Any) -> None:
-    """A dead synthesizer invocation is recorded as a failed status."""
+def test_records_the_fail_status(failure_handler: Any) -> None:
+    """A dead synthesizer invocation is recorded as ``fail``."""
     objects = _run(failure_handler, _event())
-    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "fail"
 
 
 def test_writes_to_the_wan_status_key(failure_handler: Any) -> None:
-    """The failed status is written to the tenant's WAN status key."""
+    """The ``fail`` status is written to the tenant's WAN status key."""
     objects = _run(failure_handler, _event())
     assert "tenants/f-35/wan-status.json" in objects
 

@@ -3,7 +3,7 @@
 The heavy design pipeline is stubbed (it is exercised by the synthesizer engine tests);
 these tests cover the handler's own orchestration and S3 I/O: it reads the tenant from
 the invoke event, moves the status to ``synthesizing``, and publishes ``success`` or
-``failed``.
+``fail``.
 """
 
 from __future__ import annotations
@@ -251,12 +251,12 @@ def test_the_status_says_synthesizing_while_the_build_runs(
     assert polled[0]["status"] == "synthesizing"
 
 
-def test_records_failed_when_no_valid_wan(
+def test_records_fail_when_no_valid_wan(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """When the synthesizer reports infeasibility, the status is recorded as failed."""
+    """When the synthesizer reports infeasibility, the status is recorded as ``fail``."""
     objects = _run(synthesizer, monkeypatch, fail=True)
-    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "fail"
 
 
 def _run_split_backbone(module: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, bytes]:
@@ -284,16 +284,16 @@ def _run_split_backbone(module: Any, monkeypatch: pytest.MonkeyPatch) -> dict[st
     return objects
 
 
-def test_records_failed_when_the_design_falls_into_more_than_one_group(
+def test_records_fail_when_the_design_falls_into_more_than_one_group(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A design in two groups is recorded as failed, which is how the gate is seen outside.
+    """A design in two groups is recorded as ``fail``, which is how the gate is seen outside.
 
     The refusal happens inside the build, so a caller polling the GET learns of it only
     through this status; without it the tenant would sit at ``synthesizing`` forever.
     """
     objects = _run_split_backbone(synthesizer, monkeypatch)
-    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "failed"
+    assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "fail"
 
 
 def test_open_gate_build_maps_to_no_datacenter_restriction(

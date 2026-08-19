@@ -63,7 +63,7 @@ FIBER = "carrier_physical"
 # The states the service reports while it is still deciding what a tenant's network is.
 # The POST that starts a build records ``creating`` before it answers, and the synthesizer
 # records ``synthesizing`` when it picks the work up, so a tenant in neither state has a
-# network that is finished -- published, or failed and reported as failed.
+# network that is finished -- published, or given up on and reported as ``fail``.
 UNFINISHED = frozenset({"creating", "synthesizing"})
 
 # The published collections this module reads, under the names the API serves them by.

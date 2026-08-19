@@ -3,7 +3,7 @@
 Async-invoked by the dispatching Lambda with ``{"tenant": ...}`` (STORE_BUCKET in
 the environment): read the substrate and the tenant's inputs from S3, run the whole
 design pipeline (dual-home -> overrides -> synthesize -> finalize), and publish the
-WAN -- or record a ``failed`` status when no valid WAN exists
+WAN -- or record a ``fail`` status when no valid WAN exists
 (``synthesize_two_tier_design`` raises ``ValueError``). A build is single-threaded
 and finishes in seconds, well inside Lambda's 15-minute / 10 GB envelope.
 """
@@ -211,7 +211,7 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
     The dispatcher async-invokes this with ``{"tenant": ...}``. The status is moved to
     ``synthesizing`` first -- the in-progress marker the GET reads -- then ``success``
-    once the WAN is published, or ``failed`` if the build raises.
+    once the WAN is published, or ``fail`` if the build raises.
 
     A ``success`` status carries the coverage the design delivered. Growth toward the
     operator's target can stop short of it, and a build that gave up used to be published
@@ -243,8 +243,8 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         wan, delivered = _build_wan(client, tenant)
     except Exception as exc:
         logger.warning("Build failed for %s: %s", tenant, exc)
-        _write_json(client, status_key, {"status": "failed", "reason": str(exc)})
-        return {"status": "failed", "tenant": tenant}
+        _write_json(client, status_key, {"status": "fail", "reason": str(exc)})
+        return {"status": "fail", "tenant": tenant}
     _write_json(client, f"tenants/{tenant}/wan.json", wan)
     _write_json(client, status_key, {"status": "success", **delivered})
     logger.info("Build succeeded for %s", tenant)

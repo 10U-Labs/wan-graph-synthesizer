@@ -191,7 +191,7 @@ def test_a_pass_that_gives_up_is_asked_again_and_comes_back_with_the_answer(
     one of them -- the 713th, over 624 segments and 5,879 rows -- never comes back at all:
     the solver has been carried through every pass before it and the basis it starts from
     has gone bad. The program itself is easy, and a solver handed it fresh answers in 0.682
-    seconds. So the tenant was recorded as ``failed`` and published no network, on a design
+    seconds. So the tenant was recorded as ``fail`` and published no network, on a design
     that is there to be built, for want of asking one question twice (GitHub issue #70).
     """
     assert _out_of_time_at_once(monkeypatch).solve().miles == pytest.approx(6.0)

@@ -1,6 +1,6 @@
 # The synthesizer: a zip-packaged Lambda that runs the whole pipeline
 # (dual-home -> overrides -> synthesize -> finalize) in one invocation and writes the
-# tenant's WAN JSON to the S3 store, or records a failed reason. The dispatching Lambda
+# tenant's WAN JSON to the S3 store, or records why none was possible. The dispatching Lambda
 # (in the sibling `../` stack) async-invokes it on a WAN create (POST /tenants/{t}/wan),
 # the only build trigger, referencing it by its deterministic derived name.
 # A build is single-threaded, finishes in seconds with a few-GB working set, and needs
@@ -123,7 +123,7 @@ resource "aws_lambda_function" "synthesizer" {
 # The failure handler: a tiny Lambda wired to the synthesizer's async on_failure
 # destination. AWS delivers a failed synthesizer invocation here only when it did NOT
 # return -- a 900s timeout, an out-of-memory kill, or an unhandled crash -- because those
-# kill the sandbox before the synthesizer's `except` can record "failed", leaving the WAN
+# kill the sandbox before the synthesizer's `except` can record "fail", leaving the WAN
 # stuck on "synthesizing" forever. It reuses the synthesizer's deployment package but is its
 # own function, entered at a different handler and running as its own write-only role.
 resource "aws_iam_role" "failure_handler" {
@@ -175,7 +175,7 @@ resource "aws_lambda_function" "failure_handler" {
   # It writes a single S3 object; the default envelope is ample.
   timeout     = 30
   memory_size = 128
-  description = "WAN failure handler: record a tenant's WAN as failed when the synthesizer dies."
+  description = "WAN failure handler: record the terminal status when the synthesizer dies."
 
   environment {
     variables = {
@@ -210,7 +210,7 @@ resource "aws_iam_role_policy" "synthesizer_destination" {
 
 # Pin async retries to zero and route a failed invocation to the failure handler. A
 # timeout kill can't be caught in-process, so retrying would only re-stamp "synthesizing"
-# without ever reaching a terminal status; the destination records "failed" instead.
+# without ever reaching a terminal status; the destination records "fail" instead.
 resource "aws_lambda_function_event_invoke_config" "synthesizer" {
   function_name          = aws_lambda_function.synthesizer.function_name
   maximum_retry_attempts = 0
