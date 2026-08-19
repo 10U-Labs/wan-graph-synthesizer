@@ -1,6 +1,6 @@
 ---
 concurrency:
-  cancel-in-progress: false
+  cancel-in-progress: true
   group: www-spa
 jobs:
   deploy:

@@ -1,6 +1,6 @@
 ---
 concurrency:
-  cancel-in-progress: false
+  cancel-in-progress: true
   group: api-endpoint-data-centers-merge-${{ github.ref }}
 jobs:
   assert-no-inline-directives:
