@@ -351,8 +351,8 @@ jobs:
           yamllint --strict \
             --config-data \
             "{extends: default, rules: {$RULES}}" \
-            .github/workflows/seed.yml etc/afgsc.yml etc/daf.yml \
-            etc/dow.yml etc/f_35.yml etc/minuteman.yml etc/two_node.yml
+            .github/workflows/seed.yml etc/daf.yml etc/dow.yml \
+            etc/f_35.yml etc/minuteman.yml etc/two_node.yml
 name: seed
 on:
   push:
