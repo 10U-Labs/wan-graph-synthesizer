@@ -4,16 +4,13 @@ access:
     connections: []
   homing_degree: 2
 backbone:
-  coverage_target_miles: 400
+  coverage_target_miles: 745
   forced:
     connections: []
     nodes:
       - Ashburn, VA
-      - Billings, MT
       - Boston, MA
       - Cheyenne, WY
-      - Colorado Springs, CO
-      - Grand Forks, ND
       - Great Falls, MT
       - Hillsboro, OR
       - Los Angeles, CA
