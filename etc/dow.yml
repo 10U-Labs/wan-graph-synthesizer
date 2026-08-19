@@ -4,35 +4,22 @@ access:
     connections: []
   homing_degree: 2
 backbone:
-  coverage_target_miles: 300
+  coverage_target_miles: 745
   forced:
     connections: []
     nodes:
       - Ashburn, VA
-      - Boardman, OR
       - Boston, MA
       - Cheyenne, WY
-      - Cincinnati, OH
-      - Colorado Springs, CO
-      - Columbus, OH
       - Dallas, TX
-      - Denver, CO
-      - Fort Worth, TX
       - Great Falls, MT
       - Hillsboro, OR
-      - Houston, TX
       - Los Angeles, CA
-      - McLean, VA
       - Minot, ND
       - New York, NY
-      - Phoenix, AZ
       - Salt Lake City, UT
-      - San Antonio, TX
-      - San Diego, CA
       - San Jose, CA
       - Seattle, WA
-      - Tucson, AZ
-      - Umatilla, OR
   max_backup_path_multiple: 3
   node_count:
     max: 1000
