@@ -92,6 +92,13 @@ def _one_carrier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         "Municipality,State", "Reston,VA", "Denver,CO")
 
 
+def _fiberless_carrier(data: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Lay down one carrier's points with no fiber file, under a temp DATA dir."""
+    monkeypatch.setattr(seed, "DATA", data)
+    _write_csv(
+        data / "vertices" / "carriers" / "lumen.csv", "Municipality,State", "Reston,VA")
+
+
 def _off_net_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *seats: str) -> str:
     """Lay down an off-net file of *seats* beside one carrier's points; return its path."""
     _one_carrier(tmp_path / "data", monkeypatch)
@@ -244,6 +251,18 @@ def test_carrier_cities_collects_every_point_a_carrier_file_lists(
     assert _carrier_cities() == {("reston", "va"), ("denver", "co")}
 
 
+def test_carrier_cities_ignores_a_carrier_with_no_fiber_file(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A carrier with points but no fiber file has no cities, because it is never pushed.
+
+    push_carriers walks the fiber files, so such a carrier's points never reach the API,
+    and synthesizer.codec drops a point no fiber segment touches in any case. Counting
+    its cities as served would refuse an off-net seat over a point no synthesis can see.
+    """
+    _fiberless_carrier(tmp_path, monkeypatch)
+    assert _carrier_cities() == set()
+
+
 def test_carrier_cities_is_empty_without_any_carrier_file(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """_carrier_cities is empty when no carrier points file exists."""
@@ -284,6 +303,15 @@ def test_off_net_rows_refuses_a_seat_spelled_in_another_case(
     path = _off_net_file(tmp_path, monkeypatch, "reston,va")
     with pytest.raises(ValueError, match="reston, va"):
         _off_net_rows(path)
+
+
+def test_off_net_rows_accepts_a_seat_only_a_fiberless_carrier_has_a_point_in(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A seat stands where the only point in that city belongs to a carrier with no fiber."""
+    _fiberless_carrier(tmp_path / "data", monkeypatch)
+    monkeypatch.setattr(seed, "REPO_ROOT", tmp_path)
+    _write_csv(tmp_path / "offnet" / "off.csv", "Municipality,State", "Reston,VA")
+    assert len(_off_net_rows("offnet/off.csv")) == 1
 
 
 def test_off_net_rows_keeps_a_seat_whose_state_differs(

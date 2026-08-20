@@ -25,7 +25,7 @@ import yaml
 
 import seed
 from repo_utils import REPO_ROOT
-from seed import _carrier_cities, _city_key, _mapping_rows, _rows, _slug
+from seed import _carrier_cities, _carrier_names, _city_key, _mapping_rows, _rows, _slug
 from synthesizer.ceiling import (
     BackupPathLimit,
     PathProofInputs,
@@ -235,6 +235,19 @@ def test_no_declared_off_net_seat_is_a_city_a_carrier_already_serves() -> None:
         for city in {_city_key(row) for row in _rows(REPO_ROOT / path)} & carriers
     )
     assert overlapping == []
+
+
+def test_every_carrier_has_both_a_points_file_and_a_fiber_file() -> None:
+    """Every carrier the maps declare is declared in both directories, not one.
+
+    A carrier is two files, and seed reads the roster off the fiber files alone. A
+    points file with no fiber file beside it is a carrier nothing pushes, whose cities
+    would still have to be kept out of the off-net seats by hand; a fiber file with no
+    points file stops the seed outright at _rows. This fails on the commit that adds
+    half a carrier rather than leaving it to surface as a refused tenant config.
+    """
+    points = sorted(p.stem for p in (seed.DATA / "vertices" / "carriers").glob("*.csv"))
+    assert points == _carrier_names()
 
 
 def _tenants_written(paths: list[str], resource: str) -> int:

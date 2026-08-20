@@ -74,11 +74,19 @@ def _city_key(row: dict[str, Any]) -> tuple[str, str]:
 
 
 def _carrier_cities() -> set[tuple[str, str]]:
-    """Every city a carrier has a point in, across all the carrier points files."""
+    """Every city a pushed carrier has a point in, read off the roster _carrier_names gives.
+
+    The roster is the fiber files, so a carrier with points and no fiber contributes
+    nothing here. That is what the merged carriers do too: ``synthesizer.codec`` drops a
+    point no fiber segment touches before any synthesis starts, so such a city can hold
+    no backbone node and is genuinely free for an off-net seat. Globbing the points
+    directory instead answered the question from a second roster that could disagree
+    with the one ``push_carriers`` acts on.
+    """
     return {
         _city_key(row)
-        for path in (DATA / "vertices" / "carriers").glob("*.csv")
-        for row in _rows(path)
+        for carrier in _carrier_names()
+        for row in _rows(DATA / "vertices" / "carriers" / f"{carrier}.csv")
     }
 
 
@@ -151,7 +159,14 @@ def _degree_doc(value: Any) -> dict[str, Any]:
 
 
 def _carrier_names() -> list[str]:
-    """The carriers: every points file that also has a fiber segments file."""
+    """The carriers: the stems of the fiber files under ``data/edges``, sorted.
+
+    The fiber decides, because a carrier with no fiber can carry nothing -- its points
+    are dropped by ``synthesizer.codec`` before any synthesis starts. Each carrier's
+    points are then read from ``data/vertices/carriers/`` by the stem its fiber file
+    gave, so a fiber file with no points file beside it is not skipped: it stops the
+    seed with the ``Input file does not exist`` that ``_rows`` raises.
+    """
     return sorted(p.stem for p in (DATA / "edges").glob("*.csv"))
 
 
