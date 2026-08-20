@@ -83,4 +83,3 @@ def test_delete_markers_are_expired_on_the_live_store(
     """The live store takes away a delete marker with nothing left under it."""
     rule = live_lifecycle_rules["expire-delete-markers"]
     assert rule["Expiration"]["ExpiredObjectDeleteMarker"] is True
-
