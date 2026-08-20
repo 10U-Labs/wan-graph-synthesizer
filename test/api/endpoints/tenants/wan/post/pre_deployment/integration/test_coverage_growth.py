@@ -37,7 +37,7 @@ _SITES = [
 ]
 # Each far hub hangs off both base nodes, so every grown backbone is a pair of triangles
 # sharing the base segment and survives any one city: what the synthesis settles on is decided by
-# geography alone. The fiber is carrier PoPs only, as the real substrate is -- demand homes
+# geography alone. The fiber is carrier PoPs only, as the merged carriers really are -- demand homes
 # to its nearest backbone nodes logically, over no last-mile fiber anyone has measured.
 _LINKS = fixtures.fiber_segments_from({
     ("hub_a", "hub_b"): 1.0,

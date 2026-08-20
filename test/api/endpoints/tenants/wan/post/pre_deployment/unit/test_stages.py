@@ -85,12 +85,12 @@ def test_finalize_refuses_a_synthesis_short_of_the_configured_number_of_diverse_
         finalize(list(fixtures.carrier_pops_by_id("abcx").values()), {}, synthesis, params)
 
 
-def test_finalize_holds_a_node_to_the_ceiling_of_the_substrate_it_is_given() -> None:
+def test_finalize_holds_a_node_to_the_ceiling_of_the_merged_carriers_it_is_given() -> None:
     """The same shortfall is no refusal once the fiber shows one link is all a can hold.
 
     Node a reaches b and c only through the transit city x, so its ceiling on this
-    substrate is one -- and one is what it holds. finalize builds the ceilings from the
-    fiber it is handed, so the synthesis it refuses on a bare substrate finalizes on the real
+    fiber is one -- and one is what it holds. finalize builds the ceilings from the
+    fiber it is handed, so the synthesis it refuses on bare fiber finalizes on the real
     one.
     """
     synthesis = fixtures.meshed_backbone_synthesis(

@@ -1,8 +1,7 @@
 # The single store for the whole product. Layout (S3 key prefixes):
 #   source/    -- git-authored inputs pushed via the API (carriers/providers/tenants)
 #   builds/    -- per-create working artifacts (lifecycle-expired)
-#   carriers/  providers/  substrate/  tenants/  -- published graph JSON the read
-#                                                endpoints serve
+#   carriers/  providers/  tenants/  -- published graph JSON the read endpoints serve
 # Builds write here; every read endpoint serves from here.
 # The store holds one copy of each key: versioning is suspended below, so an
 # overwrite replaces what was there rather than stacking another copy behind it.

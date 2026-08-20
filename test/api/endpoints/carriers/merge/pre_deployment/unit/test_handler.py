@@ -1,7 +1,7 @@
 """Unit tests for the carriers/merge endpoint Lambda handler.
 
 Merge is its own resource: POST unions every carrier's points and fiber segments into
-the substrate, GET serves the stored substrate. None of this is shared, so it lives here.
+the merged carriers, GET serves them. None of this is shared, so it lives here.
 """
 
 from __future__ import annotations
@@ -60,8 +60,8 @@ def test_merge_post_tags_points_with_their_carrier(monkeypatch: pytest.MonkeyPat
     assert {row["carrier"] for row in merged} == {"a", "b"}
 
 
-def test_merge_post_stores_the_substrate(monkeypatch: pytest.MonkeyPatch) -> None:
-    """POST writes the merged substrate's sites and links back to the store."""
+def test_merge_post_stores_the_merged_carriers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """POST writes the merged carriers' sites and links back to the store."""
     objects: dict[str, bytes] = {}
     module = load_handler("carriers/merge", monkeypatch)
     with patch("boto3.client", return_value=fake_s3(objects, keys=[])):
@@ -70,7 +70,7 @@ def test_merge_post_stores_the_substrate(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_merge_get_serves_pops(monkeypatch: pytest.MonkeyPatch) -> None:
-    """GET sites returns the stored substrate's sites."""
+    """GET sites returns the stored merged carriers' sites."""
     module = load_handler("carriers/merge", monkeypatch)
     stored = json.dumps([{"id": "P"}]).encode()
     with patch("boto3.client", return_value=fake_s3({"carriers/merge/pops.json": stored})):
@@ -87,7 +87,7 @@ def test_merge_get_404_for_an_unknown_collection(monkeypatch: pytest.MonkeyPatch
 
 
 def test_merge_get_404_when_not_built(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Reading the substrate before any merge returns a 'not built' 404."""
+    """Reading the merged carriers before any merge returns a 'not built' 404."""
     module = load_handler("carriers/merge", monkeypatch)
     with patch("boto3.client", return_value=fake_s3({})):
         response = module.lambda_handler({"path": "/x/carriers/merge/fiber-segments"}, None)

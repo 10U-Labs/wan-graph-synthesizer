@@ -233,7 +233,7 @@ def test_the_report_gives_every_measured_node_its_count_and_its_target() -> None
     ]
 
 
-def test_the_report_measures_no_node_the_substrate_said_nothing_about() -> None:
+def test_the_report_measures_no_node_the_merged_carriers_said_nothing_about() -> None:
     """A node with no ceiling recorded owes the full degree and is not reported as measured.
 
     Reporting it would have to invent a ceiling to sit beside the target, and no fiber in

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from synthesizer.codec import _slug, load_off_net, load_regions, load_sites, load_substrate
+from synthesizer.codec import _slug, load_merged_carriers, load_off_net, load_regions, load_sites
 from synthesizer.model import is_carrier_pop
 
-_SUBSTRATE_SITES = [
+_MERGED_CARRIER_SITES = [
     {"carrier": "lumen", "municipality": "Denver", "state": "CO",
      "country": "United States", "latitude": 39.7392, "longitude": -104.9903},
     {"carrier": "lumen", "municipality": "Kansas City", "state": "MO",
@@ -13,7 +13,7 @@ _SUBSTRATE_SITES = [
     {"carrier": "zayo", "municipality": "Denver", "state": "CO",
      "country": "United States", "latitude": 39.7392, "longitude": -104.9903},
 ]
-_SUBSTRATE_LINKS = [
+_MERGED_CARRIER_LINKS = [
     {"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
      "z_municipality": "Kansas City", "z_state": "MO"},
 ]
@@ -29,59 +29,59 @@ def test_slug_empty_falls_back() -> None:
     assert _slug("!!!") == "x"
 
 
-def test_substrate_names_a_pop_by_its_city() -> None:
+def test_merged_carriers_name_a_pop_by_its_city() -> None:
     """A carrier point's display name is its ``City, ST``."""
-    pops, _links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
+    pops, _links = load_merged_carriers(_MERGED_CARRIER_SITES, _MERGED_CARRIER_LINKS)
     assert pops[0].name == "Denver, CO"
 
 
-def test_substrate_points_are_carrier_pops() -> None:
-    """Every substrate point classifies as a carrier PoP."""
-    pops, _links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
+def test_merged_carrier_points_are_carrier_pops() -> None:
+    """Every merged-carrier point classifies as a carrier PoP."""
+    pops, _links = load_merged_carriers(_MERGED_CARRIER_SITES, _MERGED_CARRIER_LINKS)
     assert all(is_carrier_pop(pop) for pop in pops)
 
 
-def test_substrate_collapses_a_city_across_carriers() -> None:
+def test_merged_carriers_collapse_a_city_across_carriers() -> None:
     """Colocated points from different carriers collapse to one city node."""
-    pops, _links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
+    pops, _links = load_merged_carriers(_MERGED_CARRIER_SITES, _MERGED_CARRIER_LINKS)
     assert {pop.id for pop in pops} == {"denver-co", "kansas-city-mo"}
 
 
-def test_substrate_resolves_a_segment_by_city() -> None:
+def test_merged_carriers_resolve_a_segment_by_city() -> None:
     """A fiber segment resolves both endpoints to the shared city nodes."""
-    _pops, links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
+    _pops, links = load_merged_carriers(_MERGED_CARRIER_SITES, _MERGED_CARRIER_LINKS)
     assert list(links) == [("denver-co", "kansas-city-mo")]
 
 
-def test_substrate_skips_a_segment_to_an_unserved_city() -> None:
+def test_merged_carriers_skip_a_segment_to_an_unserved_city() -> None:
     """A fiber segment naming a city no carrier serves is dropped, not an error."""
     dangling = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
                  "z_municipality": "Nowhere", "z_state": "ZZ"}]
-    _pops, links = load_substrate(_SUBSTRATE_SITES, dangling)
+    _pops, links = load_merged_carriers(_MERGED_CARRIER_SITES, dangling)
     assert not links
 
 
-def test_substrate_computes_segment_distance() -> None:
+def test_merged_carriers_compute_segment_distance() -> None:
     """A fiber segment's distance is the great-circle miles between its points."""
-    _pops, links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
+    _pops, links = load_merged_carriers(_MERGED_CARRIER_SITES, _MERGED_CARRIER_LINKS)
     assert round(next(iter(links.values())).distance_miles) == 557
 
 
-def test_substrate_drops_an_isolated_point() -> None:
-    """A point no surviving segment touches is dropped from the substrate."""
-    extra = _SUBSTRATE_SITES + [
+def test_merged_carriers_drop_an_isolated_point() -> None:
+    """A point no surviving segment touches is dropped from the merged carriers."""
+    extra = _MERGED_CARRIER_SITES + [
         {"carrier": "lumen", "municipality": "Boise", "state": "ID",
          "country": "United States", "latitude": 43.6, "longitude": -116.2},
     ]
-    pops, _links = load_substrate(extra, _SUBSTRATE_LINKS)
+    pops, _links = load_merged_carriers(extra, _MERGED_CARRIER_LINKS)
     assert "boise-id" not in {pop.id for pop in pops}
 
 
-def test_substrate_skips_an_intra_city_self_loop() -> None:
+def test_merged_carriers_skip_an_intra_city_self_loop() -> None:
     """A fiber segment whose two endpoints are the same city is dropped, not a self-loop."""
     loop = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
              "z_municipality": "Denver", "z_state": "CO"}]
-    _pops, links = load_substrate(_SUBSTRATE_SITES, loop)
+    _pops, links = load_merged_carriers(_MERGED_CARRIER_SITES, loop)
     assert not links
 
 
@@ -124,7 +124,7 @@ def test_sites_read_a_no_exempt_column_as_not_exempt() -> None:
 
 
 def test_places_without_an_exempt_column_are_not_exempt() -> None:
-    """A row lacking the exempt column (regions, off-net, substrate) is not exempt."""
+    """A row lacking the exempt column (regions, off-net, carrier PoPs) is not exempt."""
     regions = load_regions([
         {"name": "us-east-1", "municipality": "Ashburn", "state": "VA",
          "country": "United States", "latitude": 39.0, "longitude": -77.5},

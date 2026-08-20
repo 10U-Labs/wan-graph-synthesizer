@@ -13,8 +13,8 @@ over candidate sets.
 A final convergence pass then promotes natural hubs: any data-center city where at least
 ``CONVERGENCE_BACKBONE_DEGREE`` of the synthesis's own drawn fiber lines meet is forced
 into the backbone and the synthesis is recomputed, repeating until a redraw finds no new
-hub. The count is per-synthesis (this synthesis's used physical links), not the shared carrier
-substrate's degree, so a city that hubs one tenant need not hub another.
+hub. The count is per-synthesis (this synthesis's used physical links), not the merged
+carriers' degree, so a city that hubs one tenant need not hub another.
 
 Eligibility is gated twice: a carrier PoP may serve as a backbone node only if it has
 at least two physical links AND sits at a data-center city (a colocation provider
@@ -66,7 +66,7 @@ _SEARCH_LOG_INTERVAL = 50_000
 # A carrier PoP where at least this many of the synthesis's own drawn fiber lines converge
 # is a natural hub; if it also sits at a data-center city it is promoted into the backbone
 # and the synthesis is recomputed (GitHub issue #4). The count is per-synthesis (the synthesis's
-# used physical links), never the shared carrier substrate's degree.
+# used physical links), never the merged carriers' degree.
 CONVERGENCE_BACKBONE_DEGREE = 3
 
 
@@ -96,7 +96,7 @@ def convergence_promotion_ids(
 
     A PoP qualifies when at least ``min_degree`` of *this synthesis's* drawn physical links
     meet at it. The count comes from ``synthesis.fiber_segment_keys`` -- the fiber actually
-    drawn for this synthesis -- so the measure is per-synthesis, never the shared substrate's
+    drawn for this synthesis -- so the measure is per-synthesis, never the merged carriers'
     degree. A non-backbone carrier PoP only ever carries those links as a transit node
     (demand homes to backbone nodes, never to transit), so its incident count is exactly
     the number of the synthesis's lines meeting there. PoPs already seated in the backbone

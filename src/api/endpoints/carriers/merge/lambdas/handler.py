@@ -1,10 +1,10 @@
-"""Carrier merge endpoint: stitch all carriers into the substrate (the shared mesh).
+"""Carrier merge endpoint: draw every carrier's PoPs and fiber on one map.
 
-    POST /wan-synthesizer/carriers/merge          -> (re)build the substrate
-    GET  /wan-synthesizer/carriers/merge/pops -> the substrate's PoPs
-    GET  /wan-synthesizer/carriers/merge/fiber-segments    -> the substrate's fiber
+    POST /wan-synthesizer/carriers/merge          -> (re)build the merged carriers
+    GET  /wan-synthesizer/carriers/merge/pops -> the merged carriers' PoPs
+    GET  /wan-synthesizer/carriers/merge/fiber-segments    -> the merged carriers' fiber
 
-The substrate is just every carrier's points and fiber segments unioned, each row
+The merged carriers are just every carrier's points and fiber segments unioned, each row
 tagged with the carrier it came from (taken from its endpoint path) so a segment resolves
 to its own carrier's points. Cross-carrier colocation is resolved later, per tenant, by the
 synthesizer. So the merge needs no synthesis logic and stays a self-contained (stdlib +
@@ -46,7 +46,7 @@ def _response(status: int, body: Any) -> dict[str, Any]:
     return {"statusCode": status, "headers": dict(_HEADERS), "body": json.dumps(body)}
 
 
-def _build_substrate(client: Any) -> dict[str, int]:
+def _build_merged_carriers(client: Any) -> dict[str, int]:
     """Union every carrier's points and fiber segments (each tagged with its carrier).
 
     Reads ``carriers/{c}/pops.json`` and ``carriers/{c}/fiber-segments.json`` for every
@@ -73,15 +73,15 @@ def _build_substrate(client: Any) -> dict[str, int]:
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    """Build the substrate (POST) or serve one of its collections (GET)."""
+    """Build the merged carriers (POST) or serve one of their collections (GET)."""
     client = _s3()
     if event.get("httpMethod") == "POST":
-        return _response(200, _build_substrate(client))
+        return _response(200, _build_merged_carriers(client))
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in _MERGE_KEYS:
         return _response(404, {"error": collection})
     try:
         body = client.get_object(Bucket=os.environ["STORE_BUCKET"], Key=_MERGE_KEYS[collection])
     except client.exceptions.NoSuchKey:
-        return _response(404, {"error": "not built: substrate"})
+        return _response(404, {"error": "not built: merged carriers"})
     return _response(200, json.loads(body["Body"].read()))

@@ -81,7 +81,7 @@ class DiversePathBounds:
 
     ``per_site`` is the bound itself and ``largest`` is what the strength score divides
     by, so the protection term stays within 0..1 and keeps the weighting the three terms
-    were given. A site the substrate says nothing about has no entry and scores zero,
+    were given. A site the merged carriers say nothing about has no entry and scores zero,
     which is the truth about it: no fiber in the inputs is no path anyone can path.
     """
 

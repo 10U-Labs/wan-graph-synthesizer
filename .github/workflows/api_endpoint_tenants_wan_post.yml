@@ -195,7 +195,7 @@ jobs:
       # in S3 -- "synthesizing" when it starts, "success" once the WAN is published, and
       # "fail" on ANY failure -- so a customer polling for their WAN always reaches a terminal
       # answer. The expected failure (an infeasible synthesis) is a ValueError, but it
-      # is not the only thing that can go wrong: reading the substrate and tenant
+      # is not the only thing that can go wrong: reading the merged carriers and tenant
       # inputs from S3 can raise a boto error, and an unforeseen bug can raise
       # anything at all. If such an error were allowed to escape, the synthesizer would
       # exit with the status still on "synthesizing", and the customer would wait forever

@@ -1,6 +1,6 @@
 """Unit tests for how many independent links a backbone node's fiber can carry.
 
-Each substrate here is built so the answer is countable by eye, because the ceiling is
+Each set of fiber here is built so the answer is countable by eye, because the ceiling is
 what both selection and validation are then held to: it decides how many links a node
 reaches for and how many it is asked for. A wrong ceiling would move both at once.
 """
@@ -143,7 +143,7 @@ def test_the_paths_proved_to_one_peer_are_the_shortest_of_them() -> None:
 
 
 def test_an_unreachable_node_has_no_ceiling_at_all() -> None:
-    """A node the substrate does not carry can hold no link, so its ceiling is zero."""
+    """A node the merged carriers do not carry can hold no link, so its ceiling is zero."""
     inputs = PathProofInputs(("nowhere", "n1", "n2"), _ONE_CUT)
     assert independent_path_ceiling("nowhere", inputs) == 0
 
@@ -313,7 +313,7 @@ def test_a_limit_missing_the_measured_site_is_refused() -> None:
     Every budget would be unmeasurable and every segment would fail the test, so the site
     would score nothing at all -- which reads as fiber that can hold no link and lowers
     the site's target to match, on the strength of a caller's omission rather than the
-    substrate. It is named so the caller can see which row is missing.
+    fiber. It is named so the caller can see which row is missing.
     """
     limit = BackupPathLimit(3.0, distances_from(_PACIFIC_ADJACENCY, ("eug", "hil")))
     with pytest.raises(ValueError, match="sea"):

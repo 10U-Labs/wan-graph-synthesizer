@@ -181,7 +181,7 @@ class SynthesisParams:
     Where a node's shortfall is the ground's rather than a decision, the list is no longer
     the tool for it: the computed ceiling (see :mod:`synthesizer.ceiling`) lowers such a
     node's target on its own. What is left for the list is the shortfall an operator
-    chooses -- cost, a temporary site, traffic they do not want -- which no substrate can
+    chooses -- cost, a temporary site, traffic they do not want -- which no fiber can
     reveal.
     """
 
@@ -273,7 +273,7 @@ class MeshRequirements:
     ``number_of_diverse_paths`` is the operator's configured minimum, asked of every node.
     ``degree_exempt`` are the nodes it is not asked of at all. ``ceilings`` are the computed
     per-node ceilings (see :mod:`synthesizer.ceiling`), which cap the degree where the fiber
-    cannot carry it; ``None`` means no substrate was at hand, and every node is then held to
+    cannot carry it; ``None`` means no fiber was at hand, and every node is then held to
     the flat degree.
     """
 

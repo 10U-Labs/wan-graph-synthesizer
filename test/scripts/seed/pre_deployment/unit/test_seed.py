@@ -24,7 +24,7 @@ from seed import (
     _put,
     _rows,
     _slug,
-    build_substrate,
+    build_merged_carriers,
     build_tenants,
     main,
     prune_tenants,
@@ -638,9 +638,9 @@ def test_prune_tenants_names_the_tenant_it_deletes(
     assert "f-35-redundant" in capsys.readouterr().out
 
 
-def test_build_substrate_posts_the_merge(post_recorder: CallRecorder) -> None:
-    """build_substrate POSTs the carrier merge."""
-    build_substrate("http://api")
+def test_build_merged_carriers_posts_the_merge(post_recorder: CallRecorder) -> None:
+    """build_merged_carriers POSTs the carrier merge."""
+    build_merged_carriers("http://api")
     assert post_recorder.calls == [("http://api", "carriers/merge")]
 
 
@@ -667,7 +667,7 @@ def _run_main(
 
     monkeypatch.setattr(sys, "argv", argv)
     monkeypatch.setattr(seed, "push_carriers", lambda api: calls.append(("carriers", api)))
-    monkeypatch.setattr(seed, "build_substrate", lambda api: calls.append(("merge", api)))
+    monkeypatch.setattr(seed, "build_merged_carriers", lambda api: calls.append(("merge", api)))
     monkeypatch.setattr(seed, "push_providers", lambda api: calls.append(("providers", api)))
     monkeypatch.setattr(seed, "push_tenants", _push_tenants)
     monkeypatch.setattr(
@@ -691,7 +691,7 @@ def test_main_uses_the_cli_argument_when_given(monkeypatch: pytest.MonkeyPatch) 
 
 def test_main_seeds_inputs_then_triggers_builds_in_order(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """main seeds carriers, the substrate, providers and tenants, then builds."""
+    """main seeds carriers, merges them, seeds providers and tenants, then builds."""
     assert [name for name, _ in _run_main(monkeypatch, ["seed"])] == [
         "carriers", "merge", "providers", "tenants", "prune", "build"]
 

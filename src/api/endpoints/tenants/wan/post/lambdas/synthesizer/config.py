@@ -344,7 +344,7 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
     ``knobs`` carries the operator's coverage target and ``settings`` the
     implementation dials, and the two are passed on separately: nothing merges them, so
     a dial left behind under ``knobs`` is not read at all.
-    ``input_files`` is left at its defaults: the deployed synthesizer reads its substrate
+    ``input_files`` is left at its defaults: the deployed synthesizer reads its fiber
     from the merged carriers, not from these documents.
     """
     count = _mapping(parts, "backbone-node-count")

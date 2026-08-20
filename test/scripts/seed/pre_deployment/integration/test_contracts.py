@@ -32,7 +32,7 @@ from synthesizer.ceiling import (
     PathProofInputs,
     independent_path_ceiling,
 )
-from synthesizer.codec import load_regions, load_sites, load_substrate
+from synthesizer.codec import load_merged_carriers, load_regions, load_sites
 from synthesizer.graphs import build_adjacency, distances_from
 from synthesizer.input_graph import FiberSegment, Site, haversine_miles
 from test_http_doubles import UrlopenRecorder
@@ -298,7 +298,7 @@ def test_pipeline_writes_a_forced_homes_document_for_every_tenant(
     assert _tenants_written(paths, "forced-homes") == len(list(seed.ETC.glob("*.yml")))
 
 
-def _merged_substrate() -> tuple[list[Site], dict[tuple[str, str], FiberSegment]]:
+def _merged_carriers() -> tuple[list[Site], dict[tuple[str, str], FiberSegment]]:
     """Every carrier's points and every carrier's fiber, merged as the API merges them.
 
     Read with seed's own reader and merged by the same loader, so the graph measured here
@@ -313,16 +313,16 @@ def _merged_substrate() -> tuple[list[Site], dict[tuple[str, str], FiberSegment]
     segments = [
         row for path in sorted((seed.DATA / "fiber_segments").glob("*.csv")) for row in _rows(path)
     ]
-    return load_substrate(points, segments)
+    return load_merged_carriers(points, segments)
 
 
-def _substrate() -> tuple[dict[str, str], dict[str, list[tuple[str, float]]]]:
-    """The merged carrier substrate: its cities by display name, and its fiber adjacency.
+def _cities_and_adjacency() -> tuple[dict[str, str], dict[str, list[tuple[str, float]]]]:
+    """The merged carriers: their cities by display name, and their fiber adjacency.
 
     The mapping back from a config's ``City, ST`` spelling to a generated id is what the
     callers below need, since a config names cities and the graph is keyed by id.
     """
-    sites, links = _merged_substrate()
+    sites, links = _merged_carriers()
     return {site.name: site.id for site in sites}, build_adjacency(links)
 
 
@@ -337,7 +337,7 @@ def _exempt_cities(backbone: dict[str, Any]) -> list[str]:
 
 
 def _pinned_ids(backbone: dict[str, Any], by_name: dict[str, str]) -> tuple[str, ...]:
-    """The tenant's pinned backbone cities as substrate ids, skipping any it has no point for.
+    """The tenant's pinned backbone cities as site ids, skipping any it has no point for.
 
     A pin the carrier files do not serve is seated by fabricating a point for it, which this
     graph does not have. Leaving it out costs the count a place a path could have ended,
@@ -366,7 +366,7 @@ def _ceiling_bounds(
     the cities it pins.
 
     The bound counts paths from the city to the tenant's pinned backbone cities that share
-    no city on the way, over the merged carrier substrate. It is a floor rather than the
+    no city on the way, over the merged carriers. It is a floor rather than the
     real ceiling for two reasons, and both point the same way: the real run seats backbone
     nodes beyond the pins, which gives paths more distinct places to end, and it fabricates
     on-net points and seats off-net ones, which adds fiber segments. Neither can lower a maximum
@@ -402,7 +402,7 @@ def _ceiling_bounds(
     peer at all can reach it inside its budget, so the bound stays a floor under the real
     ceiling exactly as before.
     """
-    by_name, adjacency = _substrate()
+    by_name, adjacency = _cities_and_adjacency()
     bounds: list[tuple[str, str, int, int]] = []
     for tenant, backbone in sorted(_backbone_blocks().items()):
         pinned = _pinned_ids(backbone, by_name)
@@ -536,7 +536,7 @@ def _seats_for_coverage(config: dict[str, Any], carriers: list[Site]) -> int:
 
 def _seat_shortfalls() -> list[tuple[str, int, int]]:
     """Per tenant, the seat cap beside the seats its target needs, where the cap is smaller."""
-    carriers, _segments = _merged_substrate()
+    carriers, _segments = _merged_carriers()
     shortfalls: list[tuple[str, int, int]] = []
     for tenant, config in sorted(_tenant_configs().items()):
         cap = config["backbone"]["node_count"]["max"]

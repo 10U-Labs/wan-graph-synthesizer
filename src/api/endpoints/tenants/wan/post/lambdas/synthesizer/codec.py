@@ -56,7 +56,7 @@ def _place(row: dict[str, Any], site_id: str, name: str, kind: str) -> Site:
     """Build one site from a geographic row with its derived role attributes.
 
     Tenant-site rows carry an ``ExemptFromDistanceConstraint`` (``Yes``/``No``) column;
-    substrate, cloud-region and off-net rows have none, so absence reads as not exempt.
+    carrier, cloud-region and off-net rows have none, so absence reads as not exempt.
     """
     return Site(
         id=site_id,
@@ -99,10 +99,10 @@ def load_off_net(rows: list[dict[str, Any]]) -> list[Site]:
     return _load_places(rows, "offnet", OFF_NET_KIND, named=False)
 
 
-def load_substrate(
+def load_merged_carriers(
     site_rows: list[dict[str, Any]], link_rows: list[dict[str, Any]]
 ) -> tuple[list[Site], dict[tuple[str, str], FiberSegment]]:
-    """Load the merged carrier substrate: one point per city, plus the fiber between them.
+    """Load the merged carriers: one point per city, plus the fiber between them.
 
     The cleaned data keys carrier points by city, so colocated points from different
     carriers are one backbone node; every carrier's fiber segments (listed by their two
@@ -134,6 +134,6 @@ def load_substrate(
         )
         connected.update(key)
     # A point no surviving segment touches is not a usable backbone node; drop it so
-    # the substrate's points and its fiber graph stay consistent.
+    # the merged carriers' points and their fiber stay consistent.
     pops = [site for site in by_city.values() if site.id in connected]
     return pops, links

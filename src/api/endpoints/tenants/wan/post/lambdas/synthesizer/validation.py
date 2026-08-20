@@ -37,8 +37,8 @@ def node_mesh_target(node: str, targets: MeshRequirements) -> int:
 
     Lowering it can only relax: ``min`` never raises a target above what was asked, so no
     synthesis that passes today is refused because of a number the tool derived. A node with
-    no ceiling recorded owes the full degree, which covers both the caller with no substrate
-    to hand and the node the substrate says nothing about.
+    no ceiling recorded owes the full degree, which covers both the caller with no fiber
+    to hand and the node the merged carriers say nothing about.
 
     Which leaves the opposite risk, a ceiling below what the node could really hold, and
     with it a target lowered past a shortfall worth reporting. Unbounded, the ceiling could
@@ -306,7 +306,7 @@ def _ceilings_where(
 ) -> list[tuple[str, int]]:
     """The ``(node, ceiling)`` pairs ``keep`` selects, in id order.
 
-    A node the substrate said nothing about has no ceiling and so never appears: the tool
+    A node the merged carriers said nothing about has no ceiling and never appears: the tool
     made no decision about it to report.
     """
     if ceilings is None:
@@ -331,7 +331,7 @@ def diverse_path_ceilings_reported(
     a link its fiber could have carried, rather than of one the backup path multiple
     forbids -- and the second of those is not a defect anybody can close.
 
-    A node the substrate said nothing about has no ceiling and so never appears here either;
+    A node the merged carriers said nothing about has no ceiling and never appears here either;
     it owes the full configured degree and the tool decided nothing about it to report.
     """
     return [
@@ -354,7 +354,7 @@ def ceiling_limited_nodes(
 ) -> list[dict[str, object]]:
     """Backbone nodes the tool held to less than the tenant degree, and to what.
 
-    A ceiling is only as good as the substrate behind it: a fiber path missing from the
+    A ceiling is only as good as the merged carriers behind it: a fiber path missing from the
     inputs lowers a node's ceiling, which lowers its target, which could let a synthesis pass
     that should not. So every reduction the tool made on its own is named here rather than
     left to be inferred from a link count -- an operator reads what was asked of each node,

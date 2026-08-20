@@ -8,7 +8,7 @@
     DELETE /wan-synthesizer/carriers/{carrier}           -> remove the carrier
 
 A write persists to the store and nothing else. Rebuilding the dependents (the carrier
-merge substrate and each tenant's WAN) is done by explicit operations the caller invokes
+merge and each tenant's WAN) is done by explicit operations the caller invokes
 (``POST /carriers/merge`` and ``POST /tenants/{t}/wan``), so a write endpoint never
 triggers a build. Self-contained (stdlib + boto3); deployed as a single-file Lambda.
 """

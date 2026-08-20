@@ -50,7 +50,7 @@ _TRIANGLES = (("Ashburn", "Sterling", "Reston"), ("Salt Lake City", "Ogden", "Pr
 
 
 def _city_row(municipality: str) -> dict[str, Any]:
-    """One carrier point, as the merged substrate serves it."""
+    """One carrier point, as the merged carriers serve it."""
     state, latitude, longitude = _CITIES[municipality]
     return {
         "municipality": municipality,

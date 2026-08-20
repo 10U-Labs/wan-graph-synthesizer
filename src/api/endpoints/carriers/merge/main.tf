@@ -56,7 +56,7 @@ resource "aws_lambda_function" "handler" {
   architectures    = ["arm64"]
   timeout          = 30
   memory_size      = 256
-  description      = "Carrier merge endpoint: build the substrate and serve it."
+  description      = "Carrier merge endpoint: build the merged carriers and serve them."
 
   environment {
     variables = {

@@ -3,7 +3,7 @@
 The Zayo PoPs and links are digitized from the mapbook's network maps, so they cover
 the globe. These guard the invariants that keep that graph usable: every PoP has a
 distinct ``(municipality, state)`` key, overseas PoPs carry their country, every PoP
-is named by at least one link (or the substrate loader silently drops it), no link
+is named by at least one link (or load_merged_carriers silently drops it), no link
 dangles to a city that is not a PoP, and every intercontinental link rides one of the
 cities the maps draw subsea fiber to.
 """
@@ -105,7 +105,7 @@ def test_overseas_pops_carry_their_country() -> None:
 
 
 def test_every_pop_is_connected() -> None:
-    """Every Zayo PoP is named by an link, so the substrate loader keeps all of them."""
+    """Every Zayo PoP is named by an link, so load_merged_carriers keeps all of them."""
     keys = {(pop["Municipality"], pop["State"]) for pop in _pops()}
     assert keys <= _link_endpoints()
 

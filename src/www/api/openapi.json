@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "wan-synthesizer",
-    "description": "Graphs as REST resources: carriers, providers, the carrier merge (substrate), and tenants' WANs. Inputs are writable; computed graphs are read-only. One JSON format throughout.",
+    "description": "Graphs as REST resources: carriers, providers, the carrier merge, and tenants' WANs. Inputs are writable; computed graphs are read-only. One JSON format throughout.",
     "version": "1.0.0"
   },
   "paths": {
@@ -85,8 +85,8 @@
     },
     "/wan-synthesizer/carriers/merge": {
       "post": {
-        "summary": "Merge all carriers into the substrate (fast).",
-        "responses": { "200": { "description": "The substrate." } },
+        "summary": "Merge all carriers onto one map (fast).",
+        "responses": { "200": { "description": "The merged carriers." } },
         "x-amazon-apigateway-integration": {
           "uri": "${MergeHandlerArn}",
           "httpMethod": "POST",
@@ -123,8 +123,8 @@
     },
     "/wan-synthesizer/carriers/merge/pops": {
       "get": {
-        "summary": "The substrate's PoPs.",
-        "responses": { "200": { "description": "Substrate sites." } },
+        "summary": "The merged carriers' PoPs.",
+        "responses": { "200": { "description": "Merged carrier sites." } },
         "x-amazon-apigateway-integration": {
           "uri": "${MergeHandlerArn}",
           "httpMethod": "POST",
@@ -134,8 +134,8 @@
     },
     "/wan-synthesizer/carriers/merge/fiber-segments": {
       "get": {
-        "summary": "The substrate's fiber segments.",
-        "responses": { "200": { "description": "Substrate links." } },
+        "summary": "The merged carriers' fiber segments.",
+        "responses": { "200": { "description": "Merged carrier links." } },
         "x-amazon-apigateway-integration": {
           "uri": "${MergeHandlerArn}",
           "httpMethod": "POST",

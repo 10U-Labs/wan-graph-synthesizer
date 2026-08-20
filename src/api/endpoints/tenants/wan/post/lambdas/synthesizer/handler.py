@@ -1,7 +1,7 @@
 """Synthesizer Lambda: build a tenant's WAN from the stored inputs.
 
 Async-invoked by the dispatching Lambda with ``{"tenant": ...}`` (STORE_BUCKET in
-the environment): read the substrate and the tenant's inputs from S3, run the whole
+the environment): read the merged carriers and the tenant's inputs from S3, run the whole
 synthesis pipeline (dual-home -> overrides -> synthesize -> finalize), and publish the
 WAN -- or record a ``fail`` status when no valid WAN exists
 (``synthesize_two_tier`` raises ``ValueError``). A build is single-threaded
@@ -18,7 +18,7 @@ from typing import Any
 
 import boto3
 
-from synthesizer.codec import load_off_net, load_regions, load_sites, load_substrate
+from synthesizer.codec import load_merged_carriers, load_off_net, load_regions, load_sites
 from synthesizer.collections import (
     backbone_links,
     backbone_nodes,
@@ -142,8 +142,8 @@ def _build_wan(client: Any, tenant: str) -> tuple[dict[str, Any], dict[str, Any]
     would have no way to tell a build that met them from one that did not, nor which
     requirements it was held to in the first place.
     """
-    logger.info("Loading substrate and inputs for %s", tenant)
-    carrier_pops, fiber_segments = load_substrate(
+    logger.info("Loading merged carriers and inputs for %s", tenant)
+    carrier_pops, fiber_segments = load_merged_carriers(
         _read_json(client, "carriers/merge/pops.json"),
         _read_json(client, "carriers/merge/fiber-segments.json"),
     )
@@ -158,7 +158,7 @@ def _build_wan(client: Any, tenant: str) -> tuple[dict[str, Any], dict[str, Any]
     params = config.params
     graph = carrier_pops + locations + regions
     logger.info(
-        "Dual-homing %d sites over %d substrate links", len(graph), len(fiber_segments)
+        "Dual-homing %d sites over %d merged carrier links", len(graph), len(fiber_segments)
     )
     graph, fiber_segments = dual_home(graph, fiber_segments, params, off_net)
     graph, fiber_segments, overrides = apply_role_overrides(

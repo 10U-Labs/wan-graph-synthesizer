@@ -9,7 +9,7 @@ providers push their regions; each tenant pushes its sites, provider-region sele
 off-net candidates, and per-concern config resources. The tenant configs in ``etc/`` are
 the roster, so a tenant the API still lists once they have all been pushed is one git no
 longer declares and is deleted. Writes only store inputs -- they trigger
-nothing -- so the seed then explicitly rebuilds the shared substrate
+nothing -- so the seed then explicitly rebuilds the merged carriers
 (``POST carriers/merge``) and each tenant's WAN (``POST tenants/{t}/wan``).
 
 Usage: python scripts/seed.py [api_base_url]
@@ -259,9 +259,9 @@ def prune_tenants(api: str, tenants: list[str]) -> None:
         _delete(api, f"tenants/{tenant}")
 
 
-def build_substrate(api: str) -> None:
-    """Rebuild the shared carrier substrate from the pushed carriers."""
-    print("merge: rebuilding substrate", flush=True)
+def build_merged_carriers(api: str) -> None:
+    """Rebuild the merged carriers from the carriers just pushed."""
+    print("merge: rebuilding the merged carriers", flush=True)
     _post(api, "carriers/merge")
 
 
@@ -273,10 +273,10 @@ def build_tenants(api: str, tenants: list[str]) -> None:
 
 
 def main() -> None:
-    """Seed inputs, prune dropped tenants, then rebuild the substrate and each WAN."""
+    """Seed inputs, prune dropped tenants, then rebuild the merged carriers and each WAN."""
     api = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_API
     push_carriers(api)
-    build_substrate(api)
+    build_merged_carriers(api)
     push_providers(api)
     tenants = push_tenants(api)
     prune_tenants(api, tenants)

@@ -346,7 +346,7 @@ def forced_roadm_backbone_artifacts(name: str) -> SynthesisArtifacts:
 
     A ROADM is a routable backbone node exactly as a PoP is: ``CARRIER_KINDS`` at
     ``model.py:353`` holds both kinds, and ``is_carrier_pop`` two lines below it admits
-    either. Nothing under ``data/`` records a ROADM, because ``load_substrate`` hands every
+    either. Nothing under ``data/`` records a ROADM, because ``load_merged_carriers`` hands every
     carrier row it reads ``CARRIER_KIND``, which is ``"PoP"`` at ``codec.py:19``. That
     leaves ``ring_inputs_with_roadm`` above as the one place this repository has the kind.
     """
