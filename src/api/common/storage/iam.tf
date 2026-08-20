@@ -4,7 +4,7 @@
 # replaces a key it names has no business holding s3:DeleteObject.
 
 resource "aws_iam_role" "prune" {
-  name = local.prune_role_name
+  name = local.role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

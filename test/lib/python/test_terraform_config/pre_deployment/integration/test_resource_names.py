@@ -22,7 +22,7 @@ import re
 from repo_utils import REPO_ROOT
 from test_terraform_config import lambda_handler_names
 
-PREFIX = "wan-synthesizer-"
+PRODUCT = "wan-synthesizer"
 ROUTING_MAIN = REPO_ROOT / "src" / "api" / "common" / "routing" / "main.tf"
 API = REPO_ROOT / "src" / "api"
 
@@ -30,12 +30,13 @@ _ROLE_NAME = re.compile(r'^\s*(?:role_)?name\s*=\s*"(wan-[a-z-]+)"', re.M)
 _INTEGRATION = re.compile(r"local\.integration\.(\w+)")
 
 
-def _declared_role_names() -> set[str]:
-    """Every IAM role name written out across the stacks under ``src/api``.
+def _declared_resource_names() -> set[str]:
+    """Every resource name written out across the stacks under ``src/api``.
 
-    The whole of ``src/api`` rather than its ``endpoints`` half, because a role is not
-    only ever an endpoint's: the store's own prune handler holds the one role in the
-    product that may delete from the bucket, and it is declared beside the bucket.
+    The whole of ``src/api`` rather than its ``endpoints`` half, because a name is not only
+    ever an endpoint's: the store's own prune handler holds the one role in the product
+    that may delete from the bucket and is declared beside the bucket, and the API gateway
+    the whole product answers on is declared in ``common/routing``.
     """
     return {
         match.group(1)
@@ -44,16 +45,27 @@ def _declared_role_names() -> set[str]:
     }
 
 
+def _named_after_the_product(name: str) -> bool:
+    """Whether one resource name is the product's own name or is qualified out of it.
+
+    The gateway is called ``wan-synthesizer`` and nothing else, because it is the product's
+    one API rather than one of its parts; everything else adds a hyphen and says which part
+    it is. Both read as named after the repository, and a name that merely starts with the
+    same letters does not.
+    """
+    return name == PRODUCT or name.startswith(f"{PRODUCT}-")
+
+
 def test_every_handler_function_is_named_after_the_repository() -> None:
-    """Every name in ``lambda_handler_names`` begins with the repository's prefix."""
+    """Every name in ``lambda_handler_names`` is the product's name or qualified out of it."""
     names = set(lambda_handler_names().values())
-    assert {name for name in names if not name.startswith(PREFIX)} == set()
+    assert {name for name in names if not _named_after_the_product(name)} == set()
 
 
-def test_every_role_the_stacks_declare_is_named_after_the_repository() -> None:
-    """Every IAM role and layer name the stacks under src/api write out carries the prefix."""
-    declared = _declared_role_names()
-    assert {name for name in declared if not name.startswith(PREFIX)} == set()
+def test_every_resource_the_stacks_declare_is_named_after_the_repository() -> None:
+    """Every name the stacks under src/api write out is the product's or qualified out of it."""
+    declared = _declared_resource_names()
+    assert {name for name in declared if not _named_after_the_product(name)} == set()
 
 
 def test_every_route_integration_names_a_declared_handler() -> None:

@@ -66,8 +66,8 @@ module "common" {
 }
 
 locals {
-  prune_function_name = module.common.lambda_handler_names.prune
-  prune_role_name     = "wan-synthesizer-prune-lambda"
+  function_name = module.common.lambda_handler_names.prune
+  role_name     = "wan-synthesizer-prune-lambda"
 }
 
 # The gateway is read for its id alone, to say which API may invoke the handler. Nothing in
@@ -91,7 +91,7 @@ data "archive_file" "prune" {
 
 resource "aws_lambda_function" "prune" {
   filename         = data.archive_file.prune.output_path
-  function_name    = local.prune_function_name
+  function_name    = local.function_name
   role             = aws_iam_role.prune.arn
   handler          = "handler.lambda_handler"
   source_code_hash = data.archive_file.prune.output_base64sha256
@@ -118,7 +118,7 @@ resource "aws_lambda_function" "prune" {
 }
 
 resource "aws_cloudwatch_log_group" "prune" {
-  name              = "/aws/lambda/${local.prune_function_name}"
+  name              = "/aws/lambda/${local.function_name}"
   retention_in_days = 7
 }
 
