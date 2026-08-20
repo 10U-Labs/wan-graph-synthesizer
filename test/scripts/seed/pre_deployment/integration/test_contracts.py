@@ -97,9 +97,9 @@ def test_every_requested_path_is_declared_in_openapi(
 
 def test_pipeline_writes_at_least_one_carrier(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Seeding the real inputs writes at least one carrier's sites."""
+    """Seeding the real inputs writes at least one carrier's PoPs."""
     paths = _seed(urlopen_recorder, monkeypatch)
-    assert any(re.fullmatch(r"carriers/[^/]+/sites", path) for path in paths)
+    assert any(re.fullmatch(r"carriers/[^/]+/pops", path) for path in paths)
 
 
 def test_yamllint_names_every_tenant_config() -> None:
