@@ -284,8 +284,9 @@ def test_a_search_that_runs_long_enough_buys_the_shortest_synthesis_there_is() -
     A limit of 24 passes stood in the module until GitHub issue #63 and stopped this search
     short of that. What it bought instead was thirteen segments running 291 miles against
     the same floor of 159 -- 132 miles of fiber the tenant pays for every month and gets
-    nothing for. Every one of the six real tenants needed hundreds of passes, 645 for DAF
-    and 1,382 for AFGSC, so all six were bought this way.
+    nothing for. Every one of the six real tenants declared then needed hundreds of passes,
+    645 for DAF and 1,382 for AFGSC, which ``etc/`` no longer declares, so all six were
+    bought this way.
     """
     assert _bought_miles(_MANY_PASS_CHOICE, _MANY_PASS) == pytest.approx(
         _MANY_PASS_CHOICE.lower_bound_miles

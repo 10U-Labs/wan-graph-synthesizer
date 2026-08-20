@@ -70,7 +70,7 @@ def _rounding_slack(synthesis: dict[str, Any]) -> float:
     and published 3,884.264 miles against 3,884.265.
 
     Nothing real hides under this. A synthesis that genuinely falls short of its floor is short
-    by at least the fiber it failed to buy, and the shortest segment on any of the six maps
+    by at least the fiber it failed to buy, and the shortest segment on any of the five maps
     runs miles rather than thousandths.
     """
     segments = sum(1 for edge in synthesis["edges"] if edge["edge_kind"] == FIBER)
@@ -311,9 +311,10 @@ def test_no_published_network_draws_a_pair_more_paths_than_its_tenant_bought(
     monthly cost only where a single city's loss would not take it along with the first. So
     each pair's longest path is set aside and both ends are measured without it (see
     ``test_published_syntheses.overbuilt_pairs``): where neither end loses a way out it was
-    asked for, nobody needed the path. Twenty-one pairs across DAF, F-35, AFGSC and
-    Minuteman were of that kind, 17,013 path miles of them, and passed here while this
-    counted paths against the tenant's number instead (GitHub issue #59).
+    asked for, nobody needed the path. Twenty-one pairs across DAF, F-35, Minuteman and
+    AFGSC, which ``etc/`` no longer declares, were of that kind, 17,013 path miles of them,
+    and passed here while this counted paths against the tenant's number instead (GitHub
+    issue #59).
 
     The counterpart of the shortfall above, and the half that was missing. Every question
     this layer asked about paths asked it of one path at a time -- is this one inside the
@@ -348,8 +349,9 @@ def test_no_published_network_holds_a_path_that_buys_nobody_a_diverse_path(
     path nobody needed.
 
     This is the assertion that would have reported the 54 paths against the six real maps
-    rather than against a fixture -- 23,917 of the 83,927 miles the six tenants pay for --
-    and it goes on reporting as the maps grow and tenants are added (GitHub issue #60).
+    there were then rather than against a fixture -- 23,917 of the 83,927 miles those six
+    tenants paid for -- and it goes on reporting as the maps grow and tenants are added
+    (GitHub issue #60).
     The nine questions asked before it each judge one path on its own: is this one inside
     the tenant's backup path multiple, is this one the shortest way over the fiber the
     synthesis ordered. A network can hold any number of unneeded paths and answer yes to every
@@ -371,7 +373,7 @@ def test_no_published_network_runs_more_than_twice_the_fewest_miles_it_could_hav
     fewest miles of fiber any synthesis meeting the same tenant's requirements could run, and
     holding the fiber the synthesis ordered against it turns "the synthesis is close to the
     shortest one there is" from a claim about an algorithm into a statement a test can make
-    on the six real maps (GitHub issue #60).
+    on the five real maps (GitHub issue #60).
 
     That is the half an approximation cannot report about itself. The factor of two is a
     property of the method rather than of the code that runs it, so an implementation that

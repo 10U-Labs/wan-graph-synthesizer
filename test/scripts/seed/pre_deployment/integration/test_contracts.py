@@ -427,14 +427,13 @@ def test_every_pinned_city_can_carry_the_diversity_its_tenant_asks_for() -> None
     short, and neither file can say on its own: the config names the cities, the carrier
     files say what their fiber does.
 
-    Measured over the merged carriers today, twelve of the eighty-four pinned cities sit
-    exactly on the number their tenant asks for and the other seventy-two are above it --
-    Boston, MA under four tenants, New York, NY under two, AFGSC's Tacoma, WA and DoW's
-    Boardman, OR, Tucson, AZ and Umatilla, OR, each with two paths out that share no city,
-    and Two-Node's Ashburn, VA and Salt Lake City, UT, joined by two paths sharing nothing
-    but their two ends, 1,843.1 and 2,041.1 miles against 1,815.7 direct. The bound counts
-    only paths to the tenant's other pins, so the real run, which seats more sites and adds
-    fiber segments, can only do better.
+    Measured over the merged carriers today, seven of the thirty-five pinned cities sit
+    exactly on the number their tenant asks for and the other twenty-eight are above it --
+    Boston, MA under both DAF and DoW, F-35's Ashburn, VA, Hillsboro, OR and Seattle, WA,
+    each with two paths out that share no city, and Two-Node's Ashburn, VA and Salt Lake
+    City, UT, joined by two paths sharing nothing but their two ends, 1,843.1 and 2,041.1
+    miles against 1,815.7 direct. The bound counts only paths to the tenant's other pins, so
+    the real run, which seats more sites and adds fiber segments, can only do better.
 
     A tenant that pins one city is not measured here (see :func:`_ceiling_bounds`), because
     a path out of it would have nowhere to end and the bound would report the count of pins

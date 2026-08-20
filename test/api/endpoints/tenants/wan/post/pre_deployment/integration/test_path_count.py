@@ -74,7 +74,7 @@ def test_no_path_in_the_synthesis_could_be_taken_back_out() -> None:
     This is the property the whole of GitHub issue #60 is about, asked of a synthesis the
     pipeline built end to end rather than of a fiber choice on its own. A generous graph is
     where it matters: there is always another defensible path to add, and the old passes
-    added 54 of them across the six published networks.
+    added 54 of them across the six networks published then.
     """
     assert _needed(_MESH, ARTIFACTS.synthesis.backbone_ids, _ASKED_FOR) == _MESH
 

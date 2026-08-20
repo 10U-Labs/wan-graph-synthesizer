@@ -109,7 +109,7 @@ def test_forced_roadm_is_seated_in_the_backbone() -> None:
     """A pinned ROADM is honored as a backbone node.
 
     ROADMs are eligible like any other point, and a force always wins regardless; this
-    is the mechanism the AFGSC Great Falls and Minot ROADM pins rely on.
+    is the mechanism DAF's Great Falls, MT and Minot, ND pins rely on.
     """
     assert "P3" in FORCED_ROADM.synthesis.backbone_ids
 

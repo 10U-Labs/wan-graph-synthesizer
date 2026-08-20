@@ -1,8 +1,8 @@
 """Integration test: how many fiber miles a whole synthesis orders, and how few it could have.
 
 A synthesis grows by paths that are each defensible on their own. That is how 54 of the 192
-published paths came to buy nobody a way out, 23,917 miles of fiber six tenants pay for
-every month and get nothing for (GitHub issue #60): every one of them was the shortest way
+published paths came to buy nobody a way out, 23,917 miles of fiber six tenants were paying
+for then and got nothing for (GitHub issue #60): every one of them was the shortest way
 to join the pair it joined, or the shortest way round a city carrying the network, and no
 assertion anywhere asked what the synthesis cost in total. A total is the only assertion that
 notices that, so this file makes one, over a graph whose answer can be worked out by hand.
@@ -17,11 +17,11 @@ ring, at four hundred miles.
 The ring cannot reach every way this goes wrong, because its answer is settled by the first
 solve the search runs. ``synthesizer.survivable`` writes its requirements down as an answer
 violates them, and a limit of 24 passes on that used to stand in the module: on a graph
-answered in one pass a limit of any size is invisible, and on the six real maps, which need
-between 645 and 1,382 passes, it stopped every search early and bought fiber on an answer
-that still missed requirements (GitHub issue #63). So a second graph runs here, twelve cities
-of carrier fiber with five backbone seats, whose search takes 26 passes. Left to finish it
-delivers the 159 miles of its own floor; stopped at 24 it delivered 176.
+answered in one pass a limit of any size is invisible, and on the six real maps there were
+then, which needed between 645 and 1,382 passes, it stopped every search early and bought
+fiber on an answer that still missed requirements (GitHub issue #63). So a second graph runs
+here, twelve cities of carrier fiber with five backbone seats, whose search takes 26 passes.
+Left to finish it delivers the 159 miles of its own floor; stopped at 24 it delivered 176.
 
 The second assertion is the guarantee the fiber choice carries, stated rather than assumed.
 ``synthesizer.survivable`` chooses the fiber by iterative rounding of a linear-programming
@@ -125,7 +125,7 @@ def test_that_synthesis_orders_exactly_the_floor_it_publishes_rather_than_twice_
     Asserted as an equality rather than as the factor of two the method guarantees, because
     a factor of two is too loose to catch this: cut off at 24 passes the same graph delivered
     176 miles against a floor of 159, which is 1.107 times it and comfortably inside the
-    guarantee. The six real maps are where the factor of two does bite -- Two-Node published
+    guarantee. The five real maps are where the factor of two does bite -- Two-Node published
     2.078 times its floor -- and no graph small enough to run in this tier reproduces that.
     Landing on the floor exactly says something stronger than being near it: there is no
     shorter synthesis.

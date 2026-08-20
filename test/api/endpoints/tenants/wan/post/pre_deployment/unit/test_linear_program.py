@@ -117,9 +117,10 @@ def test_rows_written_a_batch_at_a_time_answer_as_the_same_rows_written_at_once(
 
     This is what lets a whole search run on one solver. The search solves, looks at the
     answer for a requirement it misses, writes that down and solves again, hundreds of times
-    over: DAF needs 645 passes and AFGSC 1,382. Building a new solver for each of them and
-    re-solving from nothing is where a national build spent almost all of its fifteen
-    minutes -- 96.2% of Two-Node's fiber choice and 91.9% of Minuteman's (GitHub issue #63).
+    over: DAF needed 645 passes and AFGSC, which ``etc/`` no longer declares, 1,382.
+    Building a new solver for each of them and re-solving from nothing is where a national
+    build spent almost all of its fifteen minutes -- 96.2% of Two-Node's fiber choice and
+    91.9% of Minuteman's (GitHub issue #63).
 
     Carrying one solver through is only safe if it answers what a solver handed the finished
     program answers, and it is asserted rather than assumed because the whole of the fiber

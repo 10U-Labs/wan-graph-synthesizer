@@ -263,10 +263,11 @@ def overbuilt_pairs(synthesis: dict[str, Any]) -> list[tuple[str, int]]:
     So the test is not a count. The longest path between the pair is set aside and both
     ends are measured without it: where each of them still holds as many independently
     failing links as its tenant asked for -- or as many as it held with the path, when its
-    fiber cannot reach the number at all -- the path is one nobody needed. Twenty-one
-    pairs across DAF, F-35, AFGSC and Minuteman were of that kind, 17,013 fiber miles of
-    them (GitHub issue #59), while Two-Node's one pair is not: its sites have each other and
-    nobody else, so the second path is the second path it buys.
+    fiber cannot reach the number at all -- the path is one nobody needed. Twenty-one pairs
+    across DAF, F-35, Minuteman and AFGSC, which ``etc/`` no longer declares, were of that
+    kind, 17,013 fiber miles of them (GitHub issue #59), while Two-Node's one pair is not:
+    its sites have each other and nobody else, so the second path is the second path it
+    buys.
 
     Measuring rather than counting is what keeps this honest both ways. An allowance worked
     out from the config would have to guess which fiber leaves a site no other way out, and
@@ -414,10 +415,10 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     purpose, and the only answer available to the finding was to delete the requirement that
     caused it (GitHub issue #78).
 
-    54 of the 192 paths in the six published networks are of that kind, 23,917 of their
-    83,927 miles -- 28 per cent of the fiber the six tenants pay for buys no backbone site a
-    diverse path (GitHub issue #60). They come from every pass of the build rather than from
-    one: of the 54, thirty-three carry the reason ``site_target``, eighteen
+    54 of the 192 paths in the six networks published then were of that kind, 23,917 of
+    their 83,927 miles -- 28 per cent of the fiber those six tenants paid for bought no
+    backbone site a diverse path (GitHub issue #60). They came from every pass of the build
+    rather than from one: of the 54, thirty-three carry the reason ``site_target``, eighteen
     ``network_connectivity`` and three ``city_detour``.
 
     :func:`overbuilt_pairs` could not see a single one of them. It examines only pairs of

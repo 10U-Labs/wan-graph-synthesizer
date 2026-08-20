@@ -3,9 +3,9 @@
 The helper reads a published network, takes each path out of it in turn, and reports the
 ones nobody would miss: no backbone site loses a diverse path it was asked for, no site is
 cut off from the rest, and no city's loss splits the fiber where none did with the path in.
-54 of the 192 paths in the six published networks are of that kind, 23,917 of their 83,927
-miles, and no published measurement could say so, because every one of them judged a path
-on its own and a network can hold any number of unneeded paths with each of them sound
+54 of the 192 paths in the six networks published then were of that kind, 23,917 of their
+83,927 miles, and no published measurement could say so, because every one of them judged a
+path on its own and a network can hold any number of unneeded paths with each of them sound
 (GitHub issue #60).
 
 Every case below is a network drawn out of runs of cities, one run per path, at a hundred

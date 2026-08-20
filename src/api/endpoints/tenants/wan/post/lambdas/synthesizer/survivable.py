@@ -5,8 +5,8 @@ takes two of. Which segments of the carrier's fiber to buy so that every node ha
 one question about the whole synthesis, and this module answers it as one question rather
 than as a sequence of decisions about one pair of sites at a time. Deciding a pair at a
 time is what left 54 of the 192 published paths buying nobody a way out, 23,917 miles of
-fiber that six tenants pay for every month and get nothing for (GitHub issue #60): each
-decision was defensible when it was taken and none of them was ever revisited.
+fiber that the six tenants declared then paid for every month and got nothing for (GitHub
+issue #60): each decision was defensible when it was taken and none was ever revisited.
 
 The problem has a name. Choosing the fewest-mile set of fiber segments in which every pair
 of backbone nodes is joined by as many paths sharing no city as the tenant asked for is
@@ -342,11 +342,11 @@ def _tighten(search: _Search, requirements: list[_Requirement]) -> SegmentChoice
     not only the ones on paper, which is what its caller then buys fiber on the strength of.
 
     Stopping anywhere short of that buys fiber to meet requirements the answer was never
-    held to. A cap of 24 passes used to stand here, and every one of the six tenants needs
-    hundreds -- 645 for DAF, 1,382 for AFGSC -- so 36 of Two-Node's 37 rounds spent the cap
-    and rounded an answer that still missed three requirements, leaving it holding 17 fiber
-    segments and 871.542 miles more than a synthesis meeting the same requirements needs
-    (GitHub issue #63).
+    held to. A cap of 24 passes used to stand here, and every one of the six tenants
+    declared then needed hundreds -- 645 for DAF, 1,382 for AFGSC, which ``etc/`` no longer
+    declares -- so 36 of Two-Node's 37 rounds spent the cap and rounded an answer that still
+    missed three requirements, leaving it holding 17 fiber segments and 871.542 miles more
+    than a synthesis meeting the same requirements needs (GitHub issue #63).
 
     The search ends of its own accord in two ways and both are needed. A pass that finds no
     shortfall has met everything. A pass that finds only separations already written down

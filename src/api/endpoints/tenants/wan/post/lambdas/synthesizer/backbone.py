@@ -12,8 +12,8 @@ decided one pair of sites at a time -- which pairs to join, which fiber each pai
 took, where to put a second path back, how to relieve a city carrying the whole network --
 and no pass ever reconsidered what an earlier one had settled. Each decision was defensible
 when it was taken, and together they left 54 of the 192 published paths buying nobody a way
-out: 23,917 of the six tenants' 83,927 fiber miles, 28 per cent of what they pay for every
-month, on paths that could all be taken out at once without costing a single site a way out
+out: 23,917 of the 83,927 fiber miles six tenants were paying for then, 28 per cent of it,
+on paths that could all be taken out at once without costing a single site a way out
 or leaving one city carrying the network. The paths came from every pass, so no one pass was
 the defect; the sequence was.
 
@@ -318,7 +318,7 @@ def backbone_mesh(
     and every path no site needs is taken back out (see :func:`_needed`). What is published
     is what is left, which is why a published network now holds no path an outside reader
     can remove without costing somebody something -- the property
-    ``test_published_syntheses.removable_paths`` measures against the six live maps.
+    ``test_published_syntheses.removable_paths`` measures against the five live maps.
 
     A backbone the carrier's fiber says nothing about draws nothing, and a node it says
     nothing about is left out while the rest are drawn. The shortfall is

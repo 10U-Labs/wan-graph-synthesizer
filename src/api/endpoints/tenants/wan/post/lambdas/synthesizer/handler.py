@@ -123,7 +123,7 @@ def _delivered(
     fiber was chosen by (see :mod:`synthesizer.survivable`), so no synthesis meeting this
     tenant's requirements runs fewer miles than that -- which is what lets a reader outside
     the build hold the published network to it, and what
-    ``test_delivered_syntheses`` does against all six live maps.
+    ``test_delivered_syntheses`` does against all five live maps.
     """
     coverage: CoverageReport = coverage_report(
         synthesis.backbone_ids,
