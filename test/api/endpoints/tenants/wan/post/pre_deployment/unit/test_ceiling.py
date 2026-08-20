@@ -470,3 +470,32 @@ def test_the_same_fiber_joins_the_pair_when_nobody_owns_it() -> None:
     assert independent_paths("s", PathProofInputs(("s", "t"), build_adjacency(
         physical({("s", "x"): 1.0, ("x", "t"): 1.0, ("s", "y"): 1.0, ("y", "t"): 1.0}),
     ))) == [("s", "x", "t")]
+
+
+# Fiber both companies have between the same two cities, so both of them come back with
+# the same way out and the merge has to notice they are one path rather than two.
+_BOTH_HAVE_IT = fixtures.carrier_fiber_segments({("s", "t"): (1.0, ("lumen", "zayo"))})
+# Lumen goes straight through ``x`` to the peer; Zayo goes through ``x`` and on round
+# ``u``. The two ways out are different paths that both stand on ``x``, so losing that one
+# city would take both and only the shorter can be counted.
+_SHARE_A_CITY = fixtures.carrier_fiber_segments({
+    ("s", "x"): (1.0, ("lumen", "zayo")),
+    ("x", "t"): (1.0, ("lumen",)),
+    ("x", "u"): (1.0, ("zayo",)),
+    ("u", "t"): (1.0, ("zayo",)),
+})
+
+
+def test_a_way_out_both_carriers_have_is_drawn_once() -> None:
+    """One length of fiber two companies both sell is one way out, not two."""
+    assert independent_paths("s", _owned_proof(_BOTH_HAVE_IT)) == [("s", "t")]
+
+
+def test_a_way_out_standing_on_a_city_already_spent_is_not_drawn() -> None:
+    """Zayo's way round also leans on x, which Lumen's shorter one already spent."""
+    assert independent_paths("s", _owned_proof(_SHARE_A_CITY)) == [("s", "x", "t")]
+
+
+def test_one_peer_takes_one_way_out_however_many_carriers_offer_one() -> None:
+    """A site with peers to spare is not credited twice for reaching the same one."""
+    assert independent_paths("s", _owned_proof(_ONE_COMPANY_EACH)) == [("s", "x", "t")]

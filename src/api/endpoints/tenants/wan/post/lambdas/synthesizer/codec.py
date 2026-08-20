@@ -136,12 +136,11 @@ def load_merged_carriers(
         if source is None or target is None or source.id == target.id:
             continue
         key = link_key(source.id, target.id)
-        owners = owners_by_key.setdefault(key, set())
         if row.get("carrier"):
-            owners.add(str(row["carrier"]))
+            owners_by_key.setdefault(key, set()).add(str(row["carrier"]))
         links[key] = FiberSegment(
             source=key[0], target=key[1], distance_miles=haversine_miles(source, target),
-            carriers=frozenset(owners),
+            carriers=frozenset(owners_by_key.get(key, ())),
         )
         connected.update(key)
     # A point no surviving segment touches is not a usable backbone node; drop it so

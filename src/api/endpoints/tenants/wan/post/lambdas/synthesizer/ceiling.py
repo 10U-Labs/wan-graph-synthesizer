@@ -628,7 +628,7 @@ def _no_city_twice(
     kept: list[tuple[str, ...]] = []
     ordered = sorted(found, key=lambda one: (_path_miles(one, inputs.adjacency), one))
     for path in ordered:
-        if path in seen or len(path) < 2:
+        if path in seen:
             continue
         seen.add(path)
         interior = set(path[1:-1])

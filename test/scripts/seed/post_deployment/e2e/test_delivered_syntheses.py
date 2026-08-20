@@ -504,7 +504,7 @@ def test_no_published_path_changes_carrier_partway_along_itself(
     between real cities. Measured against the carrier files git holds rather than against
     the build's own account of itself.
     """
-    assert _paths_changing_hands(delivered_syntheses) == {}
+    assert not _paths_changing_hands(delivered_syntheses)
 
 
 def test_every_published_path_over_a_carriers_fiber_names_that_carrier(
@@ -516,4 +516,4 @@ def test_every_published_path_over_a_carriers_fiber_names_that_carrier(
     fabricated site is wired on, which no carrier has and which names nobody correctly, so
     only the paths crossing fiber some carrier does hold are asked.
     """
-    assert _paths_naming_no_carrier(delivered_syntheses) == {}
+    assert not _paths_naming_no_carrier(delivered_syntheses)
