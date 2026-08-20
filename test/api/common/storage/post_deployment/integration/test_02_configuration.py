@@ -55,7 +55,14 @@ def test_public_access_is_blocked(
 
 
 def test_build_artifacts_expire_after_fourteen_days(
-        s3_client: Any, store_bucket_name: str) -> None:
+        live_lifecycle_rules: dict[str, Any]) -> None:
     """The live lifecycle rule expires build artifacts after fourteen days."""
-    response = s3_client.get_bucket_lifecycle_configuration(Bucket=store_bucket_name)
-    assert response["Rules"][0]["Expiration"]["Days"] == 14
+    rule = live_lifecycle_rules["expire-build-artifacts"]
+    assert rule["Expiration"]["Days"] == 14
+
+
+def test_delete_markers_are_expired_on_the_live_store(
+        live_lifecycle_rules: dict[str, Any]) -> None:
+    """The live store takes away a delete marker with nothing left under it."""
+    rule = live_lifecycle_rules["expire-delete-markers"]
+    assert rule["Expiration"]["ExpiredObjectDeleteMarker"] is True

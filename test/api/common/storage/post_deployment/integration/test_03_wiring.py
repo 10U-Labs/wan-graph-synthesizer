@@ -10,8 +10,7 @@ from typing import Any
 
 
 def test_expiry_rule_is_scoped_to_the_builds_prefix(
-        s3_client: Any, store_bucket_name: str) -> None:
+        live_lifecycle_rules: dict[str, Any]) -> None:
     """The lifecycle rule that expires objects is scoped to ``builds/``."""
-    response = s3_client.get_bucket_lifecycle_configuration(Bucket=store_bucket_name)
-    rule = response["Rules"][0]
+    rule = live_lifecycle_rules["expire-build-artifacts"]
     assert rule["Filter"]["Prefix"] == "builds/"

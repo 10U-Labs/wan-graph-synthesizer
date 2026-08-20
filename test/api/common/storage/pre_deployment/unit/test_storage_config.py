@@ -1,7 +1,11 @@
 """Unit tests for the common/storage stack's declared configuration.
 
 Parse the stack's ``.tf`` with hcl2 and assert the S3 store is declared private,
-unversioned, and set to expire build artifacts. No AWS calls, no apply.
+unversioned, and set to expire both build artifacts and the delete markers a
+delete leaves behind. No AWS calls, no apply.
+
+Every lifecycle rule is reached by its ``id``, never by its position, so adding a
+rule cannot silently move which rule a test is describing.
 """
 from __future__ import annotations
 
@@ -18,6 +22,22 @@ def _store(storage_main: dict[str, object], resource_type: str) -> dict[str, Any
     if body is None:
         raise AssertionError(f"{resource_type}.store is not declared in main.tf")
     return body
+
+
+def _rule(storage_main: dict[str, object], rule_id: str) -> dict[str, Any]:
+    """Return the lifecycle rule carrying the given ``id``, or fail."""
+    lifecycle = _store(storage_main, "aws_s3_bucket_lifecycle_configuration")
+    rules: list[dict[str, Any]] = lifecycle["rule"]
+    for rule in rules:
+        if rule["id"] == rule_id:
+            return rule
+    raise AssertionError(f"no lifecycle rule is declared with id {rule_id}")
+
+
+def _filter_of(rule: dict[str, Any]) -> dict[str, Any]:
+    """Return a rule's filter body, empty when the rule scopes itself to nothing."""
+    blocks: list[dict[str, Any] | None] = rule.get("filter") or [{}]
+    return blocks[0] or {}
 
 
 def test_store_bucket_is_declared(storage_main: dict[str, object]) -> None:
@@ -52,19 +72,37 @@ def test_versioning_is_suspended(storage_main: dict[str, object]) -> None:
 
 def test_lifecycle_rule_is_enabled(storage_main: dict[str, object]) -> None:
     """The build-artifact expiry rule is enabled."""
-    lifecycle = _store(storage_main, "aws_s3_bucket_lifecycle_configuration")
-    assert lifecycle["rule"][0]["status"] == "Enabled"
+    assert _rule(storage_main, "expire-build-artifacts")["status"] == "Enabled"
 
 
 def test_lifecycle_rule_targets_the_builds_prefix(
         storage_main: dict[str, object]) -> None:
     """The expiry rule is scoped to the disposable ``builds/`` working area."""
-    lifecycle = _store(storage_main, "aws_s3_bucket_lifecycle_configuration")
-    assert lifecycle["rule"][0]["filter"][0]["prefix"] == "builds/"
+    rule = _rule(storage_main, "expire-build-artifacts")
+    assert rule["filter"][0]["prefix"] == "builds/"
 
 
 def test_lifecycle_rule_expires_after_fourteen_days(
         storage_main: dict[str, object]) -> None:
     """Build artifacts expire fourteen days after creation."""
-    lifecycle = _store(storage_main, "aws_s3_bucket_lifecycle_configuration")
-    assert lifecycle["rule"][0]["expiration"][0]["days"] == 14
+    rule = _rule(storage_main, "expire-build-artifacts")
+    assert rule["expiration"][0]["days"] == 14
+
+
+def test_delete_markers_are_expired(storage_main: dict[str, object]) -> None:
+    """A delete marker with nothing left under it is taken out of the bucket."""
+    rule = _rule(storage_main, "expire-delete-markers")
+    assert rule["expiration"][0]["expired_object_delete_marker"] is True
+
+
+def test_delete_marker_rule_declares_no_days(
+        storage_main: dict[str, object]) -> None:
+    """S3 rejects an expiration that sets a delete-marker flag alongside days."""
+    rule = _rule(storage_main, "expire-delete-markers")
+    assert "days" not in rule["expiration"][0]
+
+
+def test_delete_marker_rule_covers_every_prefix(
+        storage_main: dict[str, object]) -> None:
+    """The delete-marker rule is scoped to the whole store, not one prefix."""
+    assert _filter_of(_rule(storage_main, "expire-delete-markers")) == {}

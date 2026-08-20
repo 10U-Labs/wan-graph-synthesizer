@@ -26,8 +26,13 @@ resource "aws_s3_bucket_versioning" "store" {
   }
 }
 
-# Per-create working artifacts under builds/ are disposable: expire them so the
-# bucket does not accumulate intermediate graph snapshots.
+# Two rules, both needed. Per-create working artifacts under builds/ are
+# disposable: expire them so the bucket does not accumulate intermediate graph
+# snapshots. And a delete that names no version id writes a delete marker over
+# the key instead of removing it, so the second rule takes the marker away once
+# nothing is left underneath it -- without it a deleted key stays in the bucket
+# forever. The two cannot be one rule: S3 rejects an expiration that sets
+# expired_object_delete_marker alongside days or date.
 resource "aws_s3_bucket_lifecycle_configuration" "store" {
   bucket = aws_s3_bucket.store.id
 
@@ -39,6 +44,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "store" {
     }
     expiration {
       days = 14
+    }
+  }
+
+  rule {
+    id     = "expire-delete-markers"
+    status = "Enabled"
+    filter {}
+    expiration {
+      expired_object_delete_marker = true
     }
   }
 }
