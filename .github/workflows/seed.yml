@@ -363,6 +363,12 @@ on:
       - etc/**
       - lib/python/**
       - scripts/**
+      # What the prune calls stale is decided by
+      # src/api/common/storage/lambdas/handler.py, and the seeding job is what runs the
+      # prune, so test/scripts/seed/post_deployment/e2e/test_pruned_store.py is the only
+      # assertion anywhere that the store holds nothing stale. Without this path a change
+      # to that handler deploys through api_common_storage.yml and never re-runs it.
+      - src/api/common/storage/**
       - src/www/api/openapi.json
       # The tests over the nine shared modules in lib/python/. test-repo-libraries runs
       # every one of them rather than the subset this workflow's own tests import, so a
