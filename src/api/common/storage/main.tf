@@ -4,6 +4,8 @@
 #   carriers/  providers/  substrate/  tenants/  -- published graph JSON the read
 #                                                endpoints serve
 # Builds write here; every read endpoint serves from here.
+# The store holds one copy of each key: versioning is suspended below, so an
+# overwrite replaces what was there rather than stacking another copy behind it.
 
 resource "aws_s3_bucket" "store" {
   bucket = "wan-graph-synthesizer-store-us-east-2"
@@ -20,7 +22,7 @@ resource "aws_s3_bucket_public_access_block" "store" {
 resource "aws_s3_bucket_versioning" "store" {
   bucket = aws_s3_bucket.store.id
   versioning_configuration {
-    status = "Enabled"
+    status = "Suspended"
   }
 }
 

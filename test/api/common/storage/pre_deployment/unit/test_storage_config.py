@@ -1,7 +1,7 @@
 """Unit tests for the common/storage stack's declared configuration.
 
 Parse the stack's ``.tf`` with hcl2 and assert the S3 store is declared private,
-versioned, and set to expire build artifacts. No AWS calls, no apply.
+unversioned, and set to expire build artifacts. No AWS calls, no apply.
 """
 from __future__ import annotations
 
@@ -44,10 +44,10 @@ def test_public_access_is_blocked(
     assert block[setting] is True
 
 
-def test_versioning_is_enabled(storage_main: dict[str, object]) -> None:
-    """The store bucket has versioning enabled."""
+def test_versioning_is_suspended(storage_main: dict[str, object]) -> None:
+    """The store bucket keeps one copy of each key, not a copy per overwrite."""
     versioning = _store(storage_main, "aws_s3_bucket_versioning")
-    assert versioning["versioning_configuration"][0]["status"] == "Enabled"
+    assert versioning["versioning_configuration"][0]["status"] == "Suspended"
 
 
 def test_lifecycle_rule_is_enabled(storage_main: dict[str, object]) -> None:
