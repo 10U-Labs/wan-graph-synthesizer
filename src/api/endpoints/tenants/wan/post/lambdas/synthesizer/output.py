@@ -121,6 +121,7 @@ def synthesis_payload(sources: SourceFiles, artifacts: SynthesisArtifacts) -> di
                 "target_id": path_use.target,
                 "target_name": sites_by_id[path_use.target].name,
                 "distance_miles": round(path_use.distance_miles, 3),
+                "carrier": path_use.carrier,
                 "path": [sites_by_id[site_id].name for site_id in path_use.path],
                 "reason": path_use.reason,
                 "requested_by": [

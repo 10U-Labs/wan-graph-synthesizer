@@ -200,6 +200,26 @@ def fiber_segments_from(
     return links
 
 
+def carrier_fiber_segments(
+    pairs: dict[tuple[str, str], tuple[float, tuple[str, ...]]],
+) -> dict[tuple[str, str], FiberSegment]:
+    """A physical link map whose segments name the carriers that have fiber on them.
+
+    The same as :func:`fiber_segments_from` with owners: each pair maps to its distance
+    beside the carriers that could sell a path over it. Fiber naming no carrier is written
+    as an empty tuple, which is how the synthetic local fiber a fabricated twin is wired on
+    reads.
+    """
+    links: dict[tuple[str, str], FiberSegment] = {}
+    for (left, right), (dist, carriers) in pairs.items():
+        key = link_key(left, right)
+        links[key] = FiberSegment(
+            source=key[0], target=key[1], distance_miles=dist,
+            carriers=frozenset(carriers),
+        )
+    return links
+
+
 def ring_params() -> SynthesisParams:
     """Synthesis parameters that solve the ring with a two-node backbone."""
     return SynthesisParams(min_backbone_count=2)
@@ -273,6 +293,42 @@ def synthesis_over_segments(
     carry a path without taking a backbone seat. ``min_backbone_count`` is how few sites the
     search may settle for and defaults to all of them.
     """
+    return synthesis_over_fiber(
+        site_ids, fiber_segments_from(segments), number_of_diverse_paths,
+        transit_ids, min_backbone_count,
+    )
+
+
+def synthesis_over_owned_fiber(
+    site_ids: tuple[str, ...],
+    segments: dict[tuple[str, str], tuple[float, tuple[str, ...]]],
+    number_of_diverse_paths: int,
+    transit_ids: tuple[str, ...] = (),
+) -> SynthesisArtifacts:
+    """The same as :func:`synthesis_over_segments` over fiber that says who owns it.
+
+    Each pair maps to its distance beside the carriers with fiber on it, so the paths the
+    synthesis draws are proved one carrier at a time and every one of them is a path
+    somebody could be asked to quote.
+    """
+    return synthesis_over_fiber(
+        site_ids, carrier_fiber_segments(segments), number_of_diverse_paths, transit_ids,
+    )
+
+
+def synthesis_over_fiber(
+    site_ids: tuple[str, ...],
+    fiber: dict[tuple[str, str], FiberSegment],
+    number_of_diverse_paths: int,
+    transit_ids: tuple[str, ...] = (),
+    min_backbone_count: int | None = None,
+) -> SynthesisArtifacts:
+    """Run the whole pipeline over a fiber map, every named site forced into the backbone.
+
+    The body the two callers above share: place the cities on a line, force the sites into
+    the backbone, cap it at their number, and ask for the diverse paths. Written once
+    because only the fiber and the number change between them.
+    """
     cities = site_ids + transit_ids
     fewest = len(site_ids) if min_backbone_count is None else min_backbone_count
     return run_synthesis(
@@ -280,7 +336,7 @@ def synthesis_over_segments(
             carrier_pop(city, 38.0, -115.0 + 2.0 * index)
             for index, city in enumerate(cities)
         ],
-        fiber_segments_from(segments),
+        fiber,
         SynthesisParams(
             min_backbone_count=fewest,
             max_backbone_count=len(site_ids),

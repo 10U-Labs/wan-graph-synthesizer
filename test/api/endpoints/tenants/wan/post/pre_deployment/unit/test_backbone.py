@@ -333,3 +333,44 @@ def test_a_synthesis_that_never_survived_a_city_loss_is_not_held_to_surviving_on
     """
     doubled = [*_CHAIN, _use("a", "b", ("a", "b"), 9.0)]
     assert _needed(doubled, ("a", "b", "c", "d"), 1) == _CHAIN
+
+
+# A square of hundred-mile segments whose two sides out of ``w`` belong to one carrier and
+# whose two sides into ``y`` belong to another, so ``w`` and ``y`` are two hops apart both
+# ways round and neither way is one company's to sell.
+_SPLIT_SQUARE = fixtures.carrier_fiber_segments({
+    ("w", "x"): (100.0, ("lumen",)),
+    ("x", "y"): (100.0, ("zayo",)),
+    ("w", "z"): (100.0, ("lumen",)),
+    ("z", "y"): (100.0, ("zayo",)),
+})
+# The same square with each way round wholly one company's.
+_WHOLE_SQUARE = fixtures.carrier_fiber_segments({
+    ("w", "x"): (100.0, ("lumen",)),
+    ("x", "y"): (100.0, ("lumen",)),
+    ("w", "z"): (100.0, ("zayo",)),
+    ("z", "y"): (100.0, ("zayo",)),
+})
+_PIN_WY = BackboneConstraints(
+    number_of_diverse_paths=2, forced_pairs=frozenset({link_key("w", "y")}), seat_cap=4,
+)
+
+
+def test_a_pin_no_carrier_can_join_draws_no_path() -> None:
+    """Both ways from w to y change hands halfway, so the pin has nobody to buy from."""
+    mesh = _drawn(("w", "x", "y", "z"), _SPLIT_SQUARE, _PIN_WY)
+    assert not [use for use in mesh.paths if use.reason == LINK_FOR_PIN]
+
+
+def test_a_pin_one_carrier_can_join_is_drawn_over_that_carriers_fiber() -> None:
+    """One way round is wholly Lumen's, so that is the way the pin is drawn."""
+    mesh = _drawn(("w", "x", "y", "z"), _WHOLE_SQUARE, _PIN_WY)
+    assert [use.path for use in mesh.paths if use.reason == LINK_FOR_PIN] == [
+        ("w", "x", "y"),
+    ]
+
+
+def test_a_drawn_path_names_the_carrier_it_is_ordered_from() -> None:
+    """Every path the mesh draws over owned fiber names one company to order it from."""
+    mesh = _drawn(("w", "x", "y", "z"), _WHOLE_SQUARE, _PIN_WY)
+    assert all(use.carrier in ("lumen", "zayo") for use in mesh.paths)

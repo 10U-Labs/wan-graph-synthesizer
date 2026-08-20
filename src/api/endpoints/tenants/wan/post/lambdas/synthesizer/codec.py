@@ -109,6 +109,12 @@ def load_merged_carriers(
     endpoints' city+state) resolve against that shared, city-keyed set. Distance is the
     great-circle miles between the resolved points. Segments within a single city
     (self-loops) and segments naming a city no carrier serves (dangling) are dropped.
+
+    Two carriers with fiber between the same two cities are one segment naming both of
+    them, rather than the second row replacing the first. The distance is the same either
+    way -- it is the great-circle miles between two cities -- and who has fiber there is
+    what says whether a path across it can be ordered whole (see
+    :func:`synthesizer.input_graph.carriers_along`).
     """
     used: set[str] = set()
     pops: list[Site] = []
@@ -122,6 +128,7 @@ def load_merged_carriers(
         pops.append(site)
         by_city[city] = site
     links: dict[tuple[str, str], FiberSegment] = {}
+    owners_by_key: dict[tuple[str, str], set[str]] = {}
     connected: set[str] = set()
     for row in link_rows:
         source = by_city.get((row["a_municipality"], row["a_state"]))
@@ -129,8 +136,12 @@ def load_merged_carriers(
         if source is None or target is None or source.id == target.id:
             continue
         key = link_key(source.id, target.id)
+        owners = owners_by_key.setdefault(key, set())
+        if row.get("carrier"):
+            owners.add(str(row["carrier"]))
         links[key] = FiberSegment(
-            source=key[0], target=key[1], distance_miles=haversine_miles(source, target)
+            source=key[0], target=key[1], distance_miles=haversine_miles(source, target),
+            carriers=frozenset(owners),
         )
         connected.update(key)
     # A point no surviving segment touches is not a usable backbone node; drop it so

@@ -67,6 +67,28 @@ def test_merged_carriers_compute_segment_distance() -> None:
     assert round(next(iter(links.values())).distance_miles) == 557
 
 
+_TWO_OWNERS = [
+    {"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
+     "z_municipality": "Kansas City", "z_state": "MO"},
+    {"carrier": "zayo", "a_municipality": "Denver", "a_state": "CO",
+     "z_municipality": "Kansas City", "z_state": "MO"},
+]
+
+
+def test_merged_carriers_name_every_carrier_with_fiber_on_a_segment() -> None:
+    """Two carriers with fiber between the same cities are one segment naming both."""
+    _pops, links = load_merged_carriers(_MERGED_CARRIER_SITES, _TWO_OWNERS)
+    assert next(iter(links.values())).carriers == frozenset({"lumen", "zayo"})
+
+
+def test_merged_carriers_name_no_carrier_where_a_row_carries_none() -> None:
+    """A fiber row with no carrier column leaves the segment owned by nobody."""
+    rows = [{key: value for key, value in row.items() if key != "carrier"}
+            for row in _MERGED_CARRIER_LINKS]
+    _pops, links = load_merged_carriers(_MERGED_CARRIER_SITES, rows)
+    assert next(iter(links.values())).carriers == frozenset()
+
+
 def test_merged_carriers_drop_an_isolated_point() -> None:
     """A point no surviving segment touches is dropped from the merged carriers."""
     extra = _MERGED_CARRIER_SITES + [

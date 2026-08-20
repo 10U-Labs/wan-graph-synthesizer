@@ -17,7 +17,8 @@ from synthesizer.ceiling import (
     independent_paths,
     diverse_path_ceilings,
 )
-from synthesizer.graphs import build_adjacency, distances_from
+from synthesizer.graphs import adjacency_by_carrier, build_adjacency, distances_from
+from synthesizer.input_graph import FiberSegment
 
 physical = fixtures.fiber_segments_from
 
@@ -420,3 +421,52 @@ def test_a_path_no_segment_of_which_can_be_refused_is_dropped_rather_than_counte
             _UNWITHDRAWABLE_BACKBONE, _UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_LIMIT
         ),
     ) == 1
+
+
+# Two ways from ``s`` to ``t``, each two hops through a city of its own. Who has the fiber
+# on those hops is the whole of the difference between the two maps: in the first every
+# way out changes hands halfway, in the second each way out is one company's from end to
+# end. The geometry is identical, so anything that separates them is the ownership.
+_CHANGES_HANDS = fixtures.carrier_fiber_segments({
+    ("s", "x"): (1.0, ("lumen",)),
+    ("x", "t"): (1.0, ("zayo",)),
+    ("s", "y"): (1.0, ("lumen",)),
+    ("y", "t"): (1.0, ("zayo",)),
+})
+_ONE_COMPANY_EACH = fixtures.carrier_fiber_segments({
+    ("s", "x"): (1.0, ("lumen",)),
+    ("x", "t"): (1.0, ("lumen",)),
+    ("s", "y"): (1.0, ("zayo",)),
+    ("y", "t"): (1.0, ("zayo",)),
+})
+
+
+def _owned_proof(
+    fiber: dict[tuple[str, str], FiberSegment], paths_wanted: int = 1
+) -> PathProofInputs:
+    """A proof over fiber that says who owns it, so the ways out are proved per carrier."""
+    return PathProofInputs(
+        ("s", "t"),
+        build_adjacency(fiber),
+        paths_wanted=paths_wanted,
+        fiber_by_carrier=adjacency_by_carrier(fiber),
+    )
+
+
+def test_a_way_out_that_changes_hands_is_no_way_out() -> None:
+    """No carrier has both hops, so there is no path anybody could be asked to quote."""
+    assert not independent_paths("s", _owned_proof(_CHANGES_HANDS))
+
+
+def test_ways_out_may_come_from_different_carriers() -> None:
+    """Two ways out, one wholly Lumen and one wholly Zayo, are both real and both drawn."""
+    assert sorted(independent_paths("s", _owned_proof(_ONE_COMPANY_EACH, 2))) == [
+        ("s", "x", "t"), ("s", "y", "t"),
+    ]
+
+
+def test_the_same_fiber_joins_the_pair_when_nobody_owns_it() -> None:
+    """The identical geometry with no owners recorded still draws a way out."""
+    assert independent_paths("s", PathProofInputs(("s", "t"), build_adjacency(
+        physical({("s", "x"): 1.0, ("x", "t"): 1.0, ("s", "y"): 1.0, ("y", "t"): 1.0}),
+    ))) == [("s", "x", "t")]

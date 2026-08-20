@@ -51,6 +51,13 @@ class SynthesisPath:
     ``requested_by`` names the sites that reached for it and is empty unless ``reason`` is
     ``LINK_FOR_TARGET`` -- a link has two ends, and which end asked for it is exactly what
     separates a site's own link from one it is holding for a peer.
+
+    ``carrier`` is the company the path is ordered from. Every hop of it is that carrier's
+    fiber, because a path assembled from two carriers' fiber is not a thing anybody sells,
+    and an operator handed a network of paths has to know who to call for each one. It is
+    empty only for a path running entirely over fiber no carrier owns -- the synthetic
+    local fiber a fabricated twin is wired on -- and for a path built by a caller with no
+    merged carriers behind it.
     """
 
     purpose: str
@@ -60,6 +67,7 @@ class SynthesisPath:
     distance_miles: float
     reason: str = LINK_FOR_TARGET
     requested_by: tuple[str, ...] = ()
+    carrier: str = ""
 
 @dataclass
 class SynthesisMetrics:

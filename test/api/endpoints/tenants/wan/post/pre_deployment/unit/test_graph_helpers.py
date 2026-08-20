@@ -7,6 +7,7 @@ import math
 import pytest
 
 from synthesizer.graphs import (
+    adjacency_by_carrier,
     articulation_points,
     biconnected_block_membership,
     bridge_links,
@@ -18,7 +19,7 @@ from synthesizer.graphs import (
     reconstruct_path,
     bridgeless_components,
 )
-from synthesizer.input_graph import Site, link_key, haversine_miles
+from synthesizer.input_graph import FiberSegment, Site, carriers_along, link_key, haversine_miles
 
 
 def make_site(site_id: str, lat: float, lon: float) -> Site:
@@ -255,3 +256,56 @@ def test_survives_any_one_site_loss_false_for_a_chain() -> None:
 def test_survives_any_one_site_loss_false_when_disconnected() -> None:
     """A graph in two pieces does not survive the loss of any one site."""
     assert survives_any_one_site_loss({"a", "b", "c", "d"}, {("a", "b"), ("c", "d")}) is False
+
+
+# One length of fiber each carrier has to itself, one they both have, and one lateral the
+# operator laid that names nobody -- the four cases a path is assembled out of.
+_OWNED_FIBER = {
+    link_key("a", "b"): FiberSegment("a", "b", 1.0, carriers=frozenset({"lumen"})),
+    link_key("b", "c"): FiberSegment("b", "c", 1.0, carriers=frozenset({"zayo"})),
+    link_key("a", "c"): FiberSegment("a", "c", 5.0, carriers=frozenset({"lumen", "zayo"})),
+    link_key("c", "d"): FiberSegment("c", "d", 1.0),
+}
+
+
+def test_adjacency_by_carrier_gives_a_carrier_only_its_own_fiber() -> None:
+    """Lumen's map holds the segment Zayo has to itself nowhere."""
+    assert ("c", 1.0) not in adjacency_by_carrier(_OWNED_FIBER)["lumen"]["b"]
+
+
+def test_adjacency_by_carrier_gives_every_carrier_the_fiber_nobody_owns() -> None:
+    """The operator's own lateral is on every carrier's map, since it rules nobody out."""
+    assert all(
+        ("d", 1.0) in adjacency["c"]
+        for adjacency in adjacency_by_carrier(_OWNED_FIBER).values()
+    )
+
+
+def test_adjacency_by_carrier_names_every_carrier_with_fiber() -> None:
+    """One map comes back per carrier the fiber names, and no map for anyone else."""
+    assert sorted(adjacency_by_carrier(_OWNED_FIBER)) == ["lumen", "zayo"]
+
+
+def test_adjacency_by_carrier_splits_fiber_naming_nobody_into_nothing() -> None:
+    """Fiber no carrier owns names no carriers, so there is nothing to split it by."""
+    assert adjacency_by_carrier({link_key("c", "d"): FiberSegment("c", "d", 1.0)}) == {}
+
+
+def test_carriers_along_names_who_can_sell_a_whole_path() -> None:
+    """A path over one carrier's fiber and one lateral is that carrier's to sell."""
+    assert carriers_along(("a", "b"), _OWNED_FIBER) == frozenset({"lumen"})
+
+
+def test_carriers_along_names_nobody_for_a_path_that_changes_hands() -> None:
+    """A path whose two hops belong to different carriers is nobody's to sell."""
+    assert carriers_along(("a", "b", "c"), _OWNED_FIBER) == frozenset()
+
+
+def test_carriers_along_lets_a_lateral_pass() -> None:
+    """A segment nobody owns rules no carrier out of the path it sits on."""
+    assert carriers_along(("a", "c", "d"), _OWNED_FIBER) == frozenset({"lumen", "zayo"})
+
+
+def test_carriers_along_names_nobody_for_a_path_of_laterals_only() -> None:
+    """A path running only over fiber nobody owns names nobody."""
+    assert carriers_along(("c", "d"), _OWNED_FIBER) == frozenset()

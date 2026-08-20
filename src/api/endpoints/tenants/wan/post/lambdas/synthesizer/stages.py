@@ -8,7 +8,7 @@ The synthesizer composes these over the JSON-loaded graph:
 from __future__ import annotations
 
 from synthesizer.ceiling import BackupPathLimit, PathProofInputs, diverse_path_ceilings
-from synthesizer.graphs import build_adjacency, distances_from
+from synthesizer.graphs import adjacency_by_carrier, build_adjacency, distances_from
 from synthesizer.input_graph import FiberSegment, Site
 from synthesizer.model import Synthesis, SynthesisParams, MeshRequirements, ValidationReport
 from synthesizer.on_net_fabrication import fabricate_missing_on_net_nodes
@@ -99,6 +99,7 @@ def finalize(
             ),
             params.tuning.backbone_number_of_diverse_paths,
             params.max_backbone_count,
+            adjacency_by_carrier(fiber_segments),
         )),
     )
     validation = validate_synthesis(

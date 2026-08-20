@@ -68,19 +68,46 @@ class Site:
 
 @dataclass(frozen=True)
 class FiberSegment:
-    """A physical Carrier mapbook link between two PoPs."""
+    """A physical Carrier mapbook link between two PoPs.
+
+    ``carriers`` are the carriers that have fiber between these two cities. A path is
+    ordered from one carrier, so it may run over this segment only if that carrier is in
+    here. An empty set is fiber no carrier sells -- the synthetic local fiber
+    :func:`synthesizer.local_fiber.build_local_fiber_twin` lays from a fabricated twin to
+    its nearest carrier PoPs is a lateral the operator builds themselves -- so it
+    constrains nothing and any carrier's path may run over it.
+    """
 
     source: str
     target: str
     distance_miles: float
     source_page: str = ""
     note: str = ""
+    carriers: frozenset[str] = frozenset()
 
 def link_key(left: str, right: str) -> tuple[str, str]:
     """Return the two PoP ids as an order-independent link key."""
     if left == right:
         raise ValueError(f"Self-loop is not a valid Carrier link: {left}")
     return (left, right) if left < right else (right, left)
+
+def carriers_along(
+    path: tuple[str, ...], fiber_segments: dict[tuple[str, str], FiberSegment]
+) -> frozenset[str]:
+    """The carriers that could sell every length of fiber along a path.
+
+    A path is one thing an operator orders, from one carrier, so it is only real if some
+    carrier has all of it. The answer is the carriers common to every segment the path
+    crosses; the segments no carrier owns are skipped, since local fiber rules nobody out.
+    An empty answer is a path nobody can sell.
+    """
+    common: frozenset[str] | None = None
+    for index in range(len(path) - 1):
+        owners = fiber_segments[link_key(path[index], path[index + 1])].carriers
+        if not owners:
+            continue
+        common = owners if common is None else common & owners
+    return common if common is not None else frozenset()
 
 def haversine_miles(a: Site, b: Site) -> float:
     """Great-circle distance between two sites in miles."""

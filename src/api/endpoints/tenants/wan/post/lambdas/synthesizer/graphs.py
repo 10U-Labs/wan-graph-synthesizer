@@ -329,3 +329,29 @@ def build_adjacency(
     for neighbors in adjacency.values():
         neighbors.sort()
     return adjacency
+
+
+def adjacency_by_carrier(
+    links: dict[tuple[str, str], FiberSegment],
+) -> dict[str, dict[str, list[tuple[str, float]]]]:
+    """One adjacency per carrier: the fiber that carrier could sell a path over.
+
+    An operator orders a path from one carrier, so the fiber a path may be assembled from
+    is one carrier's own segments plus the segments no carrier owns -- the synthetic local
+    fiber a fabricated twin is wired on, which the operator lays themselves. Each carrier
+    gets its whole map that way, and a path found over one of these adjacencies is a path
+    somebody can be asked to quote.
+
+    Fiber naming no carrier at all yields no entries. That is every fixture built by hand
+    and every caller with no merged carriers behind it, and it reads correctly as nothing
+    to split by.
+    """
+    carriers = sorted({carrier for link in links.values() for carrier in link.carriers})
+    return {
+        carrier: build_adjacency({
+            key: link
+            for key, link in links.items()
+            if not link.carriers or carrier in link.carriers
+        })
+        for carrier in carriers
+    }

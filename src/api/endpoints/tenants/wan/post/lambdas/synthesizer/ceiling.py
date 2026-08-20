@@ -53,7 +53,7 @@ from __future__ import annotations
 import heapq
 import math
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # One end of a split city on the carrier's fiber: ("in", city) and ("out", city) are joined
 # by a single unit of capacity, which is what makes a city usable by one path only.
@@ -512,6 +512,12 @@ class PathProofInputs:
     ``backbone.node_count.max`` in its ``etc/`` file. ``None`` is an operator who capped
     nothing, and a caller with no tenant in hand; the sites in ``backbone_ids`` are then
     what says how many peers there are (see :func:`paths_per_peer`).
+
+    ``fiber_by_carrier`` is the same fiber split into what each carrier could sell a path
+    over (see :func:`synthesizer.graphs.adjacency_by_carrier`). A path is ordered from one
+    carrier, so where this is given the paths are proved one carrier at a time and the
+    answers put together; empty is fiber that names no carrier, and the proof runs once
+    over ``adjacency`` as it always has.
     """
 
     backbone_ids: tuple[str, ...]
@@ -519,6 +525,9 @@ class PathProofInputs:
     limit: BackupPathLimit | None = None
     paths_wanted: int = 1
     seat_cap: int | None = None
+    fiber_by_carrier: dict[str, dict[str, list[tuple[str, float]]]] = field(
+        default_factory=dict
+    )
 
 
 def paths_per_peer(seat_cap: int | None, seats: int, paths_wanted: int) -> int:
@@ -546,6 +555,95 @@ def paths_per_peer(seat_cap: int | None, seats: int, paths_wanted: int) -> int:
     """
     peers = (seat_cap if seat_cap is not None else seats) - 1
     return max(1, -(-paths_wanted // peers)) if peers > 0 else 1
+
+
+def _paths_over(
+    node: str,
+    inputs: PathProofInputs,
+    adjacency: dict[str, list[tuple[str, float]]],
+    per_peer: int,
+) -> list[tuple[str, ...]]:
+    """The ways out of ``node`` one set of fiber carries, inside the operator's bound.
+
+    The whole of what :func:`independent_paths` used to be, over whichever fiber it is
+    handed: the cheapest maximum flow, then the repair pass that withdraws a segment a
+    path overran on and runs the flow again, keeping the largest set of within-budget
+    paths any pass produced.
+    """
+    limit = inputs.limit
+    backbone_ids = inputs.backbone_ids
+    if limit is None:
+        return _proved_paths(node, backbone_ids, adjacency, per_peer)
+    admissible = _admissible_adjacency(node, backbone_ids, adjacency, limit)
+    best: list[tuple[str, ...]] = []
+    while True:
+        paths = _proved_paths(node, backbone_ids, admissible, per_peer)
+        within = [
+            path
+            for path in paths
+            if _path_miles(path, admissible)
+            <= _budget(node, path[-1], limit) + _TOLERANCE
+        ]
+        if len(within) > len(best):
+            best = within
+        if len(within) == len(paths):
+            return best
+        withdrawn = _first_withdrawable(node, paths, within, admissible, limit)
+        if withdrawn is None:
+            return best
+        admissible = _without_fiber_segment(admissible, *withdrawn)
+
+
+def _no_city_twice(
+    node: str,
+    found: list[tuple[str, ...]],
+    inputs: PathProofInputs,
+    per_peer: int,
+) -> list[tuple[str, ...]]:
+    """The carriers' answers put together, shortest first, with no city spent twice.
+
+    Each carrier's answer is already clear of itself, and two carriers know nothing of one
+    another, so a path from one may cross a city a path from another already runs through.
+    A city carrying two of a site's ways out is one way out the moment it goes, which is
+    the whole of what a diverse path is, so the second path is left where it is.
+
+    Shortest first, so where two paths cross the same city the fiber that survives is the
+    fiber that costs the fewest miles. The rules are the flow's own, one layer up: a city
+    a path transits is spent, and a peer is spent with it unless the site is short enough
+    of peers to take several paths to one, in which case the peer may end ``per_peer`` of
+    them and may lie on the way to none.
+
+    This is a search rather than a proof, as the bounded proof one layer down already is.
+    Taking the shortest paths first can leave a longer pair unbuilt that a different order
+    would have kept, and the largest set of length-bounded disjoint paths is NP-hard to
+    find in any case, so the number is the best this came across. Where it errs it errs
+    low, and a site sold short is named in the synthesis's report rather than quietly held
+    to less.
+    """
+    peers = {peer for peer in inputs.backbone_ids if peer != node}
+    termini_only = per_peer > 1
+    spent: set[str] = set()
+    ends: dict[str, int] = {}
+    seen: set[tuple[str, ...]] = set()
+    kept: list[tuple[str, ...]] = []
+    ordered = sorted(found, key=lambda one: (_path_miles(one, inputs.adjacency), one))
+    for path in ordered:
+        if path in seen or len(path) < 2:
+            continue
+        seen.add(path)
+        interior = set(path[1:-1])
+        end = path[-1]
+        if interior & spent or (termini_only and interior & peers):
+            continue
+        if end in spent or (termini_only and ends.get(end, 0) >= per_peer):
+            continue
+        spent |= interior
+        if termini_only:
+            ends[end] = ends.get(end, 0) + 1
+        else:
+            spent.add(end)
+        kept.append(path)
+    return kept
 
 
 def independent_paths(node: str, inputs: PathProofInputs) -> list[tuple[str, ...]]:
@@ -611,30 +709,32 @@ def independent_paths(node: str, inputs: PathProofInputs) -> list[tuple[str, ...
     paths that each respect a length bound is NP-hard, so no exact answer is available at
     any price; this bounds the paths as well as the fiber, and still bounds them from
     above.
+
+    A path is ordered from one carrier, so where ``inputs.fiber_by_carrier`` says who has
+    what, the proof runs once over each carrier's own fiber and the answers are put
+    together with no city spent twice (see :func:`_no_city_twice`). Every path that comes
+    back is then one somebody can quote, and a site's ways out may still be bought from
+    several carriers -- one path each -- which is what an operator does. Fiber naming no
+    carrier leaves that empty and the proof runs once over the whole of it, as it always
+    has.
+
+    A carrier whose fiber does not reach the site at all is skipped rather than searched.
+    It can hold no path out of a city it does not serve, and most sites are served by one
+    or two of the carriers rather than all of them, so skipping is most of what keeps the
+    proof affordable now that it runs several times over.
     """
-    backbone_ids, adjacency = inputs.backbone_ids, inputs.adjacency
-    limit = inputs.limit
-    per_peer = paths_per_peer(inputs.seat_cap, len(backbone_ids), inputs.paths_wanted)
-    if limit is None:
-        return _proved_paths(node, backbone_ids, adjacency, per_peer)
-    admissible = _admissible_adjacency(node, backbone_ids, adjacency, limit)
-    best: list[tuple[str, ...]] = []
-    while True:
-        paths = _proved_paths(node, backbone_ids, admissible, per_peer)
-        within = [
-            path
-            for path in paths
-            if _path_miles(path, admissible)
-            <= _budget(node, path[-1], limit) + _TOLERANCE
-        ]
-        if len(within) > len(best):
-            best = within
-        if len(within) == len(paths):
-            return best
-        withdrawn = _first_withdrawable(node, paths, within, admissible, limit)
-        if withdrawn is None:
-            return best
-        admissible = _without_fiber_segment(admissible, *withdrawn)
+    per_peer = paths_per_peer(
+        inputs.seat_cap, len(inputs.backbone_ids), inputs.paths_wanted
+    )
+    if not inputs.fiber_by_carrier:
+        return _paths_over(node, inputs, inputs.adjacency, per_peer)
+    found = [
+        path
+        for _carrier, adjacency in sorted(inputs.fiber_by_carrier.items())
+        if node in adjacency
+        for path in _paths_over(node, inputs, adjacency, per_peer)
+    ]
+    return _no_city_twice(node, found, inputs, per_peer)
 
 
 def independent_path_ceiling(node: str, inputs: PathProofInputs) -> int:

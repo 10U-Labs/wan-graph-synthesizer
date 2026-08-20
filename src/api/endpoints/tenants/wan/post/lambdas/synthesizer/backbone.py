@@ -35,8 +35,9 @@ from synthesizer.ceiling import (
     independent_paths,
     paths_per_peer,
 )
-from synthesizer.input_graph import FiberSegment, link_key
+from synthesizer.input_graph import FiberSegment, carriers_along, link_key
 from synthesizer.graphs import (
+    adjacency_by_carrier,
     articulation_points,
     build_adjacency,
     connected_components,
@@ -98,15 +99,22 @@ class BackboneMesh:
 
 @dataclass(frozen=True)
 class _DrawnFiber:
-    """The fiber a synthesis bought, beside the carrier fiber it was chosen out of.
+    """The fiber a synthesis bought, beside the whole fiber it was chosen out of.
 
     Both are here because a site's ways out are read off the bought fiber and held against
-    what the carrier's whole fiber could have given it (see :func:`_ways_out_of`).
+    what the whole of the carriers' fiber could have given it (see :func:`_ways_out_of`).
+
+    Each comes with itself split into what each carrier could sell a path over (see
+    :func:`synthesizer.graphs.adjacency_by_carrier`), computed once here rather than once
+    per site, because a site's ways out are proved one carrier at a time and there are as
+    many sites as the backbone holds.
     """
 
     backbone_ids: tuple[str, ...]
     bought: dict[tuple[str, str], FiberSegment]
-    carrier: dict[tuple[str, str], FiberSegment]
+    bought_by_carrier: dict[str, dict[str, list[tuple[str, float]]]]
+    whole: dict[tuple[str, str], FiberSegment]
+    whole_by_carrier: dict[str, dict[str, list[tuple[str, float]]]]
     constraints: BackboneConstraints
 
 
@@ -134,28 +142,58 @@ def _no_single_point_of_failure(
 
 def _pinned_path(
     pair: tuple[str, str],
-    adjacency: dict[str, list[tuple[str, float]]],
+    by_carrier: dict[str, dict[str, list[tuple[str, float]]]],
     fiber_segments: dict[tuple[str, str], FiberSegment],
 ) -> SynthesisPath | None:
-    """The shortest path over the carrier's fiber for one pair the operator pinned.
+    """The shortest single-carrier path for one pair the operator pinned.
 
     A pin is an instruction rather than a proposal, so it is drawn whatever the choice of
-    fiber said and its own fiber is added to the synthesis. A pair the carrier's fiber cannot
-    join at all is the one thing a pin cannot ask for, and nothing is drawn for it.
+    fiber said and its own fiber is added to the synthesis. One thing a pin cannot ask for
+    is a pair no carrier can join, and nothing is drawn for such a pair -- an operator who
+    pins two cities no one company reaches has asked for a path there is nobody to buy.
+
+    The shortest way each carrier has is drawn and the shortest of those is taken, so the
+    pin is honoured over the fewest fiber miles anybody can sell it in. Fiber naming no
+    carrier is searched whole, which is every fixture and every caller with no merged
+    carriers behind it.
     """
     near, far = pair
-    _distances, predecessors = dijkstra(adjacency, near)
-    path = reconstruct_path(near, far, predecessors)
-    if not path:
+    maps = by_carrier or {"": build_adjacency(fiber_segments)}
+    drawn: list[tuple[str, ...]] = []
+    for _carrier, adjacency in sorted(maps.items()):
+        _distances, predecessors = dijkstra(adjacency, near)
+        path = reconstruct_path(near, far, predecessors)
+        if path:
+            drawn.append(path)
+    if not drawn:
         return None
+    path = min(drawn, key=lambda one: (path_geometry_miles(one, fiber_segments), one))
     return SynthesisPath(
         "backbone_mesh", near, far, path,
         path_geometry_miles(path, fiber_segments), LINK_FOR_PIN,
+        carrier=_carrier_of(path, fiber_segments),
     )
 
 
+def _carrier_of(
+    path: tuple[str, ...], fiber_segments: dict[tuple[str, str], FiberSegment]
+) -> str:
+    """Which carrier a path is ordered from, or empty where no carrier owns any of it.
+
+    A path built one carrier at a time has at least one carrier able to sell all of it;
+    where several can, the first by name is named, so the same path published twice names
+    the same company. A path running only over fiber nobody owns -- local fiber between
+    two fabricated twins -- names nobody, which is the truth about it.
+    """
+    owners = carriers_along(path, fiber_segments)
+    return min(owners) if owners else ""
+
+
 def _proved_over(
-    site: str, fiber: dict[tuple[str, str], FiberSegment], drawn: _DrawnFiber
+    site: str,
+    fiber: dict[tuple[str, str], FiberSegment],
+    by_carrier: dict[str, dict[str, list[tuple[str, float]]]],
+    drawn: _DrawnFiber,
 ) -> list[tuple[str, ...]]:
     """The ways out of ``site`` one set of fiber carries, shortest first, cut to the number.
 
@@ -176,7 +214,7 @@ def _proved_over(
     )
     proof = PathProofInputs(
         peers, build_adjacency(fiber), constraints.limit,
-        constraints.number_of_diverse_paths, constraints.seat_cap,
+        constraints.number_of_diverse_paths, constraints.seat_cap, by_carrier,
     )
     return sorted(
         independent_paths(site, proof),
@@ -201,9 +239,9 @@ def _ways_out_of(site: str, drawn: _DrawnFiber) -> list[tuple[str, ...]]:
     fiber offers a third way out would be judged short every time and drawn with fiber
     nobody asked for.
     """
-    bought = _proved_over(site, drawn.bought, drawn)
-    carrier = _proved_over(site, drawn.carrier, drawn)
-    return bought if len(bought) >= len(carrier) else carrier
+    bought = _proved_over(site, drawn.bought, drawn.bought_by_carrier, drawn)
+    whole = _proved_over(site, drawn.whole, drawn.whole_by_carrier, drawn)
+    return bought if len(bought) >= len(whole) else whole
 
 
 def _laid(drawn: _DrawnFiber, pinned: list[SynthesisPath]) -> list[SynthesisPath]:
@@ -225,7 +263,8 @@ def _laid(drawn: _DrawnFiber, pinned: list[SynthesisPath]) -> list[SynthesisPath
             if held is None:
                 laid[key] = SynthesisPath(
                     "backbone_mesh", path[0], path[-1], path,
-                    path_geometry_miles(path, drawn.carrier), LINK_FOR_TARGET, (site,),
+                    path_geometry_miles(path, drawn.whole), LINK_FOR_TARGET, (site,),
+                    _carrier_of(path, drawn.whole),
                 )
             elif held.reason == LINK_FOR_TARGET and site not in held.requested_by:
                 laid[key] = replace(
@@ -273,15 +312,15 @@ def _bought_fiber(
     fiber_segments: dict[tuple[str, str], FiberSegment],
     all_distances: dict[str, dict[str, float]],
     constraints: BackboneConstraints,
+    by_carrier: dict[str, dict[str, list[tuple[str, float]]]],
 ) -> tuple[frozenset[tuple[str, str]], float, list[SynthesisPath]]:
     """The fiber the synthesis buys, the floor under it, and the paths the operator pinned.
 
-    The pins are drawn over the carrier's whole fiber rather than over what the choice
+    The pins are drawn over the whole of the carriers' fiber rather than over what the choice
     bought, and their own segments join what was bought. An operator who writes a pair into
     ``etc/*.yml`` has decided that pair is joined, and a choice made to answer everybody
     else's requirements has no standing to overrule it.
     """
-    adjacency = build_adjacency(fiber_segments)
     per_peer = paths_per_peer(
         constraints.seat_cap, len(backbone_ids), constraints.number_of_diverse_paths
     )
@@ -290,7 +329,7 @@ def _bought_fiber(
         constraints.number_of_diverse_paths, per_peer, constraints.limit,
     ))
     drawn = (
-        _pinned_path(pair, adjacency, fiber_segments)
+        _pinned_path(pair, by_carrier, fiber_segments)
         for pair in sorted(constraints.forced_pairs)
     )
     pinned = [use for use in drawn if use is not None]
@@ -324,11 +363,15 @@ def backbone_mesh(
     nothing about is left out while the rest are drawn. The shortfall is
     :func:`synthesizer.validation.backbone_mesh_independence_deficient`'s to report.
     """
+    whole_by_carrier = adjacency_by_carrier(fiber_segments)
     segments, floor, pinned = _bought_fiber(
-        backbone_ids, fiber_segments, all_distances, constraints
+        backbone_ids, fiber_segments, all_distances, constraints, whole_by_carrier
     )
     bought = {segment: fiber_segments[segment] for segment in sorted(segments)}
-    drawn = _DrawnFiber(backbone_ids, bought, fiber_segments, constraints)
+    drawn = _DrawnFiber(
+        backbone_ids, bought, adjacency_by_carrier(bought),
+        fiber_segments, whole_by_carrier, constraints,
+    )
     laid = _laid(drawn, pinned)
     return BackboneMesh(
         _needed(laid, backbone_ids, constraints.number_of_diverse_paths), floor

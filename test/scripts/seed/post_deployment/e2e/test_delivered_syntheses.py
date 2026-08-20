@@ -39,9 +39,11 @@ deliver). DAF, at 34 seats against a cap of 99, had no such excuse.
 """
 from __future__ import annotations
 
+import csv
 from collections.abc import Callable
 from typing import Any
 
+import seed
 from test_published_syntheses import (
     FIBER,
     backbone_groups,
@@ -421,3 +423,97 @@ def test_no_published_network_runs_fewer_miles_than_the_floor_it_publishes(
     assert _tenants_outside(
         delivered_syntheses, lambda miles, floor, slack: miles >= floor - slack
     ) == {}
+
+
+def _fiber_by_carrier() -> dict[str, set[frozenset[str]]]:
+    """Which city pairs each carrier has fiber between, as the published links spell them.
+
+    Read from ``data/fiber_segments/*.csv``, the files ``scripts/seed.py`` pushes, and keyed
+    by ``City, ST`` because that is the name the synthesizer publishes a hop under. A pair
+    is order-independent: a length of fiber is the same fiber whichever way a path runs
+    over it.
+    """
+    held: dict[str, set[frozenset[str]]] = {}
+    for path in sorted((seed.DATA / "fiber_segments").glob("*.csv")):
+        with path.open(encoding="utf-8") as handle:
+            held[path.stem] = {
+                frozenset({
+                    f"{row['A_Municipality']}, {row['A_State']}",
+                    f"{row['Z_Municipality']}, {row['Z_State']}",
+                })
+                for row in csv.DictReader(handle)
+            }
+    return held
+
+
+def _anybodys_fiber(held: dict[str, set[frozenset[str]]]) -> set[frozenset[str]]:
+    """Every city pair some carrier has fiber between, whoever it is."""
+    everyone: set[frozenset[str]] = set()
+    for pairs in held.values():
+        everyone |= pairs
+    return everyone
+
+
+def _hops(link: dict[str, Any]) -> list[frozenset[str]]:
+    """Every length of fiber one published path runs over, as order-independent city pairs."""
+    cities = link.get("path") or []
+    return [frozenset({left, right}) for left, right in zip(cities, cities[1:])]
+
+
+def _paths_changing_hands(syntheses: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Per tenant, every published path holding a length of fiber its own carrier lacks.
+
+    A hop no carrier's file holds at all is a synthetic lateral the operator lays into a
+    fabricated site, and rules nobody out; a hop some carrier has and the named one does
+    not is fiber the tenant has been sold by a company that has none there.
+    """
+    held = _fiber_by_carrier()
+    anybody = _anybodys_fiber(held)
+    found: dict[str, list[str]] = {}
+    for synthesis in syntheses:
+        for link in synthesis["links"]:
+            mine = held.get(link.get("carrier", ""), set())
+            if any(hop in anybody and hop not in mine for hop in _hops(link)):
+                found.setdefault(synthesis["tenant"], []).append(
+                    f"{link['source_name']} to {link['target_name']}"
+                )
+    return found
+
+
+def _paths_naming_no_carrier(syntheses: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Per tenant, every published path over a carrier's fiber that names no carrier."""
+    anybody = _anybodys_fiber(_fiber_by_carrier())
+    found: dict[str, list[str]] = {}
+    for synthesis in syntheses:
+        for link in synthesis["links"]:
+            if not link.get("carrier") and any(hop in anybody for hop in _hops(link)):
+                found.setdefault(synthesis["tenant"], []).append(
+                    f"{link['source_name']} to {link['target_name']}"
+                )
+    return found
+
+
+def test_no_published_path_changes_carrier_partway_along_itself(
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    """Every published path is fiber one company has all of, so somebody can quote it.
+
+    A path is what an operator orders and pays for every month, and it is ordered from one
+    carrier. Half of one company's fiber spliced to half of another's is not a product
+    anybody sells, so a tenant handed such a path has been handed a network they cannot
+    buy -- and nothing else out here would say so, because every hop of it is real fiber
+    between real cities. Measured against the carrier files git holds rather than against
+    the build's own account of itself.
+    """
+    assert _paths_changing_hands(delivered_syntheses) == {}
+
+
+def test_every_published_path_over_a_carriers_fiber_names_that_carrier(
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    """A tenant reading their network can see who to call for each path in it.
+
+    A path with no carrier on it is one the tenant cannot order, however sound its
+    geometry. The exception is a path running only over the synthetic lateral fiber a
+    fabricated site is wired on, which no carrier has and which names nobody correctly, so
+    only the paths crossing fiber some carrier does hold are asked.
+    """
+    assert _paths_naming_no_carrier(delivered_syntheses) == {}
