@@ -34,6 +34,22 @@ def test_merge_post_unions_carriers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert json.loads(response["body"]) == {"pops": 2, "fiber-segments": 1}
 
 
+def test_merge_post_ignores_a_file_that_is_neither_collection(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """A carrier file under an unknown name is left out rather than merged as fiber.
+
+    A rename leaves the store holding the old file beside the new one. Counted as fiber it
+    would reach the synthesizer without the columns a segment carries, and every tenant's
+    build would fail on the first one it read.
+    """
+    module = load_handler("carriers/merge", monkeypatch)
+    objects = _merge_objects()
+    objects["carriers/a/edges.json"] = json.dumps([{"stale": True}]).encode()
+    with patch("boto3.client", return_value=fake_s3(objects, keys=[*objects])):
+        response = module.lambda_handler({"httpMethod": "POST"}, None)
+    assert json.loads(response["body"]) == {"pops": 2, "fiber-segments": 1}
+
+
 def test_merge_post_tags_points_with_their_carrier(monkeypatch: pytest.MonkeyPatch) -> None:
     """Each merged point carries the carrier id taken from its source path."""
     module = load_handler("carriers/merge", monkeypatch)

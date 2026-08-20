@@ -23,6 +23,10 @@ _MERGE_KEYS = {
     "pops": "carriers/merge/pops.json",
     "fiber-segments": "carriers/merge/fiber-segments.json",
 }
+# The only two file names a carrier stores under. Anything else under carriers/ is
+# not one of them and is left alone: a leftover from an older name would otherwise be
+# merged in as fiber and every synthesis would fail on the columns it does not carry.
+_CARRIER_FILES = ("pops.json", "fiber-segments.json")
 
 
 def _s3() -> Any:
@@ -46,8 +50,9 @@ def _build_substrate(client: Any) -> dict[str, int]:
     """Union every carrier's points and fiber segments (each tagged with its carrier).
 
     Reads ``carriers/{c}/pops.json`` and ``carriers/{c}/fiber-segments.json`` for every
-    carrier (skipping the merge's own output), stamps each row with its carrier id, and
-    writes the two merged row lists. Returns their sizes.
+    carrier, skipping the merge's own output and any other file under ``carriers/``,
+    stamps each row with its carrier id, and writes the two merged row lists. Returns
+    their sizes.
     """
     bucket = os.environ["STORE_BUCKET"]
     listing = client.list_objects_v2(Bucket=bucket, Prefix="carriers/")
@@ -55,7 +60,7 @@ def _build_substrate(client: Any) -> dict[str, int]:
     fiber_segments: list[dict[str, Any]] = []
     for item in listing.get("Contents", []):
         carrier, _, name = item["Key"].removeprefix("carriers/").partition("/")
-        if carrier == "merge":
+        if carrier == "merge" or name not in _CARRIER_FILES:
             continue
         rows = json.loads(client.get_object(Bucket=bucket, Key=item["Key"])["Body"].read())
         tagged = [{"carrier": carrier, **row} for row in rows]
