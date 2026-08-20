@@ -23,5 +23,7 @@ def test_every_live_route_sits_under_the_served_prefix(
     """
     prefix = urlsplit(DEFAULT_API).path
     resources = apigateway_client.get_resources(restApiId=api_id, limit=500)["items"]
-    paths = [item["path"] for item in resources if item["path"] != "/"]
+    # "/" is the tree's root and the prefix itself is the node every route hangs off;
+    # neither is a route and neither sits under the prefix.
+    paths = [item["path"] for item in resources if item["path"] not in ("/", prefix)]
     assert [path for path in paths if not path.startswith(f"{prefix}/")] == []
