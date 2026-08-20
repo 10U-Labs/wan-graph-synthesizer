@@ -13,7 +13,7 @@ The argument is the sub-command: `start <issue-number>` or `stop`.
 
 ## Start
 
-The issue number is required — it is the `{X}` in the first reminder, and every issue above it is in scope. If the user did not give one, ask for it before creating anything.
+The issue number is required — it is the `{X}` in the `:01` reminder, and it is the floor for the repository the session is running in: every open issue above it there is in scope. An issue reached by following a dependency out of that set is in scope as well, whatever its number and whatever repository it lives in, because numbering in one repository says nothing about another — this one is at #100 and `10U-Labs/10ulabs.com` is already at #488. If the user did not give an issue number, ask for it before creating anything.
 
 Create seven jobs with `CronCreate`, exactly as listed below. Use `recurring: true` (the default). Substitute the issue number for `{X}` in the first prompt and leave the other six verbatim. Each `cron` field is a distinct offset within the same ten-minute period, so the seven reminders never land together:
 
@@ -29,7 +29,7 @@ Create seven jobs with `CronCreate`, exactly as listed below. Use `recurring: tr
 
 Then tell the user which issue number is in force, that seven reminders are running, and the two limits that come with them: the jobs live in this session only and are gone when it ends, and recurring jobs auto-expire after seven days.
 
-Then start working, in the same turn that created the jobs. Read the open issues above `{X}` with `gh issue list`, take the lowest-numbered one that nothing else is blocking, and begin solving it under the standing rules the reminders carry. Running this skill is starting the work; the seven jobs only keep it on the rails once it is going.
+Then start working, in the same turn that created the jobs. Read the open issues above `{X}` with `gh issue list`, then read `gh api repos/{owner}/{repo}/issues/{number}/dependencies/blocked_by` for each of them; every entry names the repository its blocker lives in. Follow those entries, and the entries of the issues they reach, until nothing new comes back, and add every open issue found this way to the set. Then take the lowest-numbered issue in the set that no open issue blocks, preferring the repository the session is running in when two are equally unblocked, and begin solving it under the standing rules the reminders carry — committing in whichever repository its `Proposed Solution` names, and reading that repository's CI to confirm it. Running this skill is starting the work; the seven jobs only keep it on the rails once it is going.
 
 ## Stop
 
@@ -50,3 +50,9 @@ The issue sub-headers in the reminder at :09 match `CLAUDE.md` and `docs/claude/
 The reminder at :05 was added on 2026-08-02 for the same reason the two-section form was added to the one at :09. The :09 reminder names the sections and nothing else, so an issue written to it comes out correctly structured and ordered for whoever wrote it: issue #47 opens by naming `_settled` and the line it sits on, and reaches the race between `seed` and `api_endpoint_tenants_wan_post` that makes the function matter three paragraphs later. Structure is not the whole of how an issue is written, and a reminder that names only structure is read as though it were. `docs/claude/memories/lead-with-what-it-is-for.md` is the long form, and it applies to chat replies and commit messages too, which is why the reminder does not say "issue".
 
 That reminder carries the two-section form as well as the six, because it used to carry only the six and firing them alone every ten minutes was enough to produce the tests they asked for. A defect in a workflow file or a config was arriving beside a standing instruction to name the regression tests that would prevent it, and the instruction won: issue #37 had to argue at length that none were owed, and a contract over the seed workflow's yamllint list reached `test/` before the rule was written down. A reminder that names only one case is read as though the case were the whole rule.
+
+The skill body is read when the skill is invoked, so editing this file does not reach a session already running under it. Whoever lands a change here has to `/autopilot stop` and `/autopilot start` again before it takes effect: a session that solved the issue which changed this file and then carried on is still working from the scope it was started with, and it will report that it has run out of issues rather than that it is reading the wrong set of them.
+
+`CLAUDE.md` in this repository is the rulebook wherever the session is working, including in another repository the dependency traversal reaches. Verification in CI only, one issue per commit straight to `main`, and the writing and issue-structure rules all hold there. `10U-Labs/10ulabs.com` states none of its own, and a session working there under no rules at all is the worse outcome.
+
+A reminder in this file is named by the minute it fires — the `:01` reminder, the `:09` reminder — and a line in it is written out in full, as "line 22". The rest of the repository writes `path/to/file.py:56` for a line and then a bare `:56` for another line in the same file, and that shorthand collides here: line 22 is the `:01` reminder, so "the reminder at `:22`" sends a reader looking for a reminder that fires at minute 22, and there is none.
