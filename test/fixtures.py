@@ -331,13 +331,15 @@ def _forced_artifacts(
     emergent selections. Validation goes through ``finalize`` for the same reason: the
     report then answers to the degrees ``params`` configures, not to the defaults.
     """
-    sites, links = inputs if inputs is not None else _ring_inputs()
-    sites, links, overrides = apply_role_overrides(sites, links, params, links)
-    synthesis = synthesize_two_tier(sites, links, params, overrides)
-    sites, links, synthesis, validation = finalize(
-        sites, links, synthesis, params, overrides.degree_exempt_backbone_ids
+    sites, fiber_segments = inputs if inputs is not None else _ring_inputs()
+    sites, fiber_segments, overrides = apply_role_overrides(
+        sites, fiber_segments, params, links
     )
-    return SynthesisArtifacts(sites, links, synthesis, validation)
+    synthesis = synthesize_two_tier(sites, fiber_segments, params, overrides)
+    sites, fiber_segments, synthesis, validation = finalize(
+        sites, fiber_segments, synthesis, params, overrides.degree_exempt_backbone_ids
+    )
+    return SynthesisArtifacts(sites, fiber_segments, synthesis, validation)
 
 
 def forced_backbone_artifacts(name: str) -> SynthesisArtifacts:

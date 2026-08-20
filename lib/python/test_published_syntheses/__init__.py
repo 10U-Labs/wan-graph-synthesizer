@@ -153,7 +153,7 @@ def settled(status: dict[str, Any]) -> bool:
     return status.get("status") not in UNFINISHED
 
 
-def site(node: dict[str, Any]) -> Site:
+def site_from_node(node: dict[str, Any]) -> Site:
     """Rebuild a published node as the site type the distance helper takes."""
     latitude, longitude = node["coords"]
     return Site(node["id"], node["name"], node["kind"], (latitude, longitude))
@@ -165,9 +165,9 @@ def worst_haul(synthesis: dict[str, Any]) -> float:
     Sites the operator has excused the distance constraint are left out, as they are in the
     synthesizer's own stop condition, and a synthesis carrying no demand at all reads zero.
     """
-    nodes = [site(node) for node in synthesis["backbone"]]
+    nodes = [site_from_node(node) for node in synthesis["backbone"]]
     hauls: list[float] = [
-        min(haversine_miles(site(site), node) for node in nodes)
+        min(haversine_miles(site_from_node(site), node) for node in nodes)
         for site in synthesis["demand"]
         if not site["exempt_from_distance_constraint"]
     ]
@@ -184,7 +184,7 @@ def overrun_links(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     branches -- each of them discards a link and says nothing, and a helper discarding
     every link returns the empty list a sound network returns.
     """
-    coords = {node["id"]: site(node) for node in synthesis["backbone"]}
+    coords = {node["id"]: site_from_node(node) for node in synthesis["backbone"]}
     allowed = SINUOSITY * synthesis["max_backup_path_multiple"]
     overrun = []
     for link in synthesis["links"]:
