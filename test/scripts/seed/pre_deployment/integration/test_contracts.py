@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from urllib.parse import urlsplit
 from collections.abc import Callable
 from typing import Any, cast
 
@@ -48,7 +49,7 @@ def _declared_templates() -> set[str]:
     """
     spec = json.loads(
         (REPO_ROOT / "src/www/api/openapi.json").read_text(encoding="utf-8"))
-    prefix = "/wan-graph-synthesizer/"
+    prefix = f"{urlsplit(seed.DEFAULT_API).path}/"
     return {path[len(prefix):] for path in spec["paths"] if path.startswith(prefix)}
 
 

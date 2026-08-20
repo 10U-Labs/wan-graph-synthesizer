@@ -1,7 +1,7 @@
 """WAN create endpoint: start a tenant's synthesizer and report its status.
 
-    POST /wan-graph-synthesizer/tenants/{tenant}/wan -> 202; start the create
-    GET  /wan-graph-synthesizer/tenants/{tenant}/wan -> the WAN's status (422 with no WAN)
+    POST /wan-synthesizer/tenants/{tenant}/wan -> 202; start the create
+    GET  /wan-synthesizer/tenants/{tenant}/wan -> the WAN's status (422 with no WAN)
 
 The synthesize math takes longer than API Gateway's ~29s cap, so a POST async-invokes
 the synthesizer Lambda and returns immediately; the synthesizer writes the finished WAN

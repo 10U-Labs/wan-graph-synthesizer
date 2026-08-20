@@ -1,11 +1,11 @@
 """Carriers endpoint: read and write a carrier's input graph in the S3 store.
 
-    GET    /wan-graph-synthesizer/carriers                     -> the carrier ids
-    GET    /wan-graph-synthesizer/carriers/{carrier}/pops  -> that carrier's PoPs
-    GET    /wan-graph-synthesizer/carriers/{carrier}/fiber-segments     -> that carrier's fiber
-    PUT    /wan-graph-synthesizer/carriers/{carrier}/pops  -> replace its PoPs
-    PUT    /wan-graph-synthesizer/carriers/{carrier}/fiber-segments     -> replace its fiber
-    DELETE /wan-graph-synthesizer/carriers/{carrier}           -> remove the carrier
+    GET    /wan-synthesizer/carriers                     -> the carrier ids
+    GET    /wan-synthesizer/carriers/{carrier}/pops  -> that carrier's PoPs
+    GET    /wan-synthesizer/carriers/{carrier}/fiber-segments     -> that carrier's fiber
+    PUT    /wan-synthesizer/carriers/{carrier}/pops  -> replace its PoPs
+    PUT    /wan-synthesizer/carriers/{carrier}/fiber-segments     -> replace its fiber
+    DELETE /wan-synthesizer/carriers/{carrier}           -> remove the carrier
 
 A write persists to the store and nothing else. Rebuilding the dependents (the carrier
 merge substrate and each tenant's WAN) is done by explicit operations the caller invokes

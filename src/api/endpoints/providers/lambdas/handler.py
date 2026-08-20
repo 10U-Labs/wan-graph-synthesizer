@@ -1,8 +1,8 @@
 """Providers endpoint: read and write the provider regions in the S3 store.
 
-    GET    /wan-graph-synthesizer/providers/regions  -> the provider regions
-    PUT    /wan-graph-synthesizer/providers/regions  -> replace the regions
-    DELETE /wan-graph-synthesizer/providers/regions  -> remove the regions
+    GET    /wan-synthesizer/providers/regions  -> the provider regions
+    PUT    /wan-synthesizer/providers/regions  -> replace the regions
+    DELETE /wan-synthesizer/providers/regions  -> remove the regions
 
 A provider graph is regions only (no fiber), so it exposes sites but no links. A write
 only stores the regions; building a tenant's WAN is a separate operation

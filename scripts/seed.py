@@ -28,7 +28,7 @@ import yaml
 
 from repo_utils import REPO_ROOT
 
-DEFAULT_API = "https://api.10ulabs.com/wan-graph-synthesizer"
+DEFAULT_API = "https://api.10ulabs.com/wan-synthesizer"
 DATA = REPO_ROOT / "data"
 ETC = REPO_ROOT / "etc"
 

@@ -6,7 +6,7 @@ const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIB = "© OpenStreetMap contributors";
 
 // The REST API: a tenant's WAN is served as sites + links collections.
-const API_BASE = "https://api.10ulabs.com/wan-graph-synthesizer";
+const API_BASE = "https://api.10ulabs.com/wan-synthesizer";
 
 // The tenant shown on first load, before the operator picks one.
 const DEFAULT_MAP_ID = "daf";

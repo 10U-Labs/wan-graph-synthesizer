@@ -6,7 +6,7 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/wan-graph-synthesizer/carriers": {
+    "/wan-synthesizer/carriers": {
       "get": {
         "summary": "List carriers.",
         "responses": { "200": { "description": "The carriers." } },
@@ -17,7 +17,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/{carrier}/pops": {
+    "/wan-synthesizer/carriers/{carrier}/pops": {
       "get": {
         "summary": "A carrier's PoPs.",
         "parameters": [
@@ -43,7 +43,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/{carrier}/fiber-segments": {
+    "/wan-synthesizer/carriers/{carrier}/fiber-segments": {
       "get": {
         "summary": "A carrier's fiber.",
         "parameters": [
@@ -69,7 +69,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/{carrier}": {
+    "/wan-synthesizer/carriers/{carrier}": {
       "delete": {
         "summary": "Remove a carrier.",
         "parameters": [
@@ -83,7 +83,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/merge": {
+    "/wan-synthesizer/carriers/merge": {
       "post": {
         "summary": "Merge all carriers into the substrate (fast).",
         "responses": { "200": { "description": "The substrate." } },
@@ -121,7 +121,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/merge/pops": {
+    "/wan-synthesizer/carriers/merge/pops": {
       "get": {
         "summary": "The substrate's PoPs.",
         "responses": { "200": { "description": "Substrate sites." } },
@@ -132,7 +132,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/merge/fiber-segments": {
+    "/wan-synthesizer/carriers/merge/fiber-segments": {
       "get": {
         "summary": "The substrate's fiber segments.",
         "responses": { "200": { "description": "Substrate links." } },
@@ -143,7 +143,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/providers/regions": {
+    "/wan-synthesizer/providers/regions": {
       "get": {
         "summary": "The provider regions.",
         "responses": { "200": { "description": "The provider regions." } },
@@ -172,7 +172,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants": {
+    "/wan-synthesizer/tenants": {
       "get": {
         "summary": "List tenants.",
         "responses": { "200": { "description": "The tenants, each as an {id, label} entry." } },
@@ -183,7 +183,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/sites": {
+    "/wan-synthesizer/tenants/{tenant}/sites": {
       "get": {
         "summary": "A tenant WAN's sites.",
         "parameters": [
@@ -197,7 +197,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/paths": {
+    "/wan-synthesizer/tenants/{tenant}/paths": {
       "get": {
         "summary": "A tenant WAN's paths.",
         "parameters": [
@@ -211,7 +211,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/backbone-nodes": {
+    "/wan-synthesizer/tenants/{tenant}/backbone-nodes": {
       "get": {
         "summary": "A tenant WAN's backbone tier.",
         "parameters": [
@@ -225,7 +225,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/backbone-links": {
+    "/wan-synthesizer/tenants/{tenant}/backbone-links": {
       "get": {
         "summary": "A tenant WAN's backbone-to-backbone mesh links.",
         "parameters": [
@@ -239,7 +239,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/tenant-nodes": {
+    "/wan-synthesizer/tenants/{tenant}/tenant-nodes": {
       "get": {
         "summary": "A tenant WAN's tenant-site demand, homed to the backbone.",
         "parameters": [
@@ -253,7 +253,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/provider-nodes": {
+    "/wan-synthesizer/tenants/{tenant}/provider-nodes": {
       "get": {
         "summary": "A tenant WAN's provider-region demand, homed to the backbone.",
         "parameters": [
@@ -267,7 +267,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/locations": {
+    "/wan-synthesizer/tenants/{tenant}/locations": {
       "get": {
         "summary": "A tenant's demand locations (input).",
         "parameters": [
@@ -293,7 +293,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/provider-regions": {
+    "/wan-synthesizer/tenants/{tenant}/provider-regions": {
       "get": {
         "summary": "A tenant's selected provider regions (input).",
         "parameters": [
@@ -319,7 +319,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/off-net": {
+    "/wan-synthesizer/tenants/{tenant}/off-net": {
       "get": {
         "summary": "A tenant's off-net candidate seats (input).",
         "parameters": [
@@ -345,7 +345,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/forced-backbone-nodes": {
+    "/wan-synthesizer/tenants/{tenant}/forced-backbone-nodes": {
       "get": {
         "summary": "A tenant's forced backbone nodes (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -359,7 +359,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/forced-paths": {
+    "/wan-synthesizer/tenants/{tenant}/forced-paths": {
       "get": {
         "summary": "A tenant's forced paths (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -373,7 +373,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/forced-homes": {
+    "/wan-synthesizer/tenants/{tenant}/forced-homes": {
       "get": {
         "summary": "A tenant's forced homes (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -387,7 +387,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-backbone-nodes": {
+    "/wan-synthesizer/tenants/{tenant}/prohibited-backbone-nodes": {
       "get": {
         "summary": "A tenant's prohibited backbone nodes (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -401,7 +401,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/degree-exempt-backbone-nodes": {
+    "/wan-synthesizer/tenants/{tenant}/degree-exempt-backbone-nodes": {
       "get": {
         "summary": "A tenant's degree-exempt backbone nodes (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -415,7 +415,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/prohibited-paths": {
+    "/wan-synthesizer/tenants/{tenant}/prohibited-paths": {
       "get": {
         "summary": "A tenant's prohibited paths (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -429,7 +429,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/backbone-node-count": {
+    "/wan-synthesizer/tenants/{tenant}/backbone-node-count": {
       "get": {
         "summary": "A tenant's backbone node count, min and max (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -443,7 +443,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/convergence-promotion": {
+    "/wan-synthesizer/tenants/{tenant}/convergence-promotion": {
       "get": {
         "summary": "A tenant's convergence promotion policy (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -457,7 +457,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/backbone-number-of-diverse-paths": {
+    "/wan-synthesizer/tenants/{tenant}/backbone-number-of-diverse-paths": {
       "get": {
         "summary": "A tenant's backbone number of diverse paths (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -471,7 +471,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/access-homing-degree": {
+    "/wan-synthesizer/tenants/{tenant}/access-homing-degree": {
       "get": {
         "summary": "A tenant's access homing degree (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -485,7 +485,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/knobs": {
+    "/wan-synthesizer/tenants/{tenant}/knobs": {
       "get": {
         "summary": "A tenant's algorithm knobs (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -499,7 +499,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/settings": {
+    "/wan-synthesizer/tenants/{tenant}/settings": {
       "get": {
         "summary": "A tenant's implementation settings (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -513,7 +513,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/label": {
+    "/wan-synthesizer/tenants/{tenant}/label": {
       "get": {
         "summary": "A tenant's display label (input).",
         "parameters": [ { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } } ],
@@ -527,7 +527,7 @@
         "x-amazon-apigateway-integration": { "uri": "${TenantsHandlerArn}", "httpMethod": "POST", "type": "aws_proxy" }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}": {
+    "/wan-synthesizer/tenants/{tenant}": {
       "delete": {
         "summary": "Remove a tenant and all its inputs and outputs.",
         "parameters": [
@@ -541,7 +541,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/wan": {
+    "/wan-synthesizer/tenants/{tenant}/wan": {
       "post": {
         "summary": "Create (synthesize) the tenant's WAN.",
         "parameters": [

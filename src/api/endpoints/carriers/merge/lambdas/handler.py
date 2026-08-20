@@ -1,8 +1,8 @@
 """Carrier merge endpoint: stitch all carriers into the substrate (the shared mesh).
 
-    POST /wan-graph-synthesizer/carriers/merge          -> (re)build the substrate
-    GET  /wan-graph-synthesizer/carriers/merge/pops -> the substrate's PoPs
-    GET  /wan-graph-synthesizer/carriers/merge/fiber-segments    -> the substrate's fiber
+    POST /wan-synthesizer/carriers/merge          -> (re)build the substrate
+    GET  /wan-synthesizer/carriers/merge/pops -> the substrate's PoPs
+    GET  /wan-synthesizer/carriers/merge/fiber-segments    -> the substrate's fiber
 
 The substrate is just every carrier's points and fiber segments unioned, each row
 tagged with the carrier it came from (taken from its endpoint path) so a segment resolves

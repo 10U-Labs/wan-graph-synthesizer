@@ -1,12 +1,12 @@
 """Tenants endpoint: read a computed WAN and read/write a tenant's inputs.
 
-    GET    /wan-graph-synthesizer/tenants                              -> [{id, label}]
-    GET    /wan-graph-synthesizer/tenants/{c}/sites|links           -> the WAN graph
-    GET    /wan-graph-synthesizer/tenants/{c}/backbone-nodes|...        -> the WAN tiers
-    GET    /wan-graph-synthesizer/tenants/{c}/backbone-links            -> the WAN mesh links
-    GET    /wan-graph-synthesizer/tenants/{c}/locations|forced-backbone-nodes|... -> an input
-    PUT    /wan-graph-synthesizer/tenants/{c}/locations|forced-backbone-nodes|... -> set input
-    DELETE /wan-graph-synthesizer/tenants/{c}                          -> remove the tenant
+    GET    /wan-synthesizer/tenants                              -> [{id, label}]
+    GET    /wan-synthesizer/tenants/{c}/sites|links           -> the WAN graph
+    GET    /wan-synthesizer/tenants/{c}/backbone-nodes|...        -> the WAN tiers
+    GET    /wan-synthesizer/tenants/{c}/backbone-links            -> the WAN mesh links
+    GET    /wan-synthesizer/tenants/{c}/locations|forced-backbone-nodes|... -> an input
+    PUT    /wan-synthesizer/tenants/{c}/locations|forced-backbone-nodes|... -> set input
+    DELETE /wan-synthesizer/tenants/{c}                          -> remove the tenant
 
 The computed collections come from the published ``wan.json``; each operator input is
 its own document (the synthesizer reads them all). A PUT persists the input and nothing

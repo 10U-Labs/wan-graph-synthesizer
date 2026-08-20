@@ -1,7 +1,7 @@
 # This repo's OWN regional API Gateway, built from the OpenAPI spec (one Lambda
 # per resource, registered via x-amazon-apigateway-integration). 10ulabs.com's
 # CloudFront adds one origin (api_gateway_execute_domain) + one behavior for
-# /wan-graph-synthesizer/*, so every route reaches this gateway. New endpoints are
+# /wan-synthesizer/*, so every route reaches this gateway. New endpoints are
 # added by editing openapi.json + their own stack -- no change here.
 
 module "common" {
