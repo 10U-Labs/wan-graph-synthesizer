@@ -1,5 +1,5 @@
 resource "aws_iam_role" "lambda" {
-  name = "wan-graph-synthesizer-wan-lambda"
+  name = "wan-synthesizer-wan-lambda"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

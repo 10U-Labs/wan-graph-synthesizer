@@ -32,7 +32,7 @@ def test_rest_api_is_declared(routing_main: dict[str, object]) -> None:
 def test_rest_api_has_the_product_name(routing_main: dict[str, object]) -> None:
     """The REST API carries the product's name."""
     api = _resource(routing_main, "aws_api_gateway_rest_api", "api")
-    assert api["name"] == "wan-graph-synthesizer"
+    assert api["name"] == "wan-synthesizer"
 
 
 def test_rest_api_is_regional(routing_main: dict[str, object]) -> None:

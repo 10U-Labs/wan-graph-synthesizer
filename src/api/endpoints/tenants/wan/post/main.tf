@@ -43,14 +43,14 @@ data "archive_file" "solver_layer" {
 resource "aws_lambda_layer_version" "solver" {
   filename                 = data.archive_file.solver_layer.output_path
   source_code_hash         = data.archive_file.solver_layer.output_base64sha256
-  layer_name               = "wan-graph-synthesizer-solver"
+  layer_name               = "wan-synthesizer-solver"
   compatible_runtimes      = ["python3.13"]
   compatible_architectures = ["arm64"]
   description              = "highspy 1.15.1 and numpy 2.3.5: the solver the synthesizer's backbone search calls."
 }
 
 resource "aws_iam_role" "synthesizer" {
-  name = "wan-graph-synthesizer-synthesizer"
+  name = "wan-synthesizer-synthesizer"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -129,7 +129,7 @@ resource "aws_lambda_function" "synthesizer" {
 # one asks the operator to change the tenant's config, the other to try again. It reuses the synthesizer's deployment package but is its
 # own function, entered at a different handler and running as its own write-only role.
 resource "aws_iam_role" "failure_handler" {
-  name = "wan-graph-synthesizer-failure-handler"
+  name = "wan-synthesizer-failure-handler"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{

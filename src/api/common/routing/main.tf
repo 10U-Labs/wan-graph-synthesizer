@@ -34,7 +34,7 @@ locals {
 }
 
 resource "aws_api_gateway_rest_api" "api" {
-  name = "wan-graph-synthesizer"
+  name = "wan-synthesizer"
   body = local.openapi_spec
 
   endpoint_configuration {

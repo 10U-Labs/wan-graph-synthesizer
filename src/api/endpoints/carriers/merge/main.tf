@@ -17,7 +17,7 @@ module "common" {
 
 locals {
   function_name = module.common.lambda_handler_names.merge
-  role_name     = "wan-graph-synthesizer-merge-lambda"
+  role_name     = "wan-synthesizer-merge-lambda"
 }
 
 data "terraform_remote_state" "routing" {

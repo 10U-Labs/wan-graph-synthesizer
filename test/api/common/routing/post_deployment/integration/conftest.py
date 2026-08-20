@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-API_NAME = "wan-graph-synthesizer"
+API_NAME = "wan-synthesizer"
 
 
 @pytest.fixture(name="api_id")

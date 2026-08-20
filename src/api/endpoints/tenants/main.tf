@@ -17,7 +17,7 @@ module "common" {
 
 locals {
   function_name = module.common.lambda_handler_names.tenants
-  role_name     = "wan-graph-synthesizer-tenants-lambda"
+  role_name     = "wan-synthesizer-tenants-lambda"
 }
 
 data "terraform_remote_state" "routing" {

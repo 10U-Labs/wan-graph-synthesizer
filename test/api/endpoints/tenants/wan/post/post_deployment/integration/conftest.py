@@ -26,7 +26,7 @@ def synthesizer_function_name_fixture(function_name: str) -> str:
 @pytest.fixture(name="synthesizer_role_name")
 def synthesizer_role_name_fixture() -> str:
     """Return the synthesizer Lambda's dedicated execution role name."""
-    return "wan-graph-synthesizer-synthesizer"
+    return "wan-synthesizer-synthesizer"
 
 
 @pytest.fixture(name="synthesizer_config")
@@ -55,7 +55,7 @@ def failure_handler_function_name_fixture(function_name: str) -> str:
 @pytest.fixture(name="failure_handler_role_name")
 def failure_handler_role_name_fixture() -> str:
     """Return the failure handler's dedicated execution role name."""
-    return "wan-graph-synthesizer-failure-handler"
+    return "wan-synthesizer-failure-handler"
 
 
 @pytest.fixture(name="failure_handler_config")
