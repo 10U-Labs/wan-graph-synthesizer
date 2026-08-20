@@ -68,7 +68,7 @@ FIBER = "carrier_physical"
 UNFINISHED = frozenset({"creating", "synthesizing"})
 
 # The published collections this module reads, under the names the API serves them by.
-COLLECTIONS = ("backbone-nodes", "backbone-links", "tenant-nodes", "provider-nodes", "links")
+COLLECTIONS = ("backbone-nodes", "backbone-links", "tenant-nodes", "provider-nodes", "paths")
 
 
 def request_paths(tenant: str) -> list[str]:
@@ -135,7 +135,7 @@ def published_synthesis(api: str, tenant: str, config: dict[str, Any]) -> dict[s
         "lower_bound_miles": state.get("backbone_lower_bound_miles"),
         "backbone": published.get("backbone-nodes", []),
         "demand": published.get("tenant-nodes", []) + published.get("provider-nodes", []),
-        "paths": published.get("backbone-links", []),
+        "links": published.get("backbone-links", []),
         "paths": published.get("paths", []),
     }
 
@@ -187,7 +187,7 @@ def overrun_links(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     coords = {node["id"]: site(node) for node in synthesis["backbone"]}
     allowed = SINUOSITY * synthesis["max_backup_path_multiple"]
     overrun = []
-    for link in synthesis["paths"]:
+    for link in synthesis["links"]:
         source = coords.get(link["source_id"])
         target = coords.get(link["target_id"])
         if source is None or target is None or source is target:
@@ -285,7 +285,7 @@ def overbuilt_pairs(synthesis: dict[str, Any]) -> list[tuple[str, int]]:
     the one pair it is.
     """
     drawn: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for link in synthesis["paths"]:
+    for link in synthesis["links"]:
         pair = tuple(sorted((link["source_id"], link["target_id"])))
         drawn.setdefault(pair, []).append(link)
     names = {node["id"]: node["name"] for node in synthesis["backbone"]}
@@ -295,10 +295,10 @@ def overbuilt_pairs(synthesis: dict[str, Any]) -> list[tuple[str, int]]:
         if len(paths) < 2:
             continue
         spare = max(paths, key=lambda path: path["distance_miles"])
-        kept = [link for link in synthesis["paths"] if link is not spare]
+        kept = [link for link in synthesis["links"] if link is not spare]
         if not any(
             independent_ways_out(kept, end, names)
-            < min(asked, independent_ways_out(synthesis["paths"], end, names))
+            < min(asked, independent_ways_out(synthesis["links"], end, names))
             for end in pair
         ):
             overbuilt.append((" <-> ".join(pair), len(paths)))
@@ -439,17 +439,17 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
         frozenset((pair["source"], pair["target"])) for pair in synthesis["forced_paths"]
     }
     held_ways_out = {
-        site: min(asked, independent_ways_out(synthesis["paths"], site, names))
+        site: min(asked, independent_ways_out(synthesis["links"], site, names))
         for site in sites
     }
     survives_a_city_loss = not _holds_a_single_point_of_failure(
-        _cities_the_paths_cross(synthesis["paths"])
+        _cities_the_paths_cross(synthesis["links"])
     )
     removable: list[tuple[str, float]] = []
-    for spare in synthesis["paths"]:
+    for spare in synthesis["links"]:
         if frozenset((names[spare["source_id"]], names[spare["target_id"]])) in pinned:
             continue
-        kept = [link for link in synthesis["paths"] if link is not spare]
+        kept = [link for link in synthesis["links"] if link is not spare]
         if any(
             independent_ways_out(kept, site, names) < held_ways_out[site] for site in sites
         ):
@@ -530,7 +530,7 @@ def detoured_links(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     fiber = _published_fiber(synthesis)
     allowed = synthesis["max_backup_path_multiple"]
     detoured = []
-    for link in synthesis["paths"]:
+    for link in synthesis["links"]:
         shortest = _shortest_fiber_miles(fiber, link["source_id"], link["target_id"])
         if shortest > 0 and link["distance_miles"] > allowed * shortest + ROUNDING_SLACK:
             detoured.append((" -> ".join(link["path"]), link["distance_miles"] / shortest))

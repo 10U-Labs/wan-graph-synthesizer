@@ -22,7 +22,7 @@ _READER: dict[str, Any] = {
     "stored_key": "tenants/f-35/wan.json",
     "stored": {
         "sites": [],
-        "links": [],
+        "paths": [],
         "backbone-nodes": [{"id": "P"}],
         "tenant-nodes": [],
         "provider-nodes": [],
@@ -38,7 +38,7 @@ _READER: dict[str, Any] = {
     },
     "notbuilt_event": {
         "pathParameters": {"tenant": "minuteman"},
-        "path": "/x/tenants/minuteman/links",
+        "path": "/x/tenants/minuteman/paths",
     },
 }
 

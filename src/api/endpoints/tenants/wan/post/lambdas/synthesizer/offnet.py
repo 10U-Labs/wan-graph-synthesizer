@@ -51,7 +51,7 @@ class SeatedOffNetSites:
 def realize_off_net_sites(
     sites: list[Site],
     fiber_segments: dict[tuple[str, str], FiberSegment],
-    sites: list[Site],
+    off_net_roster: list[Site],
     forced_names: frozenset[str],
     datacenter_cities: frozenset[tuple[str, str]] | None = frozenset(),
 ) -> SeatedOffNetSites:
@@ -74,7 +74,7 @@ def realize_off_net_sites(
     augmented_sites = list(sites)
     augmented_links = dict(fiber_segments)
     seat_ids: set[str] = set()
-    for site in sorted(sites, key=lambda site: site.id):
+    for site in sorted(off_net_roster, key=lambda site: site.id):
         if site.name not in forced_names:
             continue
         if site.name in carrier_names:

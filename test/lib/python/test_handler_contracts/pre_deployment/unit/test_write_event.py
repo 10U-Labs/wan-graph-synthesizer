@@ -29,10 +29,10 @@ def test_the_resource_is_named_where_the_gateway_names_it() -> None:
 
 def test_the_collection_asked_for_is_named_in_the_path() -> None:
     """Which of the resource's collections is being replaced is decided by the path."""
-    assert write_event(_CFG, "links", [])["path"] == "/x/carriers/zayo/fiber-segments"
+    assert write_event(_CFG, "fiber-segments", [])["path"] == "/x/carriers/zayo/fiber-segments"
 
 
 def test_the_rows_are_carried_as_the_body_a_gateway_would_deliver() -> None:
     """API Gateway hands a handler text, so the rows arrive encoded rather than as objects."""
     rows = [{"a_municipality": "Denver", "z_municipality": "Reston"}]
-    assert json.loads(write_event(_CFG, "links", rows)["body"]) == rows
+    assert json.loads(write_event(_CFG, "fiber-segments", rows)["body"]) == rows

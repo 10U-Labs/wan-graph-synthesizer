@@ -18,5 +18,5 @@ def test_the_build_state_is_asked_for_before_the_collections_it_gates() -> None:
         "tenants/daf/backbone-links",
         "tenants/daf/tenant-nodes",
         "tenants/daf/provider-nodes",
-        "tenants/daf/links",
+        "tenants/daf/paths",
     ]

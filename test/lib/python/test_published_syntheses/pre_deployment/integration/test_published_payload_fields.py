@@ -48,7 +48,7 @@ _LINK_FIELDS = ("source_id", "target_id", "distance_miles", "path")
 # ``link_kind`` is what separates a segment of carrier fiber from an access homing, and the
 # two are served in one collection. A reader that could not tell them apart would measure
 # a link against a path through a demand site's homing, which is not fiber.
-_LINK_FIELDS = ("source_id", "target_id", "distance_miles", "link_kind")
+_PATH_FIELDS = ("source_id", "target_id", "distance_miles", "link_kind")
 
 
 def _subjects() -> list[tuple[str, list[dict[str, Any]], tuple[str, ...]]]:
@@ -57,7 +57,7 @@ def _subjects() -> list[tuple[str, list[dict[str, Any]], tuple[str, ...]]]:
         ("backbone-nodes", published.backbone_nodes(_PAYLOAD), _NODE_FIELDS),
         ("tenant-nodes", published.tenant_nodes(_PAYLOAD), _SITE_FIELDS),
         ("backbone-links", published.backbone_links(_PAYLOAD), _LINK_FIELDS),
-        ("links", published.links(_PAYLOAD), _LINK_FIELDS),
+        ("paths", published.paths(_PAYLOAD), _PATH_FIELDS),
     ]
 
 

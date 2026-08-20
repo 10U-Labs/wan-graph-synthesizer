@@ -37,7 +37,7 @@ _ORDERED: list[dict[str, Any]] = [
 
 def test_the_miles_ordered_are_the_carrier_fiber_the_network_runs_over() -> None:
     """The two fiber segments add up to 360.75, and the thirteen miles of homing are left out."""
-    assert ordered_fiber_miles({"links": _ORDERED}) == 360.75
+    assert ordered_fiber_miles({"paths": _ORDERED}) == 360.75
 
 
 def test_a_network_whose_links_are_all_homings_ordered_no_fiber() -> None:
@@ -46,9 +46,9 @@ def test_a_network_whose_links_are_all_homings_ordered_no_fiber() -> None:
     A reader adding up every link served would call this thirteen miles of network, which
     is thirteen miles nobody laid.
     """
-    assert ordered_fiber_miles({"links": _ORDERED[2:]}) == 0
+    assert ordered_fiber_miles({"paths": _ORDERED[2:]}) == 0
 
 
 def test_a_network_carrying_no_links_ordered_no_fiber() -> None:
     """A tenant whose build has not landed published no fiber and reads as none."""
-    assert ordered_fiber_miles({"links": []}) == 0
+    assert ordered_fiber_miles({"paths": []}) == 0

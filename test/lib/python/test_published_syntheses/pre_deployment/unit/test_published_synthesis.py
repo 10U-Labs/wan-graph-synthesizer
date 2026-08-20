@@ -89,7 +89,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "tenants/daf/backbone-links": [_LINK],
         "tenants/daf/tenant-nodes": [_SITE],
         "tenants/daf/provider-nodes": [_REGION],
-        "tenants/daf/links": [_SEGMENT],
+        "tenants/daf/paths": [_SEGMENT],
     }))
     assert published_synthesis(DEFAULT_API, "daf", _CONFIG) == {
         "tenant": "daf",
@@ -104,7 +104,7 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         "backbone": [_NODE],
         "demand": [_SITE, _REGION],
         "links": [_LINK],
-        "links": [_SEGMENT],
+        "paths": [_SEGMENT],
     }
 
 
@@ -120,7 +120,7 @@ def test_a_tenant_whose_build_has_not_published_is_read_with_no_network(
     }))
     synthesis = published_synthesis(DEFAULT_API, "daf", _CONFIG)
     assert [
-        synthesis["backbone"], synthesis["demand"], synthesis["links"], synthesis["links"]
+        synthesis["backbone"], synthesis["demand"], synthesis["links"], synthesis["paths"]
     ] == [[], [], [], []]
 
 

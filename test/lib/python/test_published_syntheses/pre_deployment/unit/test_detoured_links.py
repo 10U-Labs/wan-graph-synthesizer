@@ -44,7 +44,7 @@ _LINKS: list[dict[str, Any]] = [
 def _synthesis(source: str, target: str, distance: float) -> dict[str, Any]:
     """A published network of that fiber carrying one drawn link between two ids."""
     return {
-        "links": _LINKS,
+        "paths": _LINKS,
         "max_backup_path_multiple": 3.0,
         "links": [
             {

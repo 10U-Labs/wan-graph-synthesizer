@@ -73,7 +73,7 @@ def _rounding_slack(synthesis: dict[str, Any]) -> float:
     by at least the fiber it failed to buy, and the shortest segment on any of the five maps
     runs miles rather than thousandths.
     """
-    segments = sum(1 for link in synthesis["links"] if link["link_kind"] == FIBER)
+    segments = sum(1 for link in synthesis["paths"] if link["link_kind"] == FIBER)
     return (segments + 1) * _ROUNDED_TO / 2
 
 

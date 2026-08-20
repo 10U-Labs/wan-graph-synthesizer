@@ -50,10 +50,10 @@ def test_sites_returns_the_payload_sites() -> None:
     assert gc.sites(payload) == payload["sites"]
 
 
-def test_links_combines_access_and_carrier_fiber() -> None:
-    """links() concatenates access homings and carrier-physical links."""
+def test_paths_combines_access_and_carrier_fiber() -> None:
+    """paths() concatenates access homings and carrier-physical links."""
     payload = _payload()
-    assert gc.links(payload) == payload["access_paths"] + payload["fiber_segments"]
+    assert gc.paths(payload) == payload["access_paths"] + payload["fiber_segments"]
 
 
 def test_backbone_nodes_are_all_tier_backbone() -> None:
