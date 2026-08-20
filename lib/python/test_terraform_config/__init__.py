@@ -130,7 +130,7 @@ def store_bucket_name() -> str:
     bucket = find_resource(load_tf(STORAGE_MAIN_FILE), "aws_s3_bucket", "store")
     if bucket is None:
         raise AssertionError("aws_s3_bucket.store is not declared in the storage stack")
-    return str(cast(dict[str, object], bucket)["bucket"])
+    return str(bucket["bucket"])
 
 
 def _string_output(name: str, fallback: str) -> str:
