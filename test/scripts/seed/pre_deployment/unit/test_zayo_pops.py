@@ -15,8 +15,8 @@ import csv
 from repo_utils import REPO_ROOT
 
 _DATA = REPO_ROOT / "data"
-_ZAYO = _DATA / "vertices" / "carriers" / "zayo.csv"
-_ZAYO_EDGES = _DATA / "edges" / "zayo.csv"
+_ZAYO = _DATA / "pops" / "zayo.csv"
+_ZAYO_EDGES = _DATA / "fiber_segments" / "zayo.csv"
 
 # Country -> continent. Same-continent links (intra-Europe, intra-Asia) are not
 # submarine crossings, so they are out of the gateway rule below.

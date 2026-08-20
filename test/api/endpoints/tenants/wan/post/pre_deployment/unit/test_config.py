@@ -64,15 +64,15 @@ def test_default_max_backbone_count_is_none() -> None:
 
 def test_default_vertex_files() -> None:
     """The default config maps each tenant to its per-tenant vertices CSV."""
-    lumen = ("Lumen", Path("data/vertices/carriers/lumen.csv"))
+    lumen = ("Lumen", Path("data/pops/lumen.csv"))
     assert lumen in default_config().input_files.vertex_files
 
 
 def test_default_regional_edges() -> None:
     """The default config lists both regional carrier edge files."""
     assert default_config().input_files.regional_edge_paths == (
-        Path("data/edges/dcn.csv"),
-        Path("data/edges/vision_net.csv"),
+        Path("data/fiber_segments/dcn.csv"),
+        Path("data/fiber_segments/vision_net.csv"),
     )
 
 

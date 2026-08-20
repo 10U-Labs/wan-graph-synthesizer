@@ -22,10 +22,9 @@ backbone:
   promote_high_degree_convergences: false
   restrict_to_data_centers: false
 inputs:
-  forced: data/vertices/forced/inexistent.csv
   locations:
-    F-35: data/vertices/tenants/f_35.csv
-  providers: data/vertices/providers/providers.csv
+    F-35: data/tenants/f_35.csv
+  providers: data/providers/providers.csv
 label: F-35
 settings:
   backbone_search_memory_share: 0.6

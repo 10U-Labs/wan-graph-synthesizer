@@ -86,9 +86,9 @@ def _write_csv(path: Path, header: str, *rows: str) -> None:
 def _one_carrier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Lay down one carrier's points and fiber segments under a temp DATA dir."""
     monkeypatch.setattr(seed, "DATA", tmp_path)
-    _write_csv(tmp_path / "edges" / "lumen.csv", "a_city,z_city", "Reston,Denver")
+    _write_csv(tmp_path / "fiber_segments" / "lumen.csv", "a_city,z_city", "Reston,Denver")
     _write_csv(
-        tmp_path / "vertices" / "carriers" / "lumen.csv",
+        tmp_path / "pops" / "lumen.csv",
         "Municipality,State", "Reston,VA", "Denver,CO")
 
 
@@ -96,7 +96,7 @@ def _fiberless_carrier(data: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Lay down one carrier's points with no fiber file, under a temp DATA dir."""
     monkeypatch.setattr(seed, "DATA", data)
     _write_csv(
-        data / "vertices" / "carriers" / "lumen.csv", "Municipality,State", "Reston,VA")
+        data / "pops" / "lumen.csv", "Municipality,State", "Reston,VA")
 
 
 def _off_net_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *seats: str) -> str:
@@ -111,7 +111,7 @@ def _one_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Lay down the single provider regions file under a temp DATA dir."""
     monkeypatch.setattr(seed, "DATA", tmp_path)
     _write_csv(
-        tmp_path / "vertices" / "providers" / "providers.csv", "city,state", "Reston,VA")
+        tmp_path / "providers" / "providers.csv", "city,state", "Reston,VA")
 
 
 def _one_data_center(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -223,10 +223,10 @@ def test_mapping_rows_drops_the_grouping_labels(
 
 def test_carrier_names_returns_sorted_stems(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """_carrier_names returns the CSV stems under data/edges, sorted."""
+    """_carrier_names returns the CSV stems under data/fiber_segments, sorted."""
     monkeypatch.setattr(seed, "DATA", tmp_path)
-    _write_csv(tmp_path / "edges" / "lumen.csv", "a_city,z_city", "X,Y")
-    _write_csv(tmp_path / "edges" / "cogent.csv", "a_city,z_city", "X,Y")
+    _write_csv(tmp_path / "fiber_segments" / "lumen.csv", "a_city,z_city", "X,Y")
+    _write_csv(tmp_path / "fiber_segments" / "cogent.csv", "a_city,z_city", "X,Y")
     assert _carrier_names() == ["cogent", "lumen"]
 
 
@@ -234,8 +234,8 @@ def test_carrier_names_ignores_non_csv_files(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """_carrier_names ignores files that are not CSVs."""
     monkeypatch.setattr(seed, "DATA", tmp_path)
-    _write_csv(tmp_path / "edges" / "lumen.csv", "a_city,z_city", "X,Y")
-    (tmp_path / "edges" / "notes.txt").write_text("x", encoding="utf-8")
+    _write_csv(tmp_path / "fiber_segments" / "lumen.csv", "a_city,z_city", "X,Y")
+    (tmp_path / "fiber_segments" / "notes.txt").write_text("x", encoding="utf-8")
     assert _carrier_names() == ["lumen"]
 
 

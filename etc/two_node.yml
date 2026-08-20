@@ -21,10 +21,9 @@ backbone:
   promote_high_degree_convergences: false
   restrict_to_data_centers: false
 inputs:
-  forced: data/vertices/forced/inexistent.csv
   locations:
-    Two-Node: data/vertices/tenants/two_node.csv
-  providers: data/vertices/providers/providers.csv
+    Two-Node: data/tenants/two_node.csv
+  providers: data/providers/providers.csv
 label: Two-Node
 settings:
   backbone_search_memory_share: 0.6

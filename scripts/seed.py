@@ -86,7 +86,7 @@ def _carrier_cities() -> set[tuple[str, str]]:
     return {
         _city_key(row)
         for carrier in _carrier_names()
-        for row in _rows(DATA / "vertices" / "carriers" / f"{carrier}.csv")
+        for row in _rows(DATA / "pops" / f"{carrier}.csv")
     }
 
 
@@ -159,23 +159,23 @@ def _degree_doc(value: Any) -> dict[str, Any]:
 
 
 def _carrier_names() -> list[str]:
-    """The carriers: the stems of the fiber files under ``data/edges``, sorted.
+    """The carriers: the stems of the fiber files under ``data/fiber_segments``, sorted.
 
     The fiber decides, because a carrier with no fiber can carry nothing -- its points
     are dropped by ``synthesizer.codec`` before any synthesis starts. Each carrier's
-    points are then read from ``data/vertices/carriers/`` by the stem its fiber file
+    points are then read from ``data/pops/`` by the stem its fiber file
     gave, so a fiber file with no points file beside it is not skipped: it stops the
     seed with the ``Input file does not exist`` that ``_rows`` raises.
     """
-    return sorted(p.stem for p in (DATA / "edges").glob("*.csv"))
+    return sorted(p.stem for p in (DATA / "fiber_segments").glob("*.csv"))
 
 
 def push_carriers(api: str) -> None:
     """Push each carrier's points and fiber segments as simple rows."""
     for carrier in _carrier_names():
         cid = _slug(carrier)
-        vertices = _rows(DATA / "vertices" / "carriers" / f"{carrier}.csv")
-        edges = _rows(DATA / "edges" / f"{carrier}.csv")
+        vertices = _rows(DATA / "pops" / f"{carrier}.csv")
+        edges = _rows(DATA / "fiber_segments" / f"{carrier}.csv")
         print(f"carrier {cid}: {len(vertices)} points, {len(edges)} fiber segments", flush=True)
         _put(api, f"carriers/{cid}/vertices", vertices)
         _put(api, f"carriers/{cid}/edges", edges)
@@ -183,7 +183,7 @@ def push_carriers(api: str) -> None:
 
 def push_providers(api: str) -> None:
     """Push the provider regions (a single combined vertices file)."""
-    regions = _rows(DATA / "vertices" / "providers" / "providers.csv")
+    regions = _rows(DATA / "providers" / "providers.csv")
     print(f"providers: {len(regions)} regions", flush=True)
     _put(api, "providers/vertices", regions)
 

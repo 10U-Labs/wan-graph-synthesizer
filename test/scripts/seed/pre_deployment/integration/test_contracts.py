@@ -246,7 +246,7 @@ def test_every_carrier_has_both_a_points_file_and_a_fiber_file() -> None:
     points file stops the seed outright at _rows. This fails on the commit that adds
     half a carrier rather than leaving it to surface as a refused tenant config.
     """
-    points = sorted(p.stem for p in (seed.DATA / "vertices" / "carriers").glob("*.csv"))
+    points = sorted(p.stem for p in (seed.DATA / "pops").glob("*.csv"))
     assert points == _carrier_names()
 
 
@@ -283,11 +283,11 @@ def _merged_substrate() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdg
     """
     points = [
         row
-        for path in sorted((seed.DATA / "vertices" / "carriers").glob("*.csv"))
+        for path in sorted((seed.DATA / "pops").glob("*.csv"))
         for row in _rows(path)
     ]
     segments = [
-        row for path in sorted((seed.DATA / "edges").glob("*.csv")) for row in _rows(path)
+        row for path in sorted((seed.DATA / "fiber_segments").glob("*.csv")) for row in _rows(path)
     ]
     return load_substrate(points, segments)
 

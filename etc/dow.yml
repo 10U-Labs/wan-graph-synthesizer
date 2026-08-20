@@ -30,10 +30,9 @@ backbone:
   promote_high_degree_convergences: false
   restrict_to_data_centers: false
 inputs:
-  forced: data/vertices/forced/inexistent.csv
   locations:
-    DoW: data/vertices/tenants/dow.csv
-  providers: data/vertices/providers/providers.csv
+    DoW: data/tenants/dow.csv
+  providers: data/providers/providers.csv
 label: DoW
 settings:
   backbone_search_memory_share: 0.6

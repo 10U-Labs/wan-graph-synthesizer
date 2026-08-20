@@ -24,10 +24,9 @@ backbone:
   promote_high_degree_convergences: false
   restrict_to_data_centers: false
 inputs:
-  forced: data/vertices/forced/inexistent.csv
   locations:
-    Minuteman: data/vertices/tenants/minuteman.csv
-  providers: data/vertices/providers/providers.csv
+    Minuteman: data/tenants/minuteman.csv
+  providers: data/providers/providers.csv
 label: Minuteman
 settings:
   backbone_search_memory_share: 0.6

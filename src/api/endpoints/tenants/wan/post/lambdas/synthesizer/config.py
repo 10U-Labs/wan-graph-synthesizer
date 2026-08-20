@@ -24,16 +24,16 @@ from synthesizer.model import (
 )
 
 DEFAULT_VERTICES = {
-    "AFLCMC": "data/vertices/tenants/aflcmc.csv",
-    "AFNWC/NI": "data/vertices/tenants/afnwc_ni.csv",
-    "DCN": "data/vertices/carriers/dcn.csv",
-    "F-35": "data/vertices/tenants/f_35.csv",
-    "Lumen": "data/vertices/carriers/lumen.csv",
-    "Providers": "data/vertices/providers/providers.csv",
-    "VisionNet": "data/vertices/carriers/vision_net.csv",
+    "AFLCMC": "data/tenants/aflcmc.csv",
+    "AFNWC/NI": "data/tenants/afnwc_ni.csv",
+    "DCN": "data/pops/dcn.csv",
+    "F-35": "data/tenants/f_35.csv",
+    "Lumen": "data/pops/lumen.csv",
+    "Providers": "data/providers/providers.csv",
+    "VisionNet": "data/pops/vision_net.csv",
 }
-DEFAULT_CARRIER_EDGES = "data/edges/lumen.csv"
-DEFAULT_REGIONAL_EDGES = ["data/edges/dcn.csv", "data/edges/vision_net.csv"]
+DEFAULT_CARRIER_EDGES = "data/fiber_segments/lumen.csv"
+DEFAULT_REGIONAL_EDGES = ["data/fiber_segments/dcn.csv", "data/fiber_segments/vision_net.csv"]
 
 
 @dataclass(frozen=True)
