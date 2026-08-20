@@ -84,7 +84,7 @@ def _write_csv(path: Path, header: str, *rows: str) -> None:
 
 
 def _one_carrier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Lay down one carrier's points and connections under a temp DATA dir."""
+    """Lay down one carrier's points and fiber segments under a temp DATA dir."""
     monkeypatch.setattr(seed, "DATA", tmp_path)
     _write_csv(tmp_path / "edges" / "lumen.csv", "a_city,z_city", "Reston,Denver")
     _write_csv(

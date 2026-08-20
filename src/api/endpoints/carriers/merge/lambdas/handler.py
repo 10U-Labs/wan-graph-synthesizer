@@ -4,9 +4,9 @@
     GET  /wan-graph-synthesizer/carriers/merge/vertices -> the substrate's PoPs
     GET  /wan-graph-synthesizer/carriers/merge/edges    -> the substrate's fiber
 
-The substrate is just every carrier's points and connections unioned, each row tagged
-with the carrier it came from (taken from its endpoint path) so a connection resolves to
-its own carrier's points. Cross-carrier colocation is resolved later, per tenant, by the
+The substrate is just every carrier's points and fiber segments unioned, each row
+tagged with the carrier it came from (taken from its endpoint path) so a segment resolves
+to its own carrier's points. Cross-carrier colocation is resolved later, per tenant, by the
 synthesizer. So the merge needs no synthesis logic and stays a self-contained (stdlib +
 boto3) single-file Lambda.
 """
@@ -40,7 +40,7 @@ def _response(status: int, body: Any) -> dict[str, Any]:
 
 
 def _build_substrate(client: Any) -> dict[str, int]:
-    """Union every carrier's points and connections (each tagged with its carrier).
+    """Union every carrier's points and fiber segments (each tagged with its carrier).
 
     Reads ``carriers/{c}/vertices.json`` and ``carriers/{c}/edges.json`` for every
     carrier (skipping the merge's own output), stamps each row with its carrier id, and

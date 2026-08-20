@@ -1,7 +1,7 @@
 """Unit tests for the carriers/merge endpoint Lambda handler.
 
-Merge is its own resource: POST unions every carrier's points/connections into the
-substrate, GET serves the stored substrate. None of this is shared, so it lives here.
+Merge is its own resource: POST unions every carrier's points and fiber segments into
+the substrate, GET serves the stored substrate. None of this is shared, so it lives here.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from test_s3_store_mock import fake_s3
 
 
 def _merge_objects() -> dict[str, bytes]:
-    """Two carriers' point/connection files: 2 points and 1 connection in total."""
+    """Two carriers' point and segment files: 2 points and 1 fiber segment in total."""
     return {
         "carriers/a/vertices.json": json.dumps([{"municipality": "X"}]).encode(),
         "carriers/a/edges.json": json.dumps([{"a_municipality": "X"}]).encode(),
@@ -25,7 +25,7 @@ def _merge_objects() -> dict[str, bytes]:
 
 
 def test_merge_post_unions_carriers(monkeypatch: pytest.MonkeyPatch) -> None:
-    """POST counts the points and connections unioned (and skips the merge's own output)."""
+    """POST counts the points and fiber segments unioned (and skips the merge's own output)."""
     module = load_handler("carriers/merge", monkeypatch)
     objects = _merge_objects()
     fake = fake_s3(objects, keys=[*objects, "carriers/merge/vertices.json"])

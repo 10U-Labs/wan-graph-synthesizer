@@ -3,8 +3,8 @@
 A plain reader-and-sender: read each cleaned CSV into simple rows (city, state,
 latitude, longitude, plus a name where the source has one) and PUT them to the matching
 endpoint. What each place *is* comes from the endpoint it is sent to, so nothing is
-classified or shaped here; carrier connections (``A_/Z_`` city+state) are forwarded as
-they stand and resolved server-side. Carriers push their points and connections;
+classified or shaped here; carrier fiber segments (``A_/Z_`` city+state) are forwarded
+as they stand and resolved server-side. Carriers push their points and fiber segments;
 providers push their regions; each tenant pushes its sites, provider-region selection,
 off-net candidates, and per-concern config resources. The tenant configs in ``etc/`` are
 the roster, so a tenant the API still lists once they have all been pushed is one git no
@@ -151,17 +151,17 @@ def _degree_doc(value: Any) -> dict[str, Any]:
 
 
 def _carrier_names() -> list[str]:
-    """The carriers: every points file that also has a connections file."""
+    """The carriers: every points file that also has a fiber segments file."""
     return sorted(p.stem for p in (DATA / "edges").glob("*.csv"))
 
 
 def push_carriers(api: str) -> None:
-    """Push each carrier's points and connections as simple rows."""
+    """Push each carrier's points and fiber segments as simple rows."""
     for carrier in _carrier_names():
         cid = _slug(carrier)
         vertices = _rows(DATA / "vertices" / "carriers" / f"{carrier}.csv")
         edges = _rows(DATA / "edges" / f"{carrier}.csv")
-        print(f"carrier {cid}: {len(vertices)} points, {len(edges)} connections", flush=True)
+        print(f"carrier {cid}: {len(vertices)} points, {len(edges)} fiber segments", flush=True)
         _put(api, f"carriers/{cid}/vertices", vertices)
         _put(api, f"carriers/{cid}/edges", edges)
 

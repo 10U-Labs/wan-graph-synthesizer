@@ -47,28 +47,28 @@ def test_substrate_collapses_a_city_across_carriers() -> None:
     assert {pop.id for pop in pops} == {"denver-co", "kansas-city-mo"}
 
 
-def test_substrate_resolves_a_connection_by_city() -> None:
-    """A connection resolves both endpoints to the shared city nodes."""
+def test_substrate_resolves_a_segment_by_city() -> None:
+    """A fiber segment resolves both endpoints to the shared city nodes."""
     _pops, edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
     assert list(edges) == [("denver-co", "kansas-city-mo")]
 
 
-def test_substrate_skips_a_connection_to_an_unserved_city() -> None:
-    """A connection to a city no carrier serves is dropped, not an error."""
+def test_substrate_skips_a_segment_to_an_unserved_city() -> None:
+    """A fiber segment naming a city no carrier serves is dropped, not an error."""
     dangling = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
                  "z_municipality": "Nowhere", "z_state": "ZZ"}]
     _pops, edges = load_substrate(_SUBSTRATE_VERTICES, dangling)
     assert not edges
 
 
-def test_substrate_computes_connection_distance() -> None:
-    """A connection's distance is the great-circle miles between its points."""
+def test_substrate_computes_segment_distance() -> None:
+    """A fiber segment's distance is the great-circle miles between its points."""
     _pops, edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
     assert round(next(iter(edges.values())).distance_miles) == 557
 
 
 def test_substrate_drops_an_isolated_point() -> None:
-    """A point no surviving connection touches is dropped from the substrate."""
+    """A point no surviving segment touches is dropped from the substrate."""
     extra = _SUBSTRATE_VERTICES + [
         {"carrier": "lumen", "municipality": "Boise", "state": "ID",
          "country": "United States", "latitude": 43.6, "longitude": -116.2},
@@ -78,7 +78,7 @@ def test_substrate_drops_an_isolated_point() -> None:
 
 
 def test_substrate_skips_an_intra_city_self_loop() -> None:
-    """A connection whose two endpoints are the same city is dropped, not a self-loop."""
+    """A fiber segment whose two endpoints are the same city is dropped, not a self-loop."""
     loop = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
              "z_municipality": "Denver", "z_state": "CO"}]
     _pops, edges = load_substrate(_SUBSTRATE_VERTICES, loop)

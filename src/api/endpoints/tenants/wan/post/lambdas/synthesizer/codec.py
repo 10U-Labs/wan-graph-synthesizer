@@ -5,7 +5,7 @@ latitude, longitude`` (plus ``name`` for provider regions and tenant sites) -- a
 *is* comes from the endpoint it was stored under, not from a column. These loaders turn
 those rows into :class:`Vertex`/:class:`PhysicalEdge` objects, deriving
 ``kind``/``name`` from the source, generating ids, and resolving carrier
-connections (listed by the two endpoints' city+state) to the points they name.
+fiber segments (listed by the two endpoints' city+state) to the points they name.
 """
 
 from __future__ import annotations
@@ -105,10 +105,10 @@ def load_substrate(
     """Load the merged carrier substrate: one point per city, plus the fiber between them.
 
     The cleaned data keys carrier points by city, so colocated points from different
-    carriers are one backbone node; every carrier's connections (listed by their two
+    carriers are one backbone node; every carrier's fiber segments (listed by their two
     endpoints' city+state) resolve against that shared, city-keyed set. Distance is the
-    great-circle miles between the resolved points. Connections within a single city
-    (self-loops) and connections to a city no carrier serves (dangling) are dropped.
+    great-circle miles between the resolved points. Segments within a single city
+    (self-loops) and segments naming a city no carrier serves (dangling) are dropped.
     """
     used: set[str] = set()
     pops: list[Vertex] = []
@@ -133,7 +133,7 @@ def load_substrate(
             source=key[0], target=key[1], distance_miles=haversine_miles(source, target)
         )
         connected.update(key)
-    # A point no surviving connection touches is not a usable backbone node; drop it so
+    # A point no surviving segment touches is not a usable backbone node; drop it so
     # the substrate's points and its fiber graph stay consistent.
     pops = [vertex for vertex in by_city.values() if vertex.id in connected]
     return pops, edges
