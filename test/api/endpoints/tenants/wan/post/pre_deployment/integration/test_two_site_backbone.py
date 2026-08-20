@@ -18,7 +18,7 @@ path and repairs it afterwards takes two paths plus a detour per single point of
 1,800-mile way round is there so that which two were taken can be asserted as well as how
 many.
 
-The transit cities are not data-center cities, so neither can take a backbone seat and the
+The transit cities are barred from the backbone, so neither can take a seat and the
 backbone stays the two sites the case is about.
 """
 
@@ -41,7 +41,7 @@ _MESH = fixtures.mesh_paths(ARTIFACTS)
 
 
 def test_the_backbone_is_the_two_sites() -> None:
-    """Only the two sites sit at data-center cities, so the transit cities take no seat."""
+    """The transit cities are barred from the backbone, so they take no seat."""
     assert sorted(ARTIFACTS.synthesis.backbone_ids) == ["a", "b"]
 
 

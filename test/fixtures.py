@@ -5,10 +5,9 @@ duplicating data (which copy-paste detection would otherwise flag). Synthesiss a
 from in-memory ``Site``/``FiberSegment`` objects -- production reads the stored simple
 rows via :mod:`synthesizer.codec`; only the suite builds a synthesis straight from objects.
 
-The synthesis is two tiers: a meshed ``backbone`` of selected carrier PoPs (each at a
-data-center city) and the demand that homes into it. Carrier PoPs carry a ``(name, ST)``
-city so the data-center gate can admit them; :func:`ring_datacenter_cities` covers every
-PoP the ring fixtures build, keeping the ring feasible.
+The synthesis is two tiers: a meshed ``backbone`` of selected carrier PoPs and the
+demand that homes into it. Carrier PoPs carry a ``(name, ST)``
+city, which the map tooltip shows.
 """
 
 from __future__ import annotations
@@ -62,7 +61,7 @@ RING_LINK_PAIRS = [
     ("P0", "P6"),
 ]
 # The state every fixture carrier PoP is placed in; the city is the PoP id, so each
-# PoP has a distinct ``(municipality, state)`` the data-center gate can key on. The
+# PoP has a distinct ``(municipality, state)``, which the map tooltip shows. The
 # country makes the tooltip's display rule resolve to the state, as for any US place.
 _FIXTURE_STATE = "XX"
 _FIXTURE_COUNTRY = "United States"
@@ -115,13 +114,6 @@ def ring_sites() -> list[Site]:
     pops = [carrier_pop(n, lat, lon) for n, (lat, lon) in RING_COORDS.items()]
     pops += [carrier_pop(n, lat, lon) for n, (lat, lon) in SPUR_COORDS.items()]
     return pops
-
-
-def ring_datacenter_cities() -> frozenset[tuple[str, str]]:
-    """Every ring/spur PoP's ``(municipality, state)``, so all are gate-eligible."""
-    return frozenset(
-        (site_id, _FIXTURE_STATE) for site_id in (*RING_COORDS, *SPUR_COORDS)
-    )
 
 
 def ring_fiber_segments(distance: float = 100.0) -> dict[tuple[str, str], FiberSegment]:
@@ -210,17 +202,15 @@ def fiber_segments_from(
 
 def ring_params() -> SynthesisParams:
     """Synthesis parameters that solve the ring with a two-node backbone."""
-    return SynthesisParams(min_backbone_count=2, datacenter_cities=ring_datacenter_cities())
+    return SynthesisParams(min_backbone_count=2)
 
 
 def forced_off_net_case() -> tuple[Site, SynthesisParams]:
-    """An off-net site forced as backbone, plus params admitting its city to the gate."""
+    """An off-net site forced as backbone, plus the params that seat it."""
     site = off_net_site("Dulles Hub", 40.5, -100.0)
     params = SynthesisParams(
         min_backbone_count=2,
         forced_backbone_names=("Dulles Hub",),
-        datacenter_cities=ring_datacenter_cities()
-        | {(site.info.municipality, site.info.state)},
     )
     return site, params
 
@@ -295,7 +285,6 @@ def synthesis_over_segments(
             min_backbone_count=fewest,
             max_backbone_count=len(site_ids),
             forced_backbone_names=site_ids,
-            datacenter_cities=frozenset((site, "XX") for site in site_ids),
             promote_high_degree_convergences=False,
             tuning=Tuning(backbone_number_of_diverse_paths=number_of_diverse_paths),
         ),
@@ -348,7 +337,6 @@ def forced_backbone_artifacts(name: str) -> SynthesisArtifacts:
         SynthesisParams(
             min_backbone_count=2,
             forced_backbone_names=(name,),
-            datacenter_cities=ring_datacenter_cities(),
         )
     )
 
@@ -365,7 +353,6 @@ def forced_roadm_backbone_artifacts(name: str) -> SynthesisArtifacts:
     params = SynthesisParams(
         min_backbone_count=2,
         forced_backbone_names=(name,),
-        datacenter_cities=ring_datacenter_cities(),
     )
     return _forced_artifacts(params, ring_inputs_with_roadm(name))
 
@@ -376,7 +363,6 @@ def prohibited_backbone_artifacts(name: str) -> SynthesisArtifacts:
         SynthesisParams(
             min_backbone_count=2,
             exclusions=RoleExclusions(prohibited_backbone_names=(name,)),
-            datacenter_cities=ring_datacenter_cities(),
         )
     )
 
@@ -403,8 +389,8 @@ def forced_link_artifacts(
 # A four-PoP square around one central PoP. Short spokes to the centre and longer ring
 # links make every diagonal backbone-mesh link run through the centre, so once the four
 # corners are the backbone the centre carries four of the synthesis's lines as a transit
-# node. The convergence pass (issue #4) then promotes the centre when it is a data-center
-# city. Coordinates are a degenerate diamond; distances are pinned in
+# node. The convergence pass (issue #4) then promotes the centre.
+# Coordinates are a degenerate diamond; distances are pinned in
 # :func:`convergence_hub_inputs` so the diagonals are strictly shorter through the centre.
 _HUB_CORNERS = ("hub_b0", "hub_b1", "hub_b2", "hub_b3")
 _HUB_CENTER = "hub_dc"
@@ -428,31 +414,23 @@ def convergence_hub_inputs() -> RingInputs:
 
 
 def convergence_hub_artifacts(
-    promote_hub: bool = True,
     max_backbone_count: int | None = None,
     promote_convergences: bool = True,
 ) -> SynthesisArtifacts:
     """Run the synthesizer with the four corners forced and the centre left transit.
 
     The diagonal backbone-mesh links run through the centre, so it carries four of the
-    synthesis's lines. When ``promote_hub`` is set the centre is a data-center city and the
-    convergence pass promotes it into the backbone and redraws; otherwise the centre is
-    barred from the gate and stays transit. A ``max_backbone_count`` of four (the four
-    forced corners) leaves no room for the promotion, so the centre stays transit even
-    though it qualifies -- the cap wins. ``promote_convergences=False`` disables the
-    promotion pass entirely, so the centre stays transit even at a data-center city.
+    synthesis's lines, and the convergence pass promotes it into the backbone and redraws.
+    A ``max_backbone_count`` of four (the four forced corners) leaves no room for the
+    promotion, so the centre stays transit even though it qualifies -- the cap wins.
+    ``promote_convergences=False`` disables the promotion pass entirely, so the centre
+    stays transit.
     """
     sites, links = convergence_hub_inputs()
-    datacenter_cities = frozenset(
-        (corner, _FIXTURE_STATE) for corner in _HUB_CORNERS
-    )
-    if promote_hub:
-        datacenter_cities = datacenter_cities | {(_HUB_CENTER, _FIXTURE_STATE)}
     params = SynthesisParams(
         min_backbone_count=2,
         max_backbone_count=max_backbone_count,
         forced_backbone_names=_HUB_CORNERS,
-        datacenter_cities=datacenter_cities,
         promote_high_degree_convergences=promote_convergences,
     )
     sites, links, overrides = apply_role_overrides(sites, links, params)
@@ -599,9 +577,9 @@ def funnel_sites() -> list[Site]:
     return [carrier_pop(site_id, *FUNNEL_COORDS[site_id]) for site_id in FUNNEL_IDS]
 
 
-def funnel_datacenter_cities() -> frozenset[tuple[str, str]]:
-    """Only the six compared sites pass the gate; the rest stay transit."""
-    return frozenset((site_id, _FIXTURE_STATE) for site_id in FUNNEL_ELIGIBLE)
+def funnel_transit_names() -> tuple[str, ...]:
+    """Every funnel site but the six compared ones, barred so they stay transit."""
+    return tuple(sorted(set(FUNNEL_COORDS) - FUNNEL_ELIGIBLE))
 
 
 # Three backbone sites within twenty miles of each other, all reaching one another over
@@ -637,9 +615,9 @@ def crossing_sites() -> list[Site]:
     return [carrier_pop(site_id, *CROSSING_COORDS[site_id]) for site_id in CROSSING_IDS]
 
 
-def crossing_datacenter_cities() -> frozenset[tuple[str, str]]:
-    """Only the three compared sites pass the gate, so pdx and tok stay transit."""
-    return frozenset((site_id, _FIXTURE_STATE) for site_id in CROSSING_ELIGIBLE)
+def crossing_transit_names() -> tuple[str, ...]:
+    """Every crossing site but the three compared ones, so pdx and tok stay transit."""
+    return tuple(sorted(set(CROSSING_COORDS) - CROSSING_ELIGIBLE))
 
 
 # Three backbone sites reaching one another over three shared hub cities, priced so the
@@ -677,9 +655,9 @@ def shared_hub_peer_sites() -> list[Site]:
     ]
 
 
-def shared_hub_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
-    """Only the four sites pass the gate, so no hub or corridor city takes a seat."""
-    return frozenset((site_id, _FIXTURE_STATE) for site_id in SHARED_HUB_PEER_SITES)
+def shared_hub_peer_transit_names() -> tuple[str, ...]:
+    """Every hub and corridor city, barred so none of them takes a seat."""
+    return tuple(sorted(set(SHARED_HUB_PEER_IDS) - set(SHARED_HUB_PEER_SITES)))
 
 
 def shared_hub_peer_artifacts(asked_for: int = 2) -> SynthesisArtifacts:
@@ -695,7 +673,9 @@ def shared_hub_peer_artifacts(asked_for: int = 2) -> SynthesisArtifacts:
             min_backbone_count=len(SHARED_HUB_PEER_SITES),
             max_backbone_count=len(SHARED_HUB_PEER_SITES),
             forced_backbone_names=SHARED_HUB_PEER_SITES,
-            datacenter_cities=shared_hub_peer_datacenter_cities(),
+            exclusions=RoleExclusions(
+                prohibited_backbone_names=shared_hub_peer_transit_names()
+            ),
             promote_high_degree_convergences=False,
             tuning=Tuning(backbone_number_of_diverse_paths=asked_for),
         ),
@@ -739,9 +719,9 @@ def distant_peer_sites() -> list[Site]:
     ]
 
 
-def distant_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
-    """Only the three peers pass the gate, so pdx and tok stay transit."""
-    return frozenset((site_id, _FIXTURE_STATE) for site_id in DISTANT_PEER_ELIGIBLE)
+def distant_peer_transit_names() -> tuple[str, ...]:
+    """Every distant-peer site but the three peers, so pdx and tok stay transit."""
+    return tuple(sorted(set(DISTANT_PEER_COORDS) - DISTANT_PEER_ELIGIBLE))
 
 
 # Three sites on a ring of one-mile segments, each also joined to the other two by an express
@@ -781,9 +761,9 @@ def express_sites() -> list[Site]:
     return [carrier_pop(site_id, *EXPRESS_COORDS[site_id]) for site_id in EXPRESS_IDS]
 
 
-def express_datacenter_cities() -> frozenset[tuple[str, str]]:
-    """Only the three compared sites pass the gate, so the ring's transit stays transit."""
-    return frozenset((site_id, _FIXTURE_STATE) for site_id in EXPRESS_ELIGIBLE)
+def express_transit_names() -> tuple[str, ...]:
+    """Every express site but the three compared ones, so the ring's transit stays transit."""
+    return tuple(sorted(set(EXPRESS_COORDS) - EXPRESS_ELIGIBLE))
 
 
 def funnel_inputs() -> SynthesisInputs:

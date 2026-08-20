@@ -29,15 +29,11 @@ def dual_home(
     """Attach demand to the carrier graph: fabricate on-net nodes, then off-net seats.
 
     ``off_net_sites`` are the loaded off-net candidate sites (the caller loads
-    them, from a CSV file or the stored JSON), so this step is source-agnostic. Both
-    fabrication paths are gated by ``params.datacenter_cities``: a forced location off a
-    data-center city is rejected, since the backbone gate is absolute. When
-    ``params.datacenter_cities`` is ``None`` (free-for-all) a forced location at any city
-    is fabricated.
+    them, from a CSV file or the stored JSON), so this step is source-agnostic.
     """
     forced_backbone = frozenset(params.forced_backbone_names)
     fabricated = fabricate_missing_on_net_nodes(
-        sites, fiber_segments, forced_backbone, params.datacenter_cities
+        sites, fiber_segments, forced_backbone
     )
     sites, fiber_segments = fabricated.sites, fabricated.fiber_segments
     off_net = realize_off_net_sites(
@@ -45,7 +41,6 @@ def dual_home(
         fiber_segments,
         off_net_sites,
         forced_backbone,
-        params.datacenter_cities,
     )
     return off_net.sites, off_net.fiber_segments
 

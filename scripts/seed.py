@@ -189,20 +189,6 @@ def push_providers(api: str) -> None:
     _put(api, "providers/regions", regions)
 
 
-def _data_center_providers() -> list[str]:
-    """The colocation providers: every facilities file under data-centers/."""
-    return sorted(p.stem for p in (DATA / "sites" / "data-centers").glob("*.csv"))
-
-
-def push_data_centers(api: str) -> None:
-    """Push each colocation provider's facilities as simple geographic rows."""
-    for provider in _data_center_providers():
-        pid = _slug(provider)
-        facilities = _rows(DATA / "sites" / "data-centers" / f"{provider}.csv")
-        print(f"data-center {pid}: {len(facilities)} facilities", flush=True)
-        _put(api, f"data-centers/{pid}/facilities", facilities)
-
-
 def push_tenants(api: str) -> list[str]:
     """Push each tenant's inputs and return the tenant ids (for the build step)."""
     tenant_ids: list[str] = []
@@ -242,8 +228,6 @@ def push_tenants(api: str) -> list[str]:
              _degree_doc(backbone["number_of_diverse_paths"]))
         _put(api, f"tenants/{tid}/access-homing-degree",
              _degree_doc(access["homing_degree"]))
-        _put(api, f"tenants/{tid}/backbone-placement",
-             {"restrict": backbone["restrict_to_data_centers"]})
         _put(api, f"tenants/{tid}/convergence-promotion",
              {"promote": backbone["promote_high_degree_convergences"]})
         # The stored documents keep the unshortened keys: the config drops the prefix its
@@ -281,12 +265,6 @@ def build_substrate(api: str) -> None:
     _post(api, "carriers/merge")
 
 
-def build_data_centers(api: str) -> None:
-    """Rebuild the data-center union from the pushed providers."""
-    print("data-centers merge: rebuilding union", flush=True)
-    _post(api, "data-centers/merge")
-
-
 def build_tenants(api: str, tenants: list[str]) -> None:
     """Trigger one WAN build per tenant (the only build trigger)."""
     for tid in tenants:
@@ -300,8 +278,6 @@ def main() -> None:
     push_carriers(api)
     build_substrate(api)
     push_providers(api)
-    push_data_centers(api)
-    build_data_centers(api)
     tenants = push_tenants(api)
     prune_tenants(api, tenants)
     build_tenants(api, tenants)

@@ -34,21 +34,13 @@ def synthesizer_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
     return load_module_from_path("synthesizer_handler", _PATH)
 
 
-def _stub_pipeline(
-    module: Any, monkeypatch: pytest.MonkeyPatch, restrict: bool = True
-) -> None:
-    """Replace the heavy synthesis pipeline with light canned stand-ins.
-
-    ``restrict`` sets ``config.restrict_backbone_to_datacenters`` so both handler
-    branches -- gating the backbone to data-center cities vs the open free-for-all --
-    are exercised across the suite.
-    """
+def _stub_pipeline(module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Replace the heavy synthesis pipeline with light canned stand-ins."""
     pop = Site(id="P", name="P", kind="PoP", coords=(0.0, 0.0))
     site = Site(id="S", name="S", kind="Tenant site", coords=(1.0, 1.0))
     graph = [pop, site]
     config = SimpleNamespace(
         params=SynthesisParams(),
-        restrict_backbone_to_datacenters=restrict,
         links=OperatorLinks(),
     )
     payload = {
@@ -91,7 +83,6 @@ def _inputs(module: Any) -> dict[str, bytes]:
     keys = [
         "carriers/merge/pops.json",
         "carriers/merge/fiber-segments.json",
-        "data-centers/merge/facilities.json",
         "tenants/f-35/locations.json",
         "tenants/f-35/provider-regions.json",
         "tenants/f-35/off-net.json",
@@ -294,17 +285,6 @@ def test_records_fail_when_the_synthesis_falls_into_more_than_one_group(
     """
     objects = _run_split_backbone(synthesizer, monkeypatch)
     assert json.loads(objects["tenants/f-35/wan-status.json"])["status"] == "fail"
-
-
-def test_open_gate_build_maps_to_no_datacenter_restriction(
-    synthesizer: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """With restrict off, the handler opens the gate (datacenter_cities=None) and still builds."""
-    _stub_pipeline(synthesizer, monkeypatch, restrict=False)
-    objects = _inputs(synthesizer)
-    with patch("boto3.client", return_value=fake_s3(objects)):
-        synthesizer.lambda_handler({"tenant": "f-35"}, None)
-    assert "tenants/f-35/wan.json" in objects
 
 
 def test_reads_the_tenant_from_the_event(synthesizer: Any, monkeypatch: pytest.MonkeyPatch) -> None:

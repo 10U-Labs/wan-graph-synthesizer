@@ -35,6 +35,19 @@ def test_templatefile_provides_every_openapi_handler_placeholder() -> None:
     assert needed <= supplied
 
 
+def test_templatefile_supplies_no_placeholder_the_spec_does_not_need() -> None:
+    """Every placeholder ``main.tf`` fills is one the OpenAPI spec still asks for.
+
+    Deleting an endpoint deletes its routes from the spec and its stack from the
+    repository, and leaves the handler variable behind in the ``templatefile`` call
+    pointing at a Lambda nothing deploys any more. That leftover fails here.
+    """
+    needed = set(re.findall(r"\$\{(\w+HandlerArn)\}",
+                            OPENAPI_SPEC.read_text(encoding="utf-8")))
+    supplied = set(re.findall(r"(\w+HandlerArn)\s*=", _main_text()))
+    assert supplied <= needed
+
+
 def test_api_id_output_references_the_declared_rest_api() -> None:
     """The ``api_gateway_id`` output is wired to the declared REST API."""
     outputs = output_values(ROUTING_DIR / "outputs.tf")

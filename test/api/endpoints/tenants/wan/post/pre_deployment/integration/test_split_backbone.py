@@ -95,7 +95,6 @@ def _config_documents() -> dict[str, Any]:
         "backbone-node-count": {"min": 2, "max": 6},
         "backbone-number-of-diverse-paths": {"degree": 2},
         "access-homing-degree": {"degree": 2},
-        "backbone-placement": {"restrict": False},
         "convergence-promotion": {"promote": False},
         "knobs": {
             "backbone_coverage_target_miles": 500,

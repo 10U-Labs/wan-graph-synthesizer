@@ -24,13 +24,11 @@ locals {
   }
 
   openapi_spec = templatefile("${path.module}/../../../www/api/openapi.json", {
-    CarriersHandlerArn         = local.integration.carriers
-    ProvidersHandlerArn        = local.integration.providers
-    DataCentersHandlerArn      = local.integration.datacenters
-    DataCentersMergeHandlerArn = local.integration.datacenters_merge
-    TenantsHandlerArn          = local.integration.tenants
-    MergeHandlerArn            = local.integration.merge
-    WanHandlerArn              = local.integration.wan
+    CarriersHandlerArn  = local.integration.carriers
+    ProvidersHandlerArn = local.integration.providers
+    TenantsHandlerArn   = local.integration.tenants
+    MergeHandlerArn     = local.integration.merge
+    WanHandlerArn       = local.integration.wan
   })
   spec_hash = substr(md5(local.openapi_spec), 0, 8)
 }

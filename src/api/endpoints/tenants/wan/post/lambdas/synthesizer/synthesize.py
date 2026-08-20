@@ -44,7 +44,6 @@ from synthesizer.model import (
     SynthesisInputs,
     SynthesisParams,
     RoleOverrides,
-    backbone_city_allowed,
     is_carrier_pop,
 )
 from synthesizer.graphs import (
@@ -76,33 +75,25 @@ CONVERGENCE_BACKBONE_DEGREE = 3
 def compute_eligible_backbone_ids(
     carrier_pops: list[Site],
     adjacency: dict[str, list[tuple[str, float]]],
-    datacenter_cities: frozenset[tuple[str, str]] | None,
 ) -> set[str]:
     """Carrier PoPs that may serve as backbone nodes.
 
     A PoP needs at least two physical links to ever path redundantly, so degree-one
-    PoPs (spurs) are excluded regardless of policy. It must also sit at a data-center
-    city -- a colocation provider operates a cage there -- because the backbone is built
-    from carrier PoPs that can be lit at a provider facility; a PoP off every data-center
-    city is never eligible, no matter how strong. When ``datacenter_cities`` is ``None``
-    (the operator's free-for-all) the city gate is lifted and any degree-two carrier PoP
-    is eligible.
+    PoPs (spurs) are excluded.
     """
     return {
         pop.id
         for pop in carrier_pops
         if len(adjacency.get(pop.id, [])) >= 2
-        and backbone_city_allowed(pop.info, datacenter_cities)
     }
 
 
 def convergence_promotion_ids(
     synthesis: Synthesis,
     carrier_pops: list[Site],
-    datacenter_cities: frozenset[tuple[str, str]] | None,
     min_degree: int = CONVERGENCE_BACKBONE_DEGREE,
 ) -> set[str]:
-    """Non-backbone carrier PoPs at a data-center city where this synthesis's fiber converges.
+    """Non-backbone carrier PoPs where this synthesis's fiber converges.
 
     A PoP qualifies when at least ``min_degree`` of *this synthesis's* drawn physical links
     meet at it. The count comes from ``synthesis.fiber_segment_keys`` -- the fiber actually
@@ -110,22 +101,17 @@ def convergence_promotion_ids(
     degree. A non-backbone carrier PoP only ever carries those links as a transit node
     (demand homes to backbone nodes, never to transit), so its incident count is exactly
     the number of the synthesis's lines meeting there. PoPs already seated in the backbone
-    are excluded; the caller forces the rest in and redraws. When ``datacenter_cities``
-    is ``None`` (the operator's free-for-all) the data-center-city gate is lifted, so any
-    non-backbone convergence hub promotes.
+    are excluded; the caller forces the rest in and redraws.
     """
     counts: dict[str, int] = {}
     for left, right in synthesis.fiber_segment_keys:
         counts[left] = counts.get(left, 0) + 1
         counts[right] = counts.get(right, 0) + 1
     backbone = set(synthesis.backbone_ids)
-    pop_by_id = {pop.id: pop for pop in carrier_pops}
     return {
         pop_id
         for pop_id, degree in counts.items()
-        if degree >= min_degree
-        and pop_id not in backbone
-        and backbone_city_allowed(pop_by_id[pop_id].info, datacenter_cities)
+        if degree >= min_degree and pop_id not in backbone
     }
 
 
@@ -415,15 +401,12 @@ def synthesize_two_tier(
 
     graph = build_search_graph(sites, fiber_segments)
     eligible_ids = compute_eligible_backbone_ids(
-        graph.carrier_pops, graph.adjacency, params.datacenter_cities
+        graph.carrier_pops, graph.adjacency
     )
     eligible_ids = eligible_ids | overrides.forced_backbone_ids
     backbone_eligible_ids = eligible_ids - overrides.prohibited_backbone_ids
     if len(backbone_eligible_ids) < max(2, params.min_backbone_count):
-        raise ValueError(
-            "Not enough eligible Carrier backbone PoPs (degree >= 2"
-            + (" at a data-center city)" if params.datacenter_cities is not None else ")")
-        )
+        raise ValueError("Not enough eligible Carrier backbone PoPs (degree >= 2)")
 
     inputs = SynthesisInputs(
         access_sites=graph.all_access,
@@ -450,9 +433,7 @@ def synthesize_two_tier(
 
         if not params.promote_high_degree_convergences:
             return synthesis
-        new = convergence_promotion_ids(
-            synthesis, inputs.carrier_pops, params.datacenter_cities
-        ) - promoted
+        new = convergence_promotion_ids(synthesis, inputs.carrier_pops) - promoted
         if not new:
             return synthesis
         grown = promoted | new

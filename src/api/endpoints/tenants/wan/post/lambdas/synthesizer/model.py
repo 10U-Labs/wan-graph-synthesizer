@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
 
-from synthesizer.input_graph import FiberSegment, Site, SiteInfo
+from synthesizer.input_graph import FiberSegment, Site
 
 
 @dataclass(frozen=True)
@@ -166,16 +166,6 @@ class RoleExclusions:
 class SynthesisParams:
     """Operator choices plus the algorithm :class:`Tuning` for the synthesis.
 
-    ``datacenter_cities`` are the ``(municipality, state)`` pairs a colocation
-    provider operates a facility in; a carrier PoP may serve as a backbone node only
-    if its city is one of them. The set gates both the automatic backbone selection
-    and the operator's forced pins.
-
-    ``datacenter_cities`` is ``None`` in the operator's free-for-all: the gate is open,
-    so any carrier PoP with enough physical links is eligible, forced pins are accepted
-    anywhere, and convergence hubs promote regardless of city. Candidates stay carrier
-    PoPs either way; ``None`` only lifts the city filter.
-
     ``promote_high_degree_convergences`` toggles the convergence promotion pass: when
     ``True`` a carrier PoP where enough of the synthesis's own lines converge is forced into
     the backbone and the synthesis is redrawn; when ``False`` the pass is skipped and such a
@@ -200,8 +190,6 @@ class SynthesisParams:
     forced_backbone_names: tuple[str, ...] = ()  # PoPs pinned as backbone by the operator
     degree_exempt_backbone_names: tuple[str, ...] = ()  # PoPs held to no diverse path count
     exclusions: RoleExclusions = field(default_factory=RoleExclusions)  # role bars
-    # cities a provider has a cage in; None lifts the gate (free-for-all)
-    datacenter_cities: frozenset[tuple[str, str]] | None = frozenset()
     promote_high_degree_convergences: bool = True  # force high-degree hubs into the backbone
     tuning: Tuning = field(default_factory=Tuning)
 
@@ -355,15 +343,3 @@ CARRIER_KINDS = frozenset({KIND_POP, KIND_ROADM})
 def is_carrier_pop(site: Site) -> bool:
     """Whether a site is a carrier PoP (a routable backbone node)."""
     return site.kind in CARRIER_KINDS
-
-def backbone_city_allowed(
-    info: SiteInfo,
-    datacenter_cities: frozenset[tuple[str, str]] | None,
-) -> bool:
-    """Whether a site's city passes the data-center backbone gate.
-
-    The gate restricts backbone placement to cities where a colocation provider operates
-    a cage. When ``datacenter_cities`` is ``None`` (the operator's free-for-all) the gate
-    is open and every city passes.
-    """
-    return datacenter_cities is None or (info.municipality, info.state) in datacenter_cities

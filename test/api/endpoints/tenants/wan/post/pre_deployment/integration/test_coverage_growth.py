@@ -51,7 +51,6 @@ _TARGET_MILES = 100
 _PARAMS = SynthesisParams(
     min_backbone_count=2,
     forced_backbone_names=("hub_a", "hub_b"),
-    datacenter_cities=None,
     promote_high_degree_convergences=False,
     tuning=Tuning(
         backbone_number_of_diverse_paths=2,

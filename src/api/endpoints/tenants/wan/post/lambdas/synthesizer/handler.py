@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -60,22 +59,11 @@ CONFIG_RESOURCES = (
     "backbone-node-count",
     "backbone-number-of-diverse-paths",
     "access-homing-degree",
-    "backbone-placement",
     "convergence-promotion",
     "knobs",
     "settings",
     "label",
 )
-
-
-def _datacenter_cities(client: Any) -> frozenset[tuple[str, str]]:
-    """The ``(municipality, state)`` cities a colocation provider operates a cage in.
-
-    Read from the merged data-center facilities; a carrier PoP may serve as a backbone
-    node only at one of these cities (the gate threaded onto ``SynthesisParams``).
-    """
-    rows = _read_json(client, "data-centers/merge/facilities.json")
-    return frozenset((row["municipality"], row["state"]) for row in rows)
 
 
 def _read_json(client: Any, key: str) -> Any:
@@ -167,16 +155,7 @@ def _build_wan(client: Any, tenant: str) -> tuple[dict[str, Any], dict[str, Any]
         for resource in CONFIG_RESOURCES
     }
     config = app_config_from_parts(parts)
-    # Gate the backbone to data-center cities when the tenant opts in: a carrier PoP may
-    # be a backbone node only where a colocation provider operates a cage. The set threads
-    # through synthesis (eligibility) and the forced-pin/fabrication gates on SynthesisParams.
-    # In the operator's free-for-all (restrict off) the gate is None and any PoP is eligible.
-    params = replace(
-        config.params,
-        datacenter_cities=(
-            _datacenter_cities(client) if config.restrict_backbone_to_datacenters else None
-        ),
-    )
+    params = config.params
     graph = carrier_pops + locations + regions
     logger.info(
         "Dual-homing %d sites over %d substrate links", len(graph), len(fiber_segments)

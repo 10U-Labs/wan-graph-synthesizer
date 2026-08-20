@@ -18,7 +18,7 @@ rankings cannot both be satisfied and the backbone says which one ran.
 from __future__ import annotations
 
 import fixtures
-from synthesizer.model import SynthesisParams, Tuning
+from synthesizer.model import RoleExclusions, SynthesisParams, Tuning
 
 # Two seats exactly: the floor is what the search settles at once a feasible set exists,
 # and with no demand sites on the graph the coverage pass never grows past it. The
@@ -27,7 +27,7 @@ from synthesizer.model import SynthesisParams, Tuning
 _TWO_SEATS = SynthesisParams(
     min_backbone_count=2,
     max_backbone_count=2,
-    datacenter_cities=fixtures.funnel_datacenter_cities(),
+    exclusions=RoleExclusions(prohibited_backbone_names=fixtures.funnel_transit_names()),
     promote_high_degree_convergences=False,
     tuning=Tuning(backbone_number_of_diverse_paths=2),
 )

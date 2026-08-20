@@ -37,22 +37,6 @@ def test_dual_home_fabricates_a_forced_on_net_location() -> None:
     params = SynthesisParams(
         min_backbone_count=2,
         forced_backbone_names=("Luke",),
-        datacenter_cities=fixtures.ring_datacenter_cities()
-        | {(luke.info.municipality, luke.info.state)},
-    )
-    homed_sites, _links = dual_home(
-        [*fixtures.ring_sites(), luke], fixtures.ring_fiber_segments(), params, []
-    )
-    assert any(site.id.startswith("fac_") for site in homed_sites)
-
-
-def test_dual_home_fabricates_a_non_data_center_forced_location_when_gate_is_open() -> None:
-    """With the gate open (datacenter_cities=None), dual_home fabricates a forced location."""
-    luke = fixtures.access_site("Luke", 40.5, -100.0)
-    params = SynthesisParams(
-        min_backbone_count=2,
-        forced_backbone_names=("Luke",),
-        datacenter_cities=None,
     )
     homed_sites, _links = dual_home(
         [*fixtures.ring_sites(), luke], fixtures.ring_fiber_segments(), params, []

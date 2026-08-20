@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 import fixtures
 from synthesizer.on_net_fabrication import (
     FabricatedOnNetNodes,
@@ -11,10 +9,6 @@ from synthesizer.on_net_fabrication import (
 )
 from synthesizer.model import is_carrier_pop
 from synthesizer.input_graph import Site
-
-# The demand fixtures carry an empty ``(municipality, state)``; this gate admits them.
-_CITIES = frozenset({("", "")})
-
 
 def _pops() -> list[Site]:
     """Three closely spaced carrier PoPs the fabricated twins can home to."""
@@ -28,10 +22,9 @@ def _pops() -> list[Site]:
 def _fabricate(
     *extra: Site,
     forced: frozenset[str] = frozenset(),
-    cities: frozenset[tuple[str, str]] | None = _CITIES,
 ) -> FabricatedOnNetNodes:
     """Fabricate on-net nodes over the three PoPs plus the given extra sites."""
-    return fabricate_missing_on_net_nodes([*_pops(), *extra], {}, forced, cities)
+    return fabricate_missing_on_net_nodes([*_pops(), *extra], {}, forced)
 
 
 def test_fabricates_a_forced_twin() -> None:
@@ -64,26 +57,6 @@ def test_ignores_unforced_locations() -> None:
     assert result.on_net_ids == frozenset()
 
 
-def test_forced_location_off_a_data_center_city_is_rejected() -> None:
-    """A forced location whose city no provider serves is rejected -- the gate is absolute."""
-    with pytest.raises(ValueError):
-        _fabricate(
-            fixtures.access_site("luke", 0.0, 0.5),
-            forced=frozenset({"luke"}),
-            cities=frozenset(),
-        )
-
-
-def test_forced_location_is_fabricated_anywhere_when_gate_is_open() -> None:
-    """With the gate open (cities=None), a forced location at any city is fabricated on-net."""
-    result = _fabricate(
-        fixtures.access_site("luke", 0.0, 0.5),
-        forced=frozenset({"luke"}),
-        cities=None,
-    )
-    assert result.on_net_ids == frozenset({"fac_luke"})
-
-
 def test_fabricates_a_forced_remote_location_regardless_of_distance() -> None:
     """A forced location with no nearby public fiber is still fabricated (no radius cap)."""
     result = _fabricate(
@@ -108,7 +81,6 @@ def test_demand_only_when_too_few_carrier_pops() -> None:
         [fixtures.carrier_pop("P0", 0.0, 0.0), fixtures.access_site("luke", 0.0, 0.5)],
         {},
         frozenset({"luke"}),
-        _CITIES,
     )
     assert result.on_net_ids == frozenset()
 

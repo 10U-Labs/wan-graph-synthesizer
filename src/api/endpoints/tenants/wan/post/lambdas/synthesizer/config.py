@@ -47,7 +47,6 @@ class AppConfig:
 
     input_files: InputFiles
     params: SynthesisParams
-    restrict_backbone_to_datacenters: bool  # required; the handler maps it to a gate or None
     label: str = ""
     links: OperatorLinks = field(default_factory=OperatorLinks)
 
@@ -71,9 +70,9 @@ def _str_list(data: dict[str, Any], key: str, default: list[str]) -> tuple[str, 
 def _required_bool(data: dict[str, Any], key: str) -> bool:
     """Return a required boolean config value, rejecting an absent or non-bool value.
 
-    ``restrict_backbone_to_data_centers`` has no default: every tenant must state whether
-    the backbone is gated to data-center cities, so a missing key is an error rather than
-    a silently-filled fallback (as with the two redundancy degrees).
+    ``promote_high_degree_convergences_to_backbone_nodes`` has no default: every tenant
+    must state whether a high-degree hub is promoted into the backbone, so a missing key is
+    an error rather than a silently-filled fallback (as with the two redundancy degrees).
     """
     if key not in data:
         raise ValueError(f"config key '{key}' is required and has no default")
@@ -308,16 +307,12 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
     """Resolve an already-parsed config mapping into a :class:`AppConfig`.
 
     Any key the mapping omits falls back to the matching built-in default, so a
-    partial (even empty) mapping still yields a valid configuration. ``datacenter_cities``
-    is threaded by the synthesizer handler, not parsed from these documents.
+    partial (even empty) mapping still yields a valid configuration.
     """
     synthesis = _mapping(data, "synthesis")
     return AppConfig(
         input_files=_input_files(_mapping(data, "inputs")),
         params=_params(synthesis, _mapping(data, "tuning"), _mapping(data, "settings")),
-        restrict_backbone_to_datacenters=_required_bool(
-            synthesis, "restrict_backbone_to_data_centers"
-        ),
         label=str(data.get("label", "")),
         links=_operator_links(synthesis),
     )
@@ -361,9 +356,6 @@ def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
         "forced_homes": parts.get("forced-homes", []),
         "excluded_paths": parts.get("prohibited-paths", []),
     }
-    placement = _mapping(parts, "backbone-placement")
-    if "restrict" in placement:
-        synthesis["restrict_backbone_to_data_centers"] = placement["restrict"]
     promotion = _mapping(parts, "convergence-promotion")
     if "promote" in promotion:
         synthesis["promote_high_degree_convergences_to_backbone_nodes"] = promotion["promote"]

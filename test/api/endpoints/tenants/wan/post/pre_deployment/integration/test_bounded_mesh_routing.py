@@ -28,7 +28,12 @@ from __future__ import annotations
 
 import fixtures
 from synthesizer.input_graph import FiberSegment, Site
-from synthesizer.model import SynthesisArtifacts, SynthesisParams, Tuning
+from synthesizer.model import (
+    RoleExclusions,
+    SynthesisArtifacts,
+    SynthesisParams,
+    Tuning,
+)
 
 _SEATS = 3
 
@@ -36,7 +41,7 @@ _SEATS = 3
 def _artifacts(
     sites: list[Site],
     fiber_segments: dict[tuple[str, str], FiberSegment],
-    datacenter_cities: frozenset[tuple[str, str]],
+    transit_names: tuple[str, ...],
     multiple: float,
 ) -> SynthesisArtifacts:
     """The synthesis the whole pipeline settles on over one graph at one backup path multiple.
@@ -52,7 +57,7 @@ def _artifacts(
         SynthesisParams(
             min_backbone_count=_SEATS,
             max_backbone_count=_SEATS,
-            datacenter_cities=datacenter_cities,
+            exclusions=RoleExclusions(prohibited_backbone_names=transit_names),
             promote_high_degree_convergences=False,
             tuning=Tuning(
                 backbone_number_of_diverse_paths=2, backbone_max_backup_path_multiple=multiple
@@ -66,7 +71,7 @@ def _crossing(multiple: float) -> SynthesisArtifacts:
     return _artifacts(
         fixtures.crossing_sites(),
         fixtures.CROSSING_LINKS,
-        fixtures.crossing_datacenter_cities(),
+        fixtures.crossing_transit_names(),
         multiple,
     )
 
@@ -76,13 +81,13 @@ UNBOUNDED = _crossing(1000.0)
 DISTANT_PEER = _artifacts(
     fixtures.distant_peer_sites(),
     fixtures.DISTANT_PEER_LINKS,
-    fixtures.distant_peer_datacenter_cities(),
+    fixtures.distant_peer_transit_names(),
     3.0,
 )
 EXPRESS = _artifacts(
     fixtures.express_sites(),
     fixtures.EXPRESS_LINKS,
-    fixtures.express_datacenter_cities(),
+    fixtures.express_transit_names(),
     3.0,
 )
 

@@ -25,17 +25,17 @@ _REQUIRED_TUNING = {
 def _config(data: dict[str, Any]) -> AppConfig:
     """Resolve a single in-memory config mapping (with required fields) for one test.
 
-    ``restrict_backbone_to_data_centers`` (like the two redundancy degrees) is required
-    with no default, so it is injected into the synthesis section unless the test overrides
-    it -- letting each test focus on the field under test. A non-mapping ``synthesis`` is
-    passed through so the "section must be a mapping" rejection still fires.
+    ``promote_high_degree_convergences_to_backbone_nodes`` (like the two redundancy
+    degrees) is required with no default, so it is injected into the synthesis section
+    unless the test overrides it -- letting each test focus on the field under test. A
+    non-mapping ``synthesis`` is passed through so the "section must be a mapping"
+    rejection still fires.
     """
     merged = dict(data)
     merged["tuning"] = {**_REQUIRED_TUNING, **data.get("tuning", {})}
     synthesis = data.get("synthesis", {})
     if isinstance(synthesis, dict):
         merged["synthesis"] = {
-            "restrict_backbone_to_data_centers": True,
             "promote_high_degree_convergences_to_backbone_nodes": True,
             **synthesis,
         }
@@ -140,8 +140,7 @@ def test_the_old_mesh_degree_key_is_refused() -> None:
     with pytest.raises(ValueError, match="backbone_number_of_diverse_paths"):
         config_from_data({
             "synthesis": {
-                "restrict_backbone_to_data_centers": True,
-                "promote_high_degree_convergences_to_backbone_nodes": True,
+                    "promote_high_degree_convergences_to_backbone_nodes": True,
             },
             "tuning": {
                 "backbone_mesh_degree": 3,
@@ -269,32 +268,6 @@ def test_default_has_no_prohibited_backbone() -> None:
     assert len(default_config().params.exclusions.prohibited_backbone_names) == 0
 
 
-def test_reads_restrict_backbone_to_data_centers_true() -> None:
-    """A restrict_backbone_to_data_centers=true synthesis gates the backbone to data centers."""
-    assert _config(
-        {"synthesis": {"restrict_backbone_to_data_centers": True}}
-    ).restrict_backbone_to_datacenters is True
-
-
-def test_reads_restrict_backbone_to_data_centers_false() -> None:
-    """A restrict_backbone_to_data_centers=false synthesis opens the backbone to any city."""
-    assert _config(
-        {"synthesis": {"restrict_backbone_to_data_centers": False}}
-    ).restrict_backbone_to_datacenters is False
-
-
-def test_restrict_backbone_to_data_centers_must_be_a_boolean() -> None:
-    """A non-boolean restrict_backbone_to_data_centers value is rejected."""
-    with pytest.raises(ValueError):
-        _config({"synthesis": {"restrict_backbone_to_data_centers": "yes"}})
-
-
-def test_restrict_backbone_to_data_centers_is_required() -> None:
-    """A synthesis omitting restrict_backbone_to_data_centers is rejected (no default)."""
-    with pytest.raises(ValueError):
-        config_from_data({"tuning": _REQUIRED_TUNING})
-
-
 def test_reads_promote_high_degree_convergences_true() -> None:
     """A promote...=true synthesis lets the convergence pass seat high-degree hubs."""
     assert _config(
@@ -321,7 +294,9 @@ def test_promote_high_degree_convergences_is_required() -> None:
         config_from_data(
             {
                 "tuning": _REQUIRED_TUNING,
-                "synthesis": {"restrict_backbone_to_data_centers": True},
+                "synthesis": {
+                    "promote_high_degree_convergences_to_backbone_nodes": True
+                },
             }
         )
 
@@ -483,7 +458,9 @@ def test_missing_coverage_target_is_rejected() -> None:
         config_from_data(
             {
                 "tuning": {"backbone_number_of_diverse_paths": 3, "access_backbone_links": 2},
-                "synthesis": {"restrict_backbone_to_data_centers": True},
+                "synthesis": {
+                    "promote_high_degree_convergences_to_backbone_nodes": True
+                },
             }
         )
 
@@ -511,7 +488,9 @@ def test_missing_max_backup_path_multiple_is_rejected() -> None:
                     "access_backbone_links": 2,
                     "backbone_coverage_target_miles": 600,
                 },
-                "synthesis": {"restrict_backbone_to_data_centers": True},
+                "synthesis": {
+                    "promote_high_degree_convergences_to_backbone_nodes": True
+                },
             }
         )
 
@@ -580,7 +559,6 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "backbone-node-count": {"min": 3, "max": 5},
         "backbone-number-of-diverse-paths": {"degree": 3},
         "access-homing-degree": {"degree": 2},
-        "backbone-placement": {"restrict": True},
         "convergence-promotion": {"promote": True},
         "knobs": {"backbone_coverage_target_miles": 600, "backbone_max_backup_path_multiple": 3},
         "label": {"label": "Minuteman"},
@@ -727,20 +705,6 @@ def test_app_config_from_parts_reads_only_min_when_max_absent() -> None:
     parts["backbone-node-count"] = {"min": 4}
     params = app_config_from_parts(parts).params
     assert (params.min_backbone_count, params.max_backbone_count) == (4, None)
-
-
-def test_app_config_from_parts_reads_backbone_placement() -> None:
-    """The backbone-placement document toggles the data-center gate off."""
-    parts = _parts(**{"backbone-placement": {"restrict": False}})
-    assert app_config_from_parts(parts).restrict_backbone_to_datacenters is False
-
-
-def test_app_config_from_parts_requires_backbone_placement() -> None:
-    """A missing backbone-placement document is rejected (no default)."""
-    parts = _parts()
-    del parts["backbone-placement"]
-    with pytest.raises(ValueError):
-        app_config_from_parts(parts)
 
 
 def test_app_config_from_parts_reads_convergence_promotion() -> None:

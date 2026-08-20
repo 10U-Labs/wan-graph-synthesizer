@@ -23,7 +23,6 @@ def test_run_synthesis_honors_a_forced_backbone_pop() -> None:
         SynthesisParams(
             min_backbone_count=2,
             forced_backbone_names=("P3",),
-            datacenter_cities=fixtures.ring_datacenter_cities(),
         ),
     ).synthesis
     assert "P3" in synthesis.backbone_ids
@@ -38,8 +37,6 @@ def test_run_synthesis_seats_a_forced_off_net_site_as_backbone() -> None:
         SynthesisParams(
             min_backbone_count=2,
             forced_backbone_names=("Dulles Hub",),
-            datacenter_cities=fixtures.ring_datacenter_cities()
-            | {(site.info.municipality, site.info.state)},
         ),
         off_net_sites=[site],
     ).synthesis

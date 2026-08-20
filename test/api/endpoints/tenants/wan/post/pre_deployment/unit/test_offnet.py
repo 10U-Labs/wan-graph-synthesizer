@@ -9,11 +9,6 @@ from synthesizer.offnet import SeatedOffNetSites, realize_off_net_sites
 from synthesizer.model import is_carrier_pop
 from synthesizer.input_graph import Site
 
-# Every off-net fixture site is named for its own id and placed in the fixture state,
-# so this gate admits all the sites the tests seat.
-_CITIES = frozenset({(name, "XX") for name in ("dulles", "remote", "P0")})
-
-
 def _pops() -> list[Site]:
     """Three closely spaced carrier PoPs an off-net twin can home to."""
     return [
@@ -26,10 +21,9 @@ def _pops() -> list[Site]:
 def _realize(
     *sites: Site,
     forced: frozenset[str] = frozenset(),
-    cities: frozenset[tuple[str, str]] | None = _CITIES,
 ) -> SeatedOffNetSites:
     """Realize the given off-net sites against the three carrier PoPs."""
-    return realize_off_net_sites(_pops(), {}, list(sites), forced, cities)
+    return realize_off_net_sites(_pops(), {}, list(sites), forced)
 
 
 def test_realize_seats_a_forced_site() -> None:
@@ -67,26 +61,6 @@ def test_isolated_forced_site_raises() -> None:
     """A forced site with too few carrier PoPs in range fails loudly."""
     with pytest.raises(ValueError):
         _realize(fixtures.off_net_site("remote", 0.0, 10.0), forced=frozenset({"remote"}))
-
-
-def test_forced_site_off_a_data_center_city_is_rejected() -> None:
-    """A forced off-net site whose city no provider serves is rejected -- the gate is absolute."""
-    with pytest.raises(ValueError):
-        _realize(
-            fixtures.off_net_site("dulles", 0.0, 0.5),
-            forced=frozenset({"dulles"}),
-            cities=frozenset(),
-        )
-
-
-def test_forced_site_is_seated_anywhere_when_gate_is_open() -> None:
-    """With the gate open (cities=None), a forced off-net site at any city is seated."""
-    result = _realize(
-        fixtures.off_net_site("dulles", 0.0, 0.5),
-        forced=frozenset({"dulles"}),
-        cities=None,
-    )
-    assert len(result.seat_ids) == 1
 
 
 def test_a_forced_site_that_is_already_a_carrier_pop_is_rejected() -> None:

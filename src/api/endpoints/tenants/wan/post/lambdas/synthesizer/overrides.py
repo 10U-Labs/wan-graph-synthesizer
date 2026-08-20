@@ -58,26 +58,6 @@ def reject_override_conflicts(
         )
 
 
-def _reject_non_datacenter_pins(
-    forced_backbone: set[str],
-    carrier_pops: list[Site],
-    datacenter_cities: frozenset[tuple[str, str]],
-) -> None:
-    """Raise for any forced backbone pin whose city is not a data-center city.
-
-    The data-center gate is absolute: a carrier PoP may serve as a backbone node only
-    where a colocation provider has a cage, and an operator force does not lift the
-    constraint. A forced pin at a non-data-center city is rejected by name.
-    """
-    pop_by_id = {pop.id: pop for pop in carrier_pops}
-    for backbone_id in sorted(forced_backbone):
-        pop = pop_by_id[backbone_id]
-        if (pop.info.municipality, pop.info.state) not in datacenter_cities:
-            raise ValueError(
-                f"forced backbone PoP is not at a data-center city: {pop.name}"
-            )
-
-
 def _resolve_operator_pins(
     sites: list[Site],
     params: SynthesisParams,
@@ -102,8 +82,6 @@ def _resolve_operator_pins(
         params.degree_exempt_backbone_names, name_to_id, "degree_exempt_backbone"
     )
     reject_override_conflicts(forced_backbone, prohibited_backbone)
-    if params.datacenter_cities is not None:
-        _reject_non_datacenter_pins(forced_backbone, carrier_pops, params.datacenter_cities)
     return forced_backbone, prohibited_backbone, degree_exempt
 
 
@@ -222,9 +200,8 @@ def apply_role_overrides(
     sets against the seated backbone -- mesh pairs pinned in, homes pinned onto a named
     node, and mesh pairs pruned out.
     ``params.exclusions.prohibited_backbone_names`` are barred from the backbone tier
-    and land in ``RoleOverrides.prohibited_backbone_ids``. Forced backbone pins are
-    gated by ``params.datacenter_cities``: a pin at a city no colocation provider
-    serves is rejected. ``params.degree_exempt_backbone_names`` resolve the same way
+    and land in ``RoleOverrides.prohibited_backbone_ids``.
+    ``params.degree_exempt_backbone_names`` resolve the same way
     into ``RoleOverrides.degree_exempt_backbone_ids``, the nodes the diverse path count is not
     asked of. The graph is returned unchanged (operator pins resolve to
     existing carrier-PoP ids; demand attachment is the caller's earlier stage).

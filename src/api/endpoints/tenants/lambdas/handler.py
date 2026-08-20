@@ -45,7 +45,6 @@ _INPUTS = frozenset({
     "backbone-node-count",
     "backbone-number-of-diverse-paths",
     "access-homing-degree",
-    "backbone-placement",
     "convergence-promotion",
     "knobs",
     "settings",

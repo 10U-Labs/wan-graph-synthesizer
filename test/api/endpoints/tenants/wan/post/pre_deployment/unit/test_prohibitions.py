@@ -35,8 +35,7 @@ def test_synthesize_bars_a_prohibited_pop_from_the_backbone() -> None:
         fixtures.ring_sites(),
         fixtures.ring_fiber_segments(),
         SynthesisParams(
-            min_backbone_count=2, datacenter_cities=fixtures.ring_datacenter_cities()
-        ),
+            min_backbone_count=2),
         RoleOverrides(prohibited_backbone_ids=frozenset({"P3"})),
     )
     assert "P3" not in synthesis.backbone_ids

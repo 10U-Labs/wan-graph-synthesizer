@@ -43,7 +43,6 @@ _RING_BACKBONE = ("P0", "P1", "P2", "P3", "P4", "P5")
 _MESHED_RING = SynthesisParams(
     min_backbone_count=2,
     forced_backbone_names=_RING_BACKBONE,
-    datacenter_cities=fixtures.ring_datacenter_cities(),
     tuning=Tuning(backbone_number_of_diverse_paths=2),
 )
 FORCED_BACKBONE_LINK = fixtures.forced_link_artifacts(
@@ -193,7 +192,6 @@ def _chorded_synthesis(exempt: tuple[str, ...] = ()) -> SynthesisArtifacts:
         min_backbone_count=2,
         forced_backbone_names=_CHORDED_BACKBONE,
         degree_exempt_backbone_names=exempt,
-        datacenter_cities=fixtures.ring_datacenter_cities(),
         tuning=Tuning(backbone_number_of_diverse_paths=3),
     )
     return run_synthesis(sites, fixtures.fiber_segments_from(_CHORDED_PAIRS), params)
@@ -315,11 +313,10 @@ def test_off_net_synthesis_validates_connected() -> None:
 
 
 CONVERGENCE_HUB = fixtures.convergence_hub_artifacts()
-NON_DATACENTER_HUB = fixtures.convergence_hub_artifacts(promote_hub=False)
 
 
 def test_promoted_convergence_hub_is_seated_in_the_backbone() -> None:
-    """The data-center transit hub carrying >= 3 lines is promoted into the backbone."""
+    """The transit hub carrying >= 3 lines is promoted into the backbone."""
     assert "hub_dc" in CONVERGENCE_HUB.synthesis.backbone_ids
 
 
@@ -335,37 +332,3 @@ def test_convergence_promotion_reaches_a_fixpoint() -> None:
         (pop.info.municipality, pop.info.state) for pop in carrier_pops
     )
     assert convergence_promotion_ids(CONVERGENCE_HUB.synthesis, carrier_pops, cities) == set()
-
-
-def test_non_data_center_convergence_hub_is_not_promoted() -> None:
-    """The same >= 3-line crossing with no data center is never promoted to backbone."""
-    assert "hub_dc" not in NON_DATACENTER_HUB.synthesis.backbone_ids
-
-
-def test_non_data_center_convergence_hub_stays_transit() -> None:
-    """The unpromoted >= 3-line crossing remains a transit node in the synthesis."""
-    assert "hub_dc" in NON_DATACENTER_HUB.synthesis.transit_ids
-
-
-def _open_gate_artifacts() -> SynthesisArtifacts:
-    """Synthesize over the ring with the gate open (datacenter_cities=None) and P3 forced.
-
-    ``datacenter_cities=None`` is the operator's free-for-all: no data-center set is
-    supplied at all, so a forced PoP would be rejected under the default gate yet is
-    accepted here. Drives the full deployed pipeline (dual-home -> overrides ->
-    synthesize -> finalize) via ``run_synthesis``.
-    """
-    params = SynthesisParams(
-        min_backbone_count=2, forced_backbone_names=("P3",), datacenter_cities=None
-    )
-    return run_synthesis(fixtures.ring_sites(), fixtures.ring_fiber_segments(), params)
-
-
-def test_open_gate_seats_a_forced_non_data_center_backbone() -> None:
-    """With the gate open, a forced PoP at no data-center city is seated in the backbone."""
-    assert "P3" in _open_gate_artifacts().synthesis.backbone_ids
-
-
-def test_open_gate_synthesis_validates_connected() -> None:
-    """The open-gate synthesis validates end-to-end as a single connected component."""
-    assert _open_gate_artifacts().validation["connected"] is True

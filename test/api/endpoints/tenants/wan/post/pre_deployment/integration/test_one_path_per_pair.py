@@ -22,7 +22,7 @@ joined at all. Nobody loses by it -- both still hold the two ways out they were 
 and the pair that used to be joined twice is now joined none, which is the same argument
 run to the end.
 
-The hub and corridor cities are not data-center cities, so none of them can take a backbone
+The hub and corridor cities are barred from the backbone, so none of them can take a
 seat and the backbone stays the four sites the case is about.
 """
 
@@ -53,7 +53,7 @@ def _paths_per_pair() -> dict[tuple[str, str], int]:
 
 
 def test_the_backbone_is_the_four_sites() -> None:
-    """Only the sites sit at data-center cities, so no hub or corridor city takes a seat."""
+    """The hub and corridor cities are barred, so none of them takes a seat."""
     assert sorted(ARTIFACTS.synthesis.backbone_ids) == ["a", "b", "c", "d"]
 
 

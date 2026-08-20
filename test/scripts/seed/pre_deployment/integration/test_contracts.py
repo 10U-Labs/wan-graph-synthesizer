@@ -102,6 +102,29 @@ def test_pipeline_writes_at_least_one_carrier(
     assert any(re.fullmatch(r"carriers/[^/]+/pops", path) for path in paths)
 
 
+def _backbone_keys_seed_reads() -> set[str]:
+    """Every key under ``backbone:`` that ``scripts/seed.py`` looks up by name.
+
+    Read off the source rather than listed here, so the contract cannot drift from the
+    pushes it is about.
+    """
+    source = (REPO_ROOT / "scripts" / "seed.py").read_text(encoding="utf-8")
+    return set(re.findall(r'backbone(?:\[|\.get\()"([^"]+)"', source))
+
+
+def test_no_tenant_declares_a_backbone_key_the_seed_does_not_read() -> None:
+    """Every key under ``backbone:`` in every config is one the seed pushes somewhere.
+
+    A key the program stopped reading is a setting an operator can still write and watch
+    do nothing, which is how the data-center gate stayed in all five configs long after
+    nothing turned it on.
+    """
+    declared: set[str] = set()
+    for config in sorted((REPO_ROOT / "etc").glob("*.yml")):
+        declared |= set(yaml.safe_load(config.read_text(encoding="utf-8"))["backbone"])
+    assert declared <= _backbone_keys_seed_reads()
+
+
 def test_yamllint_names_every_tenant_config() -> None:
     """The workflow's yamllint file list names exactly the configs the roster declares."""
     declared = {path.name for path in seed.ETC.glob("*.yml")}

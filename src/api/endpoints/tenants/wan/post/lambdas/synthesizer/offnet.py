@@ -27,7 +27,7 @@ from synthesizer.local_fiber import (
     build_local_fiber_twin,
     unique_twin_id,
 )
-from synthesizer.model import backbone_city_allowed, is_carrier_pop
+from synthesizer.model import is_carrier_pop
 from synthesizer.input_graph import FiberSegment, Site
 
 OFF_NET_ID_PREFIX = "offnet_"
@@ -53,7 +53,6 @@ def realize_off_net_sites(
     fiber_segments: dict[tuple[str, str], FiberSegment],
     off_net_roster: list[Site],
     forced_names: frozenset[str],
-    datacenter_cities: frozenset[tuple[str, str]] | None = frozenset(),
 ) -> SeatedOffNetSites:
     """Seat a local-fiber twin for every off-net site the operator has force-pinned.
 
@@ -61,10 +60,7 @@ def realize_off_net_sites(
     forced is ignored. A forced site whose name is also a carrier PoP raises
     ``ValueError``: the roster exists to offer seats where no carrier point is, so such
     a row is a place the seat cannot be built, and the pin it names resolves onto two
-    sites. A forced site whose city
-    is not in ``datacenter_cities`` raises ``ValueError`` (the backbone gate is
-    absolute); when ``datacenter_cities`` is ``None`` (free-for-all) the gate is lifted.
-    A forced site that cannot reach
+    sites. A forced site that cannot reach
     :data:`~synthesizer.local_fiber.LOCAL_FIBER_MIN_LINKS` carrier PoPs within range
     raises ``ValueError``.
     """
@@ -80,10 +76,6 @@ def realize_off_net_sites(
         if site.name in carrier_names:
             raise ValueError(
                 f"forced off-net site is already a carrier PoP: {site.name}"
-            )
-        if not backbone_city_allowed(site.info, datacenter_cities):
-            raise ValueError(
-                f"forced off-net site is not at a data-center city: {site.name}"
             )
         twin_id = unique_twin_id(f"{OFF_NET_ID_PREFIX}{site.id}", used_ids)
         built = build_local_fiber_twin(

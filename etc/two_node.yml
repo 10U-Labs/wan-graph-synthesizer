@@ -19,7 +19,6 @@ backbone:
     nodes: []
     paths: []
   promote_high_degree_convergences: false
-  restrict_to_data_centers: false
 inputs:
   locations:
     Two-Node: data/tenants/two_node.csv

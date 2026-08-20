@@ -15,7 +15,6 @@ from seed import (
     _carrier_cities,
     _carrier_names,
     _city_key,
-    _data_center_providers,
     _degree_doc,
     _delete,
     _get,
@@ -25,13 +24,11 @@ from seed import (
     _put,
     _rows,
     _slug,
-    build_data_centers,
     build_substrate,
     build_tenants,
     main,
     prune_tenants,
     push_carriers,
-    push_data_centers,
     push_providers,
     push_tenants,
 )
@@ -65,7 +62,6 @@ backbone:
       - source: Luke, AZ
         target: Link, TX
   promote_high_degree_convergences: false
-  restrict_to_data_centers: true
 inputs:
   forced: offnet/off.csv
   locations:
@@ -112,13 +108,6 @@ def _one_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(seed, "DATA", tmp_path)
     _write_csv(
         tmp_path / "providers" / "providers.csv", "city,state", "Reston,VA")
-
-
-def _one_data_center(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Lay down one colocation provider's facilities under a temp DATA dir."""
-    monkeypatch.setattr(seed, "DATA", tmp_path)
-    _write_csv(
-        tmp_path / "sites" / "data-centers" / "vision_net.csv", "city,state", "Helena,MT")
 
 
 def _one_tenant(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
@@ -429,24 +418,6 @@ def test_push_providers_pushes_regions(
     assert "providers/regions" in put_recorder.nth(1)
 
 
-def test_data_center_providers_returns_sorted_stems(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """_data_center_providers returns the CSV stems under data-centers, sorted."""
-    monkeypatch.setattr(seed, "DATA", tmp_path)
-    _write_csv(tmp_path / "sites" / "data-centers" / "lunavi.csv", "city,state", "X,Y")
-    _write_csv(tmp_path / "sites" / "data-centers" / "equinix.csv", "city,state", "X,Y")
-    assert _data_center_providers() == ["equinix", "lunavi"]
-
-
-def test_push_data_centers_puts_the_slugged_facilities_path(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-        put_recorder: CallRecorder) -> None:
-    """push_data_centers PUTs a provider's facilities under its slugged id."""
-    _one_data_center(tmp_path, monkeypatch)
-    push_data_centers("http://api")
-    assert "data-centers/vision-net/facilities" in put_recorder.nth(1)
-
-
 def test_push_tenants_puts_the_label_resource(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
@@ -534,14 +505,6 @@ def test_push_tenants_puts_the_prohibited_paths_resource(
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/prohibited-paths"] == [
         {"source": "Luke, AZ", "target": "Link, TX"}]
-
-
-def test_push_tenants_puts_the_backbone_placement_resource(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-        put_recorder: CallRecorder) -> None:
-    """push_tenants wraps the block's data-center restriction as the placement document."""
-    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/backbone-placement"] == {"restrict": True}
 
 
 def test_push_tenants_builds_the_knobs_document_from_the_coverage_target(
@@ -681,12 +644,6 @@ def test_build_substrate_posts_the_merge(post_recorder: CallRecorder) -> None:
     assert post_recorder.calls == [("http://api", "carriers/merge")]
 
 
-def test_build_data_centers_posts_the_merge(post_recorder: CallRecorder) -> None:
-    """build_data_centers POSTs the data-centers merge."""
-    build_data_centers("http://api")
-    assert post_recorder.calls == [("http://api", "data-centers/merge")]
-
-
 def test_build_tenants_posts_a_wan_build_for_each(post_recorder: CallRecorder) -> None:
     """build_tenants POSTs a WAN build for every tenant id."""
     build_tenants("http://api", ["f-35", "minuteman"])
@@ -712,10 +669,6 @@ def _run_main(
     monkeypatch.setattr(seed, "push_carriers", lambda api: calls.append(("carriers", api)))
     monkeypatch.setattr(seed, "build_substrate", lambda api: calls.append(("merge", api)))
     monkeypatch.setattr(seed, "push_providers", lambda api: calls.append(("providers", api)))
-    monkeypatch.setattr(
-        seed, "push_data_centers", lambda api: calls.append(("data-centers", api)))
-    monkeypatch.setattr(
-        seed, "build_data_centers", lambda api: calls.append(("dc-merge", api)))
     monkeypatch.setattr(seed, "push_tenants", _push_tenants)
     monkeypatch.setattr(
         seed, "prune_tenants",
@@ -738,10 +691,9 @@ def test_main_uses_the_cli_argument_when_given(monkeypatch: pytest.MonkeyPatch) 
 
 def test_main_seeds_inputs_then_triggers_builds_in_order(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """main seeds carriers, substrate, providers, data-centers (+union), tenants, then builds."""
+    """main seeds carriers, the substrate, providers and tenants, then builds."""
     assert [name for name, _ in _run_main(monkeypatch, ["seed"])] == [
-        "carriers", "merge", "providers", "data-centers", "dc-merge", "tenants",
-        "prune", "build"]
+        "carriers", "merge", "providers", "tenants", "prune", "build"]
 
 
 def test_main_prunes_against_the_pushed_tenant_ids(
