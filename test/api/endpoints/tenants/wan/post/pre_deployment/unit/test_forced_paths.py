@@ -80,26 +80,39 @@ def test_forced_backbone_pairs_keeps_only_in_set_pairs() -> None:
 
 
 def test_unknown_backbone_endpoint_is_rejected() -> None:
-    """A pinned mesh endpoint absent from the Carrier graph is rejected."""
-    with pytest.raises(ValueError):
+    """A pinned mesh endpoint absent from the Carrier graph is named as a forced path."""
+    with pytest.raises(ValueError, match="forced-path"):
         resolve_forced_links(
             OperatorLinks(backbone=(NamedLink("Nowhere", "P1"),)), VERTICES, {"P1"}
         )
 
 
 def test_backbone_endpoint_not_forced_is_rejected() -> None:
-    """A pinned mesh endpoint that is not a forced backbone node is rejected."""
-    with pytest.raises(ValueError):
+    """A pinned mesh endpoint that is not a forced backbone node is named as a forced path."""
+    with pytest.raises(ValueError, match="forced-path"):
         resolve_forced_links(
             OperatorLinks(backbone=(NamedLink("P0", "P1"),)), VERTICES, {"P0"}
         )
 
 
-def test_forced_home_target_not_forced_is_rejected() -> None:
-    """A forced home's target that is not a forced backbone node is rejected."""
-    with pytest.raises(ValueError):
+def test_forced_home_target_not_forced_names_the_home_list() -> None:
+    """A home's target that the operator did not pin is named as a forced home.
+
+    The operator wrote this entry in `access.forced.homes`, so that is the list the
+    message has to send them to -- naming the mesh list sends them to a file they did
+    not touch, with no way to learn from the words which one they did.
+    """
+    with pytest.raises(ValueError, match="forced-home"):
         resolve_forced_links(
             OperatorLinks(access=(NamedLink("A1", "P1"),)), VERTICES, set()
+        )
+
+
+def test_forced_home_target_off_the_carrier_graph_names_the_home_list() -> None:
+    """A home's target that is no carrier PoP at all is named as a forced home."""
+    with pytest.raises(ValueError, match="forced-home"):
+        resolve_forced_links(
+            OperatorLinks(access=(NamedLink("A1", "Nowhere"),)), VERTICES, {"P1"}
         )
 
 

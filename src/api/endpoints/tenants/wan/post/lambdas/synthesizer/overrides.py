@@ -108,14 +108,20 @@ def _resolve_operator_pins(
 
 
 def _forced_backbone_endpoint(
-    name: str, name_to_id: dict[str, str], forced_backbone: set[str]
+    name: str, name_to_id: dict[str, str], forced_backbone: set[str], label: str
 ) -> str:
-    """Resolve a forced-path backbone endpoint, requiring it be a forced node."""
+    """Resolve a backbone endpoint a forced path or a forced home named, requiring a pin.
+
+    ``label`` is the config field the endpoint was written in; it names the offending
+    field in the error so the operator knows which list to fix. Both callers pass it
+    rather than the parameter carrying a default, since a default is one list's name
+    hard-coded one indirection further away and the next caller inherits it.
+    """
     if name not in name_to_id:
-        raise ValueError(f"forced-path backbone not found in the Carrier graph: {name}")
+        raise ValueError(f"{label} backbone not found in the Carrier graph: {name}")
     backbone_id = name_to_id[name]
     if backbone_id not in forced_backbone:
-        raise ValueError(f"forced-path endpoint must be a forced backbone node: {name}")
+        raise ValueError(f"{label} endpoint must be a forced backbone node: {name}")
     return backbone_id
 
 
@@ -123,8 +129,8 @@ def _backbone_backbone_pair(
     path: NamedLink, name_to_id: dict[str, str], forced_backbone: set[str]
 ) -> tuple[str, str]:
     """Resolve a backbone-backbone path's endpoints to a forced-backbone edge key."""
-    left = _forced_backbone_endpoint(path.source, name_to_id, forced_backbone)
-    right = _forced_backbone_endpoint(path.target, name_to_id, forced_backbone)
+    left = _forced_backbone_endpoint(path.source, name_to_id, forced_backbone, "forced-path")
+    right = _forced_backbone_endpoint(path.target, name_to_id, forced_backbone, "forced-path")
     return edge_key(left, right)
 
 
@@ -143,7 +149,7 @@ def _forced_home_pair(
     """
     if home.source not in access_name_to_id:
         raise ValueError(f"forced-home access node not found: {home.source}")
-    backbone = _forced_backbone_endpoint(home.target, name_to_id, forced_backbone)
+    backbone = _forced_backbone_endpoint(home.target, name_to_id, forced_backbone, "forced-home")
     return access_name_to_id[home.source], backbone
 
 
