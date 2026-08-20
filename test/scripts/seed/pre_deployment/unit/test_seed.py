@@ -681,6 +681,18 @@ def test_prune_store_names_nothing_when_the_store_is_already_clean(
     assert "deleted " not in capsys.readouterr().out
 
 
+def test_prune_store_survives_an_answer_it_does_not_recognise(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """The store has already pruned by then, so an odd answer costs the log line only.
+
+    The localhost stub the integration tier drives the seed against answers every POST with
+    one canned listing, which is exactly the shape this must not die on.
+    """
+    monkeypatch.setattr(seed, "_post_json", lambda _api, _path: [])
+    prune_store("http://api")
+    assert "deleted " not in capsys.readouterr().out
+
+
 def test_build_tenants_posts_a_wan_build_for_each(post_recorder: CallRecorder) -> None:
     """build_tenants POSTs a WAN build for every tenant id."""
     build_tenants("http://api", ["f-35", "minuteman"])

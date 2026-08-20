@@ -278,9 +278,15 @@ def prune_store(api: str) -> None:
 
     The keys are printed rather than counted, because this runs in the ``seeding`` job's
     log and somebody reading it back needs to see what went, not how much.
+
+    An answer of some other shape costs the log line and not the run. The store has already
+    pruned by the time its answer is read, so a seed that raised here would fail a run whose
+    work was done, over the part of it that is only a courtesy.
     """
     print("store: pruning collections nothing writes any more", flush=True)
-    for key in _post_json(api, "store/prune")["deleted"]:
+    answer = _post_json(api, "store/prune")
+    deleted = answer.get("deleted", []) if isinstance(answer, dict) else []
+    for key in deleted:
         print(f"  deleted {key}", flush=True)
 
 

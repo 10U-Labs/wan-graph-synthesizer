@@ -75,7 +75,8 @@ def test_the_prune_leaves_the_working_areas_alone(prune_handler: Any) -> None:
 def test_the_prune_takes_out_a_prefix_whose_endpoint_was_deleted(prune_handler: Any) -> None:
     """csps/ and data-centers/ have no endpoint to reach them, so nothing under them is current."""
     objects = {"csps/aws/vertices.json": b"", "data-centers/qts/facilities.json": b""}
-    assert _prune(prune_handler, objects)["deleted"] == sorted(objects)
+    held = sorted(objects)
+    assert _prune(prune_handler, objects)["deleted"] == held
 
 
 def test_the_prune_takes_out_a_bare_prefix_marker(prune_handler: Any) -> None:
