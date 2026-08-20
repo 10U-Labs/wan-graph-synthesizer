@@ -90,7 +90,6 @@ def compute_eligible_backbone_ids(
 
 def convergence_promotion_ids(
     synthesis: Synthesis,
-    carrier_pops: list[Site],
     min_degree: int = CONVERGENCE_BACKBONE_DEGREE,
 ) -> set[str]:
     """Non-backbone carrier PoPs where this synthesis's fiber converges.
@@ -433,7 +432,7 @@ def synthesize_two_tier(
 
         if not params.promote_high_degree_convergences:
             return synthesis
-        new = convergence_promotion_ids(synthesis, inputs.carrier_pops) - promoted
+        new = convergence_promotion_ids(synthesis) - promoted
         if not new:
             return synthesis
         grown = promoted | new

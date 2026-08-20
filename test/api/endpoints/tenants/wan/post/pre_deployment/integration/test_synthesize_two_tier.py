@@ -20,7 +20,6 @@ from synthesizer.model import (
     NamedLink,
     OperatorLinks,
     Tuning,
-    is_carrier_pop,
 )
 from synthesizer.synthesize import convergence_promotion_ids
 from synthesizer.validation import backbone_mesh_pairs, diverse_path_count
@@ -327,8 +326,4 @@ def test_promoted_convergence_synthesis_validates_connected() -> None:
 
 def test_convergence_promotion_reaches_a_fixpoint() -> None:
     """The returned synthesis is stable: a further convergence pass promotes nothing."""
-    carrier_pops = [v for v in CONVERGENCE_HUB.sites if is_carrier_pop(v)]
-    cities = frozenset(
-        (pop.info.municipality, pop.info.state) for pop in carrier_pops
-    )
-    assert convergence_promotion_ids(CONVERGENCE_HUB.synthesis, carrier_pops, cities) == set()
+    assert convergence_promotion_ids(CONVERGENCE_HUB.synthesis) == set()

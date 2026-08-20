@@ -291,14 +291,7 @@ def test_promote_high_degree_convergences_must_be_a_boolean() -> None:
 def test_promote_high_degree_convergences_is_required() -> None:
     """A synthesis omitting promote_high_degree_convergences_to_backbone_nodes is rejected."""
     with pytest.raises(ValueError):
-        config_from_data(
-            {
-                "tuning": _REQUIRED_TUNING,
-                "synthesis": {
-                    "promote_high_degree_convergences_to_backbone_nodes": True
-                },
-            }
-        )
+        config_from_data({"tuning": _REQUIRED_TUNING, "synthesis": {}})
 
 
 def test_reads_prohibited_backbone() -> None:

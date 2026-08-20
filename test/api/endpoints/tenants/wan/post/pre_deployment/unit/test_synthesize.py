@@ -221,25 +221,21 @@ def test_convergence_promotes_a_transit_hub() -> None:
     # hub carries four of the synthesis's drawn links; b1/b2 are the seated backbone.
     keys = {link_key("hub", n) for n in ("b1", "b2", "x", "y")}
     synthesis = _synthesis(("b1", "b2"), keys)
-    pops = [pop(name) for name in ("hub", "b1", "b2", "x", "y")]
-    promoted = convergence_promotion_ids(synthesis, pops)
-    assert promoted == {"hub"}
+    assert convergence_promotion_ids(synthesis) == {"hub"}
 
 
 def test_convergence_skips_a_two_line_crossing() -> None:
     """A PoP where only two of the synthesis's lines meet is below the threshold."""
     keys = {link_key("mid", "b1"), link_key("mid", "b2")}
     synthesis = _synthesis(("b1", "b2"), keys)
-    pops = [pop(name) for name in ("mid", "b1", "b2")]
-    assert convergence_promotion_ids(synthesis, pops) == set()
+    assert convergence_promotion_ids(synthesis) == set()
 
 
 def test_convergence_excludes_a_seated_backbone_node() -> None:
     """A node already in the backbone is never re-promoted, however many lines it carries."""
     keys = {link_key("b1", n) for n in ("b2", "x", "y")}
     synthesis = _synthesis(("b1", "b2"), keys)
-    pops = [pop(name) for name in ("b1", "b2", "x", "y")]
-    assert convergence_promotion_ids(synthesis, pops) == set()
+    assert convergence_promotion_ids(synthesis) == set()
 
 
 # --- direct helper coverage ------------------------------------------------------------
