@@ -10,7 +10,7 @@ published number about it would look well formed (GitHub issues #44 and #57).
 The fiber below is two ten-mile segments through ``hub`` and one hundred-mile segment straight
 across, so the shortest way from ``west`` to ``east`` is twenty miles and a tenant allowing
 three times the direct distance allows sixty. The two access homings are there because the
-published edges collection carries them beside the fiber: counted as segments they would make
+published links collection carries them beside the fiber: counted as segments they would make
 ``west`` two miles from ``east`` through a demand site, which is not fiber any link can be
 laid along.
 
@@ -27,24 +27,24 @@ from typing import Any
 
 from test_published_syntheses import detoured_links
 
-_EDGES: list[dict[str, Any]] = [
+_LINKS: list[dict[str, Any]] = [
     {"source_id": "west", "target_id": "hub", "distance_miles": 10.0,
-     "edge_kind": "carrier_physical"},
+     "link_kind": "carrier_physical"},
     {"source_id": "hub", "target_id": "east", "distance_miles": 10.0,
-     "edge_kind": "carrier_physical"},
+     "link_kind": "carrier_physical"},
     {"source_id": "west", "target_id": "east", "distance_miles": 100.0,
-     "edge_kind": "carrier_physical"},
+     "link_kind": "carrier_physical"},
     {"source_id": "site", "target_id": "west", "distance_miles": 1.0,
-     "edge_kind": "tenant_to_backbone"},
+     "link_kind": "tenant_to_backbone"},
     {"source_id": "site", "target_id": "east", "distance_miles": 1.0,
-     "edge_kind": "tenant_to_backbone"},
+     "link_kind": "tenant_to_backbone"},
 ]
 
 
 def _synthesis(source: str, target: str, distance: float) -> dict[str, Any]:
     """A published network of that fiber carrying one drawn link between two ids."""
     return {
-        "edges": _EDGES,
+        "links": _LINKS,
         "max_backup_path_multiple": 3.0,
         "links": [
             {

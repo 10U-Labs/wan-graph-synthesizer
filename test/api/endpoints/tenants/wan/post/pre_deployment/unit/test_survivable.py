@@ -28,7 +28,7 @@ import pytest
 import fixtures
 from synthesizer.ceiling import BackupPathLimit
 from synthesizer.graphs import build_adjacency, distances_from
-from synthesizer.input_graph import PhysicalEdge
+from synthesizer.input_graph import FiberSegment
 from synthesizer.survivable import (
     FiberChoice,
     FiberInputs,
@@ -39,7 +39,7 @@ from synthesizer.survivable import (
     choose_fiber,
 )
 
-physical = fixtures.physical_edges_from
+physical = fixtures.fiber_segments_from
 
 # What every tenant in etc/*.yml asks for: two ways out of each backbone node that no one
 # city's loss takes together.
@@ -50,29 +50,29 @@ _SLACK = 1e-6
 
 
 def _all_distances(
-    edges: dict[tuple[str, str], PhysicalEdge]
+    links: dict[tuple[str, str], FiberSegment]
 ) -> dict[str, dict[str, float]]:
     """The shortest way over this fiber from every city on it to every other."""
-    cities = sorted({city for pair in edges for city in pair})
-    return distances_from(build_adjacency(edges), cities)
+    cities = sorted({city for pair in links for city in pair})
+    return distances_from(build_adjacency(links), cities)
 
 
 def _chosen(
-    edges: dict[tuple[str, str], PhysicalEdge],
+    links: dict[tuple[str, str], FiberSegment],
     backbone_ids: tuple[str, ...],
     per_peer: int = 1,
 ) -> FiberChoice:
     """The fiber a backbone of these sites is built from, with no bound on a path's length."""
     return choose_fiber(
-        FiberInputs(backbone_ids, edges, _all_distances(edges), _WAYS_OUT, per_peer)
+        FiberInputs(backbone_ids, links, _all_distances(links), _WAYS_OUT, per_peer)
     )
 
 
 def _bought_miles(
-    choice: FiberChoice, edges: dict[tuple[str, str], PhysicalEdge]
+    choice: FiberChoice, links: dict[tuple[str, str], FiberSegment]
 ) -> float:
     """How many fiber miles the segments a choice bought actually run."""
-    return sum(edges[segment].distance_miles for segment in choice.segments)
+    return sum(links[segment].distance_miles for segment in choice.segments)
 
 
 # The three-site crossing graph from the shared fixtures: twenty miles apart overland
@@ -80,16 +80,16 @@ def _bought_miles(
 # whose segments differ by orders of magnitude, which is what a backup path multiple is
 # measured against, and the overland fiber is what is left when the crossing is refused.
 _CROSSING_SITES = ("eug", "hil", "sea")
-_CROSSING_DISTANCES = _all_distances(fixtures.CROSSING_EDGES)
+_CROSSING_DISTANCES = _all_distances(fixtures.CROSSING_LINKS)
 _OVERLAND = frozenset({("eug", "pdx"), ("hil", "pdx"), ("pdx", "sea")})
-_EVERY_CROSSING_SEGMENT = frozenset(fixtures.CROSSING_EDGES)
+_EVERY_CROSSING_SEGMENT = frozenset(fixtures.CROSSING_LINKS)
 
 
 def _admissible(multiple: float | None) -> frozenset[tuple[str, str]]:
     """The crossing graph's fiber a path inside this backup path multiple could run over."""
     limit = None if multiple is None else BackupPathLimit(multiple, _CROSSING_DISTANCES)
     return frozenset(admissible_fiber(FiberInputs(
-        _CROSSING_SITES, fixtures.CROSSING_EDGES, _CROSSING_DISTANCES, _WAYS_OUT, 1, limit
+        _CROSSING_SITES, fixtures.CROSSING_LINKS, _CROSSING_DISTANCES, _WAYS_OUT, 1, limit
     )))
 
 
@@ -310,7 +310,7 @@ def test_the_fiber_a_long_search_settles_on_meets_every_requirement_asked_of_it(
 
 # Every choice above beside the fiber it was made over, so the guarantee the whole module
 # exists for can be stated once against all of them.
-_CASES: tuple[tuple[str, FiberChoice, dict[tuple[str, str], PhysicalEdge]], ...] = (
+_CASES: tuple[tuple[str, FiberChoice, dict[tuple[str, str], FiberSegment]], ...] = (
     ("ring", _RING_CHOICE, _RING),
     ("ring and chord", _CHORD_CHOICE, _CHORD),
     ("chain", _CHAIN_CHOICE, _CHAIN),
@@ -331,6 +331,6 @@ def test_no_choice_is_floored_above_the_fiber_it_actually_bought() -> None:
     """
     assert [
         name
-        for name, choice, edges in _CASES
-        if choice.lower_bound_miles > _bought_miles(choice, edges) + _SLACK
+        for name, choice, links in _CASES
+        if choice.lower_bound_miles > _bought_miles(choice, links) + _SLACK
     ] == []

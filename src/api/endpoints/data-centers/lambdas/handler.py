@@ -1,12 +1,12 @@
 """Data-centers endpoint: read and write a colocation provider's facilities in the store.
 
     GET    /wan-graph-synthesizer/data-centers                      -> the provider ids
-    GET    /wan-graph-synthesizer/data-centers/{provider}/vertices  -> that provider's sites
-    PUT    /wan-graph-synthesizer/data-centers/{provider}/vertices  -> replace its sites
+    GET    /wan-graph-synthesizer/data-centers/{provider}/facilities  -> that provider's sites
+    PUT    /wan-graph-synthesizer/data-centers/{provider}/facilities  -> replace its sites
     DELETE /wan-graph-synthesizer/data-centers/{provider}           -> remove the provider
 
-A data-center graph is facility points only (no fiber), so it exposes vertices but no
-edges. The synthesizer never paths through these points -- they gate which carrier PoPs
+A data-center graph is facility points only (no fiber), so it exposes sites but no
+links. The synthesizer never paths through these points -- they gate which carrier PoPs
 may serve as backbone nodes (a backbone node must sit in a city a provider has a cage in).
 A write only stores the sites; building a tenant's WAN is a separate operation
 (``POST /tenants/{t}/wan``), so a write endpoint never triggers a build.
@@ -22,7 +22,7 @@ import boto3
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 # A provider's facilities are bare geographic rows (no name); reject anything else.
-_VERTEX_FIELDS = {"municipality", "state", "country", "latitude", "longitude"}
+_SITE_FIELDS = {"municipality", "state", "country", "latitude", "longitude"}
 
 
 def _validate_rows(body: Any, required: set[str]) -> str | None:
@@ -62,8 +62,8 @@ def _provider_ids(client: Any) -> list[str]:
 
 
 def _read_sites(client: Any, provider: str) -> Any:
-    """Read a provider's stored facilities (its vertices file), or None when absent."""
-    key = f"data-centers/{provider}/vertices.json"
+    """Read a provider's stored facilities (its sites file), or None when absent."""
+    key = f"data-centers/{provider}/facilities.json"
     try:
         body = client.get_object(Bucket=os.environ["STORE_BUCKET"], Key=key)["Body"].read()
     except client.exceptions.NoSuchKey:
@@ -72,11 +72,11 @@ def _read_sites(client: Any, provider: str) -> Any:
 
 
 def _get(client: Any, provider: str | None, event: dict[str, Any]) -> dict[str, Any]:
-    """Serve the data-centers collection or one provider's facilities (vertices)."""
+    """Serve the data-centers collection or one provider's facilities (sites)."""
     if not provider:
         return _response(200, _provider_ids(client))
     collection = event.get("path", "").rsplit("/", 1)[-1]
-    if collection != "vertices":
+    if collection != "facilities":
         return _response(404, {"error": collection})
     rows = _read_sites(client, provider)
     if rows is None:
@@ -85,15 +85,15 @@ def _get(client: Any, provider: str | None, event: dict[str, Any]) -> dict[str, 
 
 
 def _put(client: Any, provider: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace a provider's facilities (its vertices file). Rebuilds are a separate POST."""
+    """Replace a provider's facilities (its sites file). Rebuilds are a separate POST."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
-    if collection != "vertices":
+    if collection != "facilities":
         return _response(404, {"error": collection})
     rows = json.loads(event["body"])
-    error = _validate_rows(rows, _VERTEX_FIELDS)
+    error = _validate_rows(rows, _SITE_FIELDS)
     if error:
         return _response(400, {"error": error})
-    key = f"data-centers/{provider}/vertices.json"
+    key = f"data-centers/{provider}/facilities.json"
     client.put_object(Bucket=os.environ["STORE_BUCKET"], Key=key, Body=json.dumps(rows).encode())
     return _response(200, {"updated": f"{provider}/{collection}"})
 
@@ -109,7 +109,7 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         return _response(404, {"error": "provider required"})
     if method == "DELETE":
         client.delete_object(
-            Bucket=os.environ["STORE_BUCKET"], Key=f"data-centers/{provider}/vertices.json"
+            Bucket=os.environ["STORE_BUCKET"], Key=f"data-centers/{provider}/facilities.json"
         )
         return _response(200, {"deleted": provider})
     return _put(client, provider, event)

@@ -13,13 +13,13 @@ from synthesizer.model import SynthesisParams
 from synthesizer.overrides import apply_role_overrides
 
 pop = fixtures.carrier_pop
-physical = fixtures.physical_edges_from
+physical = fixtures.fiber_segments_from
 
 
 def test_apply_role_overrides_resolves_a_degree_exempt_name() -> None:
-    """A degree-exempt name resolves to its vertex id in the overrides."""
+    """A degree-exempt name resolves to its site id in the overrides."""
     params = SynthesisParams(degree_exempt_backbone_names=("P0",))
-    _vertices, _edges, overrides = apply_role_overrides(
+    _sites, _links, overrides = apply_role_overrides(
         [pop("P0"), pop("P1")], physical({("P0", "P1"): 1.0}), params
     )
     assert overrides.degree_exempt_backbone_ids == frozenset({"P0"})
@@ -27,7 +27,7 @@ def test_apply_role_overrides_resolves_a_degree_exempt_name() -> None:
 
 def test_apply_role_overrides_exempts_nobody_by_default() -> None:
     """A synthesis naming no exempt node holds every backbone node to the degree."""
-    _vertices, _edges, overrides = apply_role_overrides(
+    _sites, _links, overrides = apply_role_overrides(
         [pop("P0"), pop("P1")], physical({("P0", "P1"): 1.0}), SynthesisParams()
     )
     assert overrides.degree_exempt_backbone_ids == frozenset()

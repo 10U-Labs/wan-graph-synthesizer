@@ -42,7 +42,7 @@ from typing import Any
 from urllib.error import HTTPError
 
 from seed import _get
-from synthesizer.input_graph import Vertex, haversine_miles
+from synthesizer.input_graph import Site, haversine_miles
 
 # How far a path over fiber wanders past the straight line between its two ends. Fiber
 # miles run somewhere between one and two air miles on real terrestrial builds, so a
@@ -56,7 +56,7 @@ SINUOSITY = 2.0
 # of a hundred segments and is far too little to admit a detour.
 ROUNDING_SLACK = 0.1
 
-# The label the published edges collection gives a segment of carrier fiber, as opposed to
+# The label the published links collection gives a segment of carrier fiber, as opposed to
 # the access homings served alongside it (see ``synthesizer.output.synthesis_payload``).
 FIBER = "carrier_physical"
 
@@ -68,7 +68,7 @@ FIBER = "carrier_physical"
 UNFINISHED = frozenset({"creating", "synthesizing"})
 
 # The published collections this module reads, under the names the API serves them by.
-COLLECTIONS = ("backbone-nodes", "backbone-links", "tenant-nodes", "provider-nodes", "edges")
+COLLECTIONS = ("backbone-nodes", "backbone-links", "tenant-nodes", "provider-nodes", "links")
 
 
 def request_paths(tenant: str) -> list[str]:
@@ -135,8 +135,8 @@ def published_synthesis(api: str, tenant: str, config: dict[str, Any]) -> dict[s
         "lower_bound_miles": state.get("backbone_lower_bound_miles"),
         "backbone": published.get("backbone-nodes", []),
         "demand": published.get("tenant-nodes", []) + published.get("provider-nodes", []),
-        "links": published.get("backbone-links", []),
-        "edges": published.get("edges", []),
+        "paths": published.get("backbone-links", []),
+        "paths": published.get("paths", []),
     }
 
 
@@ -153,10 +153,10 @@ def settled(status: dict[str, Any]) -> bool:
     return status.get("status") not in UNFINISHED
 
 
-def vertex(node: dict[str, Any]) -> Vertex:
-    """Rebuild a published node as the vertex type the distance helper takes."""
+def site(node: dict[str, Any]) -> Site:
+    """Rebuild a published node as the site type the distance helper takes."""
     latitude, longitude = node["coords"]
-    return Vertex(node["id"], node["name"], node["kind"], (latitude, longitude))
+    return Site(node["id"], node["name"], node["kind"], (latitude, longitude))
 
 
 def worst_haul(synthesis: dict[str, Any]) -> float:
@@ -165,9 +165,9 @@ def worst_haul(synthesis: dict[str, Any]) -> float:
     Sites the operator has excused the distance constraint are left out, as they are in the
     synthesizer's own stop condition, and a synthesis carrying no demand at all reads zero.
     """
-    nodes = [vertex(node) for node in synthesis["backbone"]]
+    nodes = [site(node) for node in synthesis["backbone"]]
     hauls: list[float] = [
-        min(haversine_miles(vertex(site), node) for node in nodes)
+        min(haversine_miles(site(site), node) for node in nodes)
         for site in synthesis["demand"]
         if not site["exempt_from_distance_constraint"]
     ]
@@ -184,10 +184,10 @@ def overrun_links(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     branches -- each of them discards a link and says nothing, and a helper discarding
     every link returns the empty list a sound network returns.
     """
-    coords = {node["id"]: vertex(node) for node in synthesis["backbone"]}
+    coords = {node["id"]: site(node) for node in synthesis["backbone"]}
     allowed = SINUOSITY * synthesis["max_backup_path_multiple"]
     overrun = []
-    for link in synthesis["links"]:
+    for link in synthesis["paths"]:
         source = coords.get(link["source_id"])
         target = coords.get(link["target_id"])
         if source is None or target is None or source is target:
@@ -285,7 +285,7 @@ def overbuilt_pairs(synthesis: dict[str, Any]) -> list[tuple[str, int]]:
     the one pair it is.
     """
     drawn: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for link in synthesis["links"]:
+    for link in synthesis["paths"]:
         pair = tuple(sorted((link["source_id"], link["target_id"])))
         drawn.setdefault(pair, []).append(link)
     names = {node["id"]: node["name"] for node in synthesis["backbone"]}
@@ -295,10 +295,10 @@ def overbuilt_pairs(synthesis: dict[str, Any]) -> list[tuple[str, int]]:
         if len(paths) < 2:
             continue
         spare = max(paths, key=lambda path: path["distance_miles"])
-        kept = [link for link in synthesis["links"] if link is not spare]
+        kept = [link for link in synthesis["paths"] if link is not spare]
         if not any(
             independent_ways_out(kept, end, names)
-            < min(asked, independent_ways_out(synthesis["links"], end, names))
+            < min(asked, independent_ways_out(synthesis["paths"], end, names))
             for end in pair
         ):
             overbuilt.append((" <-> ".join(pair), len(paths)))
@@ -439,17 +439,17 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
         frozenset((pair["source"], pair["target"])) for pair in synthesis["forced_paths"]
     }
     held_ways_out = {
-        site: min(asked, independent_ways_out(synthesis["links"], site, names))
+        site: min(asked, independent_ways_out(synthesis["paths"], site, names))
         for site in sites
     }
     survives_a_city_loss = not _holds_a_single_point_of_failure(
-        _cities_the_paths_cross(synthesis["links"])
+        _cities_the_paths_cross(synthesis["paths"])
     )
     removable: list[tuple[str, float]] = []
-    for spare in synthesis["links"]:
+    for spare in synthesis["paths"]:
         if frozenset((names[spare["source_id"]], names[spare["target_id"]])) in pinned:
             continue
-        kept = [link for link in synthesis["links"] if link is not spare]
+        kept = [link for link in synthesis["paths"] if link is not spare]
         if any(
             independent_ways_out(kept, site, names) < held_ways_out[site] for site in sites
         ):
@@ -473,11 +473,11 @@ def _published_fiber(synthesis: dict[str, Any]) -> dict[str, dict[str, float]]:
     shorten the way between two backbone nodes by fiber no link could be laid along.
     """
     fiber: dict[str, dict[str, float]] = {}
-    for edge in synthesis["edges"]:
-        if edge["edge_kind"] != FIBER:
+    for link in synthesis["paths"]:
+        if link["link_kind"] != FIBER:
             continue
-        fiber.setdefault(edge["source_id"], {})[edge["target_id"]] = edge["distance_miles"]
-        fiber.setdefault(edge["target_id"], {})[edge["source_id"]] = edge["distance_miles"]
+        fiber.setdefault(link["source_id"], {})[link["target_id"]] = link["distance_miles"]
+        fiber.setdefault(link["target_id"], {})[link["source_id"]] = link["distance_miles"]
     return fiber
 
 
@@ -530,7 +530,7 @@ def detoured_links(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     fiber = _published_fiber(synthesis)
     allowed = synthesis["max_backup_path_multiple"]
     detoured = []
-    for link in synthesis["links"]:
+    for link in synthesis["paths"]:
         shortest = _shortest_fiber_miles(fiber, link["source_id"], link["target_id"])
         if shortest > 0 and link["distance_miles"] > allowed * shortest + ROUNDING_SLACK:
             detoured.append((" -> ".join(link["path"]), link["distance_miles"] / shortest))
@@ -579,6 +579,6 @@ def ordered_fiber_miles(synthesis: dict[str, Any]) -> float:
     backbone path can be laid along.
     """
     segments: list[float] = [
-        edge["distance_miles"] for edge in synthesis["edges"] if edge["edge_kind"] == FIBER
+        link["distance_miles"] for link in synthesis["paths"] if link["link_kind"] == FIBER
     ]
     return sum(segments)

@@ -54,8 +54,8 @@ def _above_target(*extra: SynthesisPath) -> list[dict[str, object]]:
     synthesis = Synthesis(
         backbone_ids=_SITES,
         transit_ids=(),
-        access_edges=[],
-        physical_edge_keys=set(),
+        access_paths=[],
+        fiber_segment_keys=set(),
         path_uses=[*_ASKED_FOR, *extra],
         metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )

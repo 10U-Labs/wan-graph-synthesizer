@@ -7,8 +7,8 @@ from dataclasses import replace
 import pytest
 
 import fixtures
-from fixtures import synthesis_inputs_from_edges, search_plan
-from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
+from fixtures import synthesis_inputs_from_links, search_plan
+from synthesizer.input_graph import FiberSegment, Site, haversine_miles
 from synthesizer.graphs import build_adjacency
 from synthesizer.model import SynthesisParams, Tuning
 from synthesizer.coverage import (
@@ -24,11 +24,11 @@ from synthesizer.coverage import (
 )
 
 pop = fixtures.carrier_pop
-physical = fixtures.physical_edges_from
-access = fixtures.access_vertex
+physical = fixtures.fiber_segments_from
+access = fixtures.access_site
 
 
-def _wired_to_base(names: tuple[str, ...]) -> dict[tuple[str, str], PhysicalEdge]:
+def _wired_to_base(names: tuple[str, ...]) -> dict[tuple[str, str], FiberSegment]:
     """Fiber joining the base pair b1/b2 and hanging every named place off both of them.
 
     Every grown set is then a biconnected triangle that builds and every site homes, so
@@ -43,7 +43,7 @@ def _wired_to_base(names: tuple[str, ...]) -> dict[tuple[str, str], PhysicalEdge
 
 
 def test_demand_hauls_report_each_site_by_its_nearest_node() -> None:
-    """The haul metric gives each demand vertex its miles to the nearest backbone node."""
+    """The haul metric gives each demand site its miles to the nearest backbone node."""
     pops = {
         "node_w": pop("node_w", 40.0, -100.0),
         "node_e": pop("node_e", 40.0, -80.0),
@@ -80,13 +80,13 @@ def test_coverage_candidate_hauls_drops_an_infeasible_addition() -> None:
     cannot reach a mesh peer, so promoting it yields an unbuildable backbone -- the
     coverage scorer offers it nothing.
     """
-    edges = physical(
+    links = physical(
         {
             ("c1", "c2"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0, ("z", "y"): 1.0,
         }
     )
-    inputs = synthesis_inputs_from_edges(
-        ["c1", "c2", "z", "y"], edges, {"c1", "c2", "z"}, [access("s", 0.0, 0.05)]
+    inputs = synthesis_inputs_from_links(
+        ["c1", "c2", "z", "y"], links, {"c1", "c2", "z"}, [access("s", 0.0, 0.05)]
     )
     hauls = coverage_candidate_hauls(("c1", "c2"), ["z"], inputs, search_plan([]), {
         "c1": pop("c1", 0.0, 0.0), "c2": pop("c2", 0.0, 0.1), "z": pop("z", 0.0, 0.2)
@@ -101,7 +101,7 @@ def test_coverage_candidate_hauls_drops_an_infeasible_addition() -> None:
 # the far site exactly where it was. Three short hauls outweigh one long one, so a score
 # that sums every site prefers "west" -- and the site that opened the round stays out of
 # reach, which is the whole of what the wrong measure costs.
-_RANKING_EDGES = _wired_to_base(
+_RANKING_LINKS = _wired_to_base(
     ("east", "west", "oversea", "far", "near1", "near2", "near3", "oconus")
 )
 _RANKING_COORDS = {
@@ -119,11 +119,11 @@ _OCONUS_SITE = replace(access("oconus", 0.0, -40.0), exempt_from_distance_constr
 
 
 def _ranking_hauls(
-    candidates: list[str], sites: list[Vertex]
+    candidates: list[str], sites: list[Site]
 ) -> list[tuple[tuple[float, ...], str]]:
     """Score each candidate over the ranking geometry against the given demand."""
-    inputs = synthesis_inputs_from_edges(
-        _RANKING_IDS, _RANKING_EDGES, set(_RANKING_IDS), sites, _RANKING_COORDS
+    inputs = synthesis_inputs_from_links(
+        _RANKING_IDS, _RANKING_LINKS, set(_RANKING_IDS), sites, _RANKING_COORDS
     )
     return coverage_candidate_hauls(
         ("b1", "b2"), candidates, inputs, search_plan(_RANKING_IDS),
@@ -147,13 +147,13 @@ def test_a_site_exempt_from_the_target_cannot_sway_which_candidate_wins() -> Non
 # stub that rejoins the backbone at b1, so that third path can only re-cross a city they
 # already depend on and each holds two. Three segments apiece either way, which is the number
 # a raw segment count would rank them by and the reason it is the wrong number to rank them by.
-_FIBER_EDGES = physical({
+_FIBER_SEGMENTS = physical({
     ("b1", "b2"): 1.0, ("b2", "b3"): 1.0, ("b1", "b3"): 1.0,
     ("poor", "x"): 1.0, ("x", "b1"): 1.0, ("poor_far", "x2"): 1.0, ("x2", "b1"): 1.0,
     **{(name, base): 1.0 for name in ("rich", "rich_far") for base in ("b1", "b2", "b3")},
     **{(name, base): 1.0 for name in ("poor", "poor_far") for base in ("b1", "b2")},
 })
-_FIBER_ADJACENCY = build_adjacency(_FIBER_EDGES)
+_FIBER_ADJACENCY = build_adjacency(_FIBER_SEGMENTS)
 _FIBER_BACKBONE = ("b1", "b2", "b3")
 # Both bring the worst haul inside the fifty-mile target and the worse-connected one is
 # nearer, so distance and fiber name different winners. In the second pair neither reaches
@@ -196,14 +196,14 @@ _GROWTH_COORDS = {
     "cape": (0.0, 7.4), "plains": (0.0, -7.39), "twin": (0.0, 0.0),
 }
 _GROWTH_IDS = ["b1", "b2", "cape", "plains", "twin"]
-_GROWTH_EDGES = _wired_to_base(("cape", "plains", "twin", "east_site", "west_site"))
+_GROWTH_LINKS = _wired_to_base(("cape", "plains", "twin", "east_site", "west_site"))
 _GROWTH_SITES = [access("east_site", 0.0, 7.5), access("west_site", 0.0, -7.49)]
 
 
 def _grown(candidates: list[str], target_miles: int) -> tuple[str, ...]:
     """The backbone growth settles on over that geometry, offered these candidates."""
-    inputs = synthesis_inputs_from_edges(
-        _GROWTH_IDS, _GROWTH_EDGES, set(_GROWTH_IDS), _GROWTH_SITES, _GROWTH_COORDS
+    inputs = synthesis_inputs_from_links(
+        _GROWTH_IDS, _GROWTH_LINKS, set(_GROWTH_IDS), _GROWTH_SITES, _GROWTH_COORDS
     )
     plan = search_plan(candidates)
     params = SynthesisParams(

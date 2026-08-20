@@ -20,25 +20,25 @@ from test_handler_contracts import ReaderContract
 _CFG: dict[str, Any] = {
     "endpoint": "data-centers",
     "list_keys": [
-        "data-centers/coresite/vertices.json",
-        "data-centers/equinix/vertices.json",
-        "data-centers/merge/vertices.json",
+        "data-centers/coresite/facilities.json",
+        "data-centers/equinix/facilities.json",
+        "data-centers/merge/facilities.json",
     ],
     "ids": ["coresite", "equinix"],
-    "stored_key": "data-centers/coresite/vertices.json",
+    "stored_key": "data-centers/coresite/facilities.json",
     "stored": [{"id": "denver-1"}],
     "serve_event": {
         "pathParameters": {"provider": "coresite"},
-        "path": "/x/data-centers/coresite/vertices",
+        "path": "/x/data-centers/coresite/facilities",
     },
     "serve_expect": [{"id": "denver-1"}],
     "unknown_event": {
         "pathParameters": {"provider": "coresite"},
-        "path": "/x/data-centers/coresite/edges",
+        "path": "/x/data-centers/coresite/links",
     },
     "notbuilt_event": {
         "pathParameters": {"provider": "equinix"},
-        "path": "/x/data-centers/equinix/vertices",
+        "path": "/x/data-centers/equinix/facilities",
     },
 }
 

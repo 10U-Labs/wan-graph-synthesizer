@@ -1,10 +1,10 @@
 """Carriers endpoint: read and write a carrier's input graph in the S3 store.
 
     GET    /wan-graph-synthesizer/carriers                     -> the carrier ids
-    GET    /wan-graph-synthesizer/carriers/{carrier}/vertices  -> that carrier's PoPs
-    GET    /wan-graph-synthesizer/carriers/{carrier}/edges     -> that carrier's fiber
-    PUT    /wan-graph-synthesizer/carriers/{carrier}/vertices  -> replace its PoPs
-    PUT    /wan-graph-synthesizer/carriers/{carrier}/edges     -> replace its fiber
+    GET    /wan-graph-synthesizer/carriers/{carrier}/pops  -> that carrier's PoPs
+    GET    /wan-graph-synthesizer/carriers/{carrier}/fiber-segments     -> that carrier's fiber
+    PUT    /wan-graph-synthesizer/carriers/{carrier}/pops  -> replace its PoPs
+    PUT    /wan-graph-synthesizer/carriers/{carrier}/fiber-segments     -> replace its fiber
     DELETE /wan-graph-synthesizer/carriers/{carrier}           -> remove the carrier
 
 A write persists to the store and nothing else. Rebuilding the dependents (the carrier
@@ -22,8 +22,8 @@ import boto3
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 # A carrier's points and fiber segments are bare geographic rows; reject anything else.
-_VERTEX_FIELDS = {"municipality", "state", "country", "latitude", "longitude"}
-_EDGE_FIELDS = {"a_municipality", "a_state", "z_municipality", "z_state"}
+_SITE_FIELDS = {"municipality", "state", "country", "latitude", "longitude"}
+_LINK_FIELDS = {"a_municipality", "a_state", "z_municipality", "z_state"}
 
 
 def _validate_rows(body: Any, required: set[str]) -> str | None:
@@ -74,11 +74,11 @@ def _read_collection(client: Any, carrier: str, collection: str) -> Any:
 
 
 def _get(client: Any, carrier: str | None, event: dict[str, Any]) -> dict[str, Any]:
-    """Serve the carriers collection or one carrier's vertices/edges."""
+    """Serve the carriers collection or one carrier's sites/links."""
     if not carrier:
         return _response(200, _carrier_ids(client))
     collection = event.get("path", "").rsplit("/", 1)[-1]
-    if collection not in ("vertices", "edges"):
+    if collection not in ("pops", "fiber-segments"):
         return _response(404, {"error": collection})
     rows = _read_collection(client, carrier, collection)
     if rows is None:
@@ -89,10 +89,10 @@ def _get(client: Any, carrier: str | None, event: dict[str, Any]) -> dict[str, A
 def _put(client: Any, carrier: str, event: dict[str, Any]) -> dict[str, Any]:
     """Replace one of a carrier's collections (its own file). Rebuilds are a separate POST."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
-    if collection not in ("vertices", "edges"):
+    if collection not in ("pops", "fiber-segments"):
         return _response(404, {"error": collection})
     rows = json.loads(event["body"])
-    error = _validate_rows(rows, _VERTEX_FIELDS if collection == "vertices" else _EDGE_FIELDS)
+    error = _validate_rows(rows, _SITE_FIELDS if collection == "pops" else _LINK_FIELDS)
     if error:
         return _response(400, {"error": error})
     key = f"carriers/{carrier}/{collection}.json"
@@ -111,7 +111,7 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         return _response(404, {"error": "carrier required"})
     if method == "DELETE":
         bucket = os.environ["STORE_BUCKET"]
-        for collection in ("vertices", "edges"):
+        for collection in ("pops", "fiber-segments"):
             client.delete_object(Bucket=bucket, Key=f"carriers/{carrier}/{collection}.json")
         return _response(200, {"deleted": carrier})
     return _put(client, carrier, event)

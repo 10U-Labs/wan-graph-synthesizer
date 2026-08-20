@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from typing import TypedDict
 
-from synthesizer.input_graph import Vertex, haversine_miles
+from synthesizer.input_graph import Site, haversine_miles
 from synthesizer.model import Synthesis, SynthesisInputs, SynthesisParams
 from synthesizer.assemble import build_synthesis_for_backbone, evaluate_backbone
 from synthesizer.ceiling import BackupPathLimit, PathProofInputs, independent_path_ceiling
@@ -37,24 +37,24 @@ class CoverageReport(TypedDict):
 
 def demand_hauls(
     backbone_ids: tuple[str, ...],
-    access_vertices: list[Vertex],
-    pop_by_id: dict[str, Vertex],
+    access_sites: list[Site],
+    pop_by_id: dict[str, Site],
 ) -> list[float]:
-    """Each demand vertex's straight-line miles to its nearest backbone node.
+    """Each demand site's straight-line miles to its nearest backbone node.
 
     The coverage signal the search drives down by adding backbone nodes: the hauls an
     operator sees on the map, and the quantity the coverage target is stated in.
     """
     nodes = [pop_by_id[backbone_id] for backbone_id in backbone_ids]
     return [
-        min(haversine_miles(access, node) for node in nodes) for access in access_vertices
+        min(haversine_miles(access, node) for node in nodes) for access in access_sites
     ]
 
 
 def coverage_haul_profile(
     backbone_ids: tuple[str, ...],
-    access_vertices: list[Vertex],
-    pop_by_id: dict[str, Vertex],
+    access_sites: list[Site],
+    pop_by_id: dict[str, Site],
 ) -> tuple[float, ...]:
     """Every non-exempt site's haul to its nearest backbone node, worst first.
 
@@ -72,7 +72,7 @@ def coverage_haul_profile(
     by position, the same hub is plainly the better synthesis: the two lists first differ where
     the rescued site used to be.
     """
-    covered = [v for v in access_vertices if not v.exempt_from_distance_constraint]
+    covered = [v for v in access_sites if not v.exempt_from_distance_constraint]
     return tuple(sorted(demand_hauls(backbone_ids, covered, pop_by_id), reverse=True))
 
 
@@ -83,8 +83,8 @@ def coverage_worst_haul(profile: tuple[float, ...]) -> float:
 
 def coverage_report(
     backbone_ids: tuple[str, ...],
-    access_vertices: list[Vertex],
-    pop_by_id: dict[str, Vertex],
+    access_sites: list[Site],
+    pop_by_id: dict[str, Site],
     target_miles: float,
 ) -> CoverageReport:
     """Measure a finished synthesis against the coverage target it was built to.
@@ -96,7 +96,7 @@ def coverage_report(
     outside it. A synthesis that stopped short then says so somewhere a caller can read it,
     instead of being published under the same word as one that met the target.
     """
-    profile = coverage_haul_profile(backbone_ids, access_vertices, pop_by_id)
+    profile = coverage_haul_profile(backbone_ids, access_sites, pop_by_id)
     worst = coverage_worst_haul(profile)
     return {
         "target_miles": target_miles,
@@ -111,7 +111,7 @@ def coverage_candidate_hauls(
     free: list[str],
     inputs: SynthesisInputs,
     plan: _SearchPlan,
-    pop_by_id: dict[str, Vertex],
+    pop_by_id: dict[str, Site],
 ) -> list[tuple[tuple[float, ...], str]]:
     """Each free candidate's non-exempt haul profile once it joins the backbone.
 
@@ -130,7 +130,7 @@ def coverage_candidate_hauls(
         candidate_set = tuple(sorted((*backbone_ids, candidate_id)))
         if evaluate_backbone(candidate_set, inputs, plan) is None:
             continue
-        profile = coverage_haul_profile(candidate_set, inputs.access_vertices, pop_by_id)
+        profile = coverage_haul_profile(candidate_set, inputs.access_sites, pop_by_id)
         hauls.append((profile, candidate_id))
     return hauls
 
@@ -209,16 +209,16 @@ def grow_backbone_for_coverage(
     inputs: SynthesisInputs,
     plan: _SearchPlan,
     params: SynthesisParams,
-    pop_by_id: dict[str, Vertex],
+    pop_by_id: dict[str, Site],
 ) -> Synthesis:
     """Add backbone nodes beyond the strength-chosen base until demand is close enough.
 
-    While some demand vertex the target applies to is farther than
+    While some demand site the target applies to is farther than
     ``backbone_coverage_target_miles`` from every selected backbone node, seat one more
     candidate and rebuild the synthesis around it. Extra nodes are thus coverage-driven:
     strength still chooses the base backbone, and the operator's coverage target is a
     constraint on how far the backbone may leave demand, not a mileage cost minimized over
-    candidate sets. Growth stops once every non-exempt demand vertex is within target, the
+    candidate sets. Growth stops once every non-exempt demand site is within target, the
     backbone reaches ``max_backbone_count``, no remaining candidate leaves any site nearer
     than the synthesis already does, or the candidates are exhausted. Only the first of those
     is success, which is why :func:`coverage_report` measures what came out.
@@ -280,7 +280,7 @@ def grow_backbone_for_coverage(
         # applies to. It decides whether to stop, which candidate wins, and whether any
         # candidate is worth seating -- so the round cannot be won by a node that does
         # nothing about the gap that opened it, nor abandoned by a node that plainly helps.
-        profile = coverage_haul_profile(backbone_ids, inputs.access_vertices, pop_by_id)
+        profile = coverage_haul_profile(backbone_ids, inputs.access_sites, pop_by_id)
         worst = coverage_worst_haul(profile)
         if worst <= target_miles:
             logger.info("Coverage met at %d nodes (worst haul %.0f mi)", len(backbone_ids), worst)

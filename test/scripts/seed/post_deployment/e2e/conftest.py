@@ -9,7 +9,7 @@ opens the store the synthesizer writes to. Each entry is a plain mapping of thir
 ``tenant``; the ``target_miles``, ``max_backup_path_multiple``, ``number_of_diverse_paths``,
 ``seat_cap``, pinned ``forced`` cities and pinned ``forced_paths`` the config sets; the
 ``status`` document the GET passes through and the ``lower_bound_miles`` it reports; and the
-published ``backbone``, ``demand``, ``links`` and ``edges`` collections that status can be
+published ``backbone``, ``demand``, ``links`` and ``links`` collections that status can be
 measured against. A tenant whose build is not ``success`` has no network to read and carries
 all four empty.
 """

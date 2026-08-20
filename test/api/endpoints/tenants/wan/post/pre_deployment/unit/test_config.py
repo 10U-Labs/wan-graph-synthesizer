@@ -62,15 +62,15 @@ def test_default_max_backbone_count_is_none() -> None:
     assert default_config().params.max_backbone_count is None
 
 
-def test_default_vertex_files() -> None:
-    """The default config maps each tenant to its per-tenant vertices CSV."""
+def test_default_site_files() -> None:
+    """The default config maps each tenant to its per-tenant sites CSV."""
     lumen = ("Lumen", Path("data/pops/lumen.csv"))
-    assert lumen in default_config().input_files.vertex_files
+    assert lumen in default_config().input_files.site_files
 
 
-def test_default_regional_edges() -> None:
-    """The default config lists both regional carrier edge files."""
-    assert default_config().input_files.regional_edge_paths == (
+def test_default_regional_links() -> None:
+    """The default config lists both regional carrier link files."""
+    assert default_config().input_files.regional_link_paths == (
         Path("data/fiber_segments/dcn.csv"),
         Path("data/fiber_segments/vision_net.csv"),
     )
@@ -107,7 +107,7 @@ def test_reads_max_backbone_count() -> None:
 
 
 def test_default_access_backbone_links() -> None:
-    """The default config homes each demand vertex to two backbone nodes."""
+    """The default config homes each demand site to two backbone nodes."""
     assert default_config().params.tuning.access_backbone_links == 2
 
 
@@ -407,47 +407,47 @@ def test_a_dial_left_in_the_tuning_section_is_not_read() -> None:
     assert _config({"tuning": {"compass_octants": 6}}).params.tuning.compass_sector_count == 8
 
 
-def test_reads_vertices_mapping() -> None:
-    """A vertices tenant->path mapping is read into sorted (tenant, path) pairs."""
-    vertices = {"Lumen": "lumen.csv", "F-35": "f_35.csv"}
-    assert _config({"inputs": {"vertices": vertices}}).input_files.vertex_files == (
+def test_reads_sites_mapping() -> None:
+    """A sites tenant->path mapping is read into sorted (tenant, path) pairs."""
+    sites = {"Lumen": "lumen.csv", "F-35": "f_35.csv"}
+    assert _config({"inputs": {"sites": sites}}).input_files.site_files == (
         ("F-35", Path("f_35.csv")),
         ("Lumen", Path("lumen.csv")),
     )
 
 
-def test_reads_vertices_list_of_paths() -> None:
+def test_reads_sites_list_of_paths() -> None:
     """A tenant mapped to a list expands into one (tenant, path) pair per entry."""
-    vertices = {"Providers": ["region_a.csv", "region_b.csv"]}
-    assert _config({"inputs": {"vertices": vertices}}).input_files.vertex_files == (
+    sites = {"Providers": ["region_a.csv", "region_b.csv"]}
+    assert _config({"inputs": {"sites": sites}}).input_files.site_files == (
         ("Providers", Path("region_a.csv")),
         ("Providers", Path("region_b.csv")),
     )
 
 
-def test_reads_carrier_edges_path() -> None:
-    """An inputs.carrier_edges value is read into the input files."""
+def test_reads_carrier_fiber_segments_path() -> None:
+    """An inputs.carrier_fiber_segments value is read into the input files."""
     assert _config(
-        {"inputs": {"carrier_edges": "fiber.csv"}}
-    ).input_files.edge_path == Path("fiber.csv")
+        {"inputs": {"carrier_fiber_segments": "fiber.csv"}}
+    ).input_files.link_path == Path("fiber.csv")
 
 
 def test_rejects_non_string_path_in_list() -> None:
-    """A vertices list containing a non-string path is rejected."""
+    """A sites list containing a non-string path is rejected."""
     with pytest.raises(ValueError):
-        _config({"inputs": {"vertices": {"Providers": ["region_a.csv", 3]}}})
+        _config({"inputs": {"sites": {"Providers": ["region_a.csv", 3]}}})
 
 
-def test_rejects_non_mapping_vertices() -> None:
-    """A non-mapping vertices value is rejected."""
+def test_rejects_non_mapping_sites() -> None:
+    """A non-mapping sites value is rejected."""
     with pytest.raises(ValueError):
-        _config({"inputs": {"vertices": "single.csv"}})
+        _config({"inputs": {"sites": "single.csv"}})
 
 
-def test_rejects_non_list_regional_edges() -> None:
-    """A non-list regional_edges value is rejected."""
+def test_rejects_non_list_regional_links() -> None:
+    """A non-list regional_links value is rejected."""
     with pytest.raises(ValueError):
-        _config({"inputs": {"regional_edges": "single.csv"}})
+        _config({"inputs": {"regional_links": "single.csv"}})
 
 
 def test_missing_required_degree_is_rejected() -> None:

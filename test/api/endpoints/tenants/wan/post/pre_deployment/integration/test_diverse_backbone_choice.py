@@ -7,7 +7,7 @@ backbone, and any of them could put the site back. So the same graph is run thro
 whole synthesis here and the backbone is asserted rather than the score.
 
 The graph is the one fixture where fiber segment count and path diversity rank sites
-differently (see ``fixtures.FUNNEL_EDGES``). Two sites have five segments each that converge
+differently (see ``fixtures.FUNNEL_LINKS``). Two sites have five segments each that converge
 on the same two upstream cities, so each carries two paths that fail independently; one
 site has three segments leaving to three separate cities and carries three. Ranked by segments
 the two funnels are the strongest pair and the spread site is left out; ranked by
@@ -21,7 +21,7 @@ import fixtures
 from synthesizer.model import SynthesisParams, Tuning
 
 # Two seats exactly: the floor is what the search settles at once a feasible set exists,
-# and with no demand vertices on the graph the coverage pass never grows past it. The
+# and with no demand sites on the graph the coverage pass never grows past it. The
 # convergence promotion is off for the same reason -- a hub forced in afterwards would
 # answer a different question than the one this file asks.
 _TWO_SEATS = SynthesisParams(
@@ -32,7 +32,7 @@ _TWO_SEATS = SynthesisParams(
     tuning=Tuning(backbone_number_of_diverse_paths=2),
 )
 ARTIFACTS = fixtures.run_synthesis(
-    fixtures.funnel_vertices(), fixtures.FUNNEL_EDGES, _TWO_SEATS
+    fixtures.funnel_sites(), fixtures.FUNNEL_LINKS, _TWO_SEATS
 )
 
 

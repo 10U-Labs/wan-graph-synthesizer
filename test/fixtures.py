@@ -1,8 +1,8 @@
-"""Shared test fixtures: vertex factories and an in-memory ring graph.
+"""Shared test fixtures: site factories and an in-memory ring graph.
 
 Centralized so unit, integration, and e2e tests reuse identical inputs without
 duplicating data (which copy-paste detection would otherwise flag). Synthesiss are driven
-from in-memory ``Vertex``/``PhysicalEdge`` objects -- production reads the stored simple
+from in-memory ``Site``/``FiberSegment`` objects -- production reads the stored simple
 rows via :mod:`synthesizer.codec`; only the suite builds a synthesis straight from objects.
 
 The synthesis is two tiers: a meshed ``backbone`` of selected carrier PoPs (each at a
@@ -17,7 +17,7 @@ import dataclasses
 from pathlib import Path
 
 from synthesizer.codec import OFF_NET_KIND, PROVIDER_KIND, SITE_KIND
-from synthesizer.input_graph import PhysicalEdge, Vertex, VertexInfo, edge_key
+from synthesizer.input_graph import FiberSegment, Site, SiteInfo, link_key
 from synthesizer.model import (
     KIND_ROADM,
     Synthesis,
@@ -35,7 +35,7 @@ from synthesizer.model import (
 from synthesizer.graphs import (
     biconnected_block_membership,
     build_adjacency,
-    path_edge_keys,
+    path_link_keys,
 )
 from synthesizer.search_plan import _SearchPlan
 from synthesizer.synthesize import all_pairs_shortest, synthesize_two_tier
@@ -52,7 +52,7 @@ RING_COORDS = {
     "P5": (39.5, -99.0),
 }
 SPUR_COORDS = {"P6": (37.0, -100.0)}
-RING_EDGE_PAIRS = [
+RING_LINK_PAIRS = [
     ("P0", "P1"),
     ("P1", "P2"),
     ("P2", "P3"),
@@ -68,49 +68,49 @@ _FIXTURE_STATE = "XX"
 _FIXTURE_COUNTRY = "United States"
 
 
-def carrier_pop(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
-    """Build a carrier PoP vertex (a backbone PoP)."""
-    return Vertex(
-        id=vertex_id,
-        name=vertex_id,
+def carrier_pop(site_id: str, lat: float = 0.0, lon: float = 0.0) -> Site:
+    """Build a carrier PoP site (a backbone PoP)."""
+    return Site(
+        id=site_id,
+        name=site_id,
         kind="PoP",
         coords=(lat, lon),
-        info=VertexInfo(
-            municipality=vertex_id, state=_FIXTURE_STATE, country=_FIXTURE_COUNTRY
+        info=SiteInfo(
+            municipality=site_id, state=_FIXTURE_STATE, country=_FIXTURE_COUNTRY
         ),
     )
 
 
-def access_vertex(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
-    """Build a tenant-site demand vertex."""
-    return Vertex(id=vertex_id, name=vertex_id, kind=SITE_KIND, coords=(lat, lon))
+def access_site(site_id: str, lat: float = 0.0, lon: float = 0.0) -> Site:
+    """Build a tenant-site demand site."""
+    return Site(id=site_id, name=site_id, kind=SITE_KIND, coords=(lat, lon))
 
 
-def provider_vertex(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
-    """Build a provider-region demand vertex."""
-    return Vertex(id=vertex_id, name=vertex_id, kind=PROVIDER_KIND, coords=(lat, lon))
+def provider_site(site_id: str, lat: float = 0.0, lon: float = 0.0) -> Site:
+    """Build a provider-region demand site."""
+    return Site(id=site_id, name=site_id, kind=PROVIDER_KIND, coords=(lat, lon))
 
 
-def off_net_site(vertex_id: str, lat: float = 0.0, lon: float = 0.0) -> Vertex:
+def off_net_site(site_id: str, lat: float = 0.0, lon: float = 0.0) -> Site:
     """Build an off-net candidate site: not a carrier PoP and carrying no demand."""
-    return Vertex(
-        id=vertex_id,
-        name=vertex_id,
+    return Site(
+        id=site_id,
+        name=site_id,
         kind=OFF_NET_KIND,
         coords=(lat, lon),
-        info=VertexInfo(
-            municipality=vertex_id, state=_FIXTURE_STATE, country=_FIXTURE_COUNTRY
+        info=SiteInfo(
+            municipality=site_id, state=_FIXTURE_STATE, country=_FIXTURE_COUNTRY
         ),
     )
 
 
-def ring_vertices() -> list[Vertex]:
+def ring_sites() -> list[Site]:
     """Build the six-PoP ring plus a degree-one spur.
 
     The ring carries no non-PoP demand: in the two-tier model demand homes to the
     backbone over the *physical* graph, so a feasible end-to-end ring is its carrier
     PoPs alone. Demand-homing behaviour is exercised at the unit level, where the
-    demand vertices are wired into the physical adjacency directly.
+    demand sites are wired into the physical adjacency directly.
     """
     pops = [carrier_pop(n, lat, lon) for n, (lat, lon) in RING_COORDS.items()]
     pops += [carrier_pop(n, lat, lon) for n, (lat, lon) in SPUR_COORDS.items()]
@@ -120,17 +120,17 @@ def ring_vertices() -> list[Vertex]:
 def ring_datacenter_cities() -> frozenset[tuple[str, str]]:
     """Every ring/spur PoP's ``(municipality, state)``, so all are gate-eligible."""
     return frozenset(
-        (vertex_id, _FIXTURE_STATE) for vertex_id in (*RING_COORDS, *SPUR_COORDS)
+        (site_id, _FIXTURE_STATE) for site_id in (*RING_COORDS, *SPUR_COORDS)
     )
 
 
-def ring_physical_edges(distance: float = 100.0) -> dict[tuple[str, str], PhysicalEdge]:
-    """Build the ring's physical edges with a uniform distance."""
-    edges: dict[tuple[str, str], PhysicalEdge] = {}
-    for left, right in RING_EDGE_PAIRS:
-        key = edge_key(left, right)
-        edges[key] = PhysicalEdge(source=key[0], target=key[1], distance_miles=distance)
-    return edges
+def ring_fiber_segments(distance: float = 100.0) -> dict[tuple[str, str], FiberSegment]:
+    """Build the ring's physical links with a uniform distance."""
+    links: dict[tuple[str, str], FiberSegment] = {}
+    for left, right in RING_LINK_PAIRS:
+        key = link_key(left, right)
+        links[key] = FiberSegment(source=key[0], target=key[1], distance_miles=distance)
+    return links
 
 
 # A three-node backbone mesh in two routings, the pair the independence check exists to
@@ -159,8 +159,8 @@ def meshed_backbone_synthesis(
     return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=(),
-        access_edges=[],
-        physical_edge_keys={key for path in paths for key in path_edge_keys(path)},
+        access_paths=[],
+        fiber_segment_keys={key for path in paths for key in path_link_keys(path)},
         path_uses=[
             SynthesisPath("backbone_mesh", path[0], path[-1], path, 1.0) for path in paths
         ],
@@ -183,29 +183,29 @@ def split_backbone_synthesis() -> Synthesis:
     return Synthesis(
         backbone_ids=SPLIT_BACKBONE,
         transit_ids=(),
-        access_edges=[],
-        physical_edge_keys={
-            edge_key(left, right) for left, right in SPLIT_BACKBONE_SEGMENTS
+        access_paths=[],
+        fiber_segment_keys={
+            link_key(left, right) for left, right in SPLIT_BACKBONE_SEGMENTS
         },
         path_uses=[],
         metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )
 
 
-def carrier_pops_by_id(vertex_ids: str) -> dict[str, Vertex]:
+def carrier_pops_by_id(site_ids: str) -> dict[str, Site]:
     """A carrier PoP per single-character id, keyed by id, for validation lookups."""
-    return {vertex_id: carrier_pop(vertex_id) for vertex_id in vertex_ids}
+    return {site_id: carrier_pop(site_id) for site_id in site_ids}
 
 
-def physical_edges_from(
+def fiber_segments_from(
     pairs: dict[tuple[str, str], float],
-) -> dict[tuple[str, str], PhysicalEdge]:
-    """Build a physical edge map from a {(left, right): distance} mapping."""
-    edges: dict[tuple[str, str], PhysicalEdge] = {}
+) -> dict[tuple[str, str], FiberSegment]:
+    """Build a physical link map from a {(left, right): distance} mapping."""
+    links: dict[tuple[str, str], FiberSegment] = {}
     for (left, right), dist in pairs.items():
-        key = edge_key(left, right)
-        edges[key] = PhysicalEdge(source=key[0], target=key[1], distance_miles=dist)
-    return edges
+        key = link_key(left, right)
+        links[key] = FiberSegment(source=key[0], target=key[1], distance_miles=dist)
+    return links
 
 
 def ring_params() -> SynthesisParams:
@@ -213,7 +213,7 @@ def ring_params() -> SynthesisParams:
     return SynthesisParams(min_backbone_count=2, datacenter_cities=ring_datacenter_cities())
 
 
-def forced_off_net_case() -> tuple[Vertex, SynthesisParams]:
+def forced_off_net_case() -> tuple[Site, SynthesisParams]:
     """An off-net site forced as backbone, plus params admitting its city to the gate."""
     site = off_net_site("Dulles Hub", 40.5, -100.0)
     params = SynthesisParams(
@@ -225,19 +225,19 @@ def forced_off_net_case() -> tuple[Vertex, SynthesisParams]:
     return site, params
 
 
-RingInputs = tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]
+RingInputs = tuple[list[Site], dict[tuple[str, str], FiberSegment]]
 
 
 def _ring_inputs() -> RingInputs:
-    """The ring vertices and physical edges."""
-    return ring_vertices(), ring_physical_edges()
+    """The ring sites and physical links."""
+    return ring_sites(), ring_fiber_segments()
 
 
 def run_synthesis(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    sites: list[Site],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
     params: SynthesisParams,
-    off_net_sites: list[Vertex] | None = None,
+    off_net_sites: list[Site] | None = None,
 ) -> SynthesisArtifacts:
     """Drive the whole pipeline from in-memory inputs -- the suite's synthesis driver.
 
@@ -246,13 +246,13 @@ def run_synthesis(
     synthesis from raw objects. Operator pins arrive through ``params``; the written-link
     path is exercised separately via :func:`forced_link_artifacts`.
     """
-    vertices, physical_edges = dual_home(vertices, physical_edges, params, off_net_sites or [])
-    vertices, physical_edges, overrides = apply_role_overrides(vertices, physical_edges, params)
-    synthesis = synthesize_two_tier(vertices, physical_edges, params, overrides)
-    vertices, physical_edges, synthesis, validation = finalize(
-        vertices, physical_edges, synthesis, params, overrides.degree_exempt_backbone_ids
+    sites, fiber_segments = dual_home(sites, fiber_segments, params, off_net_sites or [])
+    sites, fiber_segments, overrides = apply_role_overrides(sites, fiber_segments, params)
+    synthesis = synthesize_two_tier(sites, fiber_segments, params, overrides)
+    sites, fiber_segments, synthesis, validation = finalize(
+        sites, fiber_segments, synthesis, params, overrides.degree_exempt_backbone_ids
     )
-    return SynthesisArtifacts(vertices, physical_edges, synthesis, validation)
+    return SynthesisArtifacts(sites, fiber_segments, synthesis, validation)
 
 
 def mesh_paths(artifacts: SynthesisArtifacts) -> list[SynthesisPath]:
@@ -290,7 +290,7 @@ def synthesis_over_segments(
             carrier_pop(city, 38.0, -115.0 + 2.0 * index)
             for index, city in enumerate(cities)
         ],
-        physical_edges_from(segments),
+        fiber_segments_from(segments),
         SynthesisParams(
             min_backbone_count=fewest,
             max_backbone_count=len(site_ids),
@@ -304,19 +304,19 @@ def synthesis_over_segments(
 
 def ring_artifacts() -> SynthesisArtifacts:
     """Run the synthesizer over the in-memory ring and bundle the artifacts."""
-    vertices, edges = _ring_inputs()
-    synthesis = synthesize_two_tier(vertices, edges, ring_params())
-    return SynthesisArtifacts(vertices, edges, synthesis, validate_synthesis(vertices, synthesis))
+    sites, links = _ring_inputs()
+    synthesis = synthesize_two_tier(sites, links, ring_params())
+    return SynthesisArtifacts(sites, links, synthesis, validate_synthesis(sites, synthesis))
 
 
 def ring_inputs_with_roadm(roadm_id: str) -> RingInputs:
     """Ring inputs with one PoP recast as a transit-eligible ROADM."""
-    vertices, edges = _ring_inputs()
-    vertices = [
-        dataclasses.replace(vertex, kind=KIND_ROADM) if vertex.id == roadm_id else vertex
-        for vertex in vertices
+    sites, links = _ring_inputs()
+    sites = [
+        dataclasses.replace(site, kind=KIND_ROADM) if site.id == roadm_id else site
+        for site in sites
     ]
-    return vertices, edges
+    return sites, links
 
 
 def _forced_artifacts(
@@ -331,13 +331,13 @@ def _forced_artifacts(
     emergent selections. Validation goes through ``finalize`` for the same reason: the
     report then answers to the degrees ``params`` configures, not to the defaults.
     """
-    vertices, edges = inputs if inputs is not None else _ring_inputs()
-    vertices, edges, overrides = apply_role_overrides(vertices, edges, params, links)
-    synthesis = synthesize_two_tier(vertices, edges, params, overrides)
-    vertices, edges, synthesis, validation = finalize(
-        vertices, edges, synthesis, params, overrides.degree_exempt_backbone_ids
+    sites, links = inputs if inputs is not None else _ring_inputs()
+    sites, links, overrides = apply_role_overrides(sites, links, params, links)
+    synthesis = synthesize_two_tier(sites, links, params, overrides)
+    sites, links, synthesis, validation = finalize(
+        sites, links, synthesis, params, overrides.degree_exempt_backbone_ids
     )
-    return SynthesisArtifacts(vertices, edges, synthesis, validation)
+    return SynthesisArtifacts(sites, links, synthesis, validation)
 
 
 def forced_backbone_artifacts(name: str) -> SynthesisArtifacts:
@@ -380,15 +380,15 @@ def prohibited_backbone_artifacts(name: str) -> SynthesisArtifacts:
 
 
 def ring_inputs_with_demand(access_id: str, at_pop: str) -> RingInputs:
-    """Ring inputs plus one demand vertex sitting on a named ring PoP's coordinates.
+    """Ring inputs plus one demand site sitting on a named ring PoP's coordinates.
 
     The ring carries carrier PoPs only, so a case about where demand homes has to supply
     its own. Placing the site on top of ``at_pop`` makes that PoP its nearest node by
     construction, which is what lets a forced home elsewhere be told apart from the
     distance-ranked choice.
     """
-    vertices, edges = _ring_inputs()
-    return [*vertices, access_vertex(access_id, *RING_COORDS[at_pop])], edges
+    sites, links = _ring_inputs()
+    return [*sites, access_site(access_id, *RING_COORDS[at_pop])], links
 
 
 def forced_link_artifacts(
@@ -399,7 +399,7 @@ def forced_link_artifacts(
 
 
 # A four-PoP square around one central PoP. Short spokes to the centre and longer ring
-# edges make every diagonal backbone-mesh link run through the centre, so once the four
+# links make every diagonal backbone-mesh link run through the centre, so once the four
 # corners are the backbone the centre carries four of the synthesis's lines as a transit
 # node. The convergence pass (issue #4) then promotes the centre when it is a data-center
 # city. Coordinates are a degenerate diamond; distances are pinned in
@@ -422,7 +422,7 @@ def convergence_hub_inputs() -> RingInputs:
     ring = {
         (_HUB_CORNERS[i], _HUB_CORNERS[(i + 1) % 4]): 1.5 for i in range(4)
     }
-    return pops, physical_edges_from({**spokes, **ring})
+    return pops, fiber_segments_from({**spokes, **ring})
 
 
 def convergence_hub_artifacts(
@@ -440,7 +440,7 @@ def convergence_hub_artifacts(
     though it qualifies -- the cap wins. ``promote_convergences=False`` disables the
     promotion pass entirely, so the centre stays transit even at a data-center city.
     """
-    vertices, edges = convergence_hub_inputs()
+    sites, links = convergence_hub_inputs()
     datacenter_cities = frozenset(
         (corner, _FIXTURE_STATE) for corner in _HUB_CORNERS
     )
@@ -453,38 +453,38 @@ def convergence_hub_artifacts(
         datacenter_cities=datacenter_cities,
         promote_high_degree_convergences=promote_convergences,
     )
-    vertices, edges, overrides = apply_role_overrides(vertices, edges, params)
-    synthesis = synthesize_two_tier(vertices, edges, params, overrides)
-    return SynthesisArtifacts(vertices, edges, synthesis, validate_synthesis(vertices, synthesis))
+    sites, links, overrides = apply_role_overrides(sites, links, params)
+    synthesis = synthesize_two_tier(sites, links, params, overrides)
+    return SynthesisArtifacts(sites, links, synthesis, validate_synthesis(sites, synthesis))
 
 
 def sample_sources() -> SourceFiles:
     """Provenance paths for output rendering tests."""
-    return SourceFiles((Path("vertices/lumen.csv"),), Path("edges.csv"))
+    return SourceFiles((Path("sites/lumen.csv"),), Path("links.csv"))
 
 
-def synthesis_inputs_from_edges(
-    edge_ids: list[str],
-    edges: dict[tuple[str, str], PhysicalEdge],
+def synthesis_inputs_from_links(
+    link_ids: list[str],
+    links: dict[tuple[str, str], FiberSegment],
     eligible: set[str],
-    access_vertices: list[Vertex] | None = None,
+    access_sites: list[Site] | None = None,
     coords: dict[str, tuple[float, float]] | None = None,
 ) -> SynthesisInputs:
     """Build SynthesisInputs over a mileage-weighted graph for direct synthesizer tests.
 
-    ``edge_ids`` are the carrier PoPs (the backbone candidates). ``edges`` may also
-    wire the demand vertices into the physical graph -- in the two-tier model demand
+    ``link_ids`` are the carrier PoPs (the backbone candidates). ``links`` may also
+    wire the demand sites into the physical graph -- in the two-tier model demand
     homes to the backbone over the physical graph, so any demand that must home is
-    given edges here while staying out of ``edge_ids`` (it is not a carrier PoP).
+    given links here while staying out of ``link_ids`` (it is not a carrier PoP).
     """
     places = coords or {}
-    pops = [carrier_pop(vertex_id, *places.get(vertex_id, (0.0, 0.0))) for vertex_id in edge_ids]
-    adjacency = build_adjacency(edges)
+    pops = [carrier_pop(site_id, *places.get(site_id, (0.0, 0.0))) for site_id in link_ids]
+    adjacency = build_adjacency(links)
     distances, predecessors = all_pairs_shortest(pops, adjacency)
     return SynthesisInputs(
-        access_vertices=access_vertices if access_vertices is not None else [],
+        access_sites=access_sites if access_sites is not None else [],
         carrier_pops=pops,
-        physical_edges=edges,
+        fiber_segments=links,
         eligible_backbone_ids=eligible,
         adjacency=adjacency,
         all_distances=distances,
@@ -513,7 +513,7 @@ def search_plan(
     )
 
 
-TRIANGLE = physical_edges_from({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
+TRIANGLE = fiber_segments_from({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
 
 
 # --- segment count against path diversity: the one graph where the two measures disagree ----
@@ -539,7 +539,7 @@ TRIANGLE = physical_edges_from({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.
 # city is fiber pointing one way -- so the compass term is not carrying this fixture's
 # disagreement. Under the segment-count term a funnel scored a full 1.0 against the spread's
 # 0.6; under the diversity term it scores 2/3 against the spread's 1.0.
-FUNNEL_EDGES = physical_edges_from({
+FUNNEL_LINKS = fiber_segments_from({
     ("funnel", "east_a"): 40.0,
     ("funnel", "east_b"): 45.0,
     ("funnel", "east_c"): 50.0,
@@ -592,14 +592,14 @@ FUNNEL_COORDS = {
 }
 
 
-def funnel_vertices() -> list[Vertex]:
+def funnel_sites() -> list[Site]:
     """The disagreement graph's sites, each a carrier PoP at its fixture coordinates."""
-    return [carrier_pop(vertex_id, *FUNNEL_COORDS[vertex_id]) for vertex_id in FUNNEL_IDS]
+    return [carrier_pop(site_id, *FUNNEL_COORDS[site_id]) for site_id in FUNNEL_IDS]
 
 
 def funnel_datacenter_cities() -> frozenset[tuple[str, str]]:
     """Only the six compared sites pass the gate; the rest stay transit."""
-    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in FUNNEL_ELIGIBLE)
+    return frozenset((site_id, _FIXTURE_STATE) for site_id in FUNNEL_ELIGIBLE)
 
 
 # Three backbone sites within twenty miles of each other, all reaching one another over
@@ -608,7 +608,7 @@ def funnel_datacenter_cities() -> frozenset[tuple[str, str]]:
 # crossing as a second way out and the mesh is wired along it -- two thousand miles of
 # fiber standing in for twenty. It is the one fixture whose segments differ by orders of
 # magnitude, which is what the backup path multiple is measured against.
-CROSSING_EDGES = physical_edges_from({
+CROSSING_LINKS = fiber_segments_from({
     ("sea", "pdx"): 10.0,
     ("pdx", "hil"): 10.0,
     ("pdx", "eug"): 10.0,
@@ -630,14 +630,14 @@ CROSSING_COORDS = {
 }
 
 
-def crossing_vertices() -> list[Vertex]:
+def crossing_sites() -> list[Site]:
     """The crossing graph's sites, each a carrier PoP at its fixture coordinates."""
-    return [carrier_pop(vertex_id, *CROSSING_COORDS[vertex_id]) for vertex_id in CROSSING_IDS]
+    return [carrier_pop(site_id, *CROSSING_COORDS[site_id]) for site_id in CROSSING_IDS]
 
 
 def crossing_datacenter_cities() -> frozenset[tuple[str, str]]:
     """Only the three compared sites pass the gate, so pdx and tok stay transit."""
-    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in CROSSING_ELIGIBLE)
+    return frozenset((site_id, _FIXTURE_STATE) for site_id in CROSSING_ELIGIBLE)
 
 
 # Three backbone sites reaching one another over three shared hub cities, priced so the
@@ -658,7 +658,7 @@ SHARED_HUB_SEGMENTS = {
 # ride ``h1``, and the path to d is its second independently failing link. Without d the
 # only way out b has left that a single city's loss would not take with its first is a
 # second path to c, which is fiber for a pair that is joined already.
-SHARED_HUB_PEER_EDGES = physical_edges_from({
+SHARED_HUB_PEER_LINKS = fiber_segments_from({
     **SHARED_HUB_SEGMENTS,
     ("b", "d1"): 100.0, ("d1", "d"): 300.0,
     ("c", "d2"): 100.0, ("d2", "d"): 300.0,
@@ -667,17 +667,17 @@ SHARED_HUB_PEER_SITES = ("a", "b", "c", "d")
 SHARED_HUB_PEER_IDS = ("a", "b", "c", "d", "h1", "h2", "h3", "d1", "d2")
 
 
-def shared_hub_peer_vertices() -> list[Vertex]:
+def shared_hub_peer_sites() -> list[Site]:
     """The four-site graph's cities, spread along a line so no two share coordinates."""
     return [
-        carrier_pop(vertex_id, 38.0, -115.0 + 2.0 * index)
-        for index, vertex_id in enumerate(SHARED_HUB_PEER_IDS)
+        carrier_pop(site_id, 38.0, -115.0 + 2.0 * index)
+        for index, site_id in enumerate(SHARED_HUB_PEER_IDS)
     ]
 
 
 def shared_hub_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
     """Only the four sites pass the gate, so no hub or corridor city takes a seat."""
-    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in SHARED_HUB_PEER_SITES)
+    return frozenset((site_id, _FIXTURE_STATE) for site_id in SHARED_HUB_PEER_SITES)
 
 
 def shared_hub_peer_artifacts(asked_for: int = 2) -> SynthesisArtifacts:
@@ -687,8 +687,8 @@ def shared_hub_peer_artifacts(asked_for: int = 2) -> SynthesisArtifacts:
     each site has peers to reach and every pair of them is allowed one path.
     """
     return run_synthesis(
-        shared_hub_peer_vertices(),
-        SHARED_HUB_PEER_EDGES,
+        shared_hub_peer_sites(),
+        SHARED_HUB_PEER_LINKS,
         SynthesisParams(
             min_backbone_count=len(SHARED_HUB_PEER_SITES),
             max_backbone_count=len(SHARED_HUB_PEER_SITES),
@@ -708,7 +708,7 @@ def shared_hub_peer_artifacts(asked_for: int = 2) -> SynthesisArtifacts:
 # it and the second is left the crossing -- landing on ``hil``, at a hundred times what hil
 # allows. ``hil``--``syd`` closes the ring, so no single city's loss splits the fiber and
 # the search will seat all three.
-DISTANT_PEER_EDGES = physical_edges_from({
+DISTANT_PEER_LINKS = fiber_segments_from({
     ("sea", "pdx"): 10.0,
     ("pdx", "hil"): 10.0,
     ("sea", "tok"): 1000.0,
@@ -729,17 +729,17 @@ DISTANT_PEER_COORDS = {
 }
 
 
-def distant_peer_vertices() -> list[Vertex]:
+def distant_peer_sites() -> list[Site]:
     """The distant-peer graph's sites, each a carrier PoP at its fixture coordinates."""
     return [
-        carrier_pop(vertex_id, *DISTANT_PEER_COORDS[vertex_id])
-        for vertex_id in DISTANT_PEER_IDS
+        carrier_pop(site_id, *DISTANT_PEER_COORDS[site_id])
+        for site_id in DISTANT_PEER_IDS
     ]
 
 
 def distant_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
     """Only the three peers pass the gate, so pdx and tok stay transit."""
-    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in DISTANT_PEER_ELIGIBLE)
+    return frozenset((site_id, _FIXTURE_STATE) for site_id in DISTANT_PEER_ELIGIBLE)
 
 
 # Three sites on a ring of one-mile segments, each also joined to the other two by an express
@@ -749,7 +749,7 @@ def distant_peer_datacenter_cities() -> frozenset[tuple[str, str]]:
 # links per site, and both sit inside a backup path multiple of three, so nothing but the
 # mileage tells them apart: the ring comes to six miles of mesh and the express segments to
 # fifteen (GitHub issue #57).
-EXPRESS_EDGES = physical_edges_from({
+EXPRESS_LINKS = fiber_segments_from({
     ("sea", "pdx"): 1.0,
     ("pdx", "hil"): 1.0,
     ("hil", "alb"): 1.0,
@@ -774,20 +774,20 @@ EXPRESS_COORDS = {
 }
 
 
-def express_vertices() -> list[Vertex]:
+def express_sites() -> list[Site]:
     """The ring graph's sites, each a carrier PoP at its fixture coordinates."""
-    return [carrier_pop(vertex_id, *EXPRESS_COORDS[vertex_id]) for vertex_id in EXPRESS_IDS]
+    return [carrier_pop(site_id, *EXPRESS_COORDS[site_id]) for site_id in EXPRESS_IDS]
 
 
 def express_datacenter_cities() -> frozenset[tuple[str, str]]:
     """Only the three compared sites pass the gate, so the ring's transit stays transit."""
-    return frozenset((vertex_id, _FIXTURE_STATE) for vertex_id in EXPRESS_ELIGIBLE)
+    return frozenset((site_id, _FIXTURE_STATE) for site_id in EXPRESS_ELIGIBLE)
 
 
 def funnel_inputs() -> SynthesisInputs:
     """The disagreement graph as synthesis inputs, for scoring one site at a time."""
-    return synthesis_inputs_from_edges(
-        FUNNEL_IDS, FUNNEL_EDGES, set(FUNNEL_ELIGIBLE), coords=FUNNEL_COORDS
+    return synthesis_inputs_from_links(
+        FUNNEL_IDS, FUNNEL_LINKS, set(FUNNEL_ELIGIBLE), coords=FUNNEL_COORDS
     )
 
 
@@ -795,7 +795,7 @@ def funnel_inputs() -> SynthesisInputs:
 
 # Two triangles -- {a,b,c} and {d,e,f} -- joined only by the single segment c-d, so the two
 # pockets share no biconnected block: no backbone may straddle them.
-TWO_POCKET_EDGES = physical_edges_from(
+TWO_POCKET_LINKS = fiber_segments_from(
     {
         ("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0, ("c", "d"): 1.0,
         ("d", "e"): 1.0, ("e", "f"): 1.0, ("d", "f"): 1.0,

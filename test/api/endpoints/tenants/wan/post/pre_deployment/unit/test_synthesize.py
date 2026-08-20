@@ -9,12 +9,12 @@ import pytest
 import fixtures
 from fixtures import (
     TRIANGLE,
-    TWO_POCKET_EDGES,
+    TWO_POCKET_LINKS,
     TWO_POCKET_IDS,
-    synthesis_inputs_from_edges,
+    synthesis_inputs_from_links,
     search_plan,
 )
-from synthesizer.input_graph import edge_key
+from synthesizer.input_graph import link_key
 from synthesizer.model import (
     Synthesis,
     SynthesisInputs,
@@ -41,24 +41,24 @@ from synthesizer.synthesize import (
 from synthesizer.search_plan import _SearchPlan
 from synthesizer.graphs import build_adjacency
 from synthesizer.overrides import apply_role_overrides
-from synthesizer.strength import vertex_straightness
+from synthesizer.strength import site_straightness
 
 pop = fixtures.carrier_pop
-physical = fixtures.physical_edges_from
-access = fixtures.access_vertex
-TRIANGLE_VERTICES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
+physical = fixtures.fiber_segments_from
+access = fixtures.access_site
+TRIANGLE_SITES = [pop("a"), pop("b"), pop("c"), access("s", 40.0, -99.0)]
 
 
 def _cities(*ids: str) -> frozenset[tuple[str, str]]:
     """A data-center-city set covering carrier PoPs built by ``pop`` for these ids."""
-    return frozenset((vertex_id, "XX") for vertex_id in ids)
+    return frozenset((site_id, "XX") for site_id in ids)
 
 
 def test_min_backbone_count_below_two_is_rejected() -> None:
     """A minimum backbone count below two is rejected."""
     with pytest.raises(ValueError):
         synthesize_two_tier(
-            TRIANGLE_VERTICES, TRIANGLE, SynthesisParams(min_backbone_count=1)
+            TRIANGLE_SITES, TRIANGLE, SynthesisParams(min_backbone_count=1)
         )
 
 
@@ -66,7 +66,7 @@ def test_max_backbone_count_below_min_is_rejected() -> None:
     """A maximum backbone count below the minimum is rejected."""
     with pytest.raises(ValueError):
         synthesize_two_tier(
-            TRIANGLE_VERTICES, TRIANGLE, SynthesisParams(min_backbone_count=3, max_backbone_count=2)
+            TRIANGLE_SITES, TRIANGLE, SynthesisParams(min_backbone_count=3, max_backbone_count=2)
         )
 
 
@@ -74,22 +74,22 @@ def test_forced_backbone_exceeding_max_count_is_rejected() -> None:
     """Pinning more backbone nodes than the cap allows is rejected: the pins cannot be dropped."""
     with pytest.raises(ValueError):
         synthesize_two_tier(
-            TRIANGLE_VERTICES, TRIANGLE,
+            TRIANGLE_SITES, TRIANGLE,
             SynthesisParams(min_backbone_count=2, max_backbone_count=2),
             RoleOverrides(forced_backbone_ids=frozenset({"a", "b", "c"})),
         )
 
 
 def test_unknown_pop_ids_are_rejected() -> None:
-    """A physical edge referencing an unknown PoP id is rejected."""
+    """A physical link referencing an unknown PoP id is rejected."""
     with pytest.raises(ValueError):
         synthesize_two_tier(
             [pop("a"), pop("b")], physical({("a", "c"): 1.0}), SynthesisParams()
         )
 
 
-def test_pop_without_edges_is_rejected() -> None:
-    """A carrier PoP missing from the physical edge graph is rejected."""
+def test_pop_without_links_is_rejected() -> None:
+    """A carrier PoP missing from the physical link graph is rejected."""
     with pytest.raises(ValueError):
         synthesize_two_tier(
             [pop("a"), pop("b"), pop("c")], physical({("a", "b"): 1.0}), SynthesisParams()
@@ -108,7 +108,7 @@ def test_not_enough_eligible_pops_is_rejected() -> None:
 def test_synthesizes_ring_to_a_feasible_synthesis() -> None:
     """Synthesizes ring to a feasible synthesis with at least the minimum backbone nodes."""
     synthesis = synthesize_two_tier(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), fixtures.ring_params()
+        fixtures.ring_sites(), fixtures.ring_fiber_segments(), fixtures.ring_params()
     )
     assert len(synthesis.backbone_ids) >= 2
 
@@ -116,7 +116,7 @@ def test_synthesizes_ring_to_a_feasible_synthesis() -> None:
 def test_min_backbone_count_is_the_floor_when_feasible() -> None:
     """A synthesis feasible at the floor uses exactly the minimum backbone nodes, no more."""
     synthesis = synthesize_two_tier(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(),
+        fixtures.ring_sites(), fixtures.ring_fiber_segments(),
         SynthesisParams(min_backbone_count=3, datacenter_cities=fixtures.ring_datacenter_cities()),
     )
     assert len(synthesis.backbone_ids) == 3
@@ -125,7 +125,7 @@ def test_min_backbone_count_is_the_floor_when_feasible() -> None:
 def test_backbone_grows_past_the_floor_to_seat_more_forced_nodes() -> None:
     """With more nodes pinned than the floor, the backbone grows to seat them all."""
     synthesis = synthesize_two_tier(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(),
+        fixtures.ring_sites(), fixtures.ring_fiber_segments(),
         SynthesisParams(min_backbone_count=2, datacenter_cities=fixtures.ring_datacenter_cities()),
         RoleOverrides(forced_backbone_ids=frozenset({"P1", "P3", "P5"})),
     )
@@ -134,11 +134,11 @@ def test_backbone_grows_past_the_floor_to_seat_more_forced_nodes() -> None:
 
 def test_no_feasible_synthesis_is_rejected() -> None:
     """No feasible synthesis is rejected when the eligible PoPs cannot mesh as a backbone."""
-    edges = physical({("x1", "b1"): 1.0, ("b1", "y1"): 1.0, ("x2", "b2"): 1.0, ("b2", "y2"): 1.0})
-    vertices = [pop(name) for name in ("x1", "b1", "y1", "x2", "b2", "y2")]
+    links = physical({("x1", "b1"): 1.0, ("b1", "y1"): 1.0, ("x2", "b2"): 1.0, ("b2", "y2"): 1.0})
+    sites = [pop(name) for name in ("x1", "b1", "y1", "x2", "b2", "y2")]
     with pytest.raises(ValueError):
         synthesize_two_tier(
-            vertices, edges,
+            sites, links,
             SynthesisParams(min_backbone_count=2, datacenter_cities=_cities("b1", "b2")),
         )
 
@@ -146,7 +146,7 @@ def test_no_feasible_synthesis_is_rejected() -> None:
 def test_honors_a_forced_backbone_override() -> None:
     """A forced-backbone override is fixed into the selected backbone."""
     synthesis = synthesize_two_tier(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(),
+        fixtures.ring_sites(), fixtures.ring_fiber_segments(),
         SynthesisParams(min_backbone_count=2, datacenter_cities=fixtures.ring_datacenter_cities()),
         RoleOverrides(forced_backbone_ids=frozenset({"P3"})),
     )
@@ -188,28 +188,28 @@ def test_capped_convergence_synthesis_fills_its_backbone_budget() -> None:
 
 def test_eligible_excludes_a_degree_one_spur() -> None:
     """A degree-one PoP can never path redundantly, so it is not eligible."""
-    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0, ("a", "spur"): 1.0})
+    links = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0, ("a", "spur"): 1.0})
     pops = [pop(name) for name in ("a", "b", "c", "spur")]
     eligible = compute_eligible_backbone_ids(
-        pops, build_adjacency(edges), _cities("a", "b", "c", "spur")
+        pops, build_adjacency(links), _cities("a", "b", "c", "spur")
     )
     assert "spur" not in eligible
 
 
 def test_eligible_includes_a_degree_two_data_center_pop() -> None:
     """A degree-two PoP at a data-center city is an eligible backbone node."""
-    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0})
+    links = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0})
     pops = [pop(name) for name in ("a", "b", "c")]
-    eligible = compute_eligible_backbone_ids(pops, build_adjacency(edges), _cities("a", "b", "c"))
+    eligible = compute_eligible_backbone_ids(pops, build_adjacency(links), _cities("a", "b", "c"))
     assert eligible == {"a", "b", "c"}
 
 
 def test_eligible_excludes_a_pop_off_every_data_center_city() -> None:
     """A strong PoP whose city no colocation provider serves is never eligible."""
-    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0})
+    links = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0})
     pops = [pop(name) for name in ("a", "b", "c")]
     # Only a and b sit at a data-center city; c is barred despite degree two.
-    eligible = compute_eligible_backbone_ids(pops, build_adjacency(edges), _cities("a", "b"))
+    eligible = compute_eligible_backbone_ids(pops, build_adjacency(links), _cities("a", "b"))
     assert "c" not in eligible
 
 
@@ -217,14 +217,14 @@ def test_eligible_excludes_a_pop_off_every_data_center_city() -> None:
 
 def _synthesis(
     backbone_ids: tuple[str, ...],
-    physical_edge_keys: set[tuple[str, str]],
+    fiber_segment_keys: set[tuple[str, str]],
 ) -> Synthesis:
     """A Synthesis carrying only the fields the convergence pass reads."""
     return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=(),
-        access_edges=[],
-        physical_edge_keys=physical_edge_keys,
+        access_paths=[],
+        fiber_segment_keys=fiber_segment_keys,
         path_uses=[],
         metrics=SynthesisMetrics(0.0, 0.0, 0.0),
     )
@@ -232,8 +232,8 @@ def _synthesis(
 
 def test_convergence_promotes_a_data_center_transit_hub() -> None:
     """A non-backbone data-center PoP carrying >= 3 of the synthesis's lines is promoted."""
-    # hub carries four of the synthesis's drawn edges; b1/b2 are the seated backbone.
-    keys = {edge_key("hub", n) for n in ("b1", "b2", "x", "y")}
+    # hub carries four of the synthesis's drawn links; b1/b2 are the seated backbone.
+    keys = {link_key("hub", n) for n in ("b1", "b2", "x", "y")}
     synthesis = _synthesis(("b1", "b2"), keys)
     pops = [pop(name) for name in ("hub", "b1", "b2", "x", "y")]
     promoted = convergence_promotion_ids(synthesis, pops, _cities("hub", "x", "y"))
@@ -242,7 +242,7 @@ def test_convergence_promotes_a_data_center_transit_hub() -> None:
 
 def test_convergence_skips_a_two_line_crossing() -> None:
     """A PoP where only two of the synthesis's lines meet is below the threshold."""
-    keys = {edge_key("mid", "b1"), edge_key("mid", "b2")}
+    keys = {link_key("mid", "b1"), link_key("mid", "b2")}
     synthesis = _synthesis(("b1", "b2"), keys)
     pops = [pop(name) for name in ("mid", "b1", "b2")]
     assert convergence_promotion_ids(synthesis, pops, _cities("mid")) == set()
@@ -250,7 +250,7 @@ def test_convergence_skips_a_two_line_crossing() -> None:
 
 def test_convergence_excludes_a_seated_backbone_node() -> None:
     """A node already in the backbone is never re-promoted, however many lines it carries."""
-    keys = {edge_key("b1", n) for n in ("b2", "x", "y")}
+    keys = {link_key("b1", n) for n in ("b2", "x", "y")}
     synthesis = _synthesis(("b1", "b2"), keys)
     pops = [pop(name) for name in ("b1", "b2", "x", "y")]
     assert convergence_promotion_ids(synthesis, pops, _cities("b1", "b2", "x", "y")) == set()
@@ -258,7 +258,7 @@ def test_convergence_excludes_a_seated_backbone_node() -> None:
 
 def test_convergence_excludes_a_non_data_center_crossing() -> None:
     """A >= 3-line crossing with no data center stays transit -- the gate is absolute."""
-    keys = {edge_key("hub", n) for n in ("b1", "b2", "x")}
+    keys = {link_key("hub", n) for n in ("b1", "b2", "x")}
     synthesis = _synthesis(("b1", "b2"), keys)
     pops = [pop(name) for name in ("hub", "b1", "b2", "x")]
     # hub is not in the data-center set, so it is not eligible for promotion.
@@ -267,18 +267,18 @@ def test_convergence_excludes_a_non_data_center_crossing() -> None:
 
 # --- direct helper coverage ------------------------------------------------------------
 
-def test_vertex_straightness_is_zero_without_reachable_vertices() -> None:
-    """Vertex straightness is zero when no other PoP is reachable."""
-    assert vertex_straightness("a", {"a": pop("a")}, {}) == 0.0
+def test_site_straightness_is_zero_without_reachable_sites() -> None:
+    """Site straightness is zero when no other PoP is reachable."""
+    assert site_straightness("a", {"a": pop("a")}, {}) == 0.0
 
 
-def test_vertex_straightness_skips_zero_length_hops() -> None:
-    """Vertex straightness ignores hops between coincident PoPs."""
+def test_site_straightness_skips_zero_length_hops() -> None:
+    """Site straightness ignores hops between coincident PoPs."""
     by_id = {"a": pop("a", 0.0, 0.0), "b": pop("b", 0.0, 0.0)}
-    assert vertex_straightness("a", by_id, {"b": "a"}) == 0.0
+    assert site_straightness("a", by_id, {"b": "a"}) == 0.0
 
 
-MESH_EDGES = physical(
+MESH_LINKS = physical(
     {
         ("a", "b"): 1.0, ("a", "c"): 1.0, ("a", "d"): 1.0,
         ("b", "c"): 1.0, ("b", "d"): 1.0, ("c", "d"): 1.0,
@@ -293,8 +293,8 @@ MESH_COORDS = {"a": (0.0, 1.0), "b": (0.0, 2.0), "c": (0.0, 50.0), "d": (0.0, 51
 
 def _mesh_inputs() -> SynthesisInputs:
     """A four-PoP full mesh with one graph-connected demand site, for selection tests."""
-    return synthesis_inputs_from_edges(
-        ["a", "b", "c", "d"], MESH_EDGES, {"a", "b", "c", "d"},
+    return synthesis_inputs_from_links(
+        ["a", "b", "c", "d"], MESH_LINKS, {"a", "b", "c", "d"},
         [access("s", 0.0, 0.0)], MESH_COORDS,
     )
 
@@ -321,8 +321,8 @@ def test_best_backbone_at_size_returns_none_when_nothing_feasible() -> None:
     The two candidate backbone PoPs sit in separate components, so neither can reach the
     other to wire its mesh links and no backbone set of that size is feasible.
     """
-    edges = physical({("c1", "x"): 1.0, ("c2", "y"): 1.0})
-    inputs = synthesis_inputs_from_edges(["c1", "c2", "x", "y"], edges, {"c1", "c2"}, [access("s")])
+    links = physical({("c1", "x"): 1.0, ("c2", "y"): 1.0})
+    inputs = synthesis_inputs_from_links(["c1", "c2", "x", "y"], links, {"c1", "c2"}, [access("s")])
     assert best_backbone_at_size(inputs, search_plan(["c1", "c2"]), 2) is None
 
 
@@ -367,7 +367,7 @@ def test_total_memory_falls_back_to_physical_ram(monkeypatch: pytest.MonkeyPatch
 
 def test_search_refuses_a_space_too_large_for_memory() -> None:
     """The search refuses to enumerate more backbone sets than RAM can hold."""
-    inputs = synthesis_inputs_from_edges([], {}, set(), [])
+    inputs = synthesis_inputs_from_links([], {}, set(), [])
     plan = search_plan([f"c{index}" for index in range(40)])
     with pytest.raises(ValueError):
         search_best_synthesis(inputs, SynthesisParams(min_backbone_count=20), plan)
@@ -379,8 +379,8 @@ def test_search_raises_when_no_size_is_feasible() -> None:
     The two candidate backbone PoPs sit in separate components, so they can never reach
     each other to wire their mesh links and no size is feasible.
     """
-    edges = physical({("c1", "x"): 1.0, ("c2", "y"): 1.0})
-    inputs = synthesis_inputs_from_edges(["c1", "c2", "x", "y"], edges, {"c1", "c2"}, [access("s")])
+    links = physical({("c1", "x"): 1.0, ("c2", "y"): 1.0})
+    inputs = synthesis_inputs_from_links(["c1", "c2", "x", "y"], links, {"c1", "c2"}, [access("s")])
     plan = search_plan(["c1", "c2"])
     with pytest.raises(ValueError):
         search_best_synthesis(inputs, SynthesisParams(min_backbone_count=2), plan)
@@ -388,16 +388,16 @@ def test_search_raises_when_no_size_is_feasible() -> None:
 
 def test_build_search_plan_ranks_candidates_by_strength() -> None:
     """Every eligible PoP is a backbone candidate, ranked by strength."""
-    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-    inputs = synthesis_inputs_from_edges(["a", "b", "c"], edges, {"a", "b", "c"})
+    links = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
+    inputs = synthesis_inputs_from_links(["a", "b", "c"], links, {"a", "b", "c"})
     plan = build_search_plan(inputs, {"a", "b", "c"}, RoleOverrides(), SynthesisParams())
     assert set(plan.backbone_candidates) == {"a", "b", "c"}
 
 
 def test_build_search_plan_fixes_promoted_nodes_into_required() -> None:
     """Convergence-promoted nodes join the operator-forced nodes in the required set."""
-    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
-    inputs = synthesis_inputs_from_edges(["a", "b", "c"], edges, {"a", "b", "c"})
+    links = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("a", "c"): 1.0})
+    inputs = synthesis_inputs_from_links(["a", "b", "c"], links, {"a", "b", "c"})
     overrides = RoleOverrides(forced_backbone_ids=frozenset({"a"}))
     plan = build_search_plan(
         inputs, {"a", "b", "c"}, overrides, SynthesisParams(), frozenset({"b"})
@@ -410,15 +410,15 @@ def _far_demand_inputs_plan(exempt: bool = False) -> tuple[SynthesisInputs, _Sea
 
     Shared by the growth and cap tests: a permissive coverage target holds the backbone
     at the two-node floor, while a tight one would grow it to seat a western (cw) and an
-    eastern (ce) node that bring the far demand within reach. Every demand vertex wires
+    eastern (ce) node that bring the far demand within reach. Every demand site wires
     into the graph through the central pair (cc1/cc2), so it always homes; the geography
     is what drives -- or holds -- the coverage growth. With ``exempt`` set, the demand
-    vertices are marked exempt from the distance constraint.
+    sites are marked exempt from the distance constraint.
     """
     # cw and ce each wire to both central nodes, so every backbone candidate sits in one
-    # biconnected block and the coverage growth (driven by geography, not edges) is what
+    # biconnected block and the coverage growth (driven by geography, not links) is what
     # the tests below probe.
-    edges = physical(
+    links = physical(
         {
             ("cc1", "cw"): 1.0, ("cc2", "cw"): 1.0, ("ce", "cc2"): 1.0, ("ce", "cc1"): 1.0,
             ("cc2", "cc1"): 1.0,
@@ -439,8 +439,8 @@ def _far_demand_inputs_plan(exempt: bool = False) -> tuple[SynthesisInputs, _Sea
         access_nodes = [
             replace(node, exempt_from_distance_constraint=True) for node in access_nodes
         ]
-    inputs = synthesis_inputs_from_edges(
-        ids, edges, {"cc1", "cc2", "cw", "ce"}, access_nodes, coords
+    inputs = synthesis_inputs_from_links(
+        ids, links, {"cc1", "cc2", "cw", "ce"}, access_nodes, coords
     )
     plan = search_plan(
         ["cc1", "cc2", "cw", "ce"],
@@ -575,7 +575,7 @@ def test_search_holds_at_the_floor_when_the_only_candidate_is_infeasible() -> No
     the only free candidate ``p`` sits in its own graph component and cannot reach a mesh
     peer, so the grown set is infeasible and the backbone holds at the floor.
     """
-    edges = physical(
+    links = physical(
         {
             ("c1", "c2"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0, ("p", "q"): 1.0,
         }
@@ -583,8 +583,8 @@ def test_search_holds_at_the_floor_when_the_only_candidate_is_infeasible() -> No
     coords = {
         "c1": (40.0, -100.0), "c2": (40.0, -99.0), "p": (40.0, -81.0),
     }
-    inputs = synthesis_inputs_from_edges(
-        ["c1", "c2", "p", "q"], edges, {"c1", "c2", "p"}, [access("s", 40.0, -80.5)], coords
+    inputs = synthesis_inputs_from_links(
+        ["c1", "c2", "p", "q"], links, {"c1", "c2", "p"}, [access("s", 40.0, -80.5)], coords
     )
     plan = search_plan(["c1", "c2", "p"], strength={"c1": 3.0, "c2": 3.0, "p": 1.0})
     params = SynthesisParams(
@@ -596,23 +596,23 @@ def test_search_holds_at_the_floor_when_the_only_candidate_is_infeasible() -> No
 
 def test_synthesize_rejects_forced_nodes_split_across_pockets() -> None:
     """Synthesis fails loudly when forced nodes straddle a single-fiber cut."""
-    vertices = [pop(name) for name in TWO_POCKET_IDS]
+    sites = [pop(name) for name in TWO_POCKET_IDS]
     params = SynthesisParams(
         min_backbone_count=2,
         forced_backbone_names=("a", "d"),
         datacenter_cities=_cities(*TWO_POCKET_IDS),
     )
-    pinned, edges, overrides = apply_role_overrides(vertices, TWO_POCKET_EDGES, params)
+    pinned, links, overrides = apply_role_overrides(sites, TWO_POCKET_LINKS, params)
     with pytest.raises(ValueError):
-        synthesize_two_tier(pinned, edges, params, overrides)
+        synthesize_two_tier(pinned, links, params, overrides)
 
 
 # --- overrides: data-center gate on forced pins ----------------------------------------
 
 def test_apply_role_overrides_resolves_a_forced_backbone_pin() -> None:
-    """A forced backbone name at a data-center city resolves to its vertex id."""
+    """A forced backbone name at a data-center city resolves to its site id."""
     params = SynthesisParams(forced_backbone_names=("a",), datacenter_cities=_cities("a"))
-    _vertices, _edges, overrides = apply_role_overrides(
+    _sites, _links, overrides = apply_role_overrides(
         [pop("a"), pop("b")], physical({("a", "b"): 1.0}), params
     )
     assert overrides.forced_backbone_ids == frozenset({"a"})
@@ -640,23 +640,23 @@ def test_apply_role_overrides_rejects_a_forced_and_prohibited_pop() -> None:
 
 def test_eligible_includes_any_pop_when_gate_is_open() -> None:
     """With the gate open (datacenter_cities=None), every degree-two PoP is eligible."""
-    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0})
+    links = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0})
     pops = [pop(name) for name in ("a", "b", "c")]
-    eligible = compute_eligible_backbone_ids(pops, build_adjacency(edges), None)
+    eligible = compute_eligible_backbone_ids(pops, build_adjacency(links), None)
     assert eligible == {"a", "b", "c"}
 
 
 def test_eligible_still_excludes_a_spur_when_gate_is_open() -> None:
     """The degree-one spur exclusion holds in free-for-all -- it can never path redundantly."""
-    edges = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0, ("a", "spur"): 1.0})
+    links = physical({("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "a"): 1.0, ("a", "spur"): 1.0})
     pops = [pop(name) for name in ("a", "b", "c", "spur")]
-    eligible = compute_eligible_backbone_ids(pops, build_adjacency(edges), None)
+    eligible = compute_eligible_backbone_ids(pops, build_adjacency(links), None)
     assert "spur" not in eligible
 
 
 def test_convergence_promotes_any_hub_when_gate_is_open() -> None:
     """With the gate open, a >= 3-line crossing promotes even off every data-center city."""
-    keys = {edge_key("hub", n) for n in ("b1", "b2", "x")}
+    keys = {link_key("hub", n) for n in ("b1", "b2", "x")}
     synthesis = _synthesis(("b1", "b2"), keys)
     pops = [pop(name) for name in ("hub", "b1", "b2", "x")]
     promoted = convergence_promotion_ids(synthesis, pops, None)
@@ -666,7 +666,7 @@ def test_convergence_promotes_any_hub_when_gate_is_open() -> None:
 def test_apply_role_overrides_accepts_any_pin_when_gate_is_open() -> None:
     """With the gate open, a forced pin at any city resolves rather than being rejected."""
     params = SynthesisParams(forced_backbone_names=("a",), datacenter_cities=None)
-    _vertices, _edges, overrides = apply_role_overrides(
+    _sites, _links, overrides = apply_role_overrides(
         [pop("a"), pop("b")], physical({("a", "b"): 1.0}), params
     )
     assert overrides.forced_backbone_ids == frozenset({"a"})
@@ -679,8 +679,8 @@ def test_synthesize_seats_a_backbone_off_every_data_center_city_when_gate_is_ope
     ``test_not_enough_eligible_pops_is_rejected``); opening it seats a synthesis.
     """
     synthesis = synthesize_two_tier(
-        fixtures.ring_vertices(),
-        fixtures.ring_physical_edges(),
+        fixtures.ring_sites(),
+        fixtures.ring_fiber_segments(),
         SynthesisParams(min_backbone_count=2, datacenter_cities=None),
     )
     assert len(synthesis.backbone_ids) >= 2

@@ -7,14 +7,14 @@ import pytest
 import fixtures
 from synthesizer.offnet import SeatedOffNetSites, realize_off_net_sites
 from synthesizer.model import is_carrier_pop
-from synthesizer.input_graph import Vertex
+from synthesizer.input_graph import Site
 
 # Every off-net fixture site is named for its own id and placed in the fixture state,
 # so this gate admits all the sites the tests seat.
 _CITIES = frozenset({(name, "XX") for name in ("dulles", "remote", "P0")})
 
 
-def _pops() -> list[Vertex]:
+def _pops() -> list[Site]:
     """Three closely spaced carrier PoPs an off-net twin can home to."""
     return [
         fixtures.carrier_pop("P0", 0.0, 0.0),
@@ -24,7 +24,7 @@ def _pops() -> list[Vertex]:
 
 
 def _realize(
-    *sites: Vertex,
+    *sites: Site,
     forced: frozenset[str] = frozenset(),
     cities: frozenset[tuple[str, str]] | None = _CITIES,
 ) -> SeatedOffNetSites:
@@ -44,17 +44,17 @@ def test_seated_twin_id_carries_the_off_net_prefix() -> None:
     assert next(iter(result.seat_ids)).startswith("offnet_")
 
 
-def test_realize_adds_local_fiber_edges() -> None:
+def test_realize_adds_local_fiber_links() -> None:
     """The twin gains synthetic local-fiber links to its nearest carrier PoPs."""
     result = _realize(fixtures.off_net_site("dulles", 0.0, 0.5), forced=frozenset({"dulles"}))
-    assert len(result.physical_edges) == 3
+    assert len(result.fiber_segments) == 3
 
 
 def test_seated_twin_is_a_carrier_pop() -> None:
     """The twin is a carrier PoP, so it flows through the backbone machinery."""
     result = _realize(fixtures.off_net_site("dulles", 0.0, 0.5), forced=frozenset({"dulles"}))
     seat_id = next(iter(result.seat_ids))
-    assert is_carrier_pop(next(v for v in result.vertices if v.id == seat_id)) is True
+    assert is_carrier_pop(next(v for v in result.sites if v.id == seat_id)) is True
 
 
 def test_realize_ignores_unforced_sites() -> None:
@@ -93,7 +93,7 @@ def test_a_forced_site_that_is_already_a_carrier_pop_is_rejected() -> None:
     """A forced off-net name that is also a carrier PoP fails loudly rather than seating.
 
     The roster offers seats where no carrier point is, so naming one that exists is a
-    seat that cannot be built, and the pin it names would resolve onto two vertices.
+    seat that cannot be built, and the pin it names would resolve onto two sites.
     """
     with pytest.raises(ValueError, match="already a carrier PoP: P0"):
         _realize(fixtures.off_net_site("P0", 0.0, 0.5), forced=frozenset({"P0"}))

@@ -46,7 +46,7 @@ from dataclasses import dataclass, replace
 
 from synthesizer.ceiling import BackupPathLimit
 from synthesizer.flow_cuts import Separation, SeparationQuestion, weakest_separation
-from synthesizer.input_graph import PhysicalEdge
+from synthesizer.input_graph import FiberSegment
 from synthesizer.linear_program import GrowingSegmentProgram, SegmentChoice, SegmentRow
 
 # What counts as holding a segment outright. Half of it is the share Jain's half-integrality
@@ -73,7 +73,7 @@ class FiberInputs:
     """
 
     backbone_ids: tuple[str, ...]
-    physical_edges: Mapping[tuple[str, str], PhysicalEdge]
+    fiber_segments: Mapping[tuple[str, str], FiberSegment]
     all_distances: Mapping[str, Mapping[str, float]]
     ways_out: int = 3
     per_peer: int = 1
@@ -180,7 +180,7 @@ def admissible_fiber(inputs: FiberInputs) -> dict[tuple[str, str], float]:
     caller with no tenant to be measured against.
     """
     miles = {
-        segment: edge.distance_miles for segment, edge in inputs.physical_edges.items()
+        segment: link.distance_miles for segment, link in inputs.fiber_segments.items()
     }
     if inputs.limit is None:
         return miles

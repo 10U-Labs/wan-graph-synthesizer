@@ -23,7 +23,7 @@ from test_handler_contracts import SharedWriteTests
 def test_a_subclass_that_binds_no_put_event_is_refused() -> None:
     """There is no sensible event to invent, so the omission is reported where it is made."""
     with pytest.raises(NotImplementedError):
-        getattr(SharedWriteTests(), "_put_event")("vertices", [])
+        getattr(SharedWriteTests(), "_put_event")("sites", [])
 
 
 def test_a_subclass_that_binds_no_delete_event_is_refused() -> None:

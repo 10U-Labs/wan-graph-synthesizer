@@ -184,7 +184,7 @@ def _add_capacity(residual: _Residual, costs: _Costs, arc: _NewArc) -> None:
     costs.setdefault(head, {})[tail] = -miles
 
 
-def _unit_vertex_network(
+def _unit_site_network(
     node: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
@@ -294,8 +294,8 @@ def _augmenting_path(
     node to an unreached one, or the walk would have reached it.
     """
     distance, reached = _cheapest_runs(residual, costs, potential, source)
-    for vertex, run in distance.items():
-        potential[vertex] += run
+    for site, run in distance.items():
+        potential[site] += run
     if _SINK not in reached:
         return None
     path = [_SINK]
@@ -477,13 +477,13 @@ def _proved_paths(
     times ``per_peer``, since every unit that leaves ``node`` ends at a peer's arc into the
     sink and each of those arcs holds that many.
     """
-    residual, costs, arcs = _unit_vertex_network(node, backbone_ids, adjacency, per_peer)
+    residual, costs, arcs = _unit_site_network(node, backbone_ids, adjacency, per_peer)
     source: _Node = ("out", node)
     # Every node starts owing nothing, which is a valid set of potentials because no arc
     # costs less than zero until a round has sent a unit down one. The source is named
     # alongside the network because a site the carrier's files hold no fiber for is absent
     # from it, and the walk out of such a site still has to start somewhere.
-    potential: dict[_Node, float] = {vertex: 0.0 for vertex in (source, *residual)}
+    potential: dict[_Node, float] = {site: 0.0 for site in (source, *residual)}
     while True:
         path = _augmenting_path(residual, costs, potential, source)
         if path is None:
@@ -552,7 +552,7 @@ def independent_paths(node: str, inputs: PathProofInputs) -> list[tuple[str, ...
     """The shortest set of the most paths from ``node`` no one city's loss takes two of.
 
     Each runs from ``node`` to a peer, and no city carries two of them -- a max flow with
-    unit vertex capacities (see :func:`_unit_vertex_network`), pushed one unit at a time
+    unit site capacities (see :func:`_unit_site_network`), pushed one unit at a time
     until no unused capacity reaches the sink, then read back off the arcs it spent. Each
     augmenting walk carries exactly one path.
 
@@ -607,7 +607,7 @@ def independent_paths(node: str, inputs: PathProofInputs) -> list[tuple[str, ...
     validation to report out loud; a count too low lowers the target and silences the check
     on it, which is the worse of the two by a distance.
 
-    It is still not exact, and cannot be. Asking for the largest set of vertex-disjoint
+    It is still not exact, and cannot be. Asking for the largest set of site-disjoint
     paths that each respect a length bound is NP-hard, so no exact answer is available at
     any price; this bounds the paths as well as the fiber, and still bounds them from
     above.

@@ -20,7 +20,7 @@ import pytest
 from repo_utils import REPO_ROOT
 from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
-from synthesizer.input_graph import Vertex
+from synthesizer.input_graph import Site
 from synthesizer.model import SynthesisParams, OperatorLinks, RoleOverrides
 from synthesizer.stages import finalize
 
@@ -43,8 +43,8 @@ def _stub_pipeline(
     branches -- gating the backbone to data-center cities vs the open free-for-all --
     are exercised across the suite.
     """
-    pop = Vertex(id="P", name="P", kind="PoP", coords=(0.0, 0.0))
-    site = Vertex(id="S", name="S", kind="Tenant site", coords=(1.0, 1.0))
+    pop = Site(id="P", name="P", kind="PoP", coords=(0.0, 0.0))
+    site = Site(id="S", name="S", kind="Tenant site", coords=(1.0, 1.0))
     graph = [pop, site]
     config = SimpleNamespace(
         params=SynthesisParams(),
@@ -52,9 +52,9 @@ def _stub_pipeline(
         links=OperatorLinks(),
     )
     payload = {
-        "vertices": [{"id": "P", "tier_role": "backbone"}],
-        "access_edges": [],
-        "physical_edges": [],
+        "sites": [{"id": "P", "tier_role": "backbone"}],
+        "access_paths": [],
+        "fiber_segments": [],
         "path_uses": [{"purpose": "backbone_mesh", "source_name": "P", "target_name": "Q"}],
     }
     monkeypatch.setattr(module, "load_substrate", lambda *_a: (graph, {}))
@@ -89,9 +89,9 @@ def _stub_pipeline(
 def _inputs(module: Any) -> dict[str, bytes]:
     """Every object the synthesizer reads (content unused; pipeline stubbed)."""
     keys = [
-        "carriers/merge/vertices.json",
-        "carriers/merge/edges.json",
-        "data-centers/merge/vertices.json",
+        "carriers/merge/pops.json",
+        "carriers/merge/fiber-segments.json",
+        "data-centers/merge/facilities.json",
         "tenants/f-35/locations.json",
         "tenants/f-35/provider-regions.json",
         "tenants/f-35/off-net.json",
@@ -269,7 +269,7 @@ def _run_split_backbone(module: Any, monkeypatch: pytest.MonkeyPatch) -> dict[st
     """
     _stub_pipeline(module, monkeypatch)
     graph = list(fixtures.carrier_pops_by_id(fixtures.SPLIT_BACKBONE_CITIES).values())
-    fiber = fixtures.physical_edges_from(fixtures.SPLIT_BACKBONE_SEGMENTS)
+    fiber = fixtures.fiber_segments_from(fixtures.SPLIT_BACKBONE_SEGMENTS)
     monkeypatch.setattr(module, "dual_home", lambda *_a: (graph, fiber))
     monkeypatch.setattr(
         module, "apply_role_overrides", lambda *_a: (graph, fiber, RoleOverrides())

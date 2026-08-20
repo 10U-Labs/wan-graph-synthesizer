@@ -51,15 +51,15 @@ def test_the_stub_listens_on_loopback() -> None:
 def test_the_method_a_client_used_is_recorded() -> None:
     """A seed run is judged on writing with PUT and building with POST."""
     with StubApi() as api:
-        _send(api, "PUT", "/carriers/lumen/vertices", b"[]")
+        _send(api, "PUT", "/carriers/lumen/pops", b"[]")
         assert [method for method, _path, _body in api.records] == ["PUT"]
 
 
 def test_the_path_a_client_addressed_is_recorded() -> None:
     """Which resource was written is the other half of that judgement."""
     with StubApi() as api:
-        _send(api, "PUT", "/carriers/lumen/vertices", b"[]")
-        assert [path for _method, path, _body in api.records] == ["/carriers/lumen/vertices"]
+        _send(api, "PUT", "/carriers/lumen/pops", b"[]")
+        assert [path for _method, path, _body in api.records] == ["/carriers/lumen/pops"]
 
 
 def test_the_body_a_client_sent_is_recorded() -> None:
@@ -79,10 +79,10 @@ def test_a_request_carrying_no_body_records_an_empty_one() -> None:
 def test_every_request_is_recorded_in_the_order_it_arrived() -> None:
     """Seed delivers inputs before it asks for a build, and the order is what says so."""
     with StubApi() as api:
-        _send(api, "PUT", "/carriers/lumen/vertices", b"[]")
+        _send(api, "PUT", "/carriers/lumen/pops", b"[]")
         _send(api, "POST", "/tenants/daf/wan")
         assert [path for _method, path, _body in api.records] == [
-            "/carriers/lumen/vertices",
+            "/carriers/lumen/pops",
             "/tenants/daf/wan",
         ]
 
@@ -90,13 +90,13 @@ def test_every_request_is_recorded_in_the_order_it_arrived() -> None:
 def test_the_status_answered_is_the_one_the_stub_was_built_with() -> None:
     """A client that must survive a refusal is exercised by a stub that refuses."""
     with StubApi(status=500) as api:
-        assert _send(api, "PUT", "/carriers/lumen/vertices", b"[]")[0] == 500
+        assert _send(api, "PUT", "/carriers/lumen/pops", b"[]")[0] == 500
 
 
 def test_a_request_is_answered_successfully_by_default() -> None:
     """The ordinary case is a call that worked, so that is what a bare stub answers."""
     with StubApi() as api:
-        assert _send(api, "PUT", "/carriers/lumen/vertices", b"[]")[0] == 200
+        assert _send(api, "PUT", "/carriers/lumen/pops", b"[]")[0] == 200
 
 
 def test_the_body_answered_is_the_one_the_stub_was_built_with() -> None:

@@ -19,14 +19,14 @@ from typing import Any
 from test_published_syntheses import backbone_groups
 
 
-def _seat(vertex_id: str) -> dict[str, Any]:
+def _seat(site_id: str) -> dict[str, Any]:
     """One backbone node of a published collection, as far as this measurement reads it."""
-    return {"id": vertex_id}
+    return {"id": site_id}
 
 
 def _segment(kind: str, near: str, far: str) -> dict[str, Any]:
-    """One edge of a published collection, of whichever kind it is labelled with."""
-    return {"source_id": near, "target_id": far, "distance_miles": 10.0, "edge_kind": kind}
+    """One link of a published collection, of whichever kind it is labelled with."""
+    return {"source_id": near, "target_id": far, "distance_miles": 10.0, "link_kind": kind}
 
 
 # The fiber of one whole network: west reaches east through the transit city hub.
@@ -38,13 +38,13 @@ _JOINED = [
 # with nothing at all between the two. This is the shape a build must refuse.
 _SPLIT: dict[str, Any] = {
     "backbone": [_seat("west"), _seat("east"), _seat("hub"), _seat("salt"), _seat("lake")],
-    "edges": [*_JOINED, _segment("carrier_physical", "salt", "lake")],
+    "links": [*_JOINED, _segment("carrier_physical", "salt", "lake")],
 }
 
 
 def test_a_network_whose_fiber_joins_every_seat_is_one_group() -> None:
     """Three seats on one run of fiber are one network, and come back as one list."""
-    assert backbone_groups({"backbone": _SPLIT["backbone"][:3], "edges": _JOINED}) == [
+    assert backbone_groups({"backbone": _SPLIT["backbone"][:3], "links": _JOINED}) == [
         ["east", "hub", "west"]
     ]
 
@@ -58,7 +58,7 @@ def test_a_seat_no_fiber_touches_at_all_is_a_group_of_one() -> None:
     """A seat with nothing beside it is the most cut off a seat can be, and is not lost."""
     assert backbone_groups({
         "backbone": [*_SPLIT["backbone"][:3], _seat("alone")],
-        "edges": _JOINED,
+        "links": _JOINED,
     }) == [["alone"], ["east", "hub", "west"]]
 
 
@@ -66,10 +66,10 @@ def test_a_seat_reached_only_through_an_access_homing_is_its_own_group() -> None
     """A homing is the haul into the network from a site, not fiber a backbone path can use."""
     assert backbone_groups({
         "backbone": [*_SPLIT["backbone"][:3], _seat("far")],
-        "edges": [*_JOINED, _segment("tenant_to_backbone", "east", "far")],
+        "links": [*_JOINED, _segment("tenant_to_backbone", "east", "far")],
     }) == [["east", "hub", "west"], ["far"]]
 
 
 def test_a_tenant_with_no_published_backbone_has_no_group() -> None:
     """A build that has not landed publishes no seats, so there is no group to report."""
-    assert not backbone_groups({"backbone": [], "edges": []})
+    assert not backbone_groups({"backbone": [], "links": []})

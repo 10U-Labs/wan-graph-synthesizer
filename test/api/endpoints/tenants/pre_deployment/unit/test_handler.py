@@ -21,8 +21,8 @@ _READER: dict[str, Any] = {
     "ids": [{"id": "f-35", "label": "f-35"}, {"id": "minuteman", "label": "minuteman"}],
     "stored_key": "tenants/f-35/wan.json",
     "stored": {
-        "vertices": [],
-        "edges": [],
+        "sites": [],
+        "links": [],
         "backbone-nodes": [{"id": "P"}],
         "tenant-nodes": [],
         "provider-nodes": [],
@@ -38,7 +38,7 @@ _READER: dict[str, Any] = {
     },
     "notbuilt_event": {
         "pathParameters": {"tenant": "minuteman"},
-        "path": "/x/tenants/minuteman/edges",
+        "path": "/x/tenants/minuteman/links",
     },
 }
 
@@ -113,7 +113,7 @@ def test_tenant_serves_the_backbone_links(monkeypatch: pytest.MonkeyPatch) -> No
     assert json.loads(response["body"]) == links
 
 
-def test_tenant_accepts_a_well_formed_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tenant_accepts_a_well_formed_site_input(monkeypatch: pytest.MonkeyPatch) -> None:
     """A locations PUT whose rows carry the required fields is stored."""
     module = _tenant(monkeypatch)
     objects: dict[str, bytes] = {}
@@ -192,11 +192,11 @@ def test_tenant_accepts_a_provider_region_without_the_exempt_field(
 def test_tenant_get_serves_an_input_document(monkeypatch: pytest.MonkeyPatch) -> None:
     """A GET on an input collection returns the whole stored document."""
     module = _tenant(monkeypatch)
-    stored = {"tenants/f-35/locations.json": json.dumps({"vertices": [{"id": "S"}]}).encode()}
+    stored = {"tenants/f-35/locations.json": json.dumps({"sites": [{"id": "S"}]}).encode()}
     event = {"pathParameters": {"tenant": "f-35"}, "path": "/x/tenants/f-35/locations"}
     with patch("boto3.client", side_effect=write_clients(stored, [])):
         response = module.lambda_handler(event, None)
-    assert json.loads(response["body"]) == {"vertices": [{"id": "S"}]}
+    assert json.loads(response["body"]) == {"sites": [{"id": "S"}]}
 
 
 def test_tenant_put_persists_an_input(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -244,7 +244,7 @@ def test_tenant_put_persists_the_degree_exempt_backbone_nodes_document(
     assert _stored_put(monkeypatch, "degree-exempt-backbone-nodes", exempt) == exempt
 
 
-def test_tenant_rejects_a_malformed_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tenant_rejects_a_malformed_site_input(monkeypatch: pytest.MonkeyPatch) -> None:
     """A locations PUT whose rows lack the required fields is rejected."""
     module = _tenant(monkeypatch)
     with patch("boto3.client", side_effect=write_clients({}, [])):
@@ -252,7 +252,7 @@ def test_tenant_rejects_a_malformed_vertex_input(monkeypatch: pytest.MonkeyPatch
     assert response["statusCode"] == 400
 
 
-def test_tenant_rejects_a_non_list_vertex_input(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tenant_rejects_a_non_list_site_input(monkeypatch: pytest.MonkeyPatch) -> None:
     """An off-net PUT that is not a list of rows is rejected."""
     module = _tenant(monkeypatch)
     with patch("boto3.client", side_effect=write_clients({}, [])):
@@ -264,7 +264,7 @@ def test_tenant_put_404_for_unknown_collection(monkeypatch: pytest.MonkeyPatch) 
     """A PUT to a non-input collection is a 404."""
     module = _tenant(monkeypatch)
     with patch("boto3.client", side_effect=write_clients({}, [])):
-        response = module.lambda_handler(_tenant_put("vertices", {}), None)
+        response = module.lambda_handler(_tenant_put("sites", {}), None)
     assert response["statusCode"] == 404
 
 

@@ -13,7 +13,7 @@ from typing import cast
 
 import fixtures
 from fixtures import run_synthesis
-from synthesizer.input_graph import edge_key
+from synthesizer.input_graph import link_key
 from synthesizer.model import (
     SynthesisArtifacts,
     SynthesisParams,
@@ -31,10 +31,10 @@ FORCED_ROADM = fixtures.forced_roadm_backbone_artifacts("P3")
 PROHIBITED = fixtures.prohibited_backbone_artifacts("P4")
 
 # A forced backbone-backbone link over the ring, resolved through the operator-pin path
-# so the asserted edge reflects a genuinely honored request. All six ring PoPs are
+# so the asserted link reflects a genuinely honored request. All six ring PoPs are
 # seated so the diverse path count binds: P0 and P3 sit opposite each other, three hops apart,
 # and are each other's farthest peer, so a nearest-neighbour mesh never picks the pair
-# and the ring is already 2-edge-connected without it. The link can only be the pin.
+# and the ring is already bridgeless without it. The link can only be the pin.
 #
 # The degree is two because each ring PoP has two fiber directions, so two links is the
 # most any of them can hold independently and a three-link synthesis over this graph is
@@ -51,10 +51,10 @@ FORCED_BACKBONE_LINK = fixtures.forced_link_artifacts(
 )
 UNFORCED_RING = fixtures.forced_link_artifacts(_MESHED_RING, OperatorLinks())
 
-# The same ring plus one demand vertex sitting on P0, so P0 is its nearest node and the
+# The same ring plus one demand site sitting on P0, so P0 is its nearest node and the
 # opposite P3 is its farthest. With two homes per site, distance alone never reaches P3,
 # so a home there can only be the operator's pin -- carried from the `forced-homes` list
-# through `apply_role_overrides` and into the synthesis's access edges.
+# through `apply_role_overrides` and into the synthesis's access links.
 _DEMAND_RING = fixtures.ring_inputs_with_demand("S1", "P0")
 FORCED_HOME = fixtures.forced_link_artifacts(
     _MESHED_RING, OperatorLinks(access=(NamedLink("S1", "P3"),)), _DEMAND_RING
@@ -63,9 +63,9 @@ UNFORCED_HOME = fixtures.forced_link_artifacts(_MESHED_RING, OperatorLinks(), _D
 
 
 def _homes_of(artifacts: SynthesisArtifacts, access_id: str) -> set[str]:
-    """The backbone nodes a demand vertex homes to in a finished synthesis."""
+    """The backbone nodes a demand site homes to in a finished synthesis."""
     return {
-        edge.target for edge in artifacts.synthesis.access_edges if edge.source == access_id
+        link.target for link in artifacts.synthesis.access_paths if link.source == access_id
     }
 
 
@@ -82,12 +82,12 @@ def _peers_of(artifacts: SynthesisArtifacts, node: str) -> set[str]:
 
 def test_the_opposite_pair_is_never_meshed_on_its_own() -> None:
     """Without the pin the opposite pair is unmeshed, so the forced case cannot pass by luck."""
-    assert edge_key("P0", "P3") not in backbone_mesh_pairs(UNFORCED_RING.synthesis)
+    assert link_key("P0", "P3") not in backbone_mesh_pairs(UNFORCED_RING.synthesis)
 
 
 def test_a_forced_backbone_path_appears_in_the_mesh() -> None:
     """A forced backbone-backbone path is present in the drawn backbone mesh."""
-    assert edge_key("P0", "P3") in backbone_mesh_pairs(FORCED_BACKBONE_LINK.synthesis)
+    assert link_key("P0", "P3") in backbone_mesh_pairs(FORCED_BACKBONE_LINK.synthesis)
 
 
 def test_the_opposite_backbone_is_never_a_home_on_its_own() -> None:
@@ -96,7 +96,7 @@ def test_the_opposite_backbone_is_never_a_home_on_its_own() -> None:
 
 
 def test_a_forced_home_is_honored_in_the_finished_synthesis() -> None:
-    """A forced home reaches the synthesis's access edges, over the PoP the site sits on."""
+    """A forced home reaches the synthesis's access links, over the PoP the site sits on."""
     assert "P3" in _homes_of(FORCED_HOME, "S1")
 
 
@@ -111,7 +111,7 @@ def test_forced_roadm_is_seated_in_the_backbone() -> None:
     The force is what seats it, whatever kind the point is. The operator's own pins are
     all forced PoPs -- `Great Falls, MT` and `Minot, ND` under `backbone.forced.nodes` in
     `etc/daf.yml` are carrier rows like any other -- so the ROADM here is made by
-    `ring_inputs_with_roadm`, which recasts one vertex of the in-memory ring.
+    `ring_inputs_with_roadm`, which recasts one site of the in-memory ring.
     """
     assert "P3" in FORCED_ROADM.synthesis.backbone_ids
 
@@ -143,7 +143,7 @@ def test_synthesis_is_connected() -> None:
 
 def test_backbone_survives_any_single_city() -> None:
     """No one city is a single point of failure on the ring backbone (biconnected)."""
-    assert ARTIFACTS.validation["backbone_mesh_two_vertex_connected"] is True
+    assert ARTIFACTS.validation["backbone_mesh_survives_any_one_site_loss"] is True
 
 
 def test_every_meshed_ring_node_holds_its_links_independently() -> None:
@@ -186,7 +186,7 @@ _CHORDED_BACKBONE = ("P0", "P1", "P2", "P3", "P4", "P5")
 
 def _chorded_synthesis(exempt: tuple[str, ...] = ()) -> SynthesisArtifacts:
     """Synthesize the chorded ring at three diverse paths, exempting the named nodes."""
-    vertices = [
+    sites = [
         fixtures.carrier_pop(name, *fixtures.RING_COORDS[name]) for name in _CHORDED_BACKBONE
     ]
     params = SynthesisParams(
@@ -196,7 +196,7 @@ def _chorded_synthesis(exempt: tuple[str, ...] = ()) -> SynthesisArtifacts:
         datacenter_cities=fixtures.ring_datacenter_cities(),
         tuning=Tuning(backbone_number_of_diverse_paths=3),
     )
-    return run_synthesis(vertices, fixtures.physical_edges_from(_CHORDED_PAIRS), params)
+    return run_synthesis(sites, fixtures.fiber_segments_from(_CHORDED_PAIRS), params)
 
 
 EXEMPT_SPUR = _chorded_synthesis(("P5",))
@@ -298,7 +298,7 @@ def _forced_off_net_artifacts() -> SynthesisArtifacts:
     """Synthesize over the ring with an off-net site forced as a backbone node."""
     site, params = fixtures.forced_off_net_case()
     return run_synthesis(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), params, off_net_sites=[site]
+        fixtures.ring_sites(), fixtures.ring_fiber_segments(), params, off_net_sites=[site]
     )
 
 
@@ -330,7 +330,7 @@ def test_promoted_convergence_synthesis_validates_connected() -> None:
 
 def test_convergence_promotion_reaches_a_fixpoint() -> None:
     """The returned synthesis is stable: a further convergence pass promotes nothing."""
-    carrier_pops = [v for v in CONVERGENCE_HUB.vertices if is_carrier_pop(v)]
+    carrier_pops = [v for v in CONVERGENCE_HUB.sites if is_carrier_pop(v)]
     cities = frozenset(
         (pop.info.municipality, pop.info.state) for pop in carrier_pops
     )
@@ -358,7 +358,7 @@ def _open_gate_artifacts() -> SynthesisArtifacts:
     params = SynthesisParams(
         min_backbone_count=2, forced_backbone_names=("P3",), datacenter_cities=None
     )
-    return run_synthesis(fixtures.ring_vertices(), fixtures.ring_physical_edges(), params)
+    return run_synthesis(fixtures.ring_sites(), fixtures.ring_fiber_segments(), params)
 
 
 def test_open_gate_seats_a_forced_non_data_center_backbone() -> None:

@@ -17,13 +17,13 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/{carrier}/vertices": {
+    "/wan-graph-synthesizer/carriers/{carrier}/pops": {
       "get": {
         "summary": "A carrier's PoPs.",
         "parameters": [
           { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The carrier's vertices." } },
+        "responses": { "200": { "description": "The carrier's sites." } },
         "x-amazon-apigateway-integration": {
           "uri": "${CarriersHandlerArn}",
           "httpMethod": "POST",
@@ -35,7 +35,7 @@
         "parameters": [
           { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The carrier's vertices were replaced." } },
+        "responses": { "200": { "description": "The carrier's sites were replaced." } },
         "x-amazon-apigateway-integration": {
           "uri": "${CarriersHandlerArn}",
           "httpMethod": "POST",
@@ -43,13 +43,13 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/{carrier}/edges": {
+    "/wan-graph-synthesizer/carriers/{carrier}/fiber-segments": {
       "get": {
         "summary": "A carrier's fiber.",
         "parameters": [
           { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The carrier's edges." } },
+        "responses": { "200": { "description": "The carrier's links." } },
         "x-amazon-apigateway-integration": {
           "uri": "${CarriersHandlerArn}",
           "httpMethod": "POST",
@@ -61,7 +61,7 @@
         "parameters": [
           { "name": "carrier", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The carrier's edges were replaced." } },
+        "responses": { "200": { "description": "The carrier's links were replaced." } },
         "x-amazon-apigateway-integration": {
           "uri": "${CarriersHandlerArn}",
           "httpMethod": "POST",
@@ -121,10 +121,10 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/merge/vertices": {
+    "/wan-graph-synthesizer/carriers/merge/pops": {
       "get": {
-        "summary": "The substrate's vertices.",
-        "responses": { "200": { "description": "Substrate vertices." } },
+        "summary": "The substrate's PoPs.",
+        "responses": { "200": { "description": "Substrate sites." } },
         "x-amazon-apigateway-integration": {
           "uri": "${MergeHandlerArn}",
           "httpMethod": "POST",
@@ -132,10 +132,10 @@
         }
       }
     },
-    "/wan-graph-synthesizer/carriers/merge/edges": {
+    "/wan-graph-synthesizer/carriers/merge/fiber-segments": {
       "get": {
-        "summary": "The substrate's edges.",
-        "responses": { "200": { "description": "Substrate edges." } },
+        "summary": "The substrate's fiber segments.",
+        "responses": { "200": { "description": "Substrate links." } },
         "x-amazon-apigateway-integration": {
           "uri": "${MergeHandlerArn}",
           "httpMethod": "POST",
@@ -143,7 +143,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/providers/vertices": {
+    "/wan-graph-synthesizer/providers/regions": {
       "get": {
         "summary": "The provider regions.",
         "responses": { "200": { "description": "The provider regions." } },
@@ -183,7 +183,7 @@
         }
       }
     },
-    "/wan-graph-synthesizer/data-centers/{provider}/vertices": {
+    "/wan-graph-synthesizer/data-centers/{provider}/facilities": {
       "get": {
         "summary": "A provider's data-center facilities.",
         "parameters": [
@@ -281,13 +281,13 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/vertices": {
+    "/wan-graph-synthesizer/tenants/{tenant}/sites": {
       "get": {
-        "summary": "A tenant WAN's vertices.",
+        "summary": "A tenant WAN's sites.",
         "parameters": [
           { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The WAN's vertices." } },
+        "responses": { "200": { "description": "The WAN's sites." } },
         "x-amazon-apigateway-integration": {
           "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",
@@ -295,13 +295,13 @@
         }
       }
     },
-    "/wan-graph-synthesizer/tenants/{tenant}/edges": {
+    "/wan-graph-synthesizer/tenants/{tenant}/paths": {
       "get": {
-        "summary": "A tenant WAN's edges.",
+        "summary": "A tenant WAN's paths.",
         "parameters": [
           { "name": "tenant", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "The WAN's edges." } },
+        "responses": { "200": { "description": "The WAN's links." } },
         "x-amazon-apigateway-integration": {
           "uri": "${TenantsHandlerArn}",
           "httpMethod": "POST",

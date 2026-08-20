@@ -9,7 +9,7 @@ file beside this one, or a site whose fiber offers no other way out at all.
 The shape that overbuilds a pair cannot be made from a clique or a ring, which is why this
 tier missed it. It needs the two ends of a pair to prove different fiber to each other, and
 they do that when the shortest way out of one site is already spoken for by another of its
-peers. ``fixtures.SHARED_HUB_PEER_EDGES`` is that graph: three sites over three shared hub
+peers. ``fixtures.SHARED_HUB_PEER_LINKS`` is that graph: three sites over three shared hub
 cities where b and c each proved their own way to the other, five hundred miles apart, and
 a fourth site d joined to b and to c over fiber of its own.
 
@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import fixtures
 from synthesizer.backbone import _needed
-from synthesizer.input_graph import edge_key
+from synthesizer.input_graph import link_key
 
 _ASKED_FOR = 2
 ARTIFACTS = fixtures.shared_hub_peer_artifacts()
@@ -47,7 +47,7 @@ def _paths_per_pair() -> dict[tuple[str, str], int]:
     """
     drawn: dict[tuple[str, str], int] = {}
     for use in _MESH:
-        pair = edge_key(use.source, use.target)
+        pair = link_key(use.source, use.target)
         drawn[pair] = drawn.get(pair, 0) + 1
     return drawn
 

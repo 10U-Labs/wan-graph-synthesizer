@@ -2,7 +2,7 @@
 
 The synthesizer's search consumes a :class:`~synthesizer.model.RoleOverrides`
 describing which PoPs are forced backbone nodes, which are barred from the
-backbone, and how the operator's forced edges resolve to ids. This module builds
+backbone, and how the operator's forced links resolve to ids. This module builds
 that object from the operator's force-pins (resolved by name), gated by the set of
 data-center cities a colocation provider operates in. It runs before the search
 and never calls back into it.
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Set as AbstractSet
 
-from synthesizer.input_graph import PhysicalEdge, Vertex, edge_key
+from synthesizer.input_graph import FiberSegment, Site, link_key
 from synthesizer.model import (
     SynthesisParams,
     ForcedLinks,
@@ -23,8 +23,8 @@ from synthesizer.model import (
 )
 
 
-def pop_id_by_name(carrier_pops: list[Vertex]) -> dict[str, str]:
-    """Map each Carrier PoP's display name to its vertex id for pin resolution."""
+def pop_id_by_name(carrier_pops: list[Site]) -> dict[str, str]:
+    """Map each Carrier PoP's display name to its site id for pin resolution."""
     return {pop.name: pop.id for pop in carrier_pops}
 
 def resolve_pinned_ids(
@@ -60,7 +60,7 @@ def reject_override_conflicts(
 
 def _reject_non_datacenter_pins(
     forced_backbone: set[str],
-    carrier_pops: list[Vertex],
+    carrier_pops: list[Site],
     datacenter_cities: frozenset[tuple[str, str]],
 ) -> None:
     """Raise for any forced backbone pin whose city is not a data-center city.
@@ -79,7 +79,7 @@ def _reject_non_datacenter_pins(
 
 
 def _resolve_operator_pins(
-    vertices: list[Vertex],
+    sites: list[Site],
     params: SynthesisParams,
 ) -> tuple[set[str], set[str], set[str]]:
     """Resolve operator backbone pins, gated by the data-center cities.
@@ -90,7 +90,7 @@ def _resolve_operator_pins(
     only that the diverse path count is not asked of that node, which decides nothing about
     where the node may sit.
     """
-    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
+    carrier_pops = [site for site in sites if is_carrier_pop(site)]
     name_to_id = pop_id_by_name(carrier_pops)
     forced_backbone = resolve_pinned_ids(
         params.forced_backbone_names, name_to_id, "forced_backbone"
@@ -128,10 +128,10 @@ def _forced_backbone_endpoint(
 def _backbone_backbone_pair(
     path: NamedLink, name_to_id: dict[str, str], forced_backbone: set[str]
 ) -> tuple[str, str]:
-    """Resolve a backbone-backbone path's endpoints to a forced-backbone edge key."""
+    """Resolve a backbone-backbone path's endpoints to a forced-backbone link key."""
     left = _forced_backbone_endpoint(path.source, name_to_id, forced_backbone, "forced-path")
     right = _forced_backbone_endpoint(path.target, name_to_id, forced_backbone, "forced-path")
-    return edge_key(left, right)
+    return link_key(left, right)
 
 
 def _forced_home_pair(
@@ -142,10 +142,10 @@ def _forced_home_pair(
 ) -> tuple[str, str]:
     """Resolve a forced home to an ordered ``(access id, backbone id)`` pair.
 
-    The source must be a demand vertex -- something that is not a carrier PoP -- and the
+    The source must be a demand site -- something that is not a carrier PoP -- and the
     target a PoP the operator also forced onto the backbone, since a home can only lead to
     a node the synthesis is guaranteed to seat. The pair is ordered because its two ends are
-    not interchangeable, unlike a mesh pair's ``edge_key``.
+    not interchangeable, unlike a mesh pair's ``link_key``.
     """
     if home.source not in access_name_to_id:
         raise ValueError(f"forced-home access node not found: {home.source}")
@@ -161,17 +161,17 @@ def _excluded_backbone_endpoint(name: str, name_to_id: dict[str, str]) -> str:
 
 
 def _removed_backbone_pair(path: NamedLink, name_to_id: dict[str, str]) -> tuple[str, str]:
-    """Resolve an excluded backbone-backbone path's endpoints to an edge key."""
+    """Resolve an excluded backbone-backbone path's endpoints to an link key."""
     left = _excluded_backbone_endpoint(path.source, name_to_id)
     right = _excluded_backbone_endpoint(path.target, name_to_id)
-    return edge_key(left, right)
+    return link_key(left, right)
 
 
 def _removed_backbone_links(
     paths: tuple[NamedLink, ...],
     name_to_id: dict[str, str],
 ) -> frozenset[tuple[str, str]]:
-    """Resolve operator-pruned backbone-backbone pairs to edge keys.
+    """Resolve operator-pruned backbone-backbone pairs to link keys.
 
     Each endpoint need only be a carrier PoP (an unknown name raises a ``ValueError``);
     the pair is pruned only when the synthesizer seats both as backbone nodes, otherwise
@@ -182,7 +182,7 @@ def _removed_backbone_links(
 
 def resolve_forced_links(
     links: OperatorLinks,
-    vertices: list[Vertex],
+    sites: list[Site],
     forced_backbone: set[str],
 ) -> ForcedLinks:
     """Resolve the operator's written links to id-typed link sets, validating each tier.
@@ -193,9 +193,9 @@ def resolve_forced_links(
     already be seated in the tier that rule requires, or a ``ValueError`` names the
     offending pair; a pruned ``removed_backbone`` endpoint need only be a carrier PoP.
     """
-    name_to_id = pop_id_by_name([vertex for vertex in vertices if is_carrier_pop(vertex)])
+    name_to_id = pop_id_by_name([site for site in sites if is_carrier_pop(site)])
     access_name_to_id = {
-        vertex.name: vertex.id for vertex in vertices if not is_carrier_pop(vertex)
+        site.name: site.id for site in sites if not is_carrier_pop(site)
     }
     return ForcedLinks(
         backbone=frozenset(
@@ -211,11 +211,11 @@ def resolve_forced_links(
 
 
 def apply_role_overrides(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    sites: list[Site],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
     params: SynthesisParams,
     links: OperatorLinks = OperatorLinks(),
-) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge], RoleOverrides]:
+) -> tuple[list[Site], dict[tuple[str, str], FiberSegment], RoleOverrides]:
     """Resolve operator pins into the search's role overrides.
 
     Operator forced backbone nodes stay required; ``links`` are resolved to id-typed link
@@ -230,12 +230,12 @@ def apply_role_overrides(
     existing carrier-PoP ids; demand attachment is the caller's earlier stage).
     """
     forced_backbone, prohibited_backbone, degree_exempt = _resolve_operator_pins(
-        vertices, params
+        sites, params
     )
     overrides = RoleOverrides(
         forced_backbone_ids=frozenset(forced_backbone),
         prohibited_backbone_ids=frozenset(prohibited_backbone),
         degree_exempt_backbone_ids=frozenset(degree_exempt),
-        forced_links=resolve_forced_links(links, vertices, forced_backbone),
+        forced_links=resolve_forced_links(links, sites, forced_backbone),
     )
-    return vertices, physical_edges, overrides
+    return sites, fiber_segments, overrides

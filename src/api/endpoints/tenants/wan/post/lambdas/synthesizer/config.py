@@ -23,7 +23,7 @@ from synthesizer.model import (
     Tuning,
 )
 
-DEFAULT_VERTICES = {
+DEFAULT_SITES = {
     "AFLCMC": "data/tenants/aflcmc.csv",
     "AFNWC/NI": "data/tenants/afnwc_ni.csv",
     "DCN": "data/pops/dcn.csv",
@@ -32,13 +32,13 @@ DEFAULT_VERTICES = {
     "Providers": "data/providers/providers.csv",
     "VisionNet": "data/pops/vision_net.csv",
 }
-DEFAULT_CARRIER_EDGES = "data/fiber_segments/lumen.csv"
-DEFAULT_REGIONAL_EDGES = ["data/fiber_segments/dcn.csv", "data/fiber_segments/vision_net.csv"]
+DEFAULT_CARRIER_FIBER_SEGMENTS = "data/fiber_segments/lumen.csv"
+DEFAULT_REGIONAL_LINKS = ["data/fiber_segments/dcn.csv", "data/fiber_segments/vision_net.csv"]
 
 
 @dataclass(frozen=True)
 class AppConfig:
-    """A fully resolved configuration: file paths, synthesis params, pinned edges.
+    """A fully resolved configuration: file paths, synthesis params, pinned links.
 
     ``links`` carries the three lists of operator-written links -- pinned mesh pairs,
     forced homes, and pruned mesh pairs -- each still named rather than resolved to ids,
@@ -153,7 +153,7 @@ def _named_link_list(synthesis: dict[str, Any], key: str) -> tuple[NamedLink, ..
 def _operator_links(synthesis: dict[str, Any]) -> OperatorLinks:
     """Parse the three lists of operator-written links, one per tier they act on.
 
-    ``forced_paths`` pins mesh pairs, ``forced_homes`` pins a demand vertex onto a named
+    ``forced_paths`` pins mesh pairs, ``forced_homes`` pins a demand site onto a named
     backbone node, and ``excluded_paths`` prunes mesh pairs. Each is read the same way,
     because after the split there is nothing tier-specific left to parse -- the tiers differ
     in how the names are resolved, which is what ``synthesizer.overrides`` does.
@@ -165,34 +165,34 @@ def _operator_links(synthesis: dict[str, Any]) -> OperatorLinks:
     )
 
 
-def _vertex_paths(tenant: object, value: object) -> list[tuple[str, Path]]:
+def _site_paths(tenant: object, value: object) -> list[tuple[str, Path]]:
     """Expand one tenant's value (a path or list of paths) into (tenant, path) pairs."""
     items = value if isinstance(value, list) else [value]
     pairs: list[tuple[str, Path]] = []
     for path in items:
         if not isinstance(tenant, str) or not isinstance(path, str):
-            raise ValueError("config key 'vertices' must map tenant to a path or list of paths")
+            raise ValueError("config key 'sites' must map tenant to a path or list of paths")
         pairs.append((tenant, Path(path)))
     return pairs
 
 
-def _vertex_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
-    """Resolve the tenant -> vertices-CSV(s) mapping into sorted (tenant, path) pairs."""
-    value = inputs.get("vertices", DEFAULT_VERTICES)
+def _site_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
+    """Resolve the tenant -> sites-CSV(s) mapping into sorted (tenant, path) pairs."""
+    value = inputs.get("sites", DEFAULT_SITES)
     if not isinstance(value, dict):
-        raise ValueError("config key 'vertices' must be a mapping of tenant to path")
-    pairs = [pair for tenant, paths in value.items() for pair in _vertex_paths(tenant, paths)]
+        raise ValueError("config key 'sites' must be a mapping of tenant to path")
+    pairs = [pair for tenant, paths in value.items() for pair in _site_paths(tenant, paths)]
     return tuple(sorted(pairs))
 
 
 def _input_files(inputs: dict[str, Any]) -> InputFiles:
     """Resolve the input-file configuration into an :class:`InputFiles`."""
-    regional_edges = _str_list(inputs, "regional_edges", DEFAULT_REGIONAL_EDGES)
+    regional_links = _str_list(inputs, "regional_links", DEFAULT_REGIONAL_LINKS)
     off_net = inputs.get("off_net")
     return InputFiles(
-        vertex_files=_vertex_files(inputs),
-        edge_path=Path(str(inputs.get("carrier_edges", DEFAULT_CARRIER_EDGES))),
-        regional_edge_paths=tuple(Path(item) for item in regional_edges),
+        site_files=_site_files(inputs),
+        link_path=Path(str(inputs.get("carrier_fiber_segments", DEFAULT_CARRIER_FIBER_SEGMENTS))),
+        regional_link_paths=tuple(Path(item) for item in regional_links),
         off_net_path=Path(str(off_net)) if off_net is not None else None,
     )
 

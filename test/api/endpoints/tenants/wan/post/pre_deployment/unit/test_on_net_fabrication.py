@@ -10,13 +10,13 @@ from synthesizer.on_net_fabrication import (
     fabricate_missing_on_net_nodes,
 )
 from synthesizer.model import is_carrier_pop
-from synthesizer.input_graph import Vertex
+from synthesizer.input_graph import Site
 
 # The demand fixtures carry an empty ``(municipality, state)``; this gate admits them.
 _CITIES = frozenset({("", "")})
 
 
-def _pops() -> list[Vertex]:
+def _pops() -> list[Site]:
     """Three closely spaced carrier PoPs the fabricated twins can home to."""
     return [
         fixtures.carrier_pop("P0", 0.0, 0.0),
@@ -26,41 +26,41 @@ def _pops() -> list[Vertex]:
 
 
 def _fabricate(
-    *extra: Vertex,
+    *extra: Site,
     forced: frozenset[str] = frozenset(),
     cities: frozenset[tuple[str, str]] | None = _CITIES,
 ) -> FabricatedOnNetNodes:
-    """Fabricate on-net nodes over the three PoPs plus the given extra vertices."""
+    """Fabricate on-net nodes over the three PoPs plus the given extra sites."""
     return fabricate_missing_on_net_nodes([*_pops(), *extra], {}, forced, cities)
 
 
 def test_fabricates_a_forced_twin() -> None:
     """A forced location near carrier PoPs gets a co-located on-net twin."""
     result = _fabricate(
-        fixtures.access_vertex("luke", 0.0, 0.5), forced=frozenset({"luke"})
+        fixtures.access_site("luke", 0.0, 0.5), forced=frozenset({"luke"})
     )
     assert result.on_net_ids == frozenset({"fac_luke"})
 
 
-def test_fabrication_adds_backbone_edges() -> None:
+def test_fabrication_adds_backbone_links() -> None:
     """The fabricated twin gains synthetic links to its nearest carrier PoPs."""
     result = _fabricate(
-        fixtures.access_vertex("luke", 0.0, 0.5), forced=frozenset({"luke"})
+        fixtures.access_site("luke", 0.0, 0.5), forced=frozenset({"luke"})
     )
-    assert len(result.physical_edges) == 3
+    assert len(result.fiber_segments) == 3
 
 
 def test_fabricated_twin_is_a_carrier_pop() -> None:
     """The twin is a carrier PoP, so it flows through the backbone machinery."""
     result = _fabricate(
-        fixtures.access_vertex("luke", 0.0, 0.5), forced=frozenset({"luke"})
+        fixtures.access_site("luke", 0.0, 0.5), forced=frozenset({"luke"})
     )
-    assert is_carrier_pop(next(v for v in result.vertices if v.id == "fac_luke")) is True
+    assert is_carrier_pop(next(v for v in result.sites if v.id == "fac_luke")) is True
 
 
 def test_ignores_unforced_locations() -> None:
     """A location the operator did not force stays demand-only."""
-    result = _fabricate(fixtures.access_vertex("luke", 0.0, 0.5))
+    result = _fabricate(fixtures.access_site("luke", 0.0, 0.5))
     assert result.on_net_ids == frozenset()
 
 
@@ -68,7 +68,7 @@ def test_forced_location_off_a_data_center_city_is_rejected() -> None:
     """A forced location whose city no provider serves is rejected -- the gate is absolute."""
     with pytest.raises(ValueError):
         _fabricate(
-            fixtures.access_vertex("luke", 0.0, 0.5),
+            fixtures.access_site("luke", 0.0, 0.5),
             forced=frozenset({"luke"}),
             cities=frozenset(),
         )
@@ -77,7 +77,7 @@ def test_forced_location_off_a_data_center_city_is_rejected() -> None:
 def test_forced_location_is_fabricated_anywhere_when_gate_is_open() -> None:
     """With the gate open (cities=None), a forced location at any city is fabricated on-net."""
     result = _fabricate(
-        fixtures.access_vertex("luke", 0.0, 0.5),
+        fixtures.access_site("luke", 0.0, 0.5),
         forced=frozenset({"luke"}),
         cities=None,
     )
@@ -87,7 +87,7 @@ def test_forced_location_is_fabricated_anywhere_when_gate_is_open() -> None:
 def test_fabricates_a_forced_remote_location_regardless_of_distance() -> None:
     """A forced location with no nearby public fiber is still fabricated (no radius cap)."""
     result = _fabricate(
-        fixtures.access_vertex("remote", 0.0, 10.0), forced=frozenset({"remote"})
+        fixtures.access_site("remote", 0.0, 10.0), forced=frozenset({"remote"})
     )
     assert result.on_net_ids == frozenset({"fac_remote"})
 
@@ -95,8 +95,8 @@ def test_fabricates_a_forced_remote_location_regardless_of_distance() -> None:
 def test_collapses_colocated_sites() -> None:
     """Two forced sites at one location collapse to a single twin."""
     result = _fabricate(
-        fixtures.access_vertex("hill", 0.0, 0.5),
-        fixtures.access_vertex("ogden", 0.0, 0.5),
+        fixtures.access_site("hill", 0.0, 0.5),
+        fixtures.access_site("ogden", 0.0, 0.5),
         forced=frozenset({"hill", "ogden"}),
     )
     assert len(result.on_net_ids) == 1
@@ -105,7 +105,7 @@ def test_collapses_colocated_sites() -> None:
 def test_demand_only_when_too_few_carrier_pops() -> None:
     """A forced location with fewer than two carrier PoPs to wire to stays demand-only."""
     result = fabricate_missing_on_net_nodes(
-        [fixtures.carrier_pop("P0", 0.0, 0.0), fixtures.access_vertex("luke", 0.0, 0.5)],
+        [fixtures.carrier_pop("P0", 0.0, 0.0), fixtures.access_site("luke", 0.0, 0.5)],
         {},
         frozenset({"luke"}),
         _CITIES,
@@ -114,10 +114,10 @@ def test_demand_only_when_too_few_carrier_pops() -> None:
 
 
 def test_avoids_id_collision() -> None:
-    """A twin id already taken by another vertex is suffixed to stay unique."""
+    """A twin id already taken by another site is suffixed to stay unique."""
     result = _fabricate(
         fixtures.carrier_pop("fac_luke", 0.0, 0.5),
-        fixtures.access_vertex("luke", 0.0, 0.6),
+        fixtures.access_site("luke", 0.0, 0.6),
         forced=frozenset({"luke"}),
     )
     assert "fac_luke_2" in result.on_net_ids

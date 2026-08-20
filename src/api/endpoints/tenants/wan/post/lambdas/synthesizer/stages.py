@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from synthesizer.ceiling import BackupPathLimit, PathProofInputs, diverse_path_ceilings
 from synthesizer.graphs import build_adjacency, distances_from
-from synthesizer.input_graph import PhysicalEdge, Vertex
+from synthesizer.input_graph import FiberSegment, Site
 from synthesizer.model import Synthesis, SynthesisParams, MeshRequirements, ValidationReport
 from synthesizer.on_net_fabrication import fabricate_missing_on_net_nodes
 from synthesizer.offnet import realize_off_net_sites
@@ -21,14 +21,14 @@ from synthesizer.validation import (
 
 
 def dual_home(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    sites: list[Site],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
     params: SynthesisParams,
-    off_net_sites: list[Vertex],
-) -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
+    off_net_sites: list[Site],
+) -> tuple[list[Site], dict[tuple[str, str], FiberSegment]]:
     """Attach demand to the carrier graph: fabricate on-net nodes, then off-net seats.
 
-    ``off_net_sites`` are the loaded off-net candidate vertices (the caller loads
+    ``off_net_sites`` are the loaded off-net candidate sites (the caller loads
     them, from a CSV file or the stored JSON), so this step is source-agnostic. Both
     fabrication paths are gated by ``params.datacenter_cities``: a forced location off a
     data-center city is rejected, since the backbone gate is absolute. When
@@ -37,27 +37,27 @@ def dual_home(
     """
     forced_backbone = frozenset(params.forced_backbone_names)
     fabricated = fabricate_missing_on_net_nodes(
-        vertices, physical_edges, forced_backbone, params.datacenter_cities
+        sites, fiber_segments, forced_backbone, params.datacenter_cities
     )
-    vertices, physical_edges = fabricated.vertices, fabricated.physical_edges
+    sites, fiber_segments = fabricated.sites, fabricated.fiber_segments
     off_net = realize_off_net_sites(
-        vertices,
-        physical_edges,
+        sites,
+        fiber_segments,
         off_net_sites,
         forced_backbone,
         params.datacenter_cities,
     )
-    return off_net.vertices, off_net.physical_edges
+    return off_net.sites, off_net.fiber_segments
 
 
 def finalize(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    sites: list[Site],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
     synthesis: Synthesis,
     params: SynthesisParams,
     degree_exempt: frozenset[str] = frozenset(),
 ) -> tuple[
-    list[Vertex], dict[tuple[str, str], PhysicalEdge], Synthesis, ValidationReport
+    list[Site], dict[tuple[str, str], FiberSegment], Synthesis, ValidationReport
 ]:
     """Validate the synthesis over the real fiber, refusing one no operator could build from.
 
@@ -70,7 +70,7 @@ def finalize(
 
     The second is a synthesis that misses its diverse path count. Resilience is the operator's
     two required redundancy degrees, enforced over the real fiber and reported by
-    :func:`validate_synthesis`; there is no silent edge augmentation.
+    :func:`validate_synthesis`; there is no silent link augmentation.
 
     ``backbone_number_of_diverse_paths`` is a count of links that fail independently, so a synthesis
     where some backbone node cannot reach its target is not a synthesis that meets the
@@ -91,7 +91,7 @@ def finalize(
     degree it was configured with. It silences the check and nothing else; the node still
     took every link its fiber could carry.
     """
-    adjacency = build_adjacency(physical_edges)
+    adjacency = build_adjacency(fiber_segments)
     targets = MeshRequirements(
         number_of_diverse_paths=params.tuning.backbone_number_of_diverse_paths,
         degree_exempt=degree_exempt,
@@ -107,11 +107,11 @@ def finalize(
         )),
     )
     validation = validate_synthesis(
-        vertices, synthesis, params.tuning.access_backbone_links, targets
+        sites, synthesis, params.tuning.access_backbone_links, targets
     )
     if not validation["connected"]:
         groups = "; ".join(
-            ", ".join(names) for names in backbone_names_by_group(vertices, synthesis)
+            ", ".join(names) for names in backbone_names_by_group(sites, synthesis)
         )
         raise ValueError(
             f"Synthesis falls into {validation['component_count']} groups "
@@ -127,4 +127,4 @@ def finalize(
         raise ValueError(
             f"Too few independently failing backbone mesh links at: {shortfalls}"
         )
-    return vertices, physical_edges, synthesis, validation
+    return sites, fiber_segments, synthesis, validation

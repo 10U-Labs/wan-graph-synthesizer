@@ -6,7 +6,7 @@
 The union is just every provider's facility points gathered together, each row tagged
 with the provider it came from (taken from its endpoint path). The synthesizer reads this
 one file to learn the data-center cities that gate which carrier PoPs may serve as
-backbone nodes. Facilities carry no fiber, so there are no edges to merge -- the union is
+backbone nodes. Facilities carry no fiber, so there are no links to merge -- the union is
 a single collection, so its one resource both builds (POST) and serves (GET). Stays a
 self-contained (stdlib + boto3) single-file Lambda.
 """
@@ -19,7 +19,7 @@ import boto3
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-_UNION_KEY = "data-centers/merge/vertices.json"
+_UNION_KEY = "data-centers/merge/facilities.json"
 
 
 def _s3() -> Any:
@@ -42,21 +42,21 @@ def _response(status: int, body: Any) -> dict[str, Any]:
 def _build_union(client: Any) -> dict[str, int]:
     """Union every provider's facilities (each tagged with its provider).
 
-    Reads ``data-centers/{p}/vertices.json`` for every provider (skipping the merge's own
+    Reads ``data-centers/{p}/facilities.json`` for every provider (skipping the merge's own
     output), stamps each row with its provider id, and writes the merged row list. Returns
     its size.
     """
     bucket = os.environ["STORE_BUCKET"]
     listing = client.list_objects_v2(Bucket=bucket, Prefix="data-centers/")
-    vertices: list[dict[str, Any]] = []
+    facilities: list[dict[str, Any]] = []
     for item in listing.get("Contents", []):
         provider, _, name = item["Key"].removeprefix("data-centers/").partition("/")
-        if provider == "merge" or name != "vertices.json":
+        if provider == "merge" or name != "facilities.json":
             continue
         rows = json.loads(client.get_object(Bucket=bucket, Key=item["Key"])["Body"].read())
-        vertices.extend({"provider": provider, **row} for row in rows)
-    client.put_object(Bucket=bucket, Key=_UNION_KEY, Body=json.dumps(vertices).encode())
-    return {"vertices": len(vertices)}
+        facilities.extend({"provider": provider, **row} for row in rows)
+    client.put_object(Bucket=bucket, Key=_UNION_KEY, Body=json.dumps(facilities).encode())
+    return {"facilities": len(facilities)}
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:

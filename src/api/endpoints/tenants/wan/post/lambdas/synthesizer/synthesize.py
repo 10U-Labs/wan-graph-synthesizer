@@ -4,7 +4,7 @@ Backbone nodes are chosen for strength, not mileage (the source mapbook has no
 distances): each node's strength is how many diverse paths its fiber can carry plus
 compass spread plus path straightness, and the strongest feasible set of at least the
 configured ``min_backbone_count`` wins, with total last-mile only breaking ties. The
-backbone then grows past that floor while any demand vertex is farther than
+backbone then grows past that floor while any demand site is farther than
 ``backbone_coverage_target_miles`` from every selected backbone node, each added node
 being the one that leaves the demand hauls shortest read worst-first -- so extra backbone
 nodes appear only where they bring demand closer, never as a mileage cost minimized
@@ -13,7 +13,7 @@ over candidate sets.
 A final convergence pass then promotes natural hubs: any data-center city where at least
 ``CONVERGENCE_BACKBONE_DEGREE`` of the synthesis's own drawn fiber lines meet is forced
 into the backbone and the synthesis is recomputed, repeating until a redraw finds no new
-hub. The count is per-synthesis (this synthesis's used physical edges), not the shared carrier
+hub. The count is per-synthesis (this synthesis's used physical links), not the shared carrier
 substrate's degree, so a city that hubs one tenant need not hub another.
 
 Eligibility is gated twice: a carrier PoP may serve as a backbone node only if it has
@@ -21,9 +21,9 @@ at least two physical links AND sits at a data-center city (a colocation provide
 operates a cage there). The operator's forced backbone pins are gated the same way
 (in ``synthesizer.overrides``).
 
-Every demand vertex (a unified tenant site or provider region) homes to its
+Every demand site (a unified tenant site or provider region) homes to its
 ``access_backbone_links`` nearest selected backbone nodes. There is no last-mile fiber
-data, so a home is the logical link from a demand vertex to a backbone node, not a
+data, so a home is the logical link from a demand site to a backbone node, not a
 path over fiber -- the only requirement is that enough backbone nodes exist to home to.
 On top of the algorithm, the operator may pin roles by PoP name (``RoleOverrides``,
 resolved by ``apply_role_overrides``): force a PoP onto the backbone, or exclude it
@@ -38,7 +38,7 @@ import math
 import os
 from dataclasses import dataclass, replace
 
-from synthesizer.input_graph import PhysicalEdge, Vertex
+from synthesizer.input_graph import FiberSegment, Site
 from synthesizer.model import (
     Synthesis,
     SynthesisInputs,
@@ -67,14 +67,14 @@ _SEARCH_LOG_INTERVAL = 50_000
 # A carrier PoP where at least this many of the synthesis's own drawn fiber lines converge
 # is a natural hub; if it also sits at a data-center city it is promoted into the backbone
 # and the synthesis is recomputed (GitHub issue #4). The count is per-synthesis (the synthesis's
-# used physical edges), never the shared carrier substrate's degree.
+# used physical links), never the shared carrier substrate's degree.
 CONVERGENCE_BACKBONE_DEGREE = 3
 
 
 
 
 def compute_eligible_backbone_ids(
-    carrier_pops: list[Vertex],
+    carrier_pops: list[Site],
     adjacency: dict[str, list[tuple[str, float]]],
     datacenter_cities: frozenset[tuple[str, str]] | None,
 ) -> set[str]:
@@ -98,16 +98,16 @@ def compute_eligible_backbone_ids(
 
 def convergence_promotion_ids(
     synthesis: Synthesis,
-    carrier_pops: list[Vertex],
+    carrier_pops: list[Site],
     datacenter_cities: frozenset[tuple[str, str]] | None,
     min_degree: int = CONVERGENCE_BACKBONE_DEGREE,
 ) -> set[str]:
     """Non-backbone carrier PoPs at a data-center city where this synthesis's fiber converges.
 
-    A PoP qualifies when at least ``min_degree`` of *this synthesis's* drawn physical edges
-    meet at it. The count comes from ``synthesis.physical_edge_keys`` -- the fiber actually
+    A PoP qualifies when at least ``min_degree`` of *this synthesis's* drawn physical links
+    meet at it. The count comes from ``synthesis.fiber_segment_keys`` -- the fiber actually
     drawn for this synthesis -- so the measure is per-synthesis, never the shared substrate's
-    degree. A non-backbone carrier PoP only ever carries those edges as a transit node
+    degree. A non-backbone carrier PoP only ever carries those links as a transit node
     (demand homes to backbone nodes, never to transit), so its incident count is exactly
     the number of the synthesis's lines meeting there. PoPs already seated in the backbone
     are excluded; the caller forces the rest in and redraws. When ``datacenter_cities``
@@ -115,7 +115,7 @@ def convergence_promotion_ids(
     non-backbone convergence hub promotes.
     """
     counts: dict[str, int] = {}
-    for left, right in synthesis.physical_edge_keys:
+    for left, right in synthesis.fiber_segment_keys:
         counts[left] = counts.get(left, 0) + 1
         counts[right] = counts.get(right, 0) + 1
     backbone = set(synthesis.backbone_ids)
@@ -130,7 +130,7 @@ def convergence_promotion_ids(
 
 
 def all_pairs_shortest(
-    carrier_pops: list[Vertex],
+    carrier_pops: list[Site],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, str]]]:
     """Run Dijkstra from every Carrier PoP for reuse across backbone sets."""
@@ -142,19 +142,19 @@ def all_pairs_shortest(
 
 
 def validate_pop_graph(
-    carrier_pops: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    carrier_pops: list[Site],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> None:
-    """Raise if the physical edge graph and Carrier PoP set are inconsistent."""
+    """Raise if the physical link graph and Carrier PoP set are inconsistent."""
     pop_ids = {pop.id for pop in carrier_pops}
-    physical_vertex_ids = {vertex_id for edge in physical_edges for vertex_id in edge}
-    if not pop_ids.issuperset(physical_vertex_ids):
-        raise ValueError("Physical edge graph references unknown Carrier PoP IDs")
+    physical_site_ids = {site_id for link in fiber_segments for site_id in link}
+    if not pop_ids.issuperset(physical_site_ids):
+        raise ValueError("Physical link graph references unknown Carrier PoP IDs")
     missing_pops = sorted(pop_ids - set(adjacency))
     if missing_pops:
-        names = ", ".join(vertex.name for vertex in carrier_pops if vertex.id in missing_pops)
-        raise ValueError(f"Carrier PoPs missing from physical edge graph: {names}")
+        names = ", ".join(site.name for site in carrier_pops if site.id in missing_pops)
+        raise ValueError(f"Carrier PoPs missing from physical link graph: {names}")
 
 
 def backbone_set_strength(backbone_ids: tuple[str, ...], plan: _SearchPlan) -> float:
@@ -226,10 +226,10 @@ def best_backbone_at_size(
         if strength < best_strength:
             logger.info("  strongest feasible backbone locked at set %d/%d", index, len(combos))
             break
-        access_edges = evaluate_backbone(backbone_set, inputs, plan)
-        if access_edges is None:
+        access_paths = evaluate_backbone(backbone_set, inputs, plan)
+        if access_paths is None:
             continue
-        access_miles = sum(edge.distance_miles for edge in access_edges)
+        access_miles = sum(link.distance_miles for link in access_paths)
         key = (-strength, round(access_miles, 6))
         if best_key is None or key < best_key:
             best_set, best_key, best_strength = backbone_set, key, strength
@@ -272,7 +272,7 @@ def search_best_synthesis(
     The backbone count is a floor, not an exact target. The search first finds the
     strongest feasible set at ``min_backbone_count`` (total last-mile only breaking
     ties), growing the backbone one PoP at a time only if no feasible synthesis exists at a
-    size. It then adds nodes past that floor while some demand vertex is farther than
+    size. It then adds nodes past that floor while some demand site is farther than
     ``backbone_coverage_target_miles`` from every selected node, each added node being the
     best-connected candidate that brings those distances inside the target -- so extra
     nodes appear only where they close a gap, and the one seated is chosen for the fiber
@@ -295,8 +295,8 @@ def search_best_synthesis(
         if sets == 0:
             continue
         logger.info(
-            "Synthesizing %d demand vertices; %d backbone, %d required; %d sets (limit %d)",
-            len(inputs.access_vertices), size, len(plan.required_backbone), sets, limit,
+            "Synthesizing %d demand sites; %d backbone, %d required; %d sets (limit %d)",
+            len(inputs.access_sites), size, len(plan.required_backbone), sets, limit,
         )
         base = best_backbone_at_size(inputs, plan, size)
         if base is not None:
@@ -316,12 +316,12 @@ def search_best_synthesis(
 class SearchGraph:
     """The graph every candidate backbone set is scored against.
 
-    The vertices split into carrier PoPs and access sites, the fiber between the PoPs, and
+    The sites split into carrier PoPs and access sites, the fiber between the PoPs, and
     the shortest paths and biconnected blocks computed over it once for the whole run.
     """
 
-    carrier_pops: list[Vertex]
-    all_access: list[Vertex]
+    carrier_pops: list[Site]
+    all_access: list[Site]
     adjacency: dict[str, list[tuple[str, float]]]
     all_distances: dict[str, dict[str, float]]
     all_predecessors: dict[str, dict[str, str]]
@@ -329,14 +329,14 @@ class SearchGraph:
 
 
 def build_search_graph(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    sites: list[Site],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
 ) -> SearchGraph:
-    """Split the vertices into PoPs and access sites and precompute the shared graph."""
-    carrier_pops = [vertex for vertex in vertices if is_carrier_pop(vertex)]
-    all_access = [vertex for vertex in vertices if not is_carrier_pop(vertex)]
-    adjacency = build_adjacency(physical_edges)
-    validate_pop_graph(carrier_pops, physical_edges, adjacency)
+    """Split the sites into PoPs and access sites and precompute the shared graph."""
+    carrier_pops = [site for site in sites if is_carrier_pop(site)]
+    all_access = [site for site in sites if not is_carrier_pop(site)]
+    adjacency = build_adjacency(fiber_segments)
+    validate_pop_graph(carrier_pops, fiber_segments, adjacency)
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
     return SearchGraph(
         carrier_pops, all_access, adjacency, all_distances, all_predecessors,
@@ -351,7 +351,7 @@ def build_search_plan(
     params: SynthesisParams,
     promoted_backbone_ids: frozenset[str] = frozenset(),
 ) -> _SearchPlan:
-    """Compute vertex strengths and backbone candidates.
+    """Compute site strengths and backbone candidates.
 
     Required backbone nodes are the operator-forced backbone nodes plus any
     ``promoted_backbone_ids`` the convergence pass has fixed in (already eligible by
@@ -387,14 +387,14 @@ def build_search_plan(
 
 
 def synthesize_two_tier(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    sites: list[Site],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
     params: SynthesisParams,
     overrides: RoleOverrides | None = None,
 ) -> Synthesis:
     """Synthesize a two-tier WAN over the Carrier graph for the given parameters.
 
-    ``overrides`` carries operator role pins already resolved to vertex ids; pass
+    ``overrides`` carries operator role pins already resolved to site ids; pass
     ``None`` for an unpinned synthesis.
     """
     overrides = overrides if overrides is not None else RoleOverrides()
@@ -413,7 +413,7 @@ def synthesize_two_tier(
     ):
         raise ValueError("more backbone nodes are forced than max_backbone_count allows")
 
-    graph = build_search_graph(vertices, physical_edges)
+    graph = build_search_graph(sites, fiber_segments)
     eligible_ids = compute_eligible_backbone_ids(
         graph.carrier_pops, graph.adjacency, params.datacenter_cities
     )
@@ -426,9 +426,9 @@ def synthesize_two_tier(
         )
 
     inputs = SynthesisInputs(
-        access_vertices=graph.all_access,
+        access_sites=graph.all_access,
         carrier_pops=graph.carrier_pops,
-        physical_edges=physical_edges,
+        fiber_segments=fiber_segments,
         eligible_backbone_ids=backbone_eligible_ids,
         adjacency=graph.adjacency,
         all_distances=graph.all_distances,

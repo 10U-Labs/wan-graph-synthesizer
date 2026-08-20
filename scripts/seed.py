@@ -174,32 +174,33 @@ def push_carriers(api: str) -> None:
     """Push each carrier's points and fiber segments as simple rows."""
     for carrier in _carrier_names():
         cid = _slug(carrier)
-        vertices = _rows(DATA / "pops" / f"{carrier}.csv")
-        edges = _rows(DATA / "fiber_segments" / f"{carrier}.csv")
-        print(f"carrier {cid}: {len(vertices)} points, {len(edges)} fiber segments", flush=True)
-        _put(api, f"carriers/{cid}/vertices", vertices)
-        _put(api, f"carriers/{cid}/edges", edges)
+        pops = _rows(DATA / "pops" / f"{carrier}.csv")
+        fiber_segments = _rows(DATA / "fiber_segments" / f"{carrier}.csv")
+        print(f"carrier {cid}: {len(pops)} points, "
+              f"{len(fiber_segments)} fiber segments", flush=True)
+        _put(api, f"carriers/{cid}/pops", pops)
+        _put(api, f"carriers/{cid}/fiber-segments", fiber_segments)
 
 
 def push_providers(api: str) -> None:
-    """Push the provider regions (a single combined vertices file)."""
+    """Push the provider regions (a single combined regions file)."""
     regions = _rows(DATA / "providers" / "providers.csv")
     print(f"providers: {len(regions)} regions", flush=True)
-    _put(api, "providers/vertices", regions)
+    _put(api, "providers/regions", regions)
 
 
 def _data_center_providers() -> list[str]:
     """The colocation providers: every facilities file under data-centers/."""
-    return sorted(p.stem for p in (DATA / "vertices" / "data-centers").glob("*.csv"))
+    return sorted(p.stem for p in (DATA / "sites" / "data-centers").glob("*.csv"))
 
 
 def push_data_centers(api: str) -> None:
     """Push each colocation provider's facilities as simple geographic rows."""
     for provider in _data_center_providers():
         pid = _slug(provider)
-        facilities = _rows(DATA / "vertices" / "data-centers" / f"{provider}.csv")
+        facilities = _rows(DATA / "sites" / "data-centers" / f"{provider}.csv")
         print(f"data-center {pid}: {len(facilities)} facilities", flush=True)
-        _put(api, f"data-centers/{pid}/vertices", facilities)
+        _put(api, f"data-centers/{pid}/facilities", facilities)
 
 
 def push_tenants(api: str) -> list[str]:

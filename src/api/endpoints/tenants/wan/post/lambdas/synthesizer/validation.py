@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from itertools import combinations
 
-from synthesizer.input_graph import Vertex, edge_key
+from synthesizer.input_graph import Site, link_key
 from synthesizer.model import (
     LINK_FOR_TARGET,
     Synthesis,
@@ -16,9 +16,9 @@ from synthesizer.model import (
 from synthesizer.graphs import (
     articulation_points,
     connected_components,
-    is_two_edge_connected,
-    is_two_vertex_connected,
-    path_edge_keys,
+    survives_any_one_link_loss,
+    survives_any_one_site_loss,
+    path_link_keys,
 )
 
 
@@ -61,7 +61,7 @@ def node_mesh_target(node: str, targets: MeshRequirements) -> int:
 def backbone_mesh_deficient(
     backbone_ids: tuple[str, ...],
     backbone_degrees: dict[str, int],
-    vertices_by_id: dict[str, Vertex],
+    sites_by_id: dict[str, Site],
     targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Backbone nodes with fewer mesh links than their own target.
@@ -83,38 +83,38 @@ def backbone_mesh_deficient(
     if len(backbone_ids) <= targets.number_of_diverse_paths:
         return []
     return [
-        {"id": backbone_id, "name": vertices_by_id[backbone_id].name, "degree": degree}
+        {"id": backbone_id, "name": sites_by_id[backbone_id].name, "degree": degree}
         for backbone_id, degree in sorted(backbone_degrees.items())
         if degree < node_mesh_target(backbone_id, targets)
         and backbone_id not in targets.degree_exempt
     ]
 
 
-def synthesis_edge_set(synthesis: Synthesis) -> set[tuple[str, str]]:
-    """All edges in the synthesis: selected physical edges plus access edges."""
-    edges = set(synthesis.physical_edge_keys)
-    edges.update(edge_key(edge.source, edge.target) for edge in synthesis.access_edges)
-    return edges
+def synthesis_link_keys(synthesis: Synthesis) -> set[tuple[str, str]]:
+    """All links in the synthesis: selected physical links plus access links."""
+    links = set(synthesis.fiber_segment_keys)
+    links.update(link_key(link.source, link.target) for link in synthesis.access_paths)
+    return links
 
-def included_vertex_ids(synthesis: Synthesis) -> set[str]:
-    """Every vertex id that participates in the synthesis."""
+def included_site_ids(synthesis: Synthesis) -> set[str]:
+    """Every site id that participates in the synthesis."""
     ids = set(synthesis.backbone_ids) | set(synthesis.transit_ids)
-    ids.update(vertex_id for edge in synthesis.physical_edge_keys for vertex_id in edge)
-    ids.update(edge.source for edge in synthesis.access_edges)
-    ids.update(edge.target for edge in synthesis.access_edges)
+    ids.update(site_id for link in synthesis.fiber_segment_keys for site_id in link)
+    ids.update(link.source for link in synthesis.access_paths)
+    ids.update(link.target for link in synthesis.access_paths)
     return ids
 
 def demand_backbone_homes(synthesis: Synthesis) -> dict[str, set[str]]:
-    """The distinct backbone nodes each demand vertex homes to, by access edges."""
+    """The distinct backbone nodes each demand site homes to, by access links."""
     homes: dict[str, set[str]] = {}
-    for edge in synthesis.access_edges:
-        homes.setdefault(edge.source, set()).add(edge.target)
+    for link in synthesis.access_paths:
+        homes.setdefault(link.source, set()).add(link.target)
     return homes
 
 def demand_without_backbone_redundancy(synthesis: Synthesis, homes: int) -> list[str]:
-    """Demand vertices homing to a number of distinct backbone nodes other than ``homes``.
+    """Demand sites homing to a number of distinct backbone nodes other than ``homes``.
 
-    The requirement is exact, not a floor: every demand vertex homes to exactly ``homes``
+    The requirement is exact, not a floor: every demand site homes to exactly ``homes``
     backbone nodes, so both too few and too many are flagged.
     """
     return [
@@ -126,7 +126,7 @@ def demand_without_backbone_redundancy(synthesis: Synthesis, homes: int) -> list
 def backbone_mesh_pairs(synthesis: Synthesis) -> set[tuple[str, str]]:
     """The logical backbone-to-backbone mesh links, one per ``backbone_mesh`` path use."""
     return {
-        edge_key(use.source, use.target)
+        link_key(use.source, use.target)
         for use in synthesis.path_uses
         if use.purpose == "backbone_mesh"
     }
@@ -140,7 +140,7 @@ def backbone_mesh_fiber_segments(synthesis: Synthesis) -> set[tuple[str, str]]:
     segments: set[tuple[str, str]] = set()
     for use in synthesis.path_uses:
         if use.purpose == "backbone_mesh":
-            segments |= path_edge_keys(use.path)
+            segments |= path_link_keys(use.path)
     return segments
 
 def _backbone_mesh_survives(
@@ -157,21 +157,21 @@ def _backbone_mesh_survives(
     if len(ids) < 2:
         return True
     segments = backbone_mesh_fiber_segments(synthesis)
-    vertices = ids | {vertex for segment in segments for vertex in segment}
-    return is_resilient(vertices, segments)
+    sites = ids | {site for segment in segments for site in segment}
+    return is_resilient(sites, segments)
 
-def backbone_mesh_two_edge_connected(synthesis: Synthesis) -> bool:
+def backbone_mesh_survives_any_one_link_loss(synthesis: Synthesis) -> bool:
     """True if the backbone's fiber survives the loss of any single fiber segment."""
-    return _backbone_mesh_survives(synthesis, is_two_edge_connected)
+    return _backbone_mesh_survives(synthesis, survives_any_one_link_loss)
 
-def backbone_mesh_two_vertex_connected(synthesis: Synthesis) -> bool:
+def backbone_mesh_survives_any_one_site_loss(synthesis: Synthesis) -> bool:
     """True if the backbone's physical fiber survives the loss of any single city.
 
     The city-loss analogue: the union of fiber segments must have no articulation point,
     so no single city -- a backbone city or a transit city the paths cross -- can split
     the backbone.
     """
-    return _backbone_mesh_survives(synthesis, is_two_vertex_connected)
+    return _backbone_mesh_survives(synthesis, survives_any_one_site_loss)
 
 def failure_cities_per_path(path_uses: list[SynthesisPath], node: str) -> list[frozenset[str]]:
     """Per mesh link at ``node`` in ``path_uses``, the cities whose loss would take it down.
@@ -255,7 +255,7 @@ def diverse_path_count(path_uses: list[SynthesisPath], node: str) -> int:
 
 def backbone_mesh_independence_deficient(
     synthesis: Synthesis,
-    vertices_by_id: dict[str, Vertex],
+    sites_by_id: dict[str, Site],
     targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Backbone nodes without their own target of independently failing mesh links.
@@ -288,7 +288,7 @@ def backbone_mesh_independence_deficient(
     return [
         {
             "id": backbone_id,
-            "name": vertices_by_id[backbone_id].name,
+            "name": sites_by_id[backbone_id].name,
             "independent_degree": degree,
         }
         for backbone_id, degree in sorted(
@@ -320,7 +320,7 @@ def _ceilings_where(
 
 def diverse_path_ceilings_reported(
     backbone_ids: tuple[str, ...],
-    vertices_by_id: dict[str, Vertex],
+    sites_by_id: dict[str, Site],
     targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Every backbone node's computed ceiling beside the target it was held to.
@@ -337,7 +337,7 @@ def diverse_path_ceilings_reported(
     return [
         {
             "id": node,
-            "name": vertices_by_id[node].name,
+            "name": sites_by_id[node].name,
             "ceiling": ceiling,
             "target": node_mesh_target(node, targets),
         }
@@ -349,7 +349,7 @@ def diverse_path_ceilings_reported(
 
 def ceiling_limited_nodes(
     backbone_ids: tuple[str, ...],
-    vertices_by_id: dict[str, Vertex],
+    sites_by_id: dict[str, Site],
     targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Backbone nodes the tool held to less than the tenant degree, and to what.
@@ -361,7 +361,7 @@ def ceiling_limited_nodes(
     beside the exemptions they asked for themselves.
     """
     return [
-        {"id": node, "name": vertices_by_id[node].name, "ceiling": ceiling}
+        {"id": node, "name": sites_by_id[node].name, "ceiling": ceiling}
         for node, ceiling in _ceilings_where(
             backbone_ids, targets.ceilings, lambda value: value < targets.number_of_diverse_paths
         )
@@ -403,7 +403,7 @@ def unrequested_mesh_links(synthesis: Synthesis, node: str) -> list[dict[str, ob
 
 def above_target_nodes(
     synthesis: Synthesis,
-    vertices_by_id: dict[str, Vertex],
+    sites_by_id: dict[str, Site],
     targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     """Backbone nodes holding more links than they were asked for, and why each one stands.
@@ -450,7 +450,7 @@ def above_target_nodes(
             continue
         rows.append({
             "id": node,
-            "name": vertices_by_id[node].name,
+            "name": sites_by_id[node].name,
             "target": asked_for,
             "link_count": len(links),
             "diverse_path_count": diverse_path_count(synthesis.path_uses, node),
@@ -460,17 +460,17 @@ def above_target_nodes(
 
 
 def neighbor_degrees(
-    ids: set[str], edges: set[tuple[str, str]]
+    ids: set[str], links: set[tuple[str, str]]
 ) -> dict[str, int]:
-    """Distinct-neighbor degree of every included vertex in the synthesis graph."""
-    neighbors: dict[str, set[str]] = {vertex_id: set() for vertex_id in ids}
-    for left, right in edges:
+    """Distinct-neighbor degree of every included site in the synthesis graph."""
+    neighbors: dict[str, set[str]] = {site_id: set() for site_id in ids}
+    for left, right in links:
         if left in ids and right in ids:
             neighbors[left].add(right)
             neighbors[right].add(left)
-    return {vertex_id: len(value) for vertex_id, value in neighbors.items()}
+    return {site_id: len(value) for site_id, value in neighbors.items()}
 
-def backbone_names_by_group(vertices: list[Vertex], synthesis: Synthesis) -> list[list[str]]:
+def backbone_names_by_group(sites: list[Site], synthesis: Synthesis) -> list[list[str]]:
     """The backbone sites in each group of a synthesis, named, one list per group.
 
     A synthesis is meant to be one network: every site reaching every other over the fiber the
@@ -482,24 +482,24 @@ def backbone_names_by_group(vertices: list[Vertex], synthesis: Synthesis) -> lis
     Groups holding no backbone site are listed as empty rather than dropped, so the number
     of lists is the number of groups the synthesis fell into.
     """
-    names = {vertex.id: vertex.name for vertex in vertices}
+    names = {site.id: site.name for site in sites}
     seated = set(synthesis.backbone_ids)
     return [
-        [names[vertex_id] for vertex_id in group if vertex_id in seated]
+        [names[site_id] for site_id in group if site_id in seated]
         for group in connected_components(
-            included_vertex_ids(synthesis), synthesis_edge_set(synthesis)
+            included_site_ids(synthesis), synthesis_link_keys(synthesis)
         )
     ]
 
 def validate_synthesis(
-    vertices: list[Vertex],
+    sites: list[Site],
     synthesis: Synthesis,
     access_backbone_links: int = 2,
     targets: MeshRequirements = MeshRequirements(),
 ) -> ValidationReport:
     """Check a synthesis against every hard structural requirement.
 
-    ``access_backbone_links`` is the exact number of backbone nodes each demand vertex
+    ``access_backbone_links`` is the exact number of backbone nodes each demand site
     must home to, the operator's configured access redundancy.
 
     ``targets`` says how many mesh links each backbone node owes (see
@@ -515,57 +515,59 @@ def validate_synthesis(
     path nobody ordered is something an operator reads, because a synthesis that differs
     from the one that was asked for and does not say so is worse than the noise it saves.
     """
-    vertices_by_id = {vertex.id: vertex for vertex in vertices}
-    ids = included_vertex_ids(synthesis)
-    edges = synthesis_edge_set(synthesis)
-    components = connected_components(ids, edges)
-    degrees = neighbor_degrees(ids, edges)
-    articulations = articulation_points(ids, edges) if len(components) == 1 else set()
+    sites_by_id = {site.id: site for site in sites}
+    ids = included_site_ids(synthesis)
+    links = synthesis_link_keys(synthesis)
+    components = connected_components(ids, links)
+    degrees = neighbor_degrees(ids, links)
+    articulations = articulation_points(ids, links) if len(components) == 1 else set()
     missing_redundancy = demand_without_backbone_redundancy(synthesis, access_backbone_links)
     backbone_degrees = neighbor_degrees(set(synthesis.backbone_ids), backbone_mesh_pairs(synthesis))
     mesh_deficient = backbone_mesh_deficient(
-        synthesis.backbone_ids, backbone_degrees, vertices_by_id, targets
+        synthesis.backbone_ids, backbone_degrees, sites_by_id, targets
     )
     independence_deficient = backbone_mesh_independence_deficient(
-        synthesis, vertices_by_id, targets
+        synthesis, sites_by_id, targets
     )
 
     return {
         "connected": len(components) == 1,
         "component_count": len(components),
         "min_distinct_neighbor_degree": min(degrees.values()) if degrees else 0,
-        "degree_deficient_vertices": [
-            {"id": vertex_id, "name": vertices_by_id[vertex_id].name, "degree": degree}
-            for vertex_id, degree in sorted(degrees.items())
+        "degree_deficient_sites": [
+            {"id": site_id, "name": sites_by_id[site_id].name, "degree": degree}
+            for site_id, degree in sorted(degrees.items())
             if degree < 2
         ],
         "biconnected_no_articulation_points": len(components) == 1 and not articulations,
         "articulation_points": [
-            {"id": vertex_id, "name": vertices_by_id[vertex_id].name}
-            for vertex_id in sorted(articulations)
+            {"id": site_id, "name": sites_by_id[site_id].name}
+            for site_id in sorted(articulations)
         ],
-        "access_vertices_with_required_backbone_links": not missing_redundancy,
+        "access_sites_with_required_backbone_links": not missing_redundancy,
         "demand_missing_backbone_redundancy": [
-            {"id": vertex_id, "name": vertices_by_id[vertex_id].name}
-            for vertex_id in missing_redundancy
+            {"id": site_id, "name": sites_by_id[site_id].name}
+            for site_id in missing_redundancy
         ],
         "backbone_meets_mesh_link_target": not mesh_deficient,
         "backbone_diverse_paths_deficient": mesh_deficient,
         "backbone_meets_independent_mesh_link_target": not independence_deficient,
         "backbone_mesh_independence_deficient": independence_deficient,
         "backbone_degree_exempt": [
-            {"id": backbone_id, "name": vertices_by_id[backbone_id].name}
+            {"id": backbone_id, "name": sites_by_id[backbone_id].name}
             for backbone_id in sorted(set(synthesis.backbone_ids) & targets.degree_exempt)
         ],
         "backbone_diverse_paths_ceilings": diverse_path_ceilings_reported(
-            synthesis.backbone_ids, vertices_by_id, targets
+            synthesis.backbone_ids, sites_by_id, targets
         ),
         "backbone_diverse_paths_ceiling_limited": ceiling_limited_nodes(
-            synthesis.backbone_ids, vertices_by_id, targets
+            synthesis.backbone_ids, sites_by_id, targets
         ),
         "backbone_diverse_paths_above_target": above_target_nodes(
-            synthesis, vertices_by_id, targets
+            synthesis, sites_by_id, targets
         ),
-        "backbone_mesh_two_edge_connected": backbone_mesh_two_edge_connected(synthesis),
-        "backbone_mesh_two_vertex_connected": backbone_mesh_two_vertex_connected(synthesis),
+        "backbone_mesh_survives_any_one_link_loss":
+            backbone_mesh_survives_any_one_link_loss(synthesis),
+        "backbone_mesh_survives_any_one_site_loss":
+            backbone_mesh_survives_any_one_site_loss(synthesis),
     }

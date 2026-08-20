@@ -24,7 +24,7 @@ from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from synthesizer.input_graph import edge_key
+from synthesizer.input_graph import link_key
 
 # One side of a city a path may cross only once: the fiber arriving is ("in", city), the
 # fiber leaving is ("out", city), and one unit of capacity joins them. A city that cannot
@@ -156,7 +156,7 @@ def _read_separation(question: SeparationQuestion, reached: dict[_Half, _Half]) 
     )
     near = {city for side, city in reached if side == "out"}
     crossing = frozenset(
-        edge_key(left, right)
+        link_key(left, right)
         for left, right in question.held
         if (left in near) != (right in near) and left not in lost and right not in lost
     )

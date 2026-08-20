@@ -7,12 +7,12 @@ from dataclasses import replace
 import fixtures
 from fixtures import (
     TRIANGLE,
-    TWO_POCKET_EDGES,
+    TWO_POCKET_LINKS,
     TWO_POCKET_IDS,
-    synthesis_inputs_from_edges,
+    synthesis_inputs_from_links,
     search_plan,
 )
-from synthesizer.model import AccessEdge, SynthesisInputs, ForcedLinks
+from synthesizer.model import AccessPath, SynthesisInputs, ForcedLinks
 from synthesizer.assemble import (
     assign_access,
     backbone_physically_biconnectable,
@@ -22,8 +22,8 @@ from synthesizer.assemble import (
 )
 
 pop = fixtures.carrier_pop
-physical = fixtures.physical_edges_from
-access = fixtures.access_vertex
+physical = fixtures.fiber_segments_from
+access = fixtures.access_site
 
 
 def test_nearest_pop_id_picks_the_closest() -> None:
@@ -33,23 +33,23 @@ def test_nearest_pop_id_picks_the_closest() -> None:
 
 
 def _dual_inputs(s_coord: tuple[float, float] = (0.0, 0.05)) -> SynthesisInputs:
-    """A two-PoP backbone with one graph-connected demand vertex ``s``."""
-    return synthesis_inputs_from_edges(
-        ["c1", "c2"], DUAL_EDGES, {"c1", "c2"},
+    """A two-PoP backbone with one graph-connected demand site ``s``."""
+    return synthesis_inputs_from_links(
+        ["c1", "c2"], DUAL_LINKS, {"c1", "c2"},
         [access("s", *s_coord)], {"c1": (0.0, 0.0), "c2": (0.0, 0.1)},
     )
 
 
-def _access_link_counts(edges: list[AccessEdge]) -> dict[str, int]:
-    """Number of backbone links each demand vertex received."""
+def _access_link_counts(links: list[AccessPath]) -> dict[str, int]:
+    """Number of backbone links each demand site received."""
     counts: dict[str, int] = {}
-    for edge in edges:
-        counts[edge.source] = counts.get(edge.source, 0) + 1
+    for link in links:
+        counts[link.source] = counts.get(link.source, 0) + 1
     return counts
 
 
-def test_assign_access_homes_a_demand_vertex_to_two_backbone_nodes() -> None:
-    """A demand vertex homes to its two nearest backbone nodes in one pass."""
+def test_assign_access_homes_a_demand_site_to_two_backbone_nodes() -> None:
+    """A demand site homes to its two nearest backbone nodes in one pass."""
     result = assign_access(("c1", "c2"), _dual_inputs(), search_plan([]))
     assert result is not None and _access_link_counts(result) == {"s": 2}
 
@@ -60,15 +60,15 @@ def test_assign_access_returns_none_when_backbone_smaller_than_links() -> None:
 
 
 def test_assign_access_homes_to_the_configured_count() -> None:
-    """A demand vertex homes to exactly the configured number of backbone nodes."""
-    triple_edges = physical(
+    """A demand site homes to exactly the configured number of backbone nodes."""
+    triple_links = physical(
         {
             ("c1", "c2"): 1.0, ("c2", "c3"): 1.0, ("c1", "c3"): 1.0,
             ("s", "c1"): 1.0, ("s", "c2"): 1.0, ("s", "c3"): 1.0,
         }
     )
-    inputs = synthesis_inputs_from_edges(
-        ["c1", "c2", "c3"], triple_edges, {"c1", "c2", "c3"},
+    inputs = synthesis_inputs_from_links(
+        ["c1", "c2", "c3"], triple_links, {"c1", "c2", "c3"},
         [access("s", 0.0, 0.05)], {"c1": (0.0, 0.0), "c2": (0.0, 0.1), "c3": (0.0, 0.2)},
     )
     result = assign_access(("c1", "c2", "c3"), inputs, search_plan([], access_backbone_links=3))
@@ -76,10 +76,10 @@ def test_assign_access_homes_to_the_configured_count() -> None:
 
 
 def test_assign_access_leads_with_a_forced_home() -> None:
-    """An operator-forced access-backbone link leads a demand vertex's homes."""
+    """An operator-forced access-backbone link leads a demand site's homes."""
     plan = replace(search_plan([]), forced_links=ForcedLinks(access=frozenset({("s", "c2")})))
     result = assign_access(("c1", "c2"), _dual_inputs((0.0, 0.0)), plan)
-    assert result is not None and {edge.target for edge in result if edge.source == "s"} == {
+    assert result is not None and {link.target for link in result if link.source == "s"} == {
         "c1", "c2",
     }
 
@@ -87,7 +87,7 @@ def test_assign_access_leads_with_a_forced_home() -> None:
 def test_build_synthesis_returns_none_without_homing() -> None:
     """build_synthesis_for_backbone returns None when the backbone is too small to home.
 
-    With a single backbone node and a homing degree of two, no demand vertex can reach
+    With a single backbone node and a homing degree of two, no demand site can reach
     two distinct backbone nodes, so the synthesis is infeasible.
     """
     inputs = _dual_inputs()
@@ -97,14 +97,14 @@ def test_build_synthesis_returns_none_without_homing() -> None:
 
 def test_build_synthesis_returns_none_when_nodes_are_not_meshed() -> None:
     """build_synthesis_for_backbone returns None when a node cannot reach the others."""
-    edges = physical(
+    links = physical(
         {
             ("c1", "g1"): 1.0, ("c2", "g1"): 1.0, ("c1", "g2"): 1.0, ("c2", "g2"): 1.0,
             ("c3", "z"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0,
         }
     )
-    inputs = synthesis_inputs_from_edges(
-        ["c1", "c2", "c3", "g1", "g2", "z"], edges, {"c1", "c2", "c3"}, [access("s")]
+    inputs = synthesis_inputs_from_links(
+        ["c1", "c2", "c3", "g1", "g2", "z"], links, {"c1", "c2", "c3"}, [access("s")]
     )
     assert build_synthesis_for_backbone(("c1", "c2", "c3"), inputs, search_plan([])) is None
 
@@ -117,12 +117,12 @@ def test_build_synthesis_builds_a_full_synthesis() -> None:
 
 def _two_pocket_inputs() -> SynthesisInputs:
     """Inputs over two fiber pockets joined by a single bridge segment."""
-    return synthesis_inputs_from_edges(TWO_POCKET_IDS, TWO_POCKET_EDGES, set(TWO_POCKET_IDS))
+    return synthesis_inputs_from_links(TWO_POCKET_IDS, TWO_POCKET_LINKS, set(TWO_POCKET_IDS))
 
 
 def _bowtie_inputs() -> SynthesisInputs:
     """Inputs over a bowtie: two triangles sharing one cut city."""
-    return synthesis_inputs_from_edges(_BOWTIE_IDS, _BOWTIE_EDGES, set(_BOWTIE_IDS))
+    return synthesis_inputs_from_links(_BOWTIE_IDS, _BOWTIE_LINKS, set(_BOWTIE_IDS))
 
 
 def test_physically_biconnectable_within_one_block() -> None:
@@ -158,8 +158,8 @@ def test_forced_resilience_error_for_forced_nodes_split_across_pockets() -> None
 
 
 def _triangle_inputs() -> SynthesisInputs:
-    """Inputs over a single 2-edge-connected triangle pocket of three eligible PoPs."""
-    return synthesis_inputs_from_edges(["a", "b", "c"], TRIANGLE, {"a", "b", "c"})
+    """Inputs over a single bridgeless triangle pocket of three eligible PoPs."""
+    return synthesis_inputs_from_links(["a", "b", "c"], TRIANGLE, {"a", "b", "c"})
 
 
 def test_forced_resilience_error_for_a_pocket_too_small_for_the_floor() -> None:
@@ -183,7 +183,7 @@ def test_forced_resilience_error_none_without_forced_nodes() -> None:
 
 # A demand site "s" near two backbone PoPs c1 and c2 (which mesh directly). A home is
 # the logical demand-to-backbone link, so "s" homes to its two nearest backbone nodes.
-DUAL_EDGES = physical(
+DUAL_LINKS = physical(
     {("c1", "c2"): 1.0, ("s", "c1"): 1.0, ("s", "c2"): 1.0}
 )
 
@@ -191,9 +191,9 @@ DUAL_EDGES = physical(
 # --- physical biconnectivity: the search-time city-survivability gate --------------------
 
 # A bowtie -- triangles {a,b,x} and {x,d,e} sharing the cut city x. It is bridgeless (so
-# 2-edge-connectable across the lobes) yet x is an articulation point: {a,d} cannot be
+# joinable without a bridge across the lobes) yet x is an articulation point: {a,d} cannot be
 # made city-survivable. The case the segment gate passed but the city gate must reject.
-_BOWTIE_EDGES = physical(
+_BOWTIE_LINKS = physical(
     {
         ("a", "b"): 1.0, ("b", "x"): 1.0, ("a", "x"): 1.0,
         ("x", "d"): 1.0, ("d", "e"): 1.0, ("x", "e"): 1.0,

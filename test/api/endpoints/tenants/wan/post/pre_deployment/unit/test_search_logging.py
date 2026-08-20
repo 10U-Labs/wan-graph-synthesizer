@@ -15,6 +15,6 @@ def test_backbone_scan_logs_a_progress_heartbeat(
     monkeypatch.setattr("synthesizer.synthesize._SEARCH_LOG_INTERVAL", 1)
     with caplog.at_level("INFO"):
         synthesize_two_tier(
-            fixtures.ring_vertices(), fixtures.ring_physical_edges(), fixtures.ring_params()
+            fixtures.ring_sites(), fixtures.ring_fiber_segments(), fixtures.ring_params()
         )
     assert any("scanned" in record.getMessage() for record in caplog.records)

@@ -19,7 +19,7 @@ from synthesizer.ceiling import (
 )
 from synthesizer.graphs import build_adjacency, distances_from
 
-physical = fixtures.physical_edges_from
+physical = fixtures.fiber_segments_from
 
 
 def _path_miles(

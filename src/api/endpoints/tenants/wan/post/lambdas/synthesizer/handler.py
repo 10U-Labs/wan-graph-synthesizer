@@ -24,13 +24,13 @@ from synthesizer.collections import (
     backbone_links,
     backbone_nodes,
     provider_nodes,
-    edges,
+    paths,
     tenant_nodes,
-    vertices,
+    sites,
 )
 from synthesizer.config import app_config_from_parts
 from synthesizer.coverage import CoverageReport, coverage_report
-from synthesizer.input_graph import Vertex
+from synthesizer.input_graph import Site
 from synthesizer.model import (
     Synthesis,
     SynthesisArtifacts,
@@ -74,7 +74,7 @@ def _datacenter_cities(client: Any) -> frozenset[tuple[str, str]]:
     Read from the merged data-center facilities; a carrier PoP may serve as a backbone
     node only at one of these cities (the gate threaded onto ``SynthesisParams``).
     """
-    rows = _read_json(client, "data-centers/merge/vertices.json")
+    rows = _read_json(client, "data-centers/merge/facilities.json")
     return frozenset((row["municipality"], row["state"]) for row in rows)
 
 
@@ -92,7 +92,7 @@ def _write_json(client: Any, key: str, body: Any) -> None:
 
 
 def _delivered(
-    graph: list[Vertex],
+    graph: list[Site],
     synthesis: Synthesis,
     validation: ValidationReport,
     params: SynthesisParams,
@@ -127,8 +127,8 @@ def _delivered(
     """
     coverage: CoverageReport = coverage_report(
         synthesis.backbone_ids,
-        [vertex for vertex in graph if not is_carrier_pop(vertex)],
-        {vertex.id: vertex for vertex in graph},
+        [site for site in graph if not is_carrier_pop(site)],
+        {site.id: site for site in graph},
         params.tuning.backbone_coverage_target_miles,
     )
     logger.info("Coverage delivered for %s: %s", tenant, coverage)
@@ -155,9 +155,9 @@ def _build_wan(client: Any, tenant: str) -> tuple[dict[str, Any], dict[str, Any]
     requirements it was held to in the first place.
     """
     logger.info("Loading substrate and inputs for %s", tenant)
-    carrier_pops, physical_edges = load_substrate(
-        _read_json(client, "carriers/merge/vertices.json"),
-        _read_json(client, "carriers/merge/edges.json"),
+    carrier_pops, fiber_segments = load_substrate(
+        _read_json(client, "carriers/merge/pops.json"),
+        _read_json(client, "carriers/merge/fiber-segments.json"),
     )
     locations = load_sites(_read_json(client, f"tenants/{tenant}/locations.json"))
     regions = load_regions(_read_json(client, f"tenants/{tenant}/provider-regions.json"))
@@ -179,26 +179,26 @@ def _build_wan(client: Any, tenant: str) -> tuple[dict[str, Any], dict[str, Any]
     )
     graph = carrier_pops + locations + regions
     logger.info(
-        "Dual-homing %d vertices over %d substrate edges", len(graph), len(physical_edges)
+        "Dual-homing %d sites over %d substrate links", len(graph), len(fiber_segments)
     )
-    graph, physical_edges = dual_home(graph, physical_edges, params, off_net)
-    graph, physical_edges, overrides = apply_role_overrides(
-        graph, physical_edges, params, config.links
+    graph, fiber_segments = dual_home(graph, fiber_segments, params, off_net)
+    graph, fiber_segments, overrides = apply_role_overrides(
+        graph, fiber_segments, params, config.links
     )
     logger.info("Synthesizing two-tier synthesis (this is the long step)")
-    synthesis = synthesize_two_tier(graph, physical_edges, params, overrides)
+    synthesis = synthesize_two_tier(graph, fiber_segments, params, overrides)
     logger.info("Finalizing and validating the synthesis")
-    graph, physical_edges, synthesis, validation = finalize(
-        graph, physical_edges, synthesis, params, overrides.degree_exempt_backbone_ids
+    graph, fiber_segments, synthesis, validation = finalize(
+        graph, fiber_segments, synthesis, params, overrides.degree_exempt_backbone_ids
     )
     payload = synthesis_payload(
         SourceFiles((), Path("store")),
-        SynthesisArtifacts(graph, physical_edges, synthesis, validation),
+        SynthesisArtifacts(graph, fiber_segments, synthesis, validation),
     )
     logger.info("Publishing WAN for %s", tenant)
     return {
-        "vertices": vertices(payload),
-        "edges": edges(payload),
+        "sites": sites(payload),
+        "paths": paths(payload),
         "backbone-nodes": backbone_nodes(payload),
         "backbone-links": backbone_links(payload),
         "tenant-nodes": tenant_nodes(payload),

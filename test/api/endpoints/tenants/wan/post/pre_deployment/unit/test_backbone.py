@@ -19,7 +19,7 @@ at once takes the longer one.
 from __future__ import annotations
 
 import fixtures
-from synthesizer.input_graph import PhysicalEdge, edge_key
+from synthesizer.input_graph import FiberSegment, link_key
 from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, SynthesisPath
 from synthesizer.backbone import (
     BackboneConstraints,
@@ -32,24 +32,24 @@ from synthesizer.synthesize import all_pairs_shortest
 from synthesizer.graphs import build_adjacency
 
 pop = fixtures.carrier_pop
-physical = fixtures.physical_edges_from
+physical = fixtures.fiber_segments_from
 
 
 def _drawn(
     sites: tuple[str, ...],
-    edges: dict[tuple[str, str], PhysicalEdge],
+    links: dict[tuple[str, str], FiberSegment],
     constraints: BackboneConstraints,
 ) -> BackboneMesh:
     """The mesh a whole fiber choice and assembly settles on over one graph."""
-    adjacency = build_adjacency(edges)
-    cities = sorted({city for pair in edges for city in pair})
+    adjacency = build_adjacency(links)
+    cities = sorted({city for pair in links for city in pair})
     distances, _predecessors = all_pairs_shortest([pop(city) for city in cities], adjacency)
-    return backbone_mesh(sites, distances, edges, constraints)
+    return backbone_mesh(sites, distances, links, constraints)
 
 
 def _pairs(mesh: BackboneMesh) -> set[tuple[str, str]]:
     """Every pair of sites the mesh joined, however many paths it joined them with."""
-    return {edge_key(use.source, use.target) for use in mesh.paths}
+    return {link_key(use.source, use.target) for use in mesh.paths}
 
 
 def _mesh_miles(mesh: BackboneMesh) -> float:
@@ -62,7 +62,7 @@ def _joining(mesh: BackboneMesh, left: str, right: str) -> SynthesisPath:
     return next(
         use
         for use in mesh.paths
-        if edge_key(use.source, use.target) == edge_key(left, right)
+        if link_key(use.source, use.target) == link_key(left, right)
     )
 
 
@@ -71,18 +71,18 @@ def _joining(mesh: BackboneMesh, left: str, right: str) -> SynthesisPath:
 # in, so the ring is the whole of the answer: four paths, four hundred miles, and neither
 # chord bought. The chords are what make it an answer rather than the only graph there is.
 _SQUARE_SITES = ("w", "x", "y", "z")
-_SQUARE_EDGES = physical({
+_SQUARE_LINKS = physical({
     ("w", "x"): 100.0, ("x", "y"): 100.0, ("y", "z"): 100.0, ("z", "w"): 100.0,
     ("w", "y"): 250.0, ("x", "z"): 250.0,
 })
 _TWO_WAYS_OUT = BackboneConstraints(number_of_diverse_paths=2, seat_cap=4)
-_SQUARE = _drawn(_SQUARE_SITES, _SQUARE_EDGES, _TWO_WAYS_OUT)
+_SQUARE = _drawn(_SQUARE_SITES, _SQUARE_LINKS, _TWO_WAYS_OUT)
 
 
 def test_the_square_is_drawn_with_one_path_a_pair_round_the_ring() -> None:
     """Four sites needing two ways out each are joined round the ring and nowhere else."""
     assert _pairs(_SQUARE) == {
-        edge_key("w", "x"), edge_key("x", "y"), edge_key("y", "z"), edge_key("z", "w"),
+        link_key("w", "x"), link_key("x", "y"), link_key("y", "z"), link_key("z", "w"),
     }
 
 
@@ -93,9 +93,9 @@ def test_the_square_buys_neither_of_the_chords() -> None:
     joins, and a pass drawing that pair on its own had no way to see that the ring already
     gave both of them everything they were owed.
     """
-    assert _SQUARE_EDGES.keys() - {
-        edge_key(*pair) for use in _SQUARE.paths for pair in zip(use.path, use.path[1:])
-    } == {edge_key("w", "y"), edge_key("x", "z")}
+    assert _SQUARE_LINKS.keys() - {
+        link_key(*pair) for use in _SQUARE.paths for pair in zip(use.path, use.path[1:])
+    } == {link_key("w", "y"), link_key("x", "z")}
 
 
 def test_the_square_runs_the_fewest_miles_its_fiber_allows() -> None:
@@ -142,11 +142,11 @@ def test_no_path_the_square_holds_could_be_taken_back_out() -> None:
 # city; the twenty-two-mile way through ``n`` is the one that gives hub a second way out. The
 # p-to-q segment closes the ring, so a whole-synthesis choice buys five segments and 52 miles.
 _EGRESS_SITES = ("hub", "p", "q")
-_EGRESS_EDGES = physical({
+_EGRESS_LINKS = physical({
     ("hub", "m"): 10.0, ("m", "p"): 10.0, ("m", "q"): 10.0,
     ("hub", "n"): 11.0, ("n", "q"): 11.0, ("p", "q"): 10.0,
 })
-_EGRESS = _drawn(_EGRESS_SITES, _EGRESS_EDGES, BackboneConstraints(
+_EGRESS = _drawn(_EGRESS_SITES, _EGRESS_LINKS, BackboneConstraints(
     number_of_diverse_paths=2, seat_cap=3,
 ))
 
@@ -164,8 +164,8 @@ def test_the_longer_way_round_a_shared_city_is_the_one_drawn() -> None:
 
 def test_the_shorter_way_round_that_shared_city_is_not_bought_at_all() -> None:
     """The m-to-q segment is fiber the finished synthesis never orders."""
-    assert edge_key("m", "q") not in {
-        edge_key(*pair) for use in _EGRESS.paths for pair in zip(use.path, use.path[1:])
+    assert link_key("m", "q") not in {
+        link_key(*pair) for use in _EGRESS.paths for pair in zip(use.path, use.path[1:])
     }
 
 
@@ -189,30 +189,30 @@ def test_no_path_the_shared_egress_synthesis_holds_could_be_taken_back_out() -> 
 # the choice of fiber said; the chord is pinned rather than a ring segment because no synthesis
 # over this graph reaches for it, so what the pin does cannot be mistaken for what the
 # choice would have done anyway.
-_PRUNED = _drawn(_SQUARE_SITES, _SQUARE_EDGES, BackboneConstraints(
-    removed_pairs=frozenset({edge_key("w", "x")}), number_of_diverse_paths=2, seat_cap=4,
+_PRUNED = _drawn(_SQUARE_SITES, _SQUARE_LINKS, BackboneConstraints(
+    removed_pairs=frozenset({link_key("w", "x")}), number_of_diverse_paths=2, seat_cap=4,
 ))
-_PINNED_CHORD = _drawn(_SQUARE_SITES, _SQUARE_EDGES, BackboneConstraints(
-    number_of_diverse_paths=2, forced_pairs=frozenset({edge_key("w", "y")}), seat_cap=4,
+_PINNED_CHORD = _drawn(_SQUARE_SITES, _SQUARE_LINKS, BackboneConstraints(
+    number_of_diverse_paths=2, forced_pairs=frozenset({link_key("w", "y")}), seat_cap=4,
 ))
-_PINNED_SEGMENT = _drawn(_SQUARE_SITES, _SQUARE_EDGES, BackboneConstraints(
-    number_of_diverse_paths=2, forced_pairs=frozenset({edge_key("w", "x")}), seat_cap=4,
+_PINNED_SEGMENT = _drawn(_SQUARE_SITES, _SQUARE_LINKS, BackboneConstraints(
+    number_of_diverse_paths=2, forced_pairs=frozenset({link_key("w", "x")}), seat_cap=4,
 ))
 
 
 def test_a_pruned_pair_is_never_joined_by_a_drawn_path() -> None:
     """The operator struck the pair out, so no site's way out is allowed to end there."""
-    assert edge_key("w", "x") not in _pairs(_PRUNED)
+    assert link_key("w", "x") not in _pairs(_PRUNED)
 
 
 def test_a_pruned_pair_leaves_the_rest_of_the_backbone_drawn() -> None:
     """Striking out one pair costs that pair its path and costs the other sites nothing."""
-    assert edge_key("y", "z") in _pairs(_PRUNED)
+    assert link_key("y", "z") in _pairs(_PRUNED)
 
 
 def test_a_pinned_pair_is_joined_however_the_fiber_was_chosen() -> None:
     """No synthesis over this graph reaches for the chord, so the pin is what joins the pair."""
-    assert edge_key("w", "y") in _pairs(_PINNED_CHORD)
+    assert link_key("w", "y") in _pairs(_PINNED_CHORD)
 
 
 def test_a_pinned_path_says_the_operator_is_what_put_it_there() -> None:
@@ -240,7 +240,7 @@ def test_a_pin_over_fiber_the_synthesis_would_have_bought_anyway_is_still_a_pin(
 # nothing rather than by failing.
 _ISLANDS = physical({("a", "b"): 1.0, ("c", "d"): 1.0})
 _ISLAND_PIN = _drawn(("a", "c"), _ISLANDS, BackboneConstraints(
-    forced_pairs=frozenset({edge_key("a", "c")}),
+    forced_pairs=frozenset({link_key("a", "c")}),
 ))
 
 
@@ -256,14 +256,14 @@ def test_a_backbone_the_fiber_never_joins_is_floored_at_nothing() -> None:
 
 def test_a_site_the_fiber_does_not_carry_costs_the_others_nothing() -> None:
     """A site no fiber mentions draws no path, and the two the fiber does carry still join."""
-    edges = physical({("a", "b"): 1.0})
-    mesh = _drawn(("a", "b", "zed"), edges, BackboneConstraints(number_of_diverse_paths=1))
-    assert _pairs(mesh) == {edge_key("a", "b")}
+    links = physical({("a", "b"): 1.0})
+    mesh = _drawn(("a", "b", "zed"), links, BackboneConstraints(number_of_diverse_paths=1))
+    assert _pairs(mesh) == {link_key("a", "b")}
 
 
 def test_path_geometry_miles_adds_up_the_segments_a_path_crosses() -> None:
     """A path's mileage is the fiber it runs on, segment by segment."""
-    assert path_geometry_miles(("w", "x", "y"), _SQUARE_EDGES) == 200.0
+    assert path_geometry_miles(("w", "x", "y"), _SQUARE_LINKS) == 200.0
 
 
 # Four hand-built syntheses the assembly would never produce, each one holding a path that has

@@ -1,8 +1,8 @@
 """The synthesizer's input-graph types and primitive helpers.
 
-The vertex/edge dataclasses and geographic helpers that describe the graph the
-synthesizer syntheses against: a :class:`Vertex` is an access site, cloud region, or
-carrier PoP; a :class:`PhysicalEdge` is fiber between two PoPs.
+The site/link dataclasses and geographic helpers that describe the graph the
+synthesizer syntheses against: a :class:`Site` is an access site, cloud region, or
+carrier PoP; a :class:`FiberSegment` is fiber between two PoPs.
 :mod:`synthesizer.codec` builds these from the stored JSON rows. The
 synthesizer's own synthesis vocabulary -- tiers, tuning, validation -- lives in
 ``synthesizer.model``.
@@ -18,8 +18,8 @@ EARTH_RADIUS_MILES = 3958.7613
 
 
 @dataclass(frozen=True)
-class VertexInfo:
-    """Descriptive, non-structural attributes of a vertex.
+class SiteInfo:
+    """Descriptive, non-structural attributes of a site.
 
     ``description`` is free-text source provenance; ``municipality`` is the serving
     city, ``state`` its region/province (a 2-letter code for US and Canadian places,
@@ -33,15 +33,15 @@ class VertexInfo:
     country: str = ""
 
 @dataclass(frozen=True)
-class Vertex:
-    """A geographic vertex: an access site, a cloud region, or a carrier PoP.
+class Site:
+    """A geographic site: an access site, a cloud region, or a carrier PoP.
 
     ``kind`` is the facility type derived from the endpoint the place was sent to
     (``PoP`` for carriers, ``provider region`` for provider regions, an access kind for
-    tenant sites and off-net candidates). Carrier PoPs are the vertices whose ``kind``
+    tenant sites and off-net candidates). Carrier PoPs are the sites whose ``kind``
     marks them as routable backbone nodes (see ``synthesizer.model.is_carrier_pop``);
-    everything else is an access/demand vertex. Who *owns* a place is the tenant the WAN
-    is being built for -- known from the endpoint path -- so it is not stored per vertex.
+    everything else is an access/demand site. Who *owns* a place is the tenant the WAN
+    is being built for -- known from the endpoint path -- so it is not stored per site.
     """
 
     id: str
@@ -50,7 +50,7 @@ class Vertex:
     coords: tuple[float, float]  # (latitude, longitude)
     # Descriptive (non-structural) attributes: source notes plus the serving
     # municipality, region/state and country shown in the map tooltip.
-    info: VertexInfo = field(default_factory=VertexInfo)
+    info: SiteInfo = field(default_factory=SiteInfo)
     # A demand site the operator has marked OCONUS: it is dropped from the backbone
     # coverage-distance stop condition (it may sit farther than the target from every
     # backbone node), but still homes to its nearest node like any other site.
@@ -67,7 +67,7 @@ class Vertex:
         return self.coords[1]
 
 @dataclass(frozen=True)
-class PhysicalEdge:
+class FiberSegment:
     """A physical Carrier mapbook link between two PoPs."""
 
     source: str
@@ -76,14 +76,14 @@ class PhysicalEdge:
     source_page: str = ""
     note: str = ""
 
-def edge_key(left: str, right: str) -> tuple[str, str]:
-    """Return the two PoP ids as an order-independent edge key."""
+def link_key(left: str, right: str) -> tuple[str, str]:
+    """Return the two PoP ids as an order-independent link key."""
     if left == right:
-        raise ValueError(f"Self-loop is not a valid Carrier edge: {left}")
+        raise ValueError(f"Self-loop is not a valid Carrier link: {left}")
     return (left, right) if left < right else (right, left)
 
-def haversine_miles(a: Vertex, b: Vertex) -> float:
-    """Great-circle distance between two vertices in miles."""
+def haversine_miles(a: Site, b: Site) -> float:
+    """Great-circle distance between two sites in miles."""
     lat1 = math.radians(a.lat)
     lat2 = math.radians(b.lat)
     delta_lat = math.radians(b.lat - a.lat)

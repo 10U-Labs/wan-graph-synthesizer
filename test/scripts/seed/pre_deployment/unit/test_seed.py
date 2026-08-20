@@ -60,10 +60,10 @@ backbone:
   number_of_diverse_paths: 2
   prohibited:
     nodes:
-      - Edge, TX
+      - Link, TX
     paths:
       - source: Luke, AZ
-        target: Edge, TX
+        target: Link, TX
   promote_high_degree_convergences: false
   restrict_to_data_centers: true
 inputs:
@@ -118,12 +118,12 @@ def _one_data_center(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Lay down one colocation provider's facilities under a temp DATA dir."""
     monkeypatch.setattr(seed, "DATA", tmp_path)
     _write_csv(
-        tmp_path / "vertices" / "data-centers" / "vision_net.csv", "city,state", "Helena,MT")
+        tmp_path / "sites" / "data-centers" / "vision_net.csv", "city,state", "Helena,MT")
 
 
 def _one_tenant(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
     """Lay down one tenant config *body* and its input files under temp roots."""
-    _off_net_file(tmp_path, monkeypatch, "Edge,TX")
+    _off_net_file(tmp_path, monkeypatch, "Link,TX")
     monkeypatch.setattr(seed, "ETC", tmp_path / "etc")
     _write_csv(tmp_path / "regions" / "providers.csv", "city,state", "Reston,VA")
     _write_csv(tmp_path / "locations" / "f35.csv", "city,state", "Luke,AZ")
@@ -323,32 +323,32 @@ def test_off_net_rows_keeps_a_seat_whose_state_differs(
 
 def test_put_uses_the_put_method(urlopen_recorder: UrlopenRecorder) -> None:
     """_put issues an HTTP PUT."""
-    _put("http://api", "carriers/lumen/vertices", [{"city": "Reston"}])
+    _put("http://api", "carriers/lumen/pops", [{"city": "Reston"}])
     assert urlopen_recorder.requests[0].method == "PUT"
 
 
 def test_put_targets_the_api_path(urlopen_recorder: UrlopenRecorder) -> None:
     """_put targets the api base joined with the resource path."""
-    _put("http://api", "carriers/lumen/vertices", [])
-    assert urlopen_recorder.requests[0].full_url == "http://api/carriers/lumen/vertices"
+    _put("http://api", "carriers/lumen/pops", [])
+    assert urlopen_recorder.requests[0].full_url == "http://api/carriers/lumen/pops"
 
 
 def test_put_encodes_the_json_body(urlopen_recorder: UrlopenRecorder) -> None:
     """_put sends the body as encoded JSON."""
-    _put("http://api", "carriers/lumen/vertices", [{"city": "Reston"}])
+    _put("http://api", "carriers/lumen/pops", [{"city": "Reston"}])
     assert urlopen_recorder.requests[0].data == b'[{"city": "Reston"}]'
 
 
 def test_put_sets_the_json_content_type(urlopen_recorder: UrlopenRecorder) -> None:
     """_put sets a JSON content-type header."""
-    _put("http://api", "carriers/lumen/vertices", [])
+    _put("http://api", "carriers/lumen/pops", [])
     assert urlopen_recorder.requests[0].get_header("Content-type") == "application/json"
 
 
 @pytest.mark.usefixtures("urlopen_recorder")
 def test_put_prints_the_response_status(capsys: pytest.CaptureFixture[str]) -> None:
     """_put prints the response status."""
-    _put("http://api", "carriers/lumen/vertices", [])
+    _put("http://api", "carriers/lumen/pops", [])
     assert "-> 200" in capsys.readouterr().out
 
 
@@ -402,22 +402,22 @@ def test_delete_uses_the_delete_method(urlopen_recorder: UrlopenRecorder) -> Non
     assert urlopen_recorder.requests[0].method == "DELETE"
 
 
-def test_push_carriers_puts_the_vertices_path(
+def test_push_carriers_puts_the_pops_path(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
-    """push_carriers PUTs the carrier vertices."""
+    """push_carriers PUTs the carrier sites."""
     _one_carrier(tmp_path, monkeypatch)
     push_carriers("http://api")
-    assert "carriers/lumen/vertices" in put_recorder.nth(1)
+    assert "carriers/lumen/pops" in put_recorder.nth(1)
 
 
-def test_push_carriers_puts_the_edges_path(
+def test_push_carriers_puts_the_fiber_segments_path(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
-    """push_carriers PUTs the carrier edges."""
+    """push_carriers PUTs the carrier links."""
     _one_carrier(tmp_path, monkeypatch)
     push_carriers("http://api")
-    assert "carriers/lumen/edges" in put_recorder.nth(1)
+    assert "carriers/lumen/fiber-segments" in put_recorder.nth(1)
 
 
 def test_push_providers_pushes_regions(
@@ -426,25 +426,25 @@ def test_push_providers_pushes_regions(
     """push_providers PUTs the combined provider regions."""
     _one_provider(tmp_path, monkeypatch)
     push_providers("http://api")
-    assert "providers/vertices" in put_recorder.nth(1)
+    assert "providers/regions" in put_recorder.nth(1)
 
 
 def test_data_center_providers_returns_sorted_stems(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """_data_center_providers returns the CSV stems under data-centers, sorted."""
     monkeypatch.setattr(seed, "DATA", tmp_path)
-    _write_csv(tmp_path / "vertices" / "data-centers" / "lunavi.csv", "city,state", "X,Y")
-    _write_csv(tmp_path / "vertices" / "data-centers" / "equinix.csv", "city,state", "X,Y")
+    _write_csv(tmp_path / "sites" / "data-centers" / "lunavi.csv", "city,state", "X,Y")
+    _write_csv(tmp_path / "sites" / "data-centers" / "equinix.csv", "city,state", "X,Y")
     assert _data_center_providers() == ["equinix", "lunavi"]
 
 
-def test_push_data_centers_puts_the_slugged_vertices_path(
+def test_push_data_centers_puts_the_slugged_facilities_path(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:
     """push_data_centers PUTs a provider's facilities under its slugged id."""
     _one_data_center(tmp_path, monkeypatch)
     push_data_centers("http://api")
-    assert "data-centers/vision-net/vertices" in put_recorder.nth(1)
+    assert "data-centers/vision-net/facilities" in put_recorder.nth(1)
 
 
 def test_push_tenants_puts_the_label_resource(
@@ -524,7 +524,7 @@ def test_push_tenants_puts_the_prohibited_backbone_nodes_resource(
         put_recorder: CallRecorder) -> None:
     """push_tenants reads the pruned nodes from the backbone block's prohibited pair."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/prohibited-backbone-nodes"] == ["Edge, TX"]
+    assert bodies["tenants/f-35/prohibited-backbone-nodes"] == ["Link, TX"]
 
 
 def test_push_tenants_puts_the_prohibited_paths_resource(
@@ -533,7 +533,7 @@ def test_push_tenants_puts_the_prohibited_paths_resource(
     """push_tenants reads the pruned paths from the backbone block's prohibited pair."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/prohibited-paths"] == [
-        {"source": "Luke, AZ", "target": "Edge, TX"}]
+        {"source": "Luke, AZ", "target": "Link, TX"}]
 
 
 def test_push_tenants_puts_the_backbone_placement_resource(
@@ -586,7 +586,7 @@ def test_push_tenants_reads_off_net_when_present(
         put_recorder: CallRecorder) -> None:
     """push_tenants sends the off-net rows when an off_net file is given."""
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/off-net"] == [{"municipality": "Edge", "state": "TX"}]
+    assert bodies["tenants/f-35/off-net"] == [{"municipality": "Link", "state": "TX"}]
 
 
 @pytest.mark.usefixtures("put_recorder")

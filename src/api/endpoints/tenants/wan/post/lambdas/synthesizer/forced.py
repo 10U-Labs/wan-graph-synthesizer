@@ -2,14 +2,14 @@
 
 ``synthesizer.overrides`` resolves the operator's forced paths into a
 :class:`~synthesizer.model.ForcedLinks` bundle; these helpers consume it while
-the synthesizer draws a synthesis, so the pinned edges are honored: backbone-backbone
+the synthesizer draws a synthesis, so the pinned links are honored: backbone-backbone
 pairs forced into or pruned from the mesh, and access-backbone links pinned as homes.
 They depend only on the model, so the synthesizer imports them without a cycle.
 """
 
 from __future__ import annotations
 
-from synthesizer.input_graph import Vertex, haversine_miles
+from synthesizer.input_graph import Site, haversine_miles
 from synthesizer.model import ForcedLinks
 
 
@@ -42,15 +42,15 @@ def forced_backbone_pairs(
 
 
 def apply_forced_access_homes(
-    access: Vertex,
+    access: Site,
     completed: list[str],
     links: ForcedLinks,
-    pop_by_id: dict[str, Vertex],
+    pop_by_id: dict[str, Site],
     homes: int,
 ) -> list[str]:
-    """Pin operator-forced backbone nodes into a demand vertex's homes.
+    """Pin operator-forced backbone nodes into a demand site's homes.
 
-    Each backbone node the operator forced this demand vertex onto leads, then the
+    Each backbone node the operator forced this demand site onto leads, then the
     nearest of its computed homes fill any remaining slot, capped at ``homes``. With
     no forced link the homes are returned unchanged.
     """

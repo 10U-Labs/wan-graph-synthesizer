@@ -30,7 +30,7 @@ import pytest
 from repo_utils import REPO_ROOT
 from test_module_utils import load_module_from_path
 from test_s3_store_mock import fake_s3
-from synthesizer.input_graph import PhysicalEdge, Vertex
+from synthesizer.input_graph import FiberSegment, Site
 from synthesizer.model import Synthesis, SynthesisMetrics, is_carrier_pop
 
 _PATH = REPO_ROOT / "src/api/endpoints/tenants/wan/post/lambdas/synthesizer/handler.py"
@@ -109,8 +109,8 @@ def _config_documents() -> dict[str, Any]:
 def _store() -> dict[str, bytes]:
     """Every object the build reads, holding the two-triangle map and the tenant's config."""
     objects: dict[str, Any] = {
-        "carriers/merge/vertices.json": [_city_row(city) for city in _CITIES],
-        "carriers/merge/edges.json": _fiber_rows(),
+        "carriers/merge/pops.json": [_city_row(city) for city in _CITIES],
+        "carriers/merge/fiber-segments.json": _fiber_rows(),
         f"tenants/{_TENANT}/locations.json": [
             {"name": "Dulles Site", **_city_row("Ashburn")}
         ],
@@ -125,7 +125,7 @@ def _store() -> dict[str, bytes]:
 
 
 def _synthesis_over_every_segment(
-    vertices: list[Vertex], physical_edges: dict[tuple[str, str], PhysicalEdge], *_rest: Any
+    sites: list[Site], fiber_segments: dict[tuple[str, str], FiberSegment], *_rest: Any
 ) -> Synthesis:
     """A synthesis seating every carrier point and buying every segment of fiber on offer.
 
@@ -135,11 +135,11 @@ def _synthesis_over_every_segment(
     """
     return Synthesis(
         backbone_ids=tuple(
-            sorted(vertex.id for vertex in vertices if is_carrier_pop(vertex))
+            sorted(site.id for site in sites if is_carrier_pop(site))
         ),
         transit_ids=(),
-        access_edges=[],
-        physical_edge_keys=set(physical_edges),
+        access_paths=[],
+        fiber_segment_keys=set(fiber_segments),
         path_uses=[],
         metrics=SynthesisMetrics(score=0.0, access_miles=0.0, physical_miles=0.0),
     )

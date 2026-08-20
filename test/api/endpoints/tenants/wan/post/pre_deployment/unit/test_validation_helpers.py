@@ -5,14 +5,14 @@ from __future__ import annotations
 import fixtures
 import pytest
 
-from synthesizer.input_graph import edge_key
-from synthesizer.model import AccessEdge, Synthesis, SynthesisMetrics, MeshRequirements
+from synthesizer.input_graph import link_key
+from synthesizer.model import AccessPath, Synthesis, SynthesisMetrics, MeshRequirements
 from synthesizer.validation import (
     backbone_mesh_deficient,
     backbone_mesh_independence_deficient,
     demand_backbone_homes,
-    synthesis_edge_set,
-    included_vertex_ids,
+    synthesis_link_keys,
+    included_site_ids,
     diverse_path_count,
     mesh_link_failure_cities,
     neighbor_degrees,
@@ -24,14 +24,14 @@ def make_synthesis(
     *,
     backbone_ids: tuple[str, ...] = (),
     transit_ids: tuple[str, ...] = (),
-    access_edges: list[AccessEdge] | None = None,
+    access_paths: list[AccessPath] | None = None,
 ) -> Synthesis:
     """Test helper: build a Synthesis from physical pairs and tier assignments."""
     return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=transit_ids,
-        access_edges=access_edges or [],
-        physical_edge_keys={edge_key(a, b) for a, b in physical_pairs},
+        access_paths=access_paths or [],
+        fiber_segment_keys={link_key(a, b) for a, b in physical_pairs},
         path_uses=[],
         metrics=SynthesisMetrics(0.0, 0.0, 0.0),
     )
@@ -40,22 +40,22 @@ def make_synthesis(
 meshed_synthesis = fixtures.meshed_backbone_synthesis
 
 
-def test_included_vertex_ids_covers_access_endpoints() -> None:
-    """Included vertex ids covers access endpoints."""
-    synthesis = make_synthesis([("a", "b")], access_edges=[AccessEdge("s", "a", 1.0)])
-    assert included_vertex_ids(synthesis) == {"a", "b", "s"}
+def test_included_site_ids_covers_access_endpoints() -> None:
+    """Included site ids covers access endpoints."""
+    synthesis = make_synthesis([("a", "b")], access_paths=[AccessPath("s", "a", 1.0)])
+    assert included_site_ids(synthesis) == {"a", "b", "s"}
 
 
-def test_included_vertex_ids_covers_the_tier_ids() -> None:
-    """Backbone and transit ids are part of the included vertex set."""
+def test_included_site_ids_covers_the_tier_ids() -> None:
+    """Backbone and transit ids are part of the included site set."""
     synthesis = make_synthesis([], backbone_ids=("b",), transit_ids=("t",))
-    assert included_vertex_ids(synthesis) == {"b", "t"}
+    assert included_site_ids(synthesis) == {"b", "t"}
 
 
-def test_synthesis_edge_set_merges_access_and_physical() -> None:
-    """Synthesis edge set merges access and physical."""
-    synthesis = make_synthesis([("a", "b")], access_edges=[AccessEdge("s", "a", 1.0)])
-    assert synthesis_edge_set(synthesis) == {edge_key("a", "b"), edge_key("s", "a")}
+def test_synthesis_link_keys_merges_access_and_physical() -> None:
+    """Synthesis link set merges access and physical."""
+    synthesis = make_synthesis([("a", "b")], access_paths=[AccessPath("s", "a", 1.0)])
+    assert synthesis_link_keys(synthesis) == {link_key("a", "b"), link_key("s", "a")}
 
 
 def test_neighbor_degrees_counts_distinct_neighbors() -> None:
@@ -71,9 +71,9 @@ def test_neighbor_degrees_ignores_external_endpoints() -> None:
 
 
 def test_demand_backbone_homes_groups_targets_per_source() -> None:
-    """Each demand vertex maps to the distinct backbone nodes it homes to."""
+    """Each demand site maps to the distinct backbone nodes it homes to."""
     synthesis = make_synthesis(
-        [], access_edges=[AccessEdge("s", "a", 1.0), AccessEdge("s", "b", 1.0)]
+        [], access_paths=[AccessPath("s", "a", 1.0), AccessPath("s", "b", 1.0)]
     )
     assert demand_backbone_homes(synthesis) == {"s": {"a", "b"}}
 
@@ -84,7 +84,7 @@ _SHARED_EGRESS = meshed_synthesis(
 _DIVERSE_EGRESS = meshed_synthesis(
     fixtures.DIVERSE_TRANSIT_PATHS, fixtures.SHARED_TRANSIT_BACKBONE
 )
-_MESH_VERTICES = fixtures.carrier_pops_by_id("abcxy")
+_MESH_SITES = fixtures.carrier_pops_by_id("abcxy")
 
 
 def test_mesh_link_failure_cities_excludes_the_node_itself() -> None:
@@ -161,40 +161,40 @@ _MESH_NODES = ("a", "b", "c", "d")
 
 def test_mesh_deficient_names_the_node_below_the_degree() -> None:
     """A node under the diverse path count is reported with the count it holds."""
-    vertices = fixtures.carrier_pops_by_id("abcd")
-    assert backbone_mesh_deficient(_MESH_NODES, _MESH_DEGREES, vertices, MeshRequirements(2)) == [
+    sites = fixtures.carrier_pops_by_id("abcd")
+    assert backbone_mesh_deficient(_MESH_NODES, _MESH_DEGREES, sites, MeshRequirements(2)) == [
         {"id": "a", "name": "a", "degree": 1}
     ]
 
 
 def test_mesh_deficient_leaves_out_an_exempt_node() -> None:
     """The node the degree is not asked of is no longer reported as short of it."""
-    vertices = fixtures.carrier_pops_by_id("abcd")
+    sites = fixtures.carrier_pops_by_id("abcd")
     assert backbone_mesh_deficient(
-        _MESH_NODES, _MESH_DEGREES, vertices, MeshRequirements(2, frozenset({"a"}))
+        _MESH_NODES, _MESH_DEGREES, sites, MeshRequirements(2, frozenset({"a"}))
     ) == []
 
 
 def test_mesh_deficient_still_names_a_node_that_is_not_exempt() -> None:
     """Exempting one node says nothing about another node's shortfall."""
-    vertices = fixtures.carrier_pops_by_id("abcd")
+    sites = fixtures.carrier_pops_by_id("abcd")
     assert backbone_mesh_deficient(
-        _MESH_NODES, _MESH_DEGREES, vertices, MeshRequirements(2, frozenset({"b"}))
+        _MESH_NODES, _MESH_DEGREES, sites, MeshRequirements(2, frozenset({"b"}))
     ) == [{"id": "a", "name": "a", "degree": 1}]
 
 
 def test_mesh_deficient_holds_a_capped_node_to_its_ceiling() -> None:
     """The nominal count uses the same per-node target, so the two cannot disagree."""
-    vertices = fixtures.carrier_pops_by_id("abcd")
+    sites = fixtures.carrier_pops_by_id("abcd")
     assert backbone_mesh_deficient(
-        _MESH_NODES, _MESH_DEGREES, vertices, MeshRequirements(2, ceilings={"a": 1})
+        _MESH_NODES, _MESH_DEGREES, sites, MeshRequirements(2, ceilings={"a": 1})
     ) == []
 
 
 def test_independence_deficient_names_the_node_below_the_degree() -> None:
     """A node short of independently failing links is reported with the count it holds."""
     assert backbone_mesh_independence_deficient(
-        _SHARED_EGRESS, _MESH_VERTICES, MeshRequirements(2)
+        _SHARED_EGRESS, _MESH_SITES, MeshRequirements(2)
     ) == [
         {"id": "a", "name": "a", "independent_degree": 1}
     ]
@@ -203,35 +203,35 @@ def test_independence_deficient_names_the_node_below_the_degree() -> None:
 def test_independence_deficient_leaves_out_an_exempt_node() -> None:
     """The single point of failure node the degree is not asked of is no longer reported."""
     assert backbone_mesh_independence_deficient(
-        _SHARED_EGRESS, _MESH_VERTICES, MeshRequirements(2, frozenset({"a"}))
+        _SHARED_EGRESS, _MESH_SITES, MeshRequirements(2, frozenset({"a"}))
     ) == []
 
 
 def test_independence_deficient_still_names_a_node_that_is_not_exempt() -> None:
     """Exempting another node leaves the single point of failure node reported as it was."""
     assert backbone_mesh_independence_deficient(
-        _SHARED_EGRESS, _MESH_VERTICES, MeshRequirements(2, frozenset({"b"}))
+        _SHARED_EGRESS, _MESH_SITES, MeshRequirements(2, frozenset({"b"}))
     ) == [{"id": "a", "name": "a", "independent_degree": 1}]
 
 
 def test_independence_deficient_passes_a_diversely_drawn_mesh() -> None:
     """A mesh whose every node holds the configured independent links reports nothing."""
     assert backbone_mesh_independence_deficient(
-        _DIVERSE_EGRESS, _MESH_VERTICES, MeshRequirements(2)
+        _DIVERSE_EGRESS, _MESH_SITES, MeshRequirements(2)
     ) == []
 
 
 def test_independence_deficient_holds_a_capped_node_to_its_ceiling() -> None:
     """One link is all a's fiber allows, so the one it holds is not a shortfall."""
     assert backbone_mesh_independence_deficient(
-        _SHARED_EGRESS, _MESH_VERTICES, MeshRequirements(2, ceilings={"a": 1})
+        _SHARED_EGRESS, _MESH_SITES, MeshRequirements(2, ceilings={"a": 1})
     ) == []
 
 
 def test_independence_deficient_still_names_a_node_under_its_own_ceiling() -> None:
     """a's fiber allows the two asked of it, so holding one is the tool's defect to report."""
     assert backbone_mesh_independence_deficient(
-        _SHARED_EGRESS, _MESH_VERTICES, MeshRequirements(2, ceilings={"a": 2})
+        _SHARED_EGRESS, _MESH_SITES, MeshRequirements(2, ceilings={"a": 2})
     ) == [{"id": "a", "name": "a", "independent_degree": 1}]
 
 
@@ -248,10 +248,10 @@ def test_independence_deficient_still_asks_a_backbone_no_larger_than_the_degree(
     """
     backbone = "abcd"[:degree]
     synthesis = meshed_synthesis([], tuple(backbone))
-    vertices = fixtures.carrier_pops_by_id(backbone)
+    sites = fixtures.carrier_pops_by_id(backbone)
     assert [
         row["id"]
         for row in backbone_mesh_independence_deficient(
-            synthesis, vertices, MeshRequirements(degree)
+            synthesis, sites, MeshRequirements(degree)
         )
     ] == list(backbone)

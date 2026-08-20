@@ -15,60 +15,60 @@ def _payload() -> dict[str, Any]:
 
 
 def _synthesis(backbone_ids: tuple[str, ...], transit_ids: tuple[str, ...]) -> Synthesis:
-    """A minimal synthesis carrying only the tier ids vertex_role reads."""
+    """A minimal synthesis carrying only the tier ids site_role reads."""
     return Synthesis(backbone_ids, transit_ids, [], set(), [], SynthesisMetrics(0.0, 0.0, 0.0))
 
 
-def test_vertex_role_backbone_for_selected_pop() -> None:
+def test_site_role_backbone_for_selected_pop() -> None:
     """A carrier PoP in the backbone set is labelled backbone."""
-    assert gc.vertex_role(fixtures.carrier_pop("a"), _synthesis(("a",), ())) == "backbone"
+    assert gc.site_role(fixtures.carrier_pop("a"), _synthesis(("a",), ())) == "backbone"
 
 
-def test_vertex_role_transit_for_routing_only_pop() -> None:
+def test_site_role_transit_for_routing_only_pop() -> None:
     """A carrier PoP only used to path is labelled transit."""
-    assert gc.vertex_role(fixtures.carrier_pop("a"), _synthesis((), ("a",))) == "transit"
+    assert gc.site_role(fixtures.carrier_pop("a"), _synthesis((), ("a",))) == "transit"
 
 
-def test_vertex_role_unused_for_unselected_pop() -> None:
+def test_site_role_unused_for_unselected_pop() -> None:
     """A carrier PoP neither selected nor crossed by a path is labelled unused."""
-    assert gc.vertex_role(fixtures.carrier_pop("a"), _synthesis((), ())) == "unused"
+    assert gc.site_role(fixtures.carrier_pop("a"), _synthesis((), ())) == "unused"
 
 
-def test_vertex_role_tenant_for_a_site() -> None:
-    """A tenant-site demand vertex is labelled tenant."""
-    assert gc.vertex_role(fixtures.access_vertex("s"), _synthesis((), ())) == "tenant"
+def test_site_role_tenant_for_a_site() -> None:
+    """A tenant-site demand site is labelled tenant."""
+    assert gc.site_role(fixtures.access_site("s"), _synthesis((), ())) == "tenant"
 
 
-def test_vertex_role_provider_for_a_provider_region() -> None:
-    """A provider-region demand vertex is labelled provider."""
-    assert gc.vertex_role(fixtures.provider_vertex("r"), _synthesis((), ())) == "provider"
+def test_site_role_provider_for_a_provider_region() -> None:
+    """A provider-region demand site is labelled provider."""
+    assert gc.site_role(fixtures.provider_site("r"), _synthesis((), ())) == "provider"
 
 
-def test_vertices_returns_the_payload_vertices() -> None:
-    """vertices() exposes the synthesis payload's vertex list."""
+def test_sites_returns_the_payload_sites() -> None:
+    """sites() exposes the synthesis payload's site list."""
     payload = _payload()
-    assert gc.vertices(payload) == payload["vertices"]
+    assert gc.sites(payload) == payload["sites"]
 
 
-def test_edges_combines_access_and_carrier_fiber() -> None:
-    """edges() concatenates access homings and carrier-physical edges."""
+def test_links_combines_access_and_carrier_fiber() -> None:
+    """links() concatenates access homings and carrier-physical links."""
     payload = _payload()
-    assert gc.edges(payload) == payload["access_edges"] + payload["physical_edges"]
+    assert gc.links(payload) == payload["access_paths"] + payload["fiber_segments"]
 
 
 def test_backbone_nodes_are_all_tier_backbone() -> None:
-    """backbone_nodes() returns only vertices whose tier role is backbone."""
-    assert all(vertex["tier_role"] == "backbone" for vertex in gc.backbone_nodes(_payload()))
+    """backbone_nodes() returns only sites whose tier role is backbone."""
+    assert all(site["tier_role"] == "backbone" for site in gc.backbone_nodes(_payload()))
 
 
 def test_tenant_nodes_are_all_tier_tenant() -> None:
-    """tenant_nodes() returns only tenant-tier demand vertices."""
-    assert all(vertex["tier_role"] == "tenant" for vertex in gc.tenant_nodes(_payload()))
+    """tenant_nodes() returns only tenant-tier demand sites."""
+    assert all(site["tier_role"] == "tenant" for site in gc.tenant_nodes(_payload()))
 
 
 def test_provider_nodes_are_all_tier_provider() -> None:
-    """provider_nodes() returns only provider-tier demand vertices."""
-    assert all(vertex["tier_role"] == "provider" for vertex in gc.provider_nodes(_payload()))
+    """provider_nodes() returns only provider-tier demand sites."""
+    assert all(site["tier_role"] == "provider" for site in gc.provider_nodes(_payload()))
 
 
 def test_backbone_links_exist_for_a_meshed_synthesis() -> None:

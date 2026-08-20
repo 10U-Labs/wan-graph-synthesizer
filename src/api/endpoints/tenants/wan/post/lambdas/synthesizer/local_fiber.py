@@ -3,7 +3,7 @@
 A site that carries no fiber of its own (a forced installation, an off-net
 operator seat) can still be seated on the carrier backbone by standing up a
 co-located carrier-PoP *twin* at its coordinates and wiring that twin to the
-nearest existing carrier PoPs with synthetic local-fiber edges. The twin's name
+nearest existing carrier PoPs with synthetic local-fiber links. The twin's name
 matches the site, so an operator force-pin resolves onto it and the rest of the
 synthesizer is none the wiser. A site without at least :data:`LOCAL_FIBER_MIN_LINKS`
 carrier PoPs within :data:`LOCAL_FIBER_RADIUS_MILES` cannot be biconnected into the
@@ -17,9 +17,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from synthesizer.input_graph import (
-    PhysicalEdge,
-    Vertex,
-    edge_key,
+    FiberSegment,
+    Site,
+    link_key,
     haversine_miles,
 )
 from synthesizer.model import KIND_POP
@@ -31,7 +31,7 @@ LOCAL_FIBER_RADIUS_MILES = 300.0
 
 @dataclass(frozen=True)
 class LocalFiberTwinSettings:
-    """How to seat a local-fiber twin: edge note and reach cap.
+    """How to seat a local-fiber twin: link note and reach cap.
 
     ``max_radius`` of ``None`` removes the distance cap so an operator-forced site is
     always seated, wired to its nearest carrier PoPs regardless of distance.
@@ -42,8 +42,8 @@ class LocalFiberTwinSettings:
 
 
 def nearest_carrier_pops(
-    vertex: Vertex, carrier_pops: list[Vertex], links: int, max_radius: float | None
-) -> list[Vertex]:
+    site: Site, carrier_pops: list[Site], links: int, max_radius: float | None
+) -> list[Site]:
     """The up-to-``links`` nearest carrier PoPs, capped at ``max_radius`` if given.
 
     ``max_radius`` of ``None`` removes the distance cap: the nearest ``links`` PoPs
@@ -51,7 +51,7 @@ def nearest_carrier_pops(
     public data records no nearby fiber -- fiber exists everywhere, we just lack it.
     """
     ranked = sorted(
-        ((haversine_miles(vertex, pop), pop) for pop in carrier_pops),
+        ((haversine_miles(site, pop), pop) for pop in carrier_pops),
         key=lambda item: (item[0], item[1].id),
     )
     return [
@@ -62,22 +62,22 @@ def nearest_carrier_pops(
 
 
 def unique_twin_id(base: str, used_ids: set[str]) -> str:
-    """A twin id derived from ``base`` that no existing vertex already uses."""
-    vertex_id = base
+    """A twin id derived from ``base`` that no existing site already uses."""
+    site_id = base
     suffix = 2
-    while vertex_id in used_ids:
-        vertex_id = f"{base}_{suffix}"
+    while site_id in used_ids:
+        site_id = f"{base}_{suffix}"
         suffix += 1
-    return vertex_id
+    return site_id
 
 
 def build_local_fiber_twin(
-    site: Vertex,
+    site: Site,
     twin_id: str,
-    carrier_pops: list[Vertex],
+    carrier_pops: list[Site],
     settings: LocalFiberTwinSettings,
-) -> tuple[Vertex, dict[tuple[str, str], PhysicalEdge]] | None:
-    """A co-located carrier-PoP twin for ``site`` plus its local-fiber edges.
+) -> tuple[Site, dict[tuple[str, str], FiberSegment]] | None:
+    """A co-located carrier-PoP twin for ``site`` plus its local-fiber links.
 
     Returns the ``KIND_POP`` twin and its synthetic links to the nearest carrier
     PoPs, or ``None`` only when fewer than :data:`LOCAL_FIBER_MIN_LINKS` carrier PoPs
@@ -88,20 +88,20 @@ def build_local_fiber_twin(
     )
     if len(neighbors) < LOCAL_FIBER_MIN_LINKS:
         return None
-    twin = Vertex(
+    twin = Site(
         id=twin_id,
         name=site.name,
         kind=KIND_POP,
         coords=site.coords,
         info=site.info,
     )
-    edges: dict[tuple[str, str], PhysicalEdge] = {}
+    links: dict[tuple[str, str], FiberSegment] = {}
     for pop in neighbors:
-        key = edge_key(twin.id, pop.id)
-        edges[key] = PhysicalEdge(
+        key = link_key(twin.id, pop.id)
+        links[key] = FiberSegment(
             source=key[0],
             target=key[1],
             distance_miles=haversine_miles(twin, pop),
             note=settings.note,
         )
-    return twin, edges
+    return twin, links

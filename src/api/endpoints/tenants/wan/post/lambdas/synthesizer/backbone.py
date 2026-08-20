@@ -35,13 +35,13 @@ from synthesizer.ceiling import (
     independent_paths,
     paths_per_peer,
 )
-from synthesizer.input_graph import PhysicalEdge, edge_key
+from synthesizer.input_graph import FiberSegment, link_key
 from synthesizer.graphs import (
     articulation_points,
     build_adjacency,
     connected_components,
     dijkstra,
-    path_edge_keys,
+    path_link_keys,
     reconstruct_path,
 )
 from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, SynthesisPath
@@ -51,11 +51,11 @@ from synthesizer.validation import diverse_path_count
 
 def path_geometry_miles(
     path: tuple[str, ...],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
 ) -> float:
     """Sum the per-fiber-segment straight-line estimate along a path (display)."""
     return sum(
-        physical_edges[edge_key(path[index], path[index + 1])].distance_miles
+        fiber_segments[link_key(path[index], path[index + 1])].distance_miles
         for index in range(len(path) - 1)
     )
 
@@ -105,8 +105,8 @@ class _DrawnFiber:
     """
 
     backbone_ids: tuple[str, ...]
-    bought: dict[tuple[str, str], PhysicalEdge]
-    carrier: dict[tuple[str, str], PhysicalEdge]
+    bought: dict[tuple[str, str], FiberSegment]
+    carrier: dict[tuple[str, str], FiberSegment]
     constraints: BackboneConstraints
 
 
@@ -114,7 +114,7 @@ def _fiber_of(paths: list[SynthesisPath]) -> tuple[set[str], set[tuple[str, str]
     """The cities a set of paths crosses and the fiber segments they run over."""
     segments: set[tuple[str, str]] = set()
     for use in paths:
-        segments |= path_edge_keys(use.path)
+        segments |= path_link_keys(use.path)
     return {city for segment in segments for city in segment}, segments
 
 
@@ -135,7 +135,7 @@ def _no_single_point_of_failure(
 def _pinned_path(
     pair: tuple[str, str],
     adjacency: dict[str, list[tuple[str, float]]],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
 ) -> SynthesisPath | None:
     """The shortest path over the carrier's fiber for one pair the operator pinned.
 
@@ -150,12 +150,12 @@ def _pinned_path(
         return None
     return SynthesisPath(
         "backbone_mesh", near, far, path,
-        path_geometry_miles(path, physical_edges), LINK_FOR_PIN,
+        path_geometry_miles(path, fiber_segments), LINK_FOR_PIN,
     )
 
 
 def _proved_over(
-    site: str, fiber: dict[tuple[str, str], PhysicalEdge], drawn: _DrawnFiber
+    site: str, fiber: dict[tuple[str, str], FiberSegment], drawn: _DrawnFiber
 ) -> list[tuple[str, ...]]:
     """The ways out of ``site`` one set of fiber carries, shortest first, cut to the number.
 
@@ -172,7 +172,7 @@ def _proved_over(
     peers = tuple(
         node
         for node in drawn.backbone_ids
-        if node == site or edge_key(site, node) not in constraints.removed_pairs
+        if node == site or link_key(site, node) not in constraints.removed_pairs
     )
     proof = PathProofInputs(
         peers, build_adjacency(fiber), constraints.limit,
@@ -270,7 +270,7 @@ def _needed(
 
 def _bought_fiber(
     backbone_ids: tuple[str, ...],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
     all_distances: dict[str, dict[str, float]],
     constraints: BackboneConstraints,
 ) -> tuple[frozenset[tuple[str, str]], float, list[SynthesisPath]]:
@@ -281,29 +281,29 @@ def _bought_fiber(
     ``etc/*.yml`` has decided that pair is joined, and a choice made to answer everybody
     else's requirements has no standing to overrule it.
     """
-    adjacency = build_adjacency(physical_edges)
+    adjacency = build_adjacency(fiber_segments)
     per_peer = paths_per_peer(
         constraints.seat_cap, len(backbone_ids), constraints.number_of_diverse_paths
     )
     choice = choose_fiber(FiberInputs(
-        backbone_ids, physical_edges, all_distances,
+        backbone_ids, fiber_segments, all_distances,
         constraints.number_of_diverse_paths, per_peer, constraints.limit,
     ))
     drawn = (
-        _pinned_path(pair, adjacency, physical_edges)
+        _pinned_path(pair, adjacency, fiber_segments)
         for pair in sorted(constraints.forced_pairs)
     )
     pinned = [use for use in drawn if use is not None]
     segments = set(choice.segments)
     for use in pinned:
-        segments |= path_edge_keys(use.path)
+        segments |= path_link_keys(use.path)
     return frozenset(segments), choice.lower_bound_miles, pinned
 
 
 def backbone_mesh(
     backbone_ids: tuple[str, ...],
     all_distances: dict[str, dict[str, float]],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
     constraints: BackboneConstraints = BackboneConstraints(),
 ) -> BackboneMesh:
     """Draw the backbone-to-backbone paths, and say how few miles they could have run in.
@@ -325,10 +325,10 @@ def backbone_mesh(
     :func:`synthesizer.validation.backbone_mesh_independence_deficient`'s to report.
     """
     segments, floor, pinned = _bought_fiber(
-        backbone_ids, physical_edges, all_distances, constraints
+        backbone_ids, fiber_segments, all_distances, constraints
     )
-    bought = {segment: physical_edges[segment] for segment in sorted(segments)}
-    drawn = _DrawnFiber(backbone_ids, bought, physical_edges, constraints)
+    bought = {segment: fiber_segments[segment] for segment in sorted(segments)}
+    drawn = _DrawnFiber(backbone_ids, bought, fiber_segments, constraints)
     laid = _laid(drawn, pinned)
     return BackboneMesh(
         _needed(laid, backbone_ids, constraints.number_of_diverse_paths), floor

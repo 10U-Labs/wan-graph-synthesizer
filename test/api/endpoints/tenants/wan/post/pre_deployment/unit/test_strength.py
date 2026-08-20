@@ -7,7 +7,7 @@ import math
 import pytest
 
 import fixtures
-from synthesizer.input_graph import Vertex
+from synthesizer.input_graph import Site
 from synthesizer.strength import (
     backbone_strength,
     diverse_path_bounds,
@@ -18,7 +18,7 @@ from synthesizer.strength import (
 _ORIGIN = "origin"
 
 
-def _at_bearing(bearing: float) -> Vertex:
+def _at_bearing(bearing: float) -> Site:
     """A PoP one degree from the origin, in the given compass direction."""
     radians = math.radians(bearing)
     return fixtures.carrier_pop(
@@ -68,7 +68,7 @@ def test_the_direction_term_stays_within_one(compass_sector_count: int) -> None:
 
 
 # The protection term counts diverse paths rather than fiber segments, so the tests below run
-# over the one fixture graph where the two measures disagree (see ``fixtures.FUNNEL_EDGES``).
+# over the one fixture graph where the two measures disagree (see ``fixtures.FUNNEL_LINKS``).
 _FUNNEL_INPUTS = fixtures.funnel_inputs()
 _FUNNEL_BOUNDS = diverse_path_bounds(set(fixtures.FUNNEL_ELIGIBLE), _FUNNEL_INPUTS.adjacency)
 

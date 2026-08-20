@@ -13,32 +13,32 @@ from test_handler_contracts import ReaderContract, WriterContract
 _READER: dict[str, Any] = {
     "endpoint": "data-centers",
     "list_keys": [
-        "data-centers/equinix/vertices.json",
-        "data-centers/flexential/vertices.json",
-        "data-centers/merge/vertices.json",
+        "data-centers/equinix/facilities.json",
+        "data-centers/flexential/facilities.json",
+        "data-centers/merge/facilities.json",
     ],
     "ids": ["equinix", "flexential"],
-    "stored_key": "data-centers/flexential/vertices.json",
+    "stored_key": "data-centers/flexential/facilities.json",
     "stored": [{"id": "us-east"}],
     "serve_event": {
         "pathParameters": {"provider": "flexential"},
-        "path": "/x/data-centers/flexential/vertices",
+        "path": "/x/data-centers/flexential/facilities",
     },
     "serve_expect": [{"id": "us-east"}],
     "unknown_event": {
         "pathParameters": {"provider": "flexential"},
-        "path": "/x/data-centers/flexential/edges",
+        "path": "/x/data-centers/flexential/links",
     },
     "notbuilt_event": {
         "pathParameters": {"provider": "coresite"},
-        "path": "/x/data-centers/coresite/vertices",
+        "path": "/x/data-centers/coresite/facilities",
     },
 }
 
 _WRITER: dict[str, Any] = {
     "endpoint": "data-centers",
     "param": "provider",
-    "key": "data-centers/flexential/vertices.json",
+    "key": "data-centers/flexential/facilities.json",
     "id": "flexential",
     "valid": [{"municipality": "Denver", "state": "CO", "country": "United States",
                "latitude": 1.0, "longitude": 2.0}],

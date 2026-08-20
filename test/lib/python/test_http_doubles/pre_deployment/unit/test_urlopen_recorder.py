@@ -45,8 +45,8 @@ def test_a_recorder_nobody_called_has_recorded_nothing() -> None:
 def test_the_paths_are_reported_with_the_base_removed() -> None:
     """A test asserts on the resource path, which is the part the base does not fix."""
     recorder = UrlopenRecorder()
-    recorder(_request(f"{_BASE}/carriers/lumen/vertices"))
-    assert recorder.paths(_BASE) == ["carriers/lumen/vertices"]
+    recorder(_request(f"{_BASE}/carriers/lumen/pops"))
+    assert recorder.paths(_BASE) == ["carriers/lumen/pops"]
 
 
 def test_the_answer_carries_the_body_the_recorder_was_built_with() -> None:

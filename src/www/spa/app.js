@@ -5,14 +5,14 @@
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIB = "© OpenStreetMap contributors";
 
-// The REST API: a tenant's WAN is served as vertices + edges collections.
+// The REST API: a tenant's WAN is served as sites + links collections.
 const API_BASE = "https://api.10ulabs.com/wan-graph-synthesizer";
 
 // The tenant shown on first load, before the operator picks one.
 const DEFAULT_MAP_ID = "daf";
 
-// Vertex color and radius. Provider regions are colored by kind; every other drawn
-// vertex is colored by its tier role. Transit/unused carrier PoPs are not drawn.
+// Site color and radius. Provider regions are colored by kind; every other drawn
+// site is colored by its tier role. Transit/unused carrier PoPs are not drawn.
 const PROVIDER_KIND = "provider region";
 const PROVIDER_STYLE = { color: "#ef6c00", radius: 5 };
 const ROLE_STYLE = {
@@ -22,12 +22,12 @@ const ROLE_STYLE = {
 
 // The two drawn link kinds: the thick backbone carries the meshed carrier graph
 // between backbone nodes; the thin access links home demand to the backbone.
-const EDGE_STYLE = {
+const LINK_STYLE = {
   access: { color: ROLE_STYLE.tenant.color, weight: 1.5 },
   backbone: { color: ROLE_STYLE.backbone.color, weight: 4.5 },
 };
 
-// The CONUS center the map opens on; also the meridian every vertex is anchored
+// The CONUS center the map opens on; also the meridian every site is anchored
 // to, so far-side-of-the-antimeridian sites render on the world copy nearest it.
 const VIEW_CENTER = [39.5, -98.35];
 
@@ -37,7 +37,7 @@ const LEGEND_ROWS = [
   { swatch: "dot", color: ROLE_STYLE.backbone.color, label: "WAN Backbone Node" },
   { swatch: "dot", color: PROVIDER_STYLE.color, label: "Provider" },
   { swatch: "dot", color: ROLE_STYLE.tenant.color, label: "Location", tenant: true },
-  { swatch: "line", color: EDGE_STYLE.backbone.color, label: "Fiber" },
+  { swatch: "line", color: LINK_STYLE.backbone.color, label: "Fiber" },
 ];
 
 const map = L.map("map").setView(VIEW_CENTER, 4);
@@ -75,45 +75,45 @@ function showLegendTenant(label) {
   }
 }
 
-function styleFor(vertex) {
-  if (vertex.kind === PROVIDER_KIND) {
+function styleFor(site) {
+  if (site.kind === PROVIDER_KIND) {
     return PROVIDER_STYLE;
   }
-  return ROLE_STYLE[vertex.tier_role] || null;
+  return ROLE_STYLE[site.tier_role] || null;
 }
 
-// Tier-role label prefixes, so every backbone vertex tooltip announces its role
-// up front. Demand vertices (tenant, provider) and transit nodes get no prefix.
+// Tier-role label prefixes, so every backbone site tooltip announces its role
+// up front. Demand sites (tenant, provider) and transit nodes get no prefix.
 const TIER_PREFIX = {
   backbone: "BACKBONE",
 };
 
-// The bare city: the vertex name stripped of any trailing ", Region" (a US state or a
+// The bare city: the site name stripped of any trailing ", Region" (a US state or a
 // country), so the role-prefixed name reads "BACKBONE Los Angeles" / "BACKBONE Tokyo",
 // never "BACKBONE Los Angeles, CA" or "BACKBONE Tokyo, Japan".
-function cityName(vertex) {
-  return vertex.name.replace(/,\s*[^,]+$/, "");
+function cityName(site) {
+  return site.name.replace(/,\s*[^,]+$/, "");
 }
 
-// Role-prefixed display name, e.g. "BACKBONE Los Angeles". Demand vertices
+// Role-prefixed display name, e.g. "BACKBONE Los Angeles". Demand sites
 // (tenant, provider) and transit nodes keep their full name unchanged.
-function displayName(vertex) {
-  const prefix = TIER_PREFIX[vertex.tier_role];
-  return prefix ? `${prefix} ${cityName(vertex)}` : vertex.name;
+function displayName(site) {
+  const prefix = TIER_PREFIX[site.tier_role];
+  return prefix ? `${prefix} ${cityName(site)}` : site.name;
 }
 
 // Tooltip: the role-prefixed display name and its location beneath. The location reads
 // "City, State" for US places and "City, Country" for everywhere else.
-function vertexLabel(vertex) {
-  const info = vertex.info || {};
+function siteLabel(site) {
+  const info = site.info || {};
   const region = info.country === "United States" ? info.state : info.country;
   const located = info.municipality && region
     ? `<br>${info.municipality}, ${region}`
     : "";
-  return `<strong>${displayName(vertex)}</strong>${located}`;
+  return `<strong>${displayName(site)}</strong>${located}`;
 }
 
-function edgeLabel(source, target) {
+function linkLabel(source, target) {
   return `<strong>${displayName(source)}</strong> ↔ <strong>${displayName(target)}</strong>`;
 }
 
@@ -129,10 +129,10 @@ function add(layer) {
   drawn.push(layer);
 }
 
-// Build a vertex's circle marker at the given coordinates, or null for
+// Build a site's circle marker at the given coordinates, or null for
 // transit/unused carrier PoPs (which are not drawn).
-function vertexMarker(vertex, coords) {
-  const style = styleFor(vertex);
+function siteMarker(site, coords) {
+  const style = styleFor(site);
   if (!style) {
     return null;
   }
@@ -142,12 +142,12 @@ function vertexMarker(vertex, coords) {
     fillColor: style.color,
     fillOpacity: 0.85,
     weight: 1,
-  }).bindTooltip(vertexLabel(vertex));
+  }).bindTooltip(siteLabel(site));
 }
 
 // Shift a longitude onto the copy of the world nearest the map's center
 // meridian, so a far-side-of-the-antimeridian site (e.g. the Marshall Islands
-// at 167.7°E) renders on the copy just west of CONUS, not off the east edge.
+// at 167.7°E) renders on the copy just west of CONUS, not off the east link.
 function nearLon(lon) {
   let shifted = lon;
   while (shifted - VIEW_CENTER[1] > 180) {
@@ -159,28 +159,28 @@ function nearLon(lon) {
   return shifted;
 }
 
-// A vertex's drawing coordinates, with its longitude anchored to the CONUS copy.
-function displayCoords(vertex) {
-  return [vertex.coords[0], nearLon(vertex.coords[1])];
+// A site's drawing coordinates, with its longitude anchored to the CONUS copy.
+function displayCoords(site) {
+  return [site.coords[0], nearLon(site.coords[1])];
 }
 
-// Index the vertices by id so edges can resolve their endpoints. Drawing is
-// deferred to drawVertices so markers land on top of the edges.
-function indexById(vertices) {
+// Index the sites by id so links can resolve their endpoints. Drawing is
+// deferred to drawSites so markers land on top of the links.
+function indexById(sites) {
   const byId = {};
-  for (const vertex of vertices) {
-    byId[vertex.id] = vertex;
+  for (const site of sites) {
+    byId[site.id] = site;
   }
   return byId;
 }
 
-// Draw every tiered vertex at its CONUS-anchored position; skip transit/unused
+// Draw every tiered site at its CONUS-anchored position; skip transit/unused
 // carrier PoPs. Returns the drawn coordinates so fitBounds can frame them.
-function drawVertices(vertices) {
+function drawSites(sites) {
   const coords = [];
-  for (const vertex of vertices) {
-    const at = displayCoords(vertex);
-    const marker = vertexMarker(vertex, at);
+  for (const site of sites) {
+    const at = displayCoords(site);
+    const marker = siteMarker(site, at);
     if (marker) {
       add(marker);
       coords.push(at);
@@ -189,19 +189,19 @@ function drawVertices(vertices) {
   return coords;
 }
 
-// Draw one set of edges in the given tier style, each with a hover tooltip.
+// Draw one set of links in the given tier style, each with a hover tooltip.
 // Endpoints use CONUS-anchored coordinates, so a trans-Pacific link is drawn the
 // short way to the world copy beside CONUS rather than the long way east.
-function drawEdges(edges, byId, style) {
-  for (const edge of edges) {
-    const source = byId[edge.source_id];
-    const target = byId[edge.target_id];
+function drawLinks(links, byId, style) {
+  for (const link of links) {
+    const source = byId[link.source_id];
+    const target = byId[link.target_id];
     if (source && target) {
       add(L.polyline([displayCoords(source), displayCoords(target)], {
         color: style.color,
         weight: style.weight,
         opacity: 0.8,
-      }).bindTooltip(edgeLabel(source, target), { sticky: true }));
+      }).bindTooltip(linkLabel(source, target), { sticky: true }));
     }
   }
 }
@@ -215,13 +215,13 @@ async function getJSON(path) {
 }
 
 // Show the WAN's tier tallies in the top-right of the bar, counted from the
-// served vertices (each carries its tier_role and whether it was included).
-function showCounts(vertices) {
+// served sites (each carries its tier_role and whether it was included).
+function showCounts(sites) {
   const counts = document.getElementById("counts");
   const tally = { backbone: 0, tenant: 0, provider: 0 };
-  for (const vertex of vertices) {
-    if (vertex.included !== false && tally[vertex.tier_role] !== undefined) {
-      tally[vertex.tier_role] += 1;
+  for (const site of sites) {
+    if (site.included !== false && tally[site.tier_role] !== undefined) {
+      tally[site.tier_role] += 1;
     }
   }
   counts.textContent = `POPS ${tally.backbone} TENANTS ${tally.tenant} PROVIDERS ${tally.provider}`;
@@ -229,27 +229,27 @@ function showCounts(vertices) {
 
 async function render(tenantId) {
   clear();
-  let vertices;
-  let edges;
+  let sites;
+  let links;
   try {
-    [vertices, edges] = await Promise.all([
-      getJSON(`${API_BASE}/tenants/${tenantId}/vertices`),
-      getJSON(`${API_BASE}/tenants/${tenantId}/edges`),
+    [sites, links] = await Promise.all([
+      getJSON(`${API_BASE}/tenants/${tenantId}/sites`),
+      getJSON(`${API_BASE}/tenants/${tenantId}/paths`),
     ]);
   } catch (error) {
     document.getElementById("counts").textContent = "WAN not built yet";
     return;
   }
-  showCounts(vertices);
+  showCounts(sites);
 
-  const byId = indexById(vertices);
-  const physical = edges.filter((edge) => edge.edge_kind === "carrier_physical");
-  const access = edges.filter(
-    (edge) => edge.edge_kind === "tenant_to_backbone" || edge.edge_kind === "provider_to_backbone",
+  const byId = indexById(sites);
+  const physical = links.filter((link) => link.link_kind === "carrier_physical");
+  const access = links.filter(
+    (link) => link.link_kind === "tenant_to_backbone" || link.link_kind === "provider_to_backbone",
   );
-  drawEdges(physical, byId, EDGE_STYLE.backbone);
-  drawEdges(access, byId, EDGE_STYLE.access);
-  const points = drawVertices(vertices);
+  drawLinks(physical, byId, LINK_STYLE.backbone);
+  drawLinks(access, byId, LINK_STYLE.access);
+  const points = drawSites(sites);
 
   if (points.length) {
     map.fitBounds(points, { padding: [30, 30] });

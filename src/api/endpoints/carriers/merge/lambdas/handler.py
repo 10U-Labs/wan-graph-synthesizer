@@ -1,8 +1,8 @@
 """Carrier merge endpoint: stitch all carriers into the substrate (the shared mesh).
 
     POST /wan-graph-synthesizer/carriers/merge          -> (re)build the substrate
-    GET  /wan-graph-synthesizer/carriers/merge/vertices -> the substrate's PoPs
-    GET  /wan-graph-synthesizer/carriers/merge/edges    -> the substrate's fiber
+    GET  /wan-graph-synthesizer/carriers/merge/pops -> the substrate's PoPs
+    GET  /wan-graph-synthesizer/carriers/merge/fiber-segments    -> the substrate's fiber
 
 The substrate is just every carrier's points and fiber segments unioned, each row
 tagged with the carrier it came from (taken from its endpoint path) so a segment resolves
@@ -19,7 +19,10 @@ import boto3
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-_MERGE_KEYS = {"vertices": "carriers/merge/vertices.json", "edges": "carriers/merge/edges.json"}
+_MERGE_KEYS = {
+    "pops": "carriers/merge/pops.json",
+    "fiber-segments": "carriers/merge/fiber-segments.json",
+}
 
 
 def _s3() -> Any:
@@ -42,26 +45,26 @@ def _response(status: int, body: Any) -> dict[str, Any]:
 def _build_substrate(client: Any) -> dict[str, int]:
     """Union every carrier's points and fiber segments (each tagged with its carrier).
 
-    Reads ``carriers/{c}/vertices.json`` and ``carriers/{c}/edges.json`` for every
+    Reads ``carriers/{c}/pops.json`` and ``carriers/{c}/fiber-segments.json`` for every
     carrier (skipping the merge's own output), stamps each row with its carrier id, and
     writes the two merged row lists. Returns their sizes.
     """
     bucket = os.environ["STORE_BUCKET"]
     listing = client.list_objects_v2(Bucket=bucket, Prefix="carriers/")
-    vertices: list[dict[str, Any]] = []
-    edges: list[dict[str, Any]] = []
+    pops: list[dict[str, Any]] = []
+    fiber_segments: list[dict[str, Any]] = []
     for item in listing.get("Contents", []):
         carrier, _, name = item["Key"].removeprefix("carriers/").partition("/")
         if carrier == "merge":
             continue
         rows = json.loads(client.get_object(Bucket=bucket, Key=item["Key"])["Body"].read())
         tagged = [{"carrier": carrier, **row} for row in rows]
-        (vertices if name == "vertices.json" else edges).extend(tagged)
+        (pops if name == "pops.json" else fiber_segments).extend(tagged)
     client.put_object(
-        Bucket=bucket, Key=_MERGE_KEYS["vertices"], Body=json.dumps(vertices).encode())
+        Bucket=bucket, Key=_MERGE_KEYS["pops"], Body=json.dumps(pops).encode())
     client.put_object(
-        Bucket=bucket, Key=_MERGE_KEYS["edges"], Body=json.dumps(edges).encode())
-    return {"vertices": len(vertices), "edges": len(edges)}
+        Bucket=bucket, Key=_MERGE_KEYS["fiber-segments"], Body=json.dumps(fiber_segments).encode())
+    return {"pops": len(pops), "fiber-segments": len(fiber_segments)}
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:

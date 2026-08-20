@@ -73,7 +73,7 @@ def _rounding_slack(synthesis: dict[str, Any]) -> float:
     by at least the fiber it failed to buy, and the shortest segment on any of the five maps
     runs miles rather than thousandths.
     """
-    segments = sum(1 for edge in synthesis["edges"] if edge["edge_kind"] == FIBER)
+    segments = sum(1 for link in synthesis["links"] if link["link_kind"] == FIBER)
     return (segments + 1) * _ROUNDED_TO / 2
 
 
@@ -259,7 +259,7 @@ def test_no_published_link_wanders_past_the_fiber_its_own_network_carries(
 
     The assertion above measures each link against the straight line between its two sites,
     which is why it has to be loosened to six times the tenant's bound: real fiber does not
-    fly. This one measures it against fiber -- the published ``edges`` collection carries
+    fly. This one measures it against fiber -- the published ``links`` collection carries
     every fiber segment the synthesis ordered, so the shortest way between the two sites is
     recomputable from outside the build and the tenant's own ``max_backup_path_multiple`` can be
     applied to it without slack.

@@ -6,18 +6,18 @@ first, over the segments the bound leaves usable, and the paths are read off tha
 afterwards -- two steps that could each put the crossing back. So the same graph is run
 through the whole synthesis here and the drawn links are asserted rather than the proof.
 
-The first graph is ``fixtures.CROSSING_EDGES``: three sites twenty miles apart overland
+The first graph is ``fixtures.CROSSING_LINKS``: three sites twenty miles apart overland
 through ``pdx``, and a thousand miles apart through ``tok`` offshore. Every overland path
 shares ``pdx``, so the crossing is the only thing that makes a second link independent, and
 a synthesis that will buy diversity at any price takes it.
 
-The second is ``fixtures.DISTANT_PEER_EDGES``, and it is here for the other half of the
+The second is ``fixtures.DISTANT_PEER_LINKS``, and it is here for the other half of the
 question: whether the count and the mesh agree. The count says how many links a site should
 hold and the mesh lays them, and a site credited with a path the mesh may not lay is asked
 for a link nobody can wire -- a shortfall reported against the synthesis that no fiber closes.
 Neither unit is wrong on its own, so only a tier holding both can see it (GitHub issue #45).
 
-The third is ``fixtures.EXPRESS_EDGES``, and it asks how many fiber miles the finished synthesis
+The third is ``fixtures.EXPRESS_LINKS``, and it asks how many fiber miles the finished synthesis
 orders. The fiber choice and the reading of paths off it are separate steps, so a synthesis can
 choose the shorter fiber and still draw a longer path over it. Here both ways of wiring the
 ring are allowed by the bound and hold the same number of independent links, so the mileage
@@ -27,28 +27,28 @@ is the only thing separating them (GitHub issue #57).
 from __future__ import annotations
 
 import fixtures
-from synthesizer.input_graph import PhysicalEdge, Vertex
+from synthesizer.input_graph import FiberSegment, Site
 from synthesizer.model import SynthesisArtifacts, SynthesisParams, Tuning
 
 _SEATS = 3
 
 
 def _artifacts(
-    vertices: list[Vertex],
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    sites: list[Site],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
     datacenter_cities: frozenset[tuple[str, str]],
     multiple: float,
 ) -> SynthesisArtifacts:
     """The synthesis the whole pipeline settles on over one graph at one backup path multiple.
 
     All three sites are seated, so the question is only how their links are drawn and what
-    each is held to. The convergence promotion is off and there are no demand vertices, so
+    each is held to. The convergence promotion is off and there are no demand sites, so
     nothing grows the backbone past the three and the mesh is the whole of what the run
     decides.
     """
     return fixtures.run_synthesis(
-        vertices,
-        physical_edges,
+        sites,
+        fiber_segments,
         SynthesisParams(
             min_backbone_count=_SEATS,
             max_backbone_count=_SEATS,
@@ -64,8 +64,8 @@ def _artifacts(
 def _crossing(multiple: float) -> SynthesisArtifacts:
     """The crossing graph at one bound, which is the only thing that varies between runs."""
     return _artifacts(
-        fixtures.crossing_vertices(),
-        fixtures.CROSSING_EDGES,
+        fixtures.crossing_sites(),
+        fixtures.CROSSING_LINKS,
         fixtures.crossing_datacenter_cities(),
         multiple,
     )
@@ -74,14 +74,14 @@ def _crossing(multiple: float) -> SynthesisArtifacts:
 BOUNDED = _crossing(3.0)
 UNBOUNDED = _crossing(1000.0)
 DISTANT_PEER = _artifacts(
-    fixtures.distant_peer_vertices(),
-    fixtures.DISTANT_PEER_EDGES,
+    fixtures.distant_peer_sites(),
+    fixtures.DISTANT_PEER_LINKS,
     fixtures.distant_peer_datacenter_cities(),
     3.0,
 )
 EXPRESS = _artifacts(
-    fixtures.express_vertices(),
-    fixtures.EXPRESS_EDGES,
+    fixtures.express_sites(),
+    fixtures.EXPRESS_LINKS,
     fixtures.express_datacenter_cities(),
     3.0,
 )

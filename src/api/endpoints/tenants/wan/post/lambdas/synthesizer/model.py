@@ -1,7 +1,7 @@
 """The synthesizer's synthesis vocabulary: tiers, tuning, routing, and validation.
 
 These types build on the input-graph types in ``synthesizer.input_graph``
-(``Vertex`` / ``PhysicalEdge`` and the geographic helpers); everything here is the
+(``Site`` / ``FiberSegment`` and the geographic helpers); everything here is the
 synthesizer's own in-memory representation, layered on top of them.
 
 The synthesis is two tiers: a meshed ``backbone`` of selected carrier PoPs (each at a
@@ -16,12 +16,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
 
-from synthesizer.input_graph import PhysicalEdge, Vertex, VertexInfo
+from synthesizer.input_graph import FiberSegment, Site, SiteInfo
 
 
 @dataclass(frozen=True)
-class AccessEdge:
-    """A logical link from a demand vertex (tenant site or provider region) to a backbone PoP."""
+class AccessPath:
+    """A logical link from a demand site (tenant site or provider region) to a backbone PoP."""
 
     source: str
     target: str
@@ -86,8 +86,8 @@ class Synthesis:
 
     backbone_ids: tuple[str, ...]
     transit_ids: tuple[str, ...]
-    access_edges: list[AccessEdge]
-    physical_edge_keys: set[tuple[str, str]]
+    access_paths: list[AccessPath]
+    fiber_segment_keys: set[tuple[str, str]]
     path_uses: list[SynthesisPath]
     metrics: SynthesisMetrics
 
@@ -108,7 +108,7 @@ class Tuning:
     default at the config layer; the values here are construction fallbacks only.
     ``backbone_number_of_diverse_paths`` is how many other backbone nodes each backbone node
     links to on the mesh; ``access_backbone_links`` is how many backbone nodes each
-    demand vertex homes to. ``backbone_coverage_target_miles`` is likewise required
+    demand site homes to. ``backbone_coverage_target_miles`` is likewise required
     at the config layer (its field default here is a construction fallback only,
     kept because dataclass field ordering forces one); it lives in the ``knobs``
     resource rather than its own, since it describes the network an operator wants.
@@ -128,7 +128,7 @@ class Tuning:
     # grow backbone until every demand is this near; whole miles, since the great-circle
     # haul it is compared against stands in for an unmeasured last-mile build
     backbone_coverage_target_miles: int = 600
-    access_backbone_links: int = 2  # backbone nodes each demand vertex homes to
+    access_backbone_links: int = 2  # backbone nodes each demand site homes to
     # how many times the direct distance between two backbone nodes a path between them
     # may run; a ratio rather than a mileage, so it means the same thing to a 200-mile link
     # and a 2,000-mile one, and fractional because a ratio has resolution that a target
@@ -142,7 +142,7 @@ class NamedLink:
     """A link between two PoPs held by name rather than by id.
 
     Names are what distinguishes it: ``source`` and ``target`` are PoP display names, as
-    the operator wrote them, and the overrides layer resolves them to vertex ids the way
+    the operator wrote them, and the overrides layer resolves them to site ids the way
     it resolves ``forced_backbone_names``. It carries the pruned links as well as the
     forced ones, and says nothing about which tier it acts on -- that comes from which
     list of :class:`OperatorLinks` it was written in, and each list has its own rule.
@@ -156,8 +156,8 @@ class RoleExclusions:
     """Operator pins that bar a PoP from the backbone, by PoP display name.
 
     ``prohibited_backbone_names`` bar a PoP from the backbone tier. The overrides
-    layer resolves them to vertex ids. (There is no demand bar: tenant/provider demand is
-    inherent to the non-PoP vertices, not a tier the synthesizer assigns to a PoP.)
+    layer resolves them to site ids. (There is no demand bar: tenant/provider demand is
+    inherent to the non-PoP sites, not a tier the synthesizer assigns to a PoP.)
     """
 
     prohibited_backbone_names: tuple[str, ...] = ()
@@ -210,7 +210,7 @@ class OperatorLinks:
     """The links an operator wrote by name, one list per tier they act on.
 
     ``backbone`` are backbone-backbone pairs pinned into the mesh, ``access`` are demand
-    vertices pinned onto a named backbone node as one of their homes (the ``forced-homes``
+    sites pinned onto a named backbone node as one of their homes (the ``forced-homes``
     resource), and ``removed_backbone`` are backbone-backbone pairs pruned from the mesh.
     Which list an entry sits in is what says its tier, so no entry names its own, and the
     three are validated by different rules: a backbone pair looks both names up among the
@@ -226,13 +226,13 @@ class OperatorLinks:
 
 @dataclass(frozen=True)
 class ForcedLinks:
-    """Operator-forced edges (and backbone pins) resolved to vertex ids.
+    """Operator-forced links (and backbone pins) resolved to site ids.
 
     The resolved form of :class:`OperatorLinks`, field for field. ``backbone`` holds each
-    backbone-backbone link as an order-independent ``edge_key`` pair; ``access`` holds each
+    backbone-backbone link as an order-independent ``link_key`` pair; ``access`` holds each
     forced home as ``(access_id, backbone_id)``, ordered because the two ends are not
     interchangeable. ``removed_backbone`` holds the pairs the operator pruned from the
-    mesh, again as ``edge_key`` pairs.
+    mesh, again as ``link_key`` pairs.
     ``required_backbone`` are the operator-forced backbone ids restricted to the
     eligible set; it is empty until the search plan refines it.
     """
@@ -244,13 +244,13 @@ class ForcedLinks:
 
 @dataclass(frozen=True)
 class RoleOverrides:
-    """Operator role pins resolved from PoP names to concrete vertex ids.
+    """Operator role pins resolved from PoP names to concrete site ids.
 
     ``forced_backbone_ids`` are the ids fixed into the backbone tier;
     ``prohibited_backbone_ids`` are barred from it. ``degree_exempt_backbone_ids`` are
     held to no diverse path count: validation stops reporting their shortfall, while they pick
     peers and are picked as peers like any other node.
-    ``forced_links`` carries the operator's pinned edges resolved to ids.
+    ``forced_links`` carries the operator's pinned links resolved to ids.
     """
 
     forced_backbone_ids: frozenset[str] = frozenset()
@@ -260,18 +260,18 @@ class RoleOverrides:
 
 @dataclass(frozen=True)
 class SynthesisInputs:
-    """Pre-computed vertex, edge, and shortest-path context shared across backbone sets."""
+    """Pre-computed site, link, and shortest-path context shared across backbone sets."""
 
-    access_vertices: list[Vertex]
-    carrier_pops: list[Vertex]
-    physical_edges: dict[tuple[str, str], PhysicalEdge]
+    access_sites: list[Site]
+    carrier_pops: list[Site]
+    fiber_segments: dict[tuple[str, str], FiberSegment]
     eligible_backbone_ids: set[str]
     adjacency: dict[str, list[tuple[str, float]]]
     all_distances: dict[str, dict[str, float]]
     all_predecessors: dict[str, dict[str, str]]
     # Each carrier PoP's non-trivial biconnected blocks (a city may sit in several):
     # backbone nodes can be wired into a city-survivable mesh only when they all share
-    # one common block. Subsumes the older 2-edge-component oracle (biconnected ⟹ bridgeless).
+    # one common block. Subsumes the older bridgeless-component oracle (biconnected ⟹ bridgeless).
     carrier_blocks: dict[str, frozenset[int]]
 
 @dataclass(frozen=True)
@@ -300,10 +300,10 @@ class ValidationReport(TypedDict):
     connected: bool
     component_count: int
     min_distinct_neighbor_degree: int
-    degree_deficient_vertices: list[dict[str, object]]
+    degree_deficient_sites: list[dict[str, object]]
     biconnected_no_articulation_points: bool
     articulation_points: list[dict[str, str]]
-    access_vertices_with_required_backbone_links: bool
+    access_sites_with_required_backbone_links: bool
     demand_missing_backbone_redundancy: list[dict[str, str]]
     backbone_meets_mesh_link_target: bool
     backbone_diverse_paths_deficient: list[dict[str, object]]
@@ -313,54 +313,54 @@ class ValidationReport(TypedDict):
     backbone_diverse_paths_ceilings: list[dict[str, object]]
     backbone_diverse_paths_ceiling_limited: list[dict[str, object]]
     backbone_diverse_paths_above_target: list[dict[str, object]]
-    backbone_mesh_two_edge_connected: bool
-    backbone_mesh_two_vertex_connected: bool
+    backbone_mesh_survives_any_one_link_loss: bool
+    backbone_mesh_survives_any_one_site_loss: bool
 
 @dataclass(frozen=True)
 class InputFiles:
     """All file paths a WAN map's synthesis is computed from.
 
-    ``vertex_files`` pairs each tenant with its per-tenant vertices CSV; the
+    ``site_files`` pairs each tenant with its per-tenant sites CSV; the
     tenant is carried here because the CSVs no longer hold a ``tenant`` column.
     ``off_net_path`` is an optional CSV of off-net candidate seats (non-PoP
     locations the operator may force as backbone nodes, reached by local fiber).
     """
 
-    vertex_files: tuple[tuple[str, Path], ...]
-    edge_path: Path
-    regional_edge_paths: tuple[Path, ...] = ()
+    site_files: tuple[tuple[str, Path], ...]
+    link_path: Path
+    regional_link_paths: tuple[Path, ...] = ()
     off_net_path: Path | None = None
 
 @dataclass(frozen=True)
 class SourceFiles:
     """Input file paths recorded in the JSON output for provenance."""
 
-    vertex_files: tuple[Path, ...]
-    edge_path: Path
+    site_files: tuple[Path, ...]
+    link_path: Path
 
 @dataclass(frozen=True)
 class SynthesisArtifacts:
-    """A completed synthesis bundled with the vertices and edges it was built from."""
+    """A completed synthesis bundled with the sites and links it was built from."""
 
-    vertices: list[Vertex]
-    physical_edges: dict[tuple[str, str], PhysicalEdge]
+    sites: list[Site]
+    fiber_segments: dict[tuple[str, str], FiberSegment]
     synthesis: Synthesis
     validation: ValidationReport
 
 KIND_POP = "PoP"
 KIND_ROADM = "ROADM"
-# Vertex kinds that make a vertex a routable carrier PoP on the backbone graph.
+# Site kinds that make a site a routable carrier PoP on the backbone graph.
 CARRIER_KINDS = frozenset({KIND_POP, KIND_ROADM})
 
-def is_carrier_pop(vertex: Vertex) -> bool:
-    """Whether a vertex is a carrier PoP (a routable backbone node)."""
-    return vertex.kind in CARRIER_KINDS
+def is_carrier_pop(site: Site) -> bool:
+    """Whether a site is a carrier PoP (a routable backbone node)."""
+    return site.kind in CARRIER_KINDS
 
 def backbone_city_allowed(
-    info: VertexInfo,
+    info: SiteInfo,
     datacenter_cities: frozenset[tuple[str, str]] | None,
 ) -> bool:
-    """Whether a vertex's city passes the data-center backbone gate.
+    """Whether a site's city passes the data-center backbone gate.
 
     The gate restricts backbone placement to cities where a colocation provider operates
     a cage. When ``datacenter_cities`` is ``None`` (the operator's free-for-all) the gate

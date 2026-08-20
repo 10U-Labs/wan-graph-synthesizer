@@ -19,8 +19,8 @@ from test_s3_store_mock import NoSuchKey, fake_s3
 
 def test_a_stored_object_reads_back_as_it_was_stored() -> None:
     """A canned object is served whole, which is what a handler parses its answer out of."""
-    client = fake_s3({"carriers/lumen/vertices.json": b'[{"id": "P0"}]'})
-    served = client.get_object(Key="carriers/lumen/vertices.json")
+    client = fake_s3({"carriers/lumen/pops.json": b'[{"id": "P0"}]'})
+    served = client.get_object(Key="carriers/lumen/pops.json")
     assert served["Body"].read() == b'[{"id": "P0"}]'
 
 
@@ -28,7 +28,7 @@ def test_a_key_nobody_stored_raises_what_the_real_client_raises() -> None:
     """The handlers answer 404 by catching this, so the absence has to arrive as this error."""
     client = fake_s3({})
     with pytest.raises(NoSuchKey):
-        client.get_object(Key="carriers/lumen/vertices.json")
+        client.get_object(Key="carriers/lumen/pops.json")
 
 
 def test_the_error_the_handlers_catch_is_the_error_the_double_raises() -> None:
@@ -69,22 +69,22 @@ def test_deleting_a_key_that_is_not_there_is_not_an_error() -> None:
 
 def test_the_listing_is_the_keys_the_store_holds() -> None:
     """A collection-root GET is answered from this listing, so it has to follow the writes."""
-    client = fake_s3({"carriers/lumen/vertices.json": b"[]", "carriers/zayo/vertices.json": b"[]"})
+    client = fake_s3({"carriers/lumen/pops.json": b"[]", "carriers/zayo/pops.json": b"[]"})
     assert client.list_objects_v2(Bucket="store")["Contents"] == [
-        {"Key": "carriers/lumen/vertices.json"},
-        {"Key": "carriers/zayo/vertices.json"},
+        {"Key": "carriers/lumen/pops.json"},
+        {"Key": "carriers/zayo/pops.json"},
     ]
 
 
 def test_a_listing_given_outright_is_the_one_served() -> None:
     """A listing test needs keys without bodies, so the caller may state the listing instead."""
-    client = fake_s3({}, keys=["carriers/lumen/vertices.json"])
+    client = fake_s3({}, keys=["carriers/lumen/pops.json"])
     assert client.list_objects_v2(Bucket="store")["Contents"] == [
-        {"Key": "carriers/lumen/vertices.json"}
+        {"Key": "carriers/lumen/pops.json"}
     ]
 
 
 def test_a_listing_given_as_empty_is_served_empty() -> None:
     """An empty listing is a case in its own right and not the absence of one."""
-    client = fake_s3({"carriers/lumen/vertices.json": b"[]"}, keys=[])
+    client = fake_s3({"carriers/lumen/pops.json": b"[]"}, keys=[])
     assert client.list_objects_v2(Bucket="store")["Contents"] == []

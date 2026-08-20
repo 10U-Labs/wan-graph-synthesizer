@@ -45,11 +45,11 @@ def test_seed_cli_exits_zero_against_the_stub(stub_api: StubApi) -> None:
     assert _run_seed(stub_api.url).returncode == 0
 
 
-def test_seed_cli_writes_carrier_vertices(stub_api: StubApi) -> None:
-    """The seed CLI writes carrier vertices to the API."""
+def test_seed_cli_writes_carrier_pops(stub_api: StubApi) -> None:
+    """The seed CLI writes carrier sites to the API."""
     _run_seed(stub_api.url)
     paths = [path for _method, path, _body in stub_api.records]
-    assert any("/carriers/" in path and path.endswith("/vertices") for path in paths)
+    assert any("/carriers/" in path and path.endswith("/sites") for path in paths)
 
 
 def test_seed_cli_writes_a_tenant_label(stub_api: StubApi) -> None:

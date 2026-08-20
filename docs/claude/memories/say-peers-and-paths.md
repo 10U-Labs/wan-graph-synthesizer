@@ -2,7 +2,7 @@
 
 Two words carry almost every question about a backbone: the peers a site is joined to, and the paths between them. A peer is another backbone node this one has a path to. A path is one way from one site to another, and it crosses whatever cities the fiber makes it cross — `Ashburn, VA -> Martinsburg, WV -> Pittsburgh, PA -> ... -> Minot, ND` is one path over nine cities. A path is also the thing an operator orders and pays for every month, so the number of paths out of a site is at once a fact about the map and a line on the bill. Answer in those two words, in chat as much as in issues, and the reader can follow without opening anything.
 
-Do not say "cable" or "span". The thing both reach for is a fiber segment: one length of fiber between two adjacent points, which is a `PhysicalEdge` in `synthesizer.input_graph` and an entry of the published `edges` collection. A path rides many fiber segments, so "Ashburn has four cables" says nothing a reader can act on — four fiber segments and four paths are different numbers and only one of them was meant. The same goes for "link" used loosely: an entry of the published `backbone-links` collection is one path between two backbone nodes, and its `path` field is the list of cities that path crosses.
+Do not say "cable" or "span". The thing both reach for is a fiber segment: one length of fiber between two adjacent points, which is a `FiberSegment` in `synthesizer.input_graph` and an entry of the published `fiber-segments` collection. A path rides many fiber segments, so "Ashburn has four cables" says nothing a reader can act on — four fiber segments and four paths are different numbers and only one of them was meant. The same goes for "link" used loosely: an entry of the published `backbone-links` collection is one path between two backbone nodes, and its `path` field is the list of cities that path crosses.
 
 Do not say "circuit". It is the ordinary word in the industry for what an operator buys, and that is the trouble: using it beside "path" splits one thing into two, and a reader who has just been told a pair holds two paths cannot tell whether the two circuits mentioned in the next paragraph are the same two or two more. One path is one thing bought. Say path for it.
 
@@ -24,7 +24,7 @@ Which word for which thing, when precision is needed:
 
 | thing | word |
 | --- | --- |
-| one length of fiber between two adjacent points | fiber segment, or its type `PhysicalEdge` — never span or cable |
+| one length of fiber between two adjacent points | fiber segment, or its type `FiberSegment` — never span or cable |
 | one way from one site to another | path — never route |
 | what an operator orders and pays for monthly | path — never circuit |
 | two sites joined by at least one path | a pair |

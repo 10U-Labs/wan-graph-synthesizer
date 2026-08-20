@@ -208,9 +208,9 @@ jobs:
       # expressed as a command-line flag on this job's pylint run.
       #
       # --max-attributes is raised to 8 for the same reason. SynthesisInputs is the
-      # precomputed read-only context the whole backbone search shares -- vertices,
-      # edges, adjacency, the all-pairs shortest paths, and the carrier graph's
-      # 2-edge-connected component map (the fiber-resilience oracle). These are one
+      # precomputed read-only context the whole backbone search shares -- sites,
+      # links, adjacency, the all-pairs shortest paths, and the carrier graph's
+      # bridgeless component map (the fiber-resilience oracle). These are one
       # cohesive bundle computed once and threaded through the search; splitting them
       # to satisfy the default of 7 would scatter a single concept, so the limit is
       # nudged by one rather than the data artificially partitioned.

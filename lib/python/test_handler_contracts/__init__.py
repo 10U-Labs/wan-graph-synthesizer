@@ -121,6 +121,15 @@ class SharedWriteTests:
         """Load the endpoint's handler."""
         return load_handler(self.CFG["endpoint"], monkeypatch)
 
+    def _collection(self) -> str:
+        """The endpoint's writable collection, named by the key it stores under.
+
+        Each endpoint names its collection for what it holds -- ``pops`` for a
+        carrier, ``regions`` for the providers, ``facilities`` for a data-center
+        provider -- so the shared tests cannot spell one word for all of them.
+        """
+        return str(self.CFG["key"]).rsplit("/", 1)[-1].removesuffix(".json")
+
     def _put_event(self, collection: str, body: Any) -> dict[str, Any]:
         """A PUT event for one of the endpoint's collections."""
         raise NotImplementedError
@@ -140,11 +149,11 @@ class SharedWriteTests:
         """PUT the endpoint's valid rows over ``objects`` and read back what it stored."""
         module = self._handler(monkeypatch)
         with patch("boto3.client", side_effect=write_clients(objects, [])):
-            module.lambda_handler(self._put_event("vertices", self.CFG["valid"]), None)
+            module.lambda_handler(self._put_event(self._collection(), self.CFG["valid"]), None)
         return json.loads(objects[self.CFG["key"]])
 
     def test_write_persists_the_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A PUT into an empty store stores the new vertices."""
+        """A PUT into an empty store stores the new rows."""
         assert self._stored_after_put(monkeypatch, {}) == self.CFG["valid"]
 
     def test_write_replaces_an_existing_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -154,11 +163,12 @@ class SharedWriteTests:
 
     def test_write_rejects_a_malformed_row(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A PUT whose rows lack the required geographic fields is rejected."""
-        assert self._status_of(monkeypatch, self._put_event("vertices", [{"oops": 1}])) == 400
+        malformed = self._put_event(self._collection(), [{"oops": 1}])
+        assert self._status_of(monkeypatch, malformed) == 400
 
     def test_write_rejects_a_non_list_body(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A PUT body that is not a list of rows is rejected."""
-        malformed = self._put_event("vertices", {"not": "a list"})
+        malformed = self._put_event(self._collection(), {"not": "a list"})
         assert self._status_of(monkeypatch, malformed) == 400
 
     def test_write_404_for_unknown_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -171,7 +181,7 @@ class SharedWriteTests:
         invocations: list[dict[str, Any]] = []
         store = {"tenants/a/label.json": b"{}", "tenants/b/label.json": b"{}"}
         with patch("boto3.client", side_effect=write_clients(store, invocations)):
-            module.lambda_handler(self._put_event("vertices", []), None)
+            module.lambda_handler(self._put_event(self._collection(), []), None)
         assert not invocations
 
     def test_delete_removes_the_object(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -217,9 +227,9 @@ class RegionsContract(SharedWriteTests):
         """The request path addressing one of the endpoint's collections."""
         return f"/x/{self.CFG['endpoint']}/{collection}"
 
-    def _get(self, collection: str = "vertices") -> dict[str, Any]:
-        """A GET event for one of the endpoint's collections."""
-        return {"httpMethod": "GET", "path": self._path(collection)}
+    def _get(self, collection: str | None = None) -> dict[str, Any]:
+        """A GET event for one of the endpoint's collections, its own by default."""
+        return {"httpMethod": "GET", "path": self._path(collection or self._collection())}
 
     def _put_event(self, collection: str, body: Any) -> dict[str, Any]:
         """A PUT to one of the endpoint's collections, addressed by path."""
@@ -231,10 +241,10 @@ class RegionsContract(SharedWriteTests):
 
     def _delete_event(self) -> dict[str, Any]:
         """A DELETE of the stored regions, addressed by path."""
-        return {"httpMethod": "DELETE", "path": self._path("vertices")}
+        return {"httpMethod": "DELETE", "path": self._path(self._collection())}
 
     def test_serves_the_stored_regions(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A vertices GET returns the stored regions."""
+        """A GET of the endpoint's collection returns the stored regions."""
         module = self._handler(monkeypatch)
         stored = {self.CFG["key"]: json.dumps(self.CFG["valid"]).encode()}
         with patch("boto3.client", return_value=fake_s3(stored)):
@@ -245,11 +255,11 @@ class RegionsContract(SharedWriteTests):
         """An unknown sub-collection is a 404."""
         module = self._handler(monkeypatch)
         with patch("boto3.client", return_value=fake_s3({})):
-            response = module.lambda_handler(self._get("edges"), None)
+            response = module.lambda_handler(self._get("bogus"), None)
         assert response["statusCode"] == 404
 
     def test_404_when_the_resource_is_not_built(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A vertices GET with no stored object returns a 'not built' 404."""
+        """A GET with no stored object returns a 'not built' 404."""
         module = self._handler(monkeypatch)
         with patch("boto3.client", return_value=fake_s3({})):
             response = module.lambda_handler(self._get(), None)

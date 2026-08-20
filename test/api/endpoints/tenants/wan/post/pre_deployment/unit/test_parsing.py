@@ -5,7 +5,7 @@ from __future__ import annotations
 from synthesizer.codec import _slug, load_off_net, load_regions, load_sites, load_substrate
 from synthesizer.model import is_carrier_pop
 
-_SUBSTRATE_VERTICES = [
+_SUBSTRATE_SITES = [
     {"carrier": "lumen", "municipality": "Denver", "state": "CO",
      "country": "United States", "latitude": 39.7392, "longitude": -104.9903},
     {"carrier": "lumen", "municipality": "Kansas City", "state": "MO",
@@ -13,7 +13,7 @@ _SUBSTRATE_VERTICES = [
     {"carrier": "zayo", "municipality": "Denver", "state": "CO",
      "country": "United States", "latitude": 39.7392, "longitude": -104.9903},
 ]
-_SUBSTRATE_EDGES = [
+_SUBSTRATE_LINKS = [
     {"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
      "z_municipality": "Kansas City", "z_state": "MO"},
 ]
@@ -31,49 +31,49 @@ def test_slug_empty_falls_back() -> None:
 
 def test_substrate_names_a_pop_by_its_city() -> None:
     """A carrier point's display name is its ``City, ST``."""
-    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
+    pops, _links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
     assert pops[0].name == "Denver, CO"
 
 
 def test_substrate_points_are_carrier_pops() -> None:
     """Every substrate point classifies as a carrier PoP."""
-    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
+    pops, _links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
     assert all(is_carrier_pop(pop) for pop in pops)
 
 
 def test_substrate_collapses_a_city_across_carriers() -> None:
     """Colocated points from different carriers collapse to one city node."""
-    pops, _edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
+    pops, _links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
     assert {pop.id for pop in pops} == {"denver-co", "kansas-city-mo"}
 
 
 def test_substrate_resolves_a_segment_by_city() -> None:
     """A fiber segment resolves both endpoints to the shared city nodes."""
-    _pops, edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
-    assert list(edges) == [("denver-co", "kansas-city-mo")]
+    _pops, links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
+    assert list(links) == [("denver-co", "kansas-city-mo")]
 
 
 def test_substrate_skips_a_segment_to_an_unserved_city() -> None:
     """A fiber segment naming a city no carrier serves is dropped, not an error."""
     dangling = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
                  "z_municipality": "Nowhere", "z_state": "ZZ"}]
-    _pops, edges = load_substrate(_SUBSTRATE_VERTICES, dangling)
-    assert not edges
+    _pops, links = load_substrate(_SUBSTRATE_SITES, dangling)
+    assert not links
 
 
 def test_substrate_computes_segment_distance() -> None:
     """A fiber segment's distance is the great-circle miles between its points."""
-    _pops, edges = load_substrate(_SUBSTRATE_VERTICES, _SUBSTRATE_EDGES)
-    assert round(next(iter(edges.values())).distance_miles) == 557
+    _pops, links = load_substrate(_SUBSTRATE_SITES, _SUBSTRATE_LINKS)
+    assert round(next(iter(links.values())).distance_miles) == 557
 
 
 def test_substrate_drops_an_isolated_point() -> None:
     """A point no surviving segment touches is dropped from the substrate."""
-    extra = _SUBSTRATE_VERTICES + [
+    extra = _SUBSTRATE_SITES + [
         {"carrier": "lumen", "municipality": "Boise", "state": "ID",
          "country": "United States", "latitude": 43.6, "longitude": -116.2},
     ]
-    pops, _edges = load_substrate(extra, _SUBSTRATE_EDGES)
+    pops, _links = load_substrate(extra, _SUBSTRATE_LINKS)
     assert "boise-id" not in {pop.id for pop in pops}
 
 
@@ -81,8 +81,8 @@ def test_substrate_skips_an_intra_city_self_loop() -> None:
     """A fiber segment whose two endpoints are the same city is dropped, not a self-loop."""
     loop = [{"carrier": "lumen", "a_municipality": "Denver", "a_state": "CO",
              "z_municipality": "Denver", "z_state": "CO"}]
-    _pops, edges = load_substrate(_SUBSTRATE_VERTICES, loop)
-    assert not edges
+    _pops, links = load_substrate(_SUBSTRATE_SITES, loop)
+    assert not links
 
 
 def test_regions_are_provider_regions() -> None:

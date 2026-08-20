@@ -33,7 +33,7 @@ from synthesizer.ceiling import (
 )
 from synthesizer.codec import load_regions, load_sites, load_substrate
 from synthesizer.graphs import build_adjacency, distances_from
-from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
+from synthesizer.input_graph import FiberSegment, Site, haversine_miles
 from test_http_doubles import UrlopenRecorder
 
 _API = "http://stub"
@@ -97,9 +97,9 @@ def test_every_requested_path_is_declared_in_openapi(
 
 def test_pipeline_writes_at_least_one_carrier(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Seeding the real inputs writes at least one carrier's vertices."""
+    """Seeding the real inputs writes at least one carrier's sites."""
     paths = _seed(urlopen_recorder, monkeypatch)
-    assert any(re.fullmatch(r"carriers/[^/]+/vertices", path) for path in paths)
+    assert any(re.fullmatch(r"carriers/[^/]+/sites", path) for path in paths)
 
 
 def test_yamllint_names_every_tenant_config() -> None:
@@ -274,7 +274,7 @@ def test_pipeline_writes_a_forced_homes_document_for_every_tenant(
     assert _tenants_written(paths, "forced-homes") == len(list(seed.ETC.glob("*.yml")))
 
 
-def _merged_substrate() -> tuple[list[Vertex], dict[tuple[str, str], PhysicalEdge]]:
+def _merged_substrate() -> tuple[list[Site], dict[tuple[str, str], FiberSegment]]:
     """Every carrier's points and every carrier's fiber, merged as the API merges them.
 
     Read with seed's own reader and merged by the same loader, so the graph measured here
@@ -298,8 +298,8 @@ def _substrate() -> tuple[dict[str, str], dict[str, list[tuple[str, float]]]]:
     The mapping back from a config's ``City, ST`` spelling to a generated id is what the
     callers below need, since a config names cities and the graph is keyed by id.
     """
-    vertices, edges = _merged_substrate()
-    return {vertex.name: vertex.id for vertex in vertices}, build_adjacency(edges)
+    sites, links = _merged_substrate()
+    return {site.name: site.id for site in sites}, build_adjacency(links)
 
 
 def _pinned_cities(backbone: dict[str, Any]) -> list[str]:
@@ -460,7 +460,7 @@ def test_every_pinned_city_can_carry_the_diversity_its_tenant_asks_for() -> None
     ] == []
 
 
-def _demand(config: dict[str, Any]) -> list[Vertex]:
+def _demand(config: dict[str, Any]) -> list[Site]:
     """A tenant's demand the coverage target applies to: its own sites and its cloud regions.
 
     Loaded through the synthesizer's own readers, so the exemption that excuses an OCONUS
@@ -474,7 +474,7 @@ def _demand(config: dict[str, Any]) -> list[Vertex]:
     return [place for place in places if not place.exempt_from_distance_constraint]
 
 
-def _seats_for_coverage(config: dict[str, Any], carriers: list[Vertex]) -> int:
+def _seats_for_coverage(config: dict[str, Any], carriers: list[Site]) -> int:
     """How many backbone seats a tenant's own coverage target needs before it is met.
 
     The pinned cities are seated first, since the synthesis has no choice about them, and

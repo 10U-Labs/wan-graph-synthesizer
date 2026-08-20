@@ -15,56 +15,56 @@ _TWO_DIVERSE_PATHS = Tuning(backbone_number_of_diverse_paths=2)
 
 def test_dual_home_returns_a_graph_without_off_net() -> None:
     """dual_home attaches demand when no off-net site is configured."""
-    homed_vertices, homed_edges = dual_home(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), fixtures.ring_params(), []
+    homed_sites, homed_paths = dual_home(
+        fixtures.ring_sites(), fixtures.ring_fiber_segments(), fixtures.ring_params(), []
     )
-    assert homed_vertices and homed_edges
+    assert homed_sites and homed_paths
 
 
 def test_dual_home_realizes_a_forced_off_net_site() -> None:
     """dual_home synthesizes a local-fiber twin for a forced off-net seat."""
     site, params = fixtures.forced_off_net_case()
-    homed_vertices, _edges = dual_home(
-        fixtures.ring_vertices(), fixtures.ring_physical_edges(), params, [site]
+    homed_sites, _links = dual_home(
+        fixtures.ring_sites(), fixtures.ring_fiber_segments(), params, [site]
     )
-    assert any(vertex.id.startswith("offnet_") for vertex in homed_vertices)
+    assert any(site.id.startswith("offnet_") for site in homed_sites)
 
 
 def test_dual_home_fabricates_a_forced_on_net_location() -> None:
     """dual_home fabricates an on-net twin for a forced demand location in our data."""
-    # "Luke" is a demand vertex in the input; forcing it fabricates its on-net twin.
-    luke = fixtures.access_vertex("Luke", 40.5, -100.0)
+    # "Luke" is a demand site in the input; forcing it fabricates its on-net twin.
+    luke = fixtures.access_site("Luke", 40.5, -100.0)
     params = SynthesisParams(
         min_backbone_count=2,
         forced_backbone_names=("Luke",),
         datacenter_cities=fixtures.ring_datacenter_cities()
         | {(luke.info.municipality, luke.info.state)},
     )
-    homed_vertices, _edges = dual_home(
-        [*fixtures.ring_vertices(), luke], fixtures.ring_physical_edges(), params, []
+    homed_sites, _links = dual_home(
+        [*fixtures.ring_sites(), luke], fixtures.ring_fiber_segments(), params, []
     )
-    assert any(vertex.id.startswith("fac_") for vertex in homed_vertices)
+    assert any(site.id.startswith("fac_") for site in homed_sites)
 
 
 def test_dual_home_fabricates_a_non_data_center_forced_location_when_gate_is_open() -> None:
     """With the gate open (datacenter_cities=None), dual_home fabricates a forced location."""
-    luke = fixtures.access_vertex("Luke", 40.5, -100.0)
+    luke = fixtures.access_site("Luke", 40.5, -100.0)
     params = SynthesisParams(
         min_backbone_count=2,
         forced_backbone_names=("Luke",),
         datacenter_cities=None,
     )
-    homed_vertices, _edges = dual_home(
-        [*fixtures.ring_vertices(), luke], fixtures.ring_physical_edges(), params, []
+    homed_sites, _links = dual_home(
+        [*fixtures.ring_sites(), luke], fixtures.ring_fiber_segments(), params, []
     )
-    assert any(vertex.id.startswith("fac_") for vertex in homed_vertices)
+    assert any(site.id.startswith("fac_") for site in homed_sites)
 
 
 def test_finalize_validates_a_synthesis() -> None:
     """finalize validates a synthesis and reports it connected."""
     art = fixtures.ring_artifacts()
-    _vertices, _edges, _synthesis, validation = finalize(
-        art.vertices, art.physical_edges, art.synthesis, fixtures.ring_params()
+    _sites, _links, _synthesis, validation = finalize(
+        art.sites, art.fiber_segments, art.synthesis, fixtures.ring_params()
     )
     assert validation["connected"] is True
 
@@ -72,8 +72,8 @@ def test_finalize_validates_a_synthesis() -> None:
 def test_finalize_returns_the_synthesis_unchanged() -> None:
     """finalize passes the synthesis through untouched alongside its validation report."""
     art = fixtures.ring_artifacts()
-    _vertices, _edges, synthesis, _validation = finalize(
-        art.vertices, art.physical_edges, art.synthesis, fixtures.ring_params()
+    _sites, _links, synthesis, _validation = finalize(
+        art.sites, art.fiber_segments, art.synthesis, fixtures.ring_params()
     )
     assert synthesis is art.synthesis
 
@@ -81,8 +81,8 @@ def test_finalize_returns_the_synthesis_unchanged() -> None:
 def test_finalize_reports_the_independent_mesh_target() -> None:
     """finalize reports whether the mesh links of every backbone node fail independently."""
     art = fixtures.ring_artifacts()
-    _vertices, _edges, _synthesis, validation = finalize(
-        art.vertices, art.physical_edges, art.synthesis, fixtures.ring_params()
+    _sites, _links, _synthesis, validation = finalize(
+        art.sites, art.fiber_segments, art.synthesis, fixtures.ring_params()
     )
     assert validation["backbone_meets_independent_mesh_link_target"] is True
 
@@ -113,11 +113,11 @@ def test_finalize_holds_a_node_to_the_ceiling_of_the_substrate_it_is_given() -> 
         fixtures.SHARED_TRANSIT_PATHS, fixtures.SHARED_TRANSIT_BACKBONE
     )
     params = SynthesisParams(min_backbone_count=2, tuning=_TWO_DIVERSE_PATHS)
-    edges = fixtures.physical_edges_from({
+    links = fixtures.fiber_segments_from({
         ("a", "x"): 1.0, ("x", "b"): 1.0, ("x", "c"): 1.0, ("b", "c"): 1.0,
     })
-    _vertices, _edges, _synthesis, validation = finalize(
-        list(fixtures.carrier_pops_by_id("abcx").values()), edges, synthesis, params
+    _sites, _links, _synthesis, validation = finalize(
+        list(fixtures.carrier_pops_by_id("abcx").values()), links, synthesis, params
     )
     assert validation["backbone_meets_independent_mesh_link_target"] is True
 
@@ -128,7 +128,7 @@ def _finalize_shared_transit(degree_exempt: frozenset[str]) -> ValidationReport:
         fixtures.SHARED_TRANSIT_PATHS, fixtures.SHARED_TRANSIT_BACKBONE
     )
     params = SynthesisParams(min_backbone_count=2, tuning=_TWO_DIVERSE_PATHS)
-    _vertices, _edges, _synthesis, validation = finalize(
+    _sites, _links, _synthesis, validation = finalize(
         list(fixtures.carrier_pops_by_id("abcx").values()), {}, synthesis, params, degree_exempt
     )
     return validation
@@ -157,7 +157,7 @@ def _finalize_split_backbone() -> None:
     """
     finalize(
         list(fixtures.carrier_pops_by_id(fixtures.SPLIT_BACKBONE_CITIES).values()),
-        fixtures.physical_edges_from(fixtures.SPLIT_BACKBONE_SEGMENTS),
+        fixtures.fiber_segments_from(fixtures.SPLIT_BACKBONE_SEGMENTS),
         fixtures.split_backbone_synthesis(),
         SynthesisParams(min_backbone_count=2),
     )

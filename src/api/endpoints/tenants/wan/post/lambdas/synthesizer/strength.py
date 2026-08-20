@@ -20,13 +20,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from synthesizer.ceiling import PathProofInputs, independent_path_ceiling
-from synthesizer.input_graph import Vertex, haversine_miles
+from synthesizer.input_graph import Site, haversine_miles
 from synthesizer.model import SynthesisInputs
 from synthesizer.graphs import reconstruct_path
 
 
-def link_bearing(origin: Vertex, neighbor: Vertex) -> float:
-    """Initial compass bearing in degrees from one vertex toward another."""
+def link_bearing(origin: Site, neighbor: Site) -> float:
+    """Initial compass bearing in degrees from one site toward another."""
     lat1, lat2 = math.radians(origin.lat), math.radians(neighbor.lat)
     delta_lon = math.radians(neighbor.lon - origin.lon)
     x = math.sin(delta_lon) * math.cos(lat2)
@@ -38,14 +38,14 @@ def link_bearing(origin: Vertex, neighbor: Vertex) -> float:
 def link_sectors(
     pop_id: str,
     adjacency: dict[str, list[tuple[str, float]]],
-    pop_by_id: dict[str, Vertex],
+    pop_by_id: dict[str, Site],
     compass_sector_count: int,
 ) -> set[int]:
     """The distinct compass sectors the PoP's links point toward.
 
     The compass is divided into ``compass_sector_count`` equal sectors, each centred on a
     direction rather than starting at one, so a due-north link lands in the middle of
-    sector zero rather than on its edge. Deriving the width here from the same number
+    sector zero rather than on its link. Deriving the width here from the same number
     the score divides by is what keeps the direction term between 0 and 1: at eight,
     the sectors are the 45-degree octants with the 22.5-degree offset this always used.
     """
@@ -56,9 +56,9 @@ def link_sectors(
         for neighbor, _weight in adjacency[pop_id]
     }
 
-def vertex_straightness(
+def site_straightness(
     pop_id: str,
-    pop_by_id: dict[str, Vertex],
+    pop_by_id: dict[str, Site],
     predecessors: dict[str, str],
 ) -> float:
     """Mean directness to reachable PoPs: straight-line over the path's own geometry."""
@@ -133,7 +133,7 @@ def diverse_path_bounds(
 def backbone_strength(
     pop_id: str,
     inputs: SynthesisInputs,
-    pop_by_id: dict[str, Vertex],
+    pop_by_id: dict[str, Site],
     bounds: DiversePathBounds,
     compass_sector_count: int,
 ) -> float:
@@ -150,5 +150,5 @@ def backbone_strength(
     """
     diverse = bounds.per_site.get(pop_id, 0)
     spread = len(link_sectors(pop_id, inputs.adjacency, pop_by_id, compass_sector_count))
-    straight = vertex_straightness(pop_id, pop_by_id, inputs.all_predecessors[pop_id])
+    straight = site_straightness(pop_id, pop_by_id, inputs.all_predecessors[pop_id])
     return diverse / bounds.largest + spread / compass_sector_count + straight

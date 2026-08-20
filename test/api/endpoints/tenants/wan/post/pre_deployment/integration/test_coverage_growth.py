@@ -27,19 +27,19 @@ from synthesizer.model import SynthesisParams, Tuning, is_carrier_pop
 # and "plains" a tenth short of the western one. The sites are fifteen degrees apart, so no
 # single hub can serve both, and the western one is set a hundredth of a degree nearer than
 # the eastern so the two hauls differ by less than a mile rather than tying exactly.
-_VERTICES = [
+_SITES = [
     fixtures.carrier_pop("hub_a", 0.0, 0.0),
     fixtures.carrier_pop("hub_b", 0.05, 0.0),
     fixtures.carrier_pop("cape", 0.0, 7.4),
     fixtures.carrier_pop("plains", 0.0, -7.39),
-    fixtures.access_vertex("east_site", 0.0, 7.5),
-    fixtures.access_vertex("west_site", 0.0, -7.49),
+    fixtures.access_site("east_site", 0.0, 7.5),
+    fixtures.access_site("west_site", 0.0, -7.49),
 ]
 # Each far hub hangs off both base nodes, so every grown backbone is a pair of triangles
 # sharing the base segment and survives any one city: what the synthesis settles on is decided by
 # geography alone. The fiber is carrier PoPs only, as the real substrate is -- demand homes
 # to its nearest backbone nodes logically, over no last-mile fiber anyone has measured.
-_EDGES = fixtures.physical_edges_from({
+_LINKS = fixtures.fiber_segments_from({
     ("hub_a", "hub_b"): 1.0,
     ("cape", "hub_a"): 1.0, ("cape", "hub_b"): 1.0,
     ("plains", "hub_a"): 1.0, ("plains", "hub_b"): 1.0,
@@ -58,7 +58,7 @@ _PARAMS = SynthesisParams(
         backbone_coverage_target_miles=_TARGET_MILES,
     ),
 )
-ARTIFACTS = fixtures.run_synthesis(_VERTICES, _EDGES, _PARAMS)
+ARTIFACTS = fixtures.run_synthesis(_SITES, _LINKS, _PARAMS)
 
 
 def test_the_synthesis_seats_a_hub_for_each_of_the_two_far_sites() -> None:
@@ -74,8 +74,8 @@ def test_the_delivered_synthesis_reports_its_coverage_target_met() -> None:
     """
     delivered = coverage_report(
         ARTIFACTS.synthesis.backbone_ids,
-        [vertex for vertex in ARTIFACTS.vertices if not is_carrier_pop(vertex)],
-        {vertex.id: vertex for vertex in ARTIFACTS.vertices},
+        [site for site in ARTIFACTS.sites if not is_carrier_pop(site)],
+        {site.id: site for site in ARTIFACTS.sites},
         _TARGET_MILES,
     )
     assert delivered["met"] is True

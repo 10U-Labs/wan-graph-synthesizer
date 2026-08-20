@@ -18,22 +18,22 @@ from test_s3_store_mock import fake_s3
 
 
 def _merge_objects() -> dict[str, bytes]:
-    """Two providers' facility files (one row each), plus a non-vertices file to skip."""
+    """Two providers' facility files (one row each), plus a non-sites file to skip."""
     return {
-        "data-centers/equinix/vertices.json": json.dumps([{"municipality": "X"}]).encode(),
+        "data-centers/equinix/facilities.json": json.dumps([{"municipality": "X"}]).encode(),
         "data-centers/equinix/notes.json": json.dumps([{"municipality": "Z"}]).encode(),
-        "data-centers/flexential/vertices.json": json.dumps([{"municipality": "Y"}]).encode(),
+        "data-centers/flexential/facilities.json": json.dumps([{"municipality": "Y"}]).encode(),
     }
 
 
 def test_merge_post_unions_providers(monkeypatch: pytest.MonkeyPatch) -> None:
-    """POST counts the facilities unioned (skipping the merge's own output and non-vertices)."""
+    """POST counts the facilities unioned (skipping the merge's own output and non-sites)."""
     module = load_handler("data-centers/merge", monkeypatch)
     objects = _merge_objects()
-    fake = fake_s3(objects, keys=[*objects, "data-centers/merge/vertices.json"])
+    fake = fake_s3(objects, keys=[*objects, "data-centers/merge/facilities.json"])
     with patch("boto3.client", return_value=fake):
         response = module.lambda_handler({"httpMethod": "POST"}, None)
-    assert json.loads(response["body"]) == {"vertices": 2}
+    assert json.loads(response["body"]) == {"facilities": 2}
 
 
 def test_merge_post_tags_facilities_with_their_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -42,17 +42,17 @@ def test_merge_post_tags_facilities_with_their_provider(monkeypatch: pytest.Monk
     objects = _merge_objects()
     with patch("boto3.client", return_value=fake_s3(objects, keys=[*objects])):
         module.lambda_handler({"httpMethod": "POST"}, None)
-    merged = json.loads(objects["data-centers/merge/vertices.json"])
+    merged = json.loads(objects["data-centers/merge/facilities.json"])
     assert {row["provider"] for row in merged} == {"equinix", "flexential"}
 
 
 def test_merge_post_skips_its_own_output(monkeypatch: pytest.MonkeyPatch) -> None:
-    """POST never folds the merge's own vertices file back into the union."""
+    """POST never folds the merge's own sites file back into the union."""
     module = load_handler("data-centers/merge", monkeypatch)
-    objects = {"data-centers/merge/vertices.json": json.dumps([{"provider": "stale"}]).encode()}
+    objects = {"data-centers/merge/facilities.json": json.dumps([{"provider": "stale"}]).encode()}
     with patch("boto3.client", return_value=fake_s3(objects, keys=[*objects])):
         module.lambda_handler({"httpMethod": "POST"}, None)
-    assert json.loads(objects["data-centers/merge/vertices.json"]) == []
+    assert json.loads(objects["data-centers/merge/facilities.json"]) == []
 
 
 def test_merge_post_stores_the_union(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -61,7 +61,7 @@ def test_merge_post_stores_the_union(monkeypatch: pytest.MonkeyPatch) -> None:
     module = load_handler("data-centers/merge", monkeypatch)
     with patch("boto3.client", return_value=fake_s3(objects, keys=[])):
         module.lambda_handler({"httpMethod": "POST"}, None)
-    assert "data-centers/merge/vertices.json" in objects
+    assert "data-centers/merge/facilities.json" in objects
 
 
 def test_merge_get_serves_the_union(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -69,7 +69,7 @@ def test_merge_get_serves_the_union(monkeypatch: pytest.MonkeyPatch) -> None:
     module = load_handler("data-centers/merge", monkeypatch)
     stored = json.dumps([{"provider": "equinix"}]).encode()
     with patch("boto3.client",
-               return_value=fake_s3({"data-centers/merge/vertices.json": stored})):
+               return_value=fake_s3({"data-centers/merge/facilities.json": stored})):
         response = module.lambda_handler({"path": "/x/data-centers/merge"}, None)
     assert json.loads(response["body"]) == [{"provider": "equinix"}]
 

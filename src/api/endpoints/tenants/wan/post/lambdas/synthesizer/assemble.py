@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from synthesizer.input_graph import PhysicalEdge, Vertex, haversine_miles
+from synthesizer.input_graph import FiberSegment, Site, haversine_miles
 from synthesizer.model import (
-    AccessEdge,
+    AccessPath,
     Synthesis,
     SynthesisInputs,
     SynthesisMetrics,
@@ -28,7 +28,7 @@ from synthesizer.forced import (
     forced_backbone_pairs,
     removed_backbone_pairs,
 )
-from synthesizer.graphs import path_edge_keys
+from synthesizer.graphs import path_link_keys
 from synthesizer.backbone import BackboneConstraints, BackboneMesh, backbone_mesh
 from synthesizer.ceiling import BackupPathLimit
 from synthesizer.search_plan import _SearchPlan
@@ -44,7 +44,7 @@ class _SynthesisDraft:
     synthesis; a draft built without a fiber choice behind it carries no floor and reads zero.
     """
 
-    access_edges: list[AccessEdge]
+    access_paths: list[AccessPath]
     path_uses: list[SynthesisPath]
     backbone_lower_bound_miles: float = 0.0
 
@@ -52,25 +52,25 @@ class _SynthesisDraft:
 def finalize_synthesis(
     backbone_ids: tuple[str, ...],
     draft: _SynthesisDraft,
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
 ) -> Synthesis:
-    """Compute edge sets, mileage estimate, and score for a synthesis draft."""
-    physical_edge_keys: set[tuple[str, str]] = set()
+    """Compute link sets, mileage estimate, and score for a synthesis draft."""
+    fiber_segment_keys: set[tuple[str, str]] = set()
     for path_use in draft.path_uses:
-        physical_edge_keys.update(path_edge_keys(path_use.path))
+        fiber_segment_keys.update(path_link_keys(path_use.path))
 
-    access_miles = sum(edge.distance_miles for edge in draft.access_edges)
+    access_miles = sum(link.distance_miles for link in draft.access_paths)
     physical_miles = sum(
-        physical_edges[key].distance_miles for key in physical_edge_keys
+        fiber_segments[key].distance_miles for key in fiber_segment_keys
     )
     score = access_miles + physical_miles
-    carrier_on_paths = {vertex_id for use in draft.path_uses for vertex_id in use.path}
+    carrier_on_paths = {site_id for use in draft.path_uses for site_id in use.path}
     transit_ids = tuple(sorted(carrier_on_paths - set(backbone_ids)))
     return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=transit_ids,
-        access_edges=draft.access_edges,
-        physical_edge_keys=physical_edge_keys,
+        access_paths=draft.access_paths,
+        fiber_segment_keys=fiber_segment_keys,
         path_uses=draft.path_uses,
         metrics=SynthesisMetrics(
             score, access_miles, physical_miles, draft.backbone_lower_bound_miles
@@ -78,7 +78,7 @@ def finalize_synthesis(
     )
 
 
-def nearest_pop_id(access: Vertex, carrier_pops: list[Vertex]) -> str:
+def nearest_pop_id(access: Site, carrier_pops: list[Site]) -> str:
     """Id of the Carrier PoP nearest to an access site."""
     return min(carrier_pops, key=lambda pop: haversine_miles(access, pop)).id
 
@@ -87,15 +87,15 @@ def assign_access(
     backbone_ids: tuple[str, ...],
     inputs: SynthesisInputs,
     plan: _SearchPlan,
-) -> list[AccessEdge] | None:
-    """Home every demand vertex to its nearest backbone nodes in a single pass.
+) -> list[AccessPath] | None:
+    """Home every demand site to its nearest backbone nodes in a single pass.
 
-    Each demand vertex (a unified tenant site or provider region) homes to its
+    Each demand site (a unified tenant site or provider region) homes to its
     ``plan.tuning.access_backbone_links`` nearest selected backbone nodes, ranked by
     great-circle distance, with any operator-forced access-backbone link leading its
     homes regardless of distance. The same code path serves tenant and provider demand --
-    they differ only by source kind at output time. Returns the access edges, or None
-    when the backbone is smaller than the configured number of homes (no vertex could
+    they differ only by source kind at output time. Returns the access links, or None
+    when the backbone is smaller than the configured number of homes (no site could
     reach that many distinct nodes).
     """
     links = plan.tuning.access_backbone_links
@@ -103,8 +103,8 @@ def assign_access(
     if len(backbone_set) < links:
         return None
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
-    access_edges: list[AccessEdge] = []
-    for access in inputs.access_vertices:
+    access_paths: list[AccessPath] = []
+    for access in inputs.access_sites:
         completed = [
             backbone_id
             for _distance, backbone_id in sorted(
@@ -115,14 +115,14 @@ def assign_access(
         completed = apply_forced_access_homes(
             access, completed, plan.forced_links, pop_by_id, links
         )
-        access_edges.extend(
-            AccessEdge(
+        access_paths.extend(
+            AccessPath(
                 access.id, backbone_id,
                 haversine_miles(access, pop_by_id[backbone_id]),
             )
             for backbone_id in completed
         )
-    return access_edges
+    return access_paths
 
 
 def backbone_physically_biconnectable(
@@ -132,7 +132,8 @@ def backbone_physically_biconnectable(
 
     They can iff they all share one common biconnected block of the carrier graph --
     otherwise some single city separates two of them and no routing survives its loss.
-    Being city-survivable implies segment-survivable, so this subsumes the old 2-edge gate.
+    Being city-survivable implies segment-survivable, so this subsumes the old
+    link-survivability gate.
     """
     common: frozenset[int] | None = None
     for node in backbone_ids:
@@ -185,14 +186,14 @@ def evaluate_backbone(
     backbone_ids: tuple[str, ...],
     inputs: SynthesisInputs,
     plan: _SearchPlan,
-) -> list[AccessEdge] | None:
+) -> list[AccessPath] | None:
     """Score a backbone set's feasibility and demand homing without routing paths.
 
     Returns None when the backbone nodes cannot be wired into a city-survivable physical-
     fiber mesh (a single city loss would strand one -- which also rules out a node that
     cannot reach its peers, since biconnectivity implies they are all mutually reachable),
-    or the backbone is smaller than the configured number of homes per demand vertex (so
-    ``assign_access`` cannot give each demand vertex that many distinct backbone nodes).
+    or the backbone is smaller than the configured number of homes per demand site (so
+    ``assign_access`` cannot give each demand site that many distinct backbone nodes).
     The synthesis's paths are deferred to the winning set, since they do not affect the ranking.
     """
     if not backbone_physically_biconnectable(backbone_ids, inputs):
@@ -204,7 +205,7 @@ def synthesis_paths(
     backbone_ids: tuple[str, ...],
     inputs: SynthesisInputs,
     plan: _SearchPlan,
-    physical_edges: dict[tuple[str, str], PhysicalEdge],
+    fiber_segments: dict[tuple[str, str], FiberSegment],
 ) -> BackboneMesh:
     """Draw the backbone-to-backbone paths for a synthesis, and the floor they are judged against.
 
@@ -224,7 +225,7 @@ def synthesis_paths(
         ),
         seat_cap=plan.seat_cap,
     )
-    return backbone_mesh(backbone_ids, inputs.all_distances, physical_edges, constraints)
+    return backbone_mesh(backbone_ids, inputs.all_distances, fiber_segments, constraints)
 
 
 def build_synthesis_for_backbone(
@@ -235,11 +236,11 @@ def build_synthesis_for_backbone(
     """Assemble a full two-tier synthesis for one fixed set of backbone PoPs.
 
     Returns None if a backbone node cannot reach enough peers to wire its mesh links, or
-    the backbone is too small to give each demand vertex its configured number of homes.
+    the backbone is too small to give each demand site its configured number of homes.
     """
-    access_edges = evaluate_backbone(backbone_ids, inputs, plan)
-    if access_edges is None:
+    access_paths = evaluate_backbone(backbone_ids, inputs, plan)
+    if access_paths is None:
         return None
-    mesh = synthesis_paths(backbone_ids, inputs, plan, inputs.physical_edges)
-    draft = _SynthesisDraft(access_edges, mesh.paths, mesh.lower_bound_miles)
-    return finalize_synthesis(backbone_ids, draft, inputs.physical_edges)
+    mesh = synthesis_paths(backbone_ids, inputs, plan, inputs.fiber_segments)
+    draft = _SynthesisDraft(access_paths, mesh.paths, mesh.lower_bound_miles)
+    return finalize_synthesis(backbone_ids, draft, inputs.fiber_segments)

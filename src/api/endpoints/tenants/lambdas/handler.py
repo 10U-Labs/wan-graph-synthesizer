@@ -1,7 +1,7 @@
 """Tenants endpoint: read a computed WAN and read/write a tenant's inputs.
 
     GET    /wan-graph-synthesizer/tenants                              -> [{id, label}]
-    GET    /wan-graph-synthesizer/tenants/{c}/vertices|edges           -> the WAN graph
+    GET    /wan-graph-synthesizer/tenants/{c}/sites|links           -> the WAN graph
     GET    /wan-graph-synthesizer/tenants/{c}/backbone-nodes|...        -> the WAN tiers
     GET    /wan-graph-synthesizer/tenants/{c}/backbone-links            -> the WAN mesh links
     GET    /wan-graph-synthesizer/tenants/{c}/locations|forced-backbone-nodes|... -> an input
@@ -23,8 +23,8 @@ import boto3
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 _WAN_COLLECTIONS = (
-    "vertices",
-    "edges",
+    "sites",
+    "paths",
     "backbone-nodes",
     "backbone-links",
     "tenant-nodes",
@@ -53,14 +53,14 @@ _INPUTS = frozenset({
 })
 # Tenants are enumerated by this marker document (every tenant has a label).
 _TENANT_MARKER = "label.json"
-# The vertex-list inputs are geographic rows with a known set of required fields; the
+# The site-list inputs are geographic rows with a known set of required fields; the
 # remaining config resources (forced-*, degrees, knobs, settings, label) are validated
 # only by the schema their consumers expect, so they pass through unchecked here. A row may carry
 # extra fields beyond the required set -- only tenant locations must additionally carry
 # the ``exemptfromdistanceconstraint`` column (cloud regions and off-net do not).
 _SITE_FIELDS = {"name", "municipality", "state", "country", "latitude", "longitude"}
 _LOCATION_FIELDS = _SITE_FIELDS | {"exemptfromdistanceconstraint"}
-_VERTEX_INPUT_FIELDS = {
+_SITE_INPUT_FIELDS = {
     "locations": _LOCATION_FIELDS,
     "provider-regions": _SITE_FIELDS,
     "off-net": {"municipality", "state", "country", "latitude", "longitude"},
@@ -152,7 +152,7 @@ def _put(client: Any, tenant: str, event: dict[str, Any]) -> dict[str, Any]:
     if collection not in _INPUTS:
         return _response(404, {"error": collection})
     document = json.loads(event["body"])
-    fields = _VERTEX_INPUT_FIELDS.get(collection)
+    fields = _SITE_INPUT_FIELDS.get(collection)
     if fields is not None:
         error = _validate_rows(document, fields)
         if error:
