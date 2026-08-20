@@ -48,7 +48,7 @@ def test_store_bucket_is_declared(storage_main: dict[str, object]) -> None:
 def test_store_bucket_has_the_expected_name(storage_main: dict[str, object]) -> None:
     """The store bucket carries the product's deterministic name."""
     bucket = _store(storage_main, "aws_s3_bucket")
-    assert bucket["bucket"] == "wan-graph-synthesizer-store-us-east-2"
+    assert bucket["bucket"] == "wan-synthesizer-store-us-east-2"
 
 
 @pytest.mark.parametrize("setting", [

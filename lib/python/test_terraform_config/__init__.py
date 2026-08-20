@@ -26,6 +26,7 @@ from hcl2.api import load as hcl2_load
 from repo_utils import REPO_ROOT
 
 COMMON_OUTPUTS_FILE: Path = REPO_ROOT / "lib" / "opentofu" / "common" / "outputs.tf"
+STORAGE_MAIN_FILE: Path = REPO_ROOT / "src" / "api" / "common" / "storage" / "main.tf"
 
 
 def load_tf(path: Path) -> dict[str, object]:
@@ -116,6 +117,20 @@ def lambda_handler_names() -> dict[str, str]:
     if not isinstance(raw, dict):
         return {}
     return {str(key): str(value) for key, value in raw.items()}
+
+
+def store_bucket_name() -> str:
+    """The name the storage stack declares for the product's single S3 store.
+
+    Every endpoint's Lambda is handed this name as ``STORE_BUCKET``, read off the storage
+    stack's remote state at plan time. A test that wants to know which bucket a live
+    Lambda ought to be pointed at asks here, so the answer comes from the one place the
+    name is written rather than from a literal beside the assertion.
+    """
+    bucket = find_resource(load_tf(STORAGE_MAIN_FILE), "aws_s3_bucket", "store")
+    if bucket is None:
+        raise AssertionError("aws_s3_bucket.store is not declared in the storage stack")
+    return str(cast(dict[str, object], bucket)["bucket"])
 
 
 def _string_output(name: str, fallback: str) -> str:

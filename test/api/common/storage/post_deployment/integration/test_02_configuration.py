@@ -54,6 +54,23 @@ def test_public_access_is_blocked(
     assert response["PublicAccessBlockConfiguration"][setting] is True
 
 
+def test_the_store_holds_the_product_it_is_supposed_to_hold(
+        s3_client: Any, store_bucket_name: str) -> None:
+    """Every prefix the product publishes under has at least one object in it.
+
+    A bucket renamed without its objects copied is configured exactly as this tier's
+    other tests expect and holds nothing, so this is the only assertion here that tells
+    the store apart from an empty bucket wearing its name.
+    """
+    prefixes = ("carriers/", "providers/", "tenants/")
+    empty = [
+        prefix for prefix in prefixes
+        if not s3_client.list_objects_v2(
+            Bucket=store_bucket_name, Prefix=prefix, MaxKeys=1).get("Contents")
+    ]
+    assert empty == []
+
+
 def test_build_artifacts_expire_after_fourteen_days(
         live_lifecycle_rules: dict[str, Any]) -> None:
     """The live lifecycle rule expires build artifacts after fourteen days."""

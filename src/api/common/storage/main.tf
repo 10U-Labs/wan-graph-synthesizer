@@ -8,7 +8,7 @@
 # overwrite replaces what was there rather than stacking another copy behind it.
 
 resource "aws_s3_bucket" "store" {
-  bucket = "wan-graph-synthesizer-store-us-east-2"
+  bucket = "wan-synthesizer-store-us-east-2"
 }
 
 resource "aws_s3_bucket_public_access_block" "store" {
