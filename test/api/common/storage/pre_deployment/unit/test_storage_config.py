@@ -133,9 +133,11 @@ def _prune_policy(storage_iam: dict[str, object]) -> dict[str, Any]:
     return _declared(storage_iam, "aws_iam_role_policy", "prune_store_list_delete")
 
 
-def test_the_prune_role_may_delete_from_the_store(storage_iam: dict[str, object]) -> None:
-    """Deleting is the whole of what the endpoint does, so its role may do it."""
-    assert "s3:DeleteObject" in str(_prune_policy(storage_iam)["policy"])
+@pytest.mark.parametrize("action", ["s3:DeleteObject", "s3:DeleteObjectVersion"])
+def test_the_prune_role_may_delete_from_the_store(
+        storage_iam: dict[str, object], action: str) -> None:
+    """Deleting is the whole of what the endpoint does, and it deletes by naming a version."""
+    assert action in str(_prune_policy(storage_iam)["policy"])
 
 
 @pytest.mark.parametrize("action", ["s3:PutObject", "s3:GetObject"])

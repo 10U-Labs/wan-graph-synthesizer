@@ -30,7 +30,7 @@ resource "aws_iam_role_policy" "prune_store_list_delete" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["s3:DeleteObject"]
+        Action   = ["s3:DeleteObject", "s3:DeleteObjectVersion"]
         Resource = ["${aws_s3_bucket.store.arn}/*"]
       },
       {

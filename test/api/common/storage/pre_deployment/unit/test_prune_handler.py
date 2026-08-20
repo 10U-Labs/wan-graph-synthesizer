@@ -107,6 +107,21 @@ def test_the_prune_reads_every_page_of_the_listing(prune_handler: Any) -> None:
     ]
 
 
+def test_the_prune_removes_a_key_rather_than_tombstoning_it(prune_handler: Any) -> None:
+    """Every delete names the version, so no key is left listed behind a delete marker.
+
+    Versioning on the store is suspended, so a delete naming no version writes a marker
+    over the key and the key goes on being listed. The bucket's own lifecycle rule sweeps
+    such markers, but a day later; a prune means remove.
+    """
+    named: list[str | None] = []
+    fake = fake_s3({"csps/aws/vertices.json": b""})
+    fake.delete_object = lambda **kwargs: named.append(kwargs.get("VersionId"))
+    with patch("boto3.client", return_value=fake):
+        prune_handler.lambda_handler({"httpMethod": "POST"}, None)
+    assert named == ["null"]
+
+
 def test_a_get_says_what_would_go_without_deleting_it(prune_handler: Any) -> None:
     """The read is how an operator sees the list before anything is taken out."""
     objects = _store()

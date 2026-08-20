@@ -35,6 +35,11 @@ _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "
 # API, and the per-create artifacts the store's own lifecycle rule expires after 14 days.
 _WORKING_PREFIXES = ("source/", "builds/")
 
+# The version every object in the store carries. Versioning is suspended on the bucket, so
+# there is exactly one of each key and S3 calls its version "null"; naming it on a delete
+# is what removes the object rather than writing a delete marker over it.
+_ONLY_VERSION = "null"
+
 # One set per prefix: the file names the product writes there today. A key under one of
 # these prefixes whose file name is not in its set is a collection that has been renamed
 # out from under it, and is what this endpoint is for. The three are public because they
@@ -139,11 +144,16 @@ def _prune(client: Any) -> dict[str, Any]:
     a number says nothing about whether the right things went. An empty list is the store
     already holding only what the product writes, which is what every run after the first
     should say.
+
+    Each key is deleted by naming its version, because a delete that names none writes a
+    delete marker over the key instead of removing it and the key goes on being listed
+    behind that marker. The store's own lifecycle rule takes such markers away eventually,
+    but eventually is a day, and a prune means remove.
     """
     bucket = os.environ["STORE_BUCKET"]
     deleted = _stale_keys(client, bucket)
     for key in deleted:
-        client.delete_object(Bucket=bucket, Key=key)
+        client.delete_object(Bucket=bucket, Key=key, VersionId=_ONLY_VERSION)
     return {"deleted": deleted}
 
 
