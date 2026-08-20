@@ -60,6 +60,7 @@ jobs:
         run: >-
           jscpd --pattern "**/*.py" --threshold 0 --reporters console
           lib/python/
+          src/api/common/storage/lambdas/
   copy-paste-tests:
     name: copy-paste-tests
     runs-on: ubuntu-latest
@@ -107,6 +108,7 @@ jobs:
           python3 -m mypy --strict --explicit-package-bases
           --ignore-missing-imports
           lib/python/
+          src/api/common/storage/lambdas/
   mypy-tests:
     name: mypy-tests
     runs-on: ubuntu-latest
@@ -196,6 +198,7 @@ jobs:
           PYTHONPATH=lib/python:scripts:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint
           lib/python/
+          src/api/common/storage/lambdas/
           --fail-on=C,R,W --fail-under=10.0
   pylint-tests:
     name: pylint-tests
@@ -345,17 +348,19 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
-        run: pip install boto3 boto3-stubs pytest 'python-hcl2<8'
-      # This stack is OpenTofu and holds no Python source, so this job gates no coverage.
-      # Every gate it used to carry was over a shared module under lib/python/, and the
-      # gates went to test-repo-libraries with the tests that earn them.
+        run: pip install boto3 boto3-stubs pytest pytest-cov 'python-hcl2<8'
+      # The stack's own Python source is the prune handler, and this job gates it at 100%.
+      # The gates over the shared modules under lib/python/ are not here: they went to
+      # test-repo-libraries with the tests that earn them.
       - name: Run unit tests
         run: >-
-          PYTHONPATH=.:lib/python
+          PYTHONPATH=.:lib/python:src/api/common/storage/lambdas
           python3 -m pytest
           test/api/common/storage/pre_deployment/unit/
           --import-mode=importlib --confcutdir=test
           --verbose --pythonwarnings=error
+          --cov=src/api/common/storage/lambdas --cov-branch
+          --cov-report=term-missing --cov-fail-under=100
   validate-stack:
     name: validate-stack
     runs-on: ubuntu-latest
@@ -375,6 +380,10 @@ on:
     branches: [main]
     paths:
       - src/api/common/storage/**
+      # The prune endpoint's idea of what the store legitimately holds is held against the
+      # routes this file declares, by the contract test in pre_deployment/integration/, so
+      # a route added or renamed here has to be able to start this workflow.
+      - src/www/api/openapi.json
       - lib/opentofu/common/**
       - lib/python/**
       - test/api/common/storage/**

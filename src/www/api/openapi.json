@@ -83,6 +83,26 @@
         }
       }
     },
+    "/wan-synthesizer/store/prune": {
+      "get": {
+        "summary": "The objects stored under a name the product no longer writes.",
+        "responses": { "200": { "description": "The stale keys, deleting nothing." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${PruneHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      },
+      "post": {
+        "summary": "Delete every object stored under a name the product no longer writes.",
+        "responses": { "200": { "description": "The keys that went." } },
+        "x-amazon-apigateway-integration": {
+          "uri": "${PruneHandlerArn}",
+          "httpMethod": "POST",
+          "type": "aws_proxy"
+        }
+      }
+    },
     "/wan-synthesizer/carriers/merge": {
       "post": {
         "summary": "Merge all carriers onto one map (fast).",

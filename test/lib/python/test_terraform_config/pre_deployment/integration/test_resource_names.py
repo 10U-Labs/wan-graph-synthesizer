@@ -24,17 +24,22 @@ from test_terraform_config import lambda_handler_names
 
 PREFIX = "wan-synthesizer-"
 ROUTING_MAIN = REPO_ROOT / "src" / "api" / "common" / "routing" / "main.tf"
-ENDPOINTS = REPO_ROOT / "src" / "api" / "endpoints"
+API = REPO_ROOT / "src" / "api"
 
 _ROLE_NAME = re.compile(r'^\s*(?:role_)?name\s*=\s*"(wan-[a-z-]+)"', re.M)
 _INTEGRATION = re.compile(r"local\.integration\.(\w+)")
 
 
 def _declared_role_names() -> set[str]:
-    """Every IAM role name written out across the endpoint stacks."""
+    """Every IAM role name written out across the stacks under ``src/api``.
+
+    The whole of ``src/api`` rather than its ``endpoints`` half, because a role is not
+    only ever an endpoint's: the store's own prune handler holds the one role in the
+    product that may delete from the bucket, and it is declared beside the bucket.
+    """
     return {
         match.group(1)
-        for path in sorted(ENDPOINTS.rglob("*.tf"))
+        for path in sorted(API.rglob("*.tf"))
         for match in _ROLE_NAME.finditer(path.read_text(encoding="utf-8"))
     }
 
@@ -45,8 +50,8 @@ def test_every_handler_function_is_named_after_the_repository() -> None:
     assert {name for name in names if not name.startswith(PREFIX)} == set()
 
 
-def test_every_role_the_endpoints_declare_is_named_after_the_repository() -> None:
-    """Every IAM role and layer name the endpoint stacks write out carries the prefix."""
+def test_every_role_the_stacks_declare_is_named_after_the_repository() -> None:
+    """Every IAM role and layer name the stacks under src/api write out carries the prefix."""
     declared = _declared_role_names()
     assert {name for name in declared if not name.startswith(PREFIX)} == set()
 

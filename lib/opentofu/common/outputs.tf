@@ -25,6 +25,7 @@ output "lambda_handler_names" {
     providers = "wan-synthesizer-providers"
     tenants   = "wan-synthesizer-tenants"
     merge     = "wan-synthesizer-merge"
+    prune     = "wan-synthesizer-prune"
     wan       = "wan-synthesizer-wan"
   }
 }

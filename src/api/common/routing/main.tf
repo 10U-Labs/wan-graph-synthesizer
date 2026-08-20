@@ -28,6 +28,7 @@ locals {
     ProvidersHandlerArn = local.integration.providers
     TenantsHandlerArn   = local.integration.tenants
     MergeHandlerArn     = local.integration.merge
+    PruneHandlerArn     = local.integration.prune
     WanHandlerArn       = local.integration.wan
   })
   spec_hash = substr(md5(local.openapi_spec), 0, 8)

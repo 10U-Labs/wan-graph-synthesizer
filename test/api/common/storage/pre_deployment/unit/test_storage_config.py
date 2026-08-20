@@ -2,7 +2,8 @@
 
 Parse the stack's ``.tf`` with hcl2 and assert the S3 store is declared private,
 unversioned, and set to expire both build artifacts and the delete markers a
-delete leaves behind. No AWS calls, no apply.
+delete leaves behind, and that the prune handler beside it may delete from the store and
+do nothing else. No AWS calls, no apply.
 
 Every lifecycle rule is reached by its ``id``, never by its position, so adding a
 rule cannot silently move which rule a test is describing.
@@ -21,6 +22,14 @@ def _store(storage_main: dict[str, object], resource_type: str) -> dict[str, Any
     body = find_resource(storage_main, resource_type, "store")
     if body is None:
         raise AssertionError(f"{resource_type}.store is not declared in main.tf")
+    return body
+
+
+def _declared(document: dict[str, object], resource_type: str, name: str) -> dict[str, Any]:
+    """Return the body of one declared resource, or fail naming what is missing."""
+    body = find_resource(document, resource_type, name)
+    if body is None:
+        raise AssertionError(f"{resource_type}.{name} is not declared")
     return body
 
 
@@ -106,3 +115,31 @@ def test_delete_marker_rule_covers_every_prefix(
         storage_main: dict[str, object]) -> None:
     """The delete-marker rule is scoped to the whole store, not one prefix."""
     assert _filter_of(_rule(storage_main, "expire-delete-markers")) == {}
+
+
+def test_the_prune_handler_is_declared(storage_main: dict[str, object]) -> None:
+    """The stack declares the Lambda that takes stale objects out of the store."""
+    assert find_resource(storage_main, "aws_lambda_function", "prune") is not None
+
+
+def test_the_prune_handler_is_handed_the_store_bucket(storage_main: dict[str, object]) -> None:
+    """It prunes the bucket this stack declares, not a name written out a second time."""
+    handler = _declared(storage_main, "aws_lambda_function", "prune")
+    assert handler["environment"][0]["variables"]["STORE_BUCKET"] == "${aws_s3_bucket.store.id}"
+
+
+def _prune_policy(storage_iam: dict[str, object]) -> dict[str, Any]:
+    """The inline policy the prune role carries."""
+    return _declared(storage_iam, "aws_iam_role_policy", "prune_store_list_delete")
+
+
+def test_the_prune_role_may_delete_from_the_store(storage_iam: dict[str, object]) -> None:
+    """Deleting is the whole of what the endpoint does, so its role may do it."""
+    assert "s3:DeleteObject" in str(_prune_policy(storage_iam)["policy"])
+
+
+@pytest.mark.parametrize("action", ["s3:PutObject", "s3:GetObject"])
+def test_the_prune_role_may_do_nothing_else_to_the_store(
+        storage_iam: dict[str, object], action: str) -> None:
+    """A role that may delete has no business reading or replacing what it did not delete."""
+    assert action not in str(_prune_policy(storage_iam)["policy"])

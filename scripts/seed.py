@@ -10,7 +10,10 @@ off-net candidates, and per-concern config resources. The tenant configs in ``et
 the roster, so a tenant the API still lists once they have all been pushed is one git no
 longer declares and is deleted. Writes only store inputs -- they trigger
 nothing -- so the seed then explicitly rebuilds the merged carriers
-(``POST carriers/merge``) and each tenant's WAN (``POST tenants/{t}/wan``).
+(``POST carriers/merge``) and each tenant's WAN (``POST tenants/{t}/wan``). Renaming a
+collection leaves its old object where it was, so the seed also asks the store to take
+out everything held under a name the product no longer writes
+(``POST store/prune``).
 
 Usage: python scripts/seed.py [api_base_url]
 """
@@ -143,6 +146,11 @@ def _post(api: str, path: str) -> None:
     _send(api, path, "POST", b"")
 
 
+def _post_json(api: str, path: str) -> Any:
+    """POST to an operation and read its JSON answer, raising on a non-2xx response."""
+    return json.loads(_send(api, path, "POST", b""))
+
+
 def _get(api: str, path: str) -> Any:
     """GET a JSON document from the API, raising on a non-2xx response."""
     return json.loads(_send(api, path, "GET", None))
@@ -259,6 +267,23 @@ def prune_tenants(api: str, tenants: list[str]) -> None:
         _delete(api, f"tenants/{tenant}")
 
 
+def prune_store(api: str) -> None:
+    """Take the objects nothing writes any more out of the store, and name what went.
+
+    Renaming a collection writes the new key and leaves the old one behind, and a leftover
+    is not inert: ``carriers/lumen/vertices.json`` was merged in as fiber and failed every
+    tenant's build on 2026-08-20 (GitHub issue #102). The push above has just written
+    every collection the product does write, so anything else the store is holding is a
+    collection that has been renamed out from under it.
+
+    The keys are printed rather than counted, because this runs in the ``seeding`` job's
+    log and somebody reading it back needs to see what went, not how much.
+    """
+    print("store: pruning collections nothing writes any more", flush=True)
+    for key in _post_json(api, "store/prune")["deleted"]:
+        print(f"  deleted {key}", flush=True)
+
+
 def build_merged_carriers(api: str) -> None:
     """Rebuild the merged carriers from the carriers just pushed."""
     print("merge: rebuilding the merged carriers", flush=True)
@@ -273,13 +298,14 @@ def build_tenants(api: str, tenants: list[str]) -> None:
 
 
 def main() -> None:
-    """Seed inputs, prune dropped tenants, then rebuild the merged carriers and each WAN."""
+    """Seed inputs, prune what git dropped, then rebuild the merged carriers and each WAN."""
     api = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_API
     push_carriers(api)
     build_merged_carriers(api)
     push_providers(api)
     tenants = push_tenants(api)
     prune_tenants(api, tenants)
+    prune_store(api)
     build_tenants(api, tenants)
 
 

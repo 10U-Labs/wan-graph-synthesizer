@@ -27,6 +27,7 @@ from seed import (
     build_merged_carriers,
     build_tenants,
     main,
+    prune_store,
     prune_tenants,
     push_carriers,
     push_providers,
@@ -644,6 +645,42 @@ def test_build_merged_carriers_posts_the_merge(post_recorder: CallRecorder) -> N
     assert post_recorder.calls == [("http://api", "carriers/merge")]
 
 
+def _prune_answering(
+        monkeypatch: pytest.MonkeyPatch, deleted: list[str]) -> list[tuple[str, str]]:
+    """Have the prune endpoint answer with ``deleted``; return the calls it was sent."""
+    sent: list[tuple[str, str]] = []
+
+    def _answer(api: str, path: str) -> dict[str, list[str]]:
+        sent.append((api, path))
+        return {"deleted": deleted}
+
+    monkeypatch.setattr(seed, "_post_json", _answer)
+    return sent
+
+
+def test_prune_store_posts_the_prune(monkeypatch: pytest.MonkeyPatch) -> None:
+    """prune_store POSTs the store prune."""
+    sent = _prune_answering(monkeypatch, [])
+    prune_store("http://api")
+    assert sent == [("http://api", "store/prune")]
+
+
+def test_prune_store_names_every_key_that_went(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """Somebody reading the seeding job's log sees what went, not how much."""
+    _prune_answering(monkeypatch, ["csps/aws/vertices.json"])
+    prune_store("http://api")
+    assert "deleted csps/aws/vertices.json" in capsys.readouterr().out
+
+
+def test_prune_store_names_nothing_when_the_store_is_already_clean(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """Every run after the first has nothing to take out and says nothing went."""
+    _prune_answering(monkeypatch, [])
+    prune_store("http://api")
+    assert "deleted " not in capsys.readouterr().out
+
+
 def test_build_tenants_posts_a_wan_build_for_each(post_recorder: CallRecorder) -> None:
     """build_tenants POSTs a WAN build for every tenant id."""
     build_tenants("http://api", ["f-35", "minuteman"])
@@ -674,6 +711,8 @@ def _run_main(
         seed, "prune_tenants",
         lambda _api, tenants: calls.append(("prune", ",".join(tenants))))
     monkeypatch.setattr(
+        seed, "prune_store", lambda api: calls.append(("prune-store", api)))
+    monkeypatch.setattr(
         seed, "build_tenants", lambda api, _tenants: calls.append(("build", api)))
     main()
     return calls
@@ -693,7 +732,7 @@ def test_main_seeds_inputs_then_triggers_builds_in_order(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """main seeds carriers, merges them, seeds providers and tenants, then builds."""
     assert [name for name, _ in _run_main(monkeypatch, ["seed"])] == [
-        "carriers", "merge", "providers", "tenants", "prune", "build"]
+        "carriers", "merge", "providers", "tenants", "prune", "prune-store", "build"]
 
 
 def test_main_prunes_against_the_pushed_tenant_ids(
