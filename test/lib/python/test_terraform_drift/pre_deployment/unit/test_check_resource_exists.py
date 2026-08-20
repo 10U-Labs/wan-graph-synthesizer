@@ -27,7 +27,7 @@ from botocore.exceptions import ClientError
 from test_terraform_config import TEST_AWS_REGION
 from test_terraform_drift import RESOURCE_CHECKERS, RESOURCE_TO_CLIENT, check_resource_exists
 
-_NAME = "wan-graph-synthesizer-carriers"
+_NAME = "wan-synthesizer-carriers"
 
 
 class _Missing(Exception):

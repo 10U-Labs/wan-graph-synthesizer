@@ -1,4 +1,4 @@
-# Notes for Claude sessions in wan-graph-synthesizer
+# Notes for Claude sessions in wan-synthesizer
 
 `CLAUDE.md` at the repository root carries the standing conventions in
 short form and is read at the start of every session. These files carry

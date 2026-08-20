@@ -17,10 +17,6 @@ output "state_bucket" {
   value       = "10ulabs-terraform-state-us-east-2"
 }
 
-output "github_repo_full" {
-  description = "owner/name of this repository (for resource tags)."
-  value       = "10U-Labs/wan-graph-synthesizer"
-}
 
 output "lambda_handler_names" {
   description = "Deterministic Lambda function names, one per REST resource."

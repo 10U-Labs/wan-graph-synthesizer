@@ -20,7 +20,7 @@ def _wan(monkeypatch: pytest.MonkeyPatch) -> Any:
     return load_handler(
         "tenants/wan",
         monkeypatch,
-        SYNTHESIZER_FUNCTION_NAME="wan-graph-synthesizer-wan-synthesizer",
+        SYNTHESIZER_FUNCTION_NAME="wan-synthesizer-wan-synthesizer",
     )
 
 
@@ -50,7 +50,7 @@ def test_wan_post_invokes_the_named_synthesizer(monkeypatch: pytest.MonkeyPatch)
     event = {"httpMethod": "POST", "pathParameters": {"tenant": "f-35"}}
     with patch("boto3.client", side_effect=write_clients({}, invocations)):
         module.lambda_handler(event, None)
-    assert invocations[0]["FunctionName"] == "wan-graph-synthesizer-wan-synthesizer"
+    assert invocations[0]["FunctionName"] == "wan-synthesizer-wan-synthesizer"
 
 
 def test_wan_post_invokes_the_synthesizer_asynchronously(monkeypatch: pytest.MonkeyPatch) -> None:

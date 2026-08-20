@@ -40,9 +40,9 @@ def test_further_environment_a_case_needs_is_set_too(monkeypatch: pytest.MonkeyP
     """The WAN dispatcher reads the function it invokes out of its own environment."""
     load_handler(
         "tenants/wan", monkeypatch,
-        SYNTHESIZER_FUNCTION_NAME="wan-graph-synthesizer-wan-synthesizer",
+        SYNTHESIZER_FUNCTION_NAME="wan-synthesizer-wan-synthesizer",
     )
-    assert os.environ["SYNTHESIZER_FUNCTION_NAME"] == "wan-graph-synthesizer-wan-synthesizer"
+    assert os.environ["SYNTHESIZER_FUNCTION_NAME"] == "wan-synthesizer-wan-synthesizer"
 
 
 def test_the_handler_starts_with_no_client_from_an_earlier_case(

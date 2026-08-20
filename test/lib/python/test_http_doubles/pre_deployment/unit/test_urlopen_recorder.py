@@ -14,7 +14,7 @@ import urllib.request
 
 from test_http_doubles import EMPTY_LISTING, UrlopenRecorder
 
-_BASE = "https://api.example.test/wan-graph-synthesizer"
+_BASE = "https://api.example.test/wan-synthesizer"
 
 
 def _request(url: str) -> urllib.request.Request:

@@ -1,4 +1,4 @@
-"""Seed the wan-graph-synthesizer API from the git-authored data/ + etc/ inputs.
+"""Seed the wan-synthesizer API from the git-authored data/ + etc/ inputs.
 
 A plain reader-and-sender: read each cleaned CSV into simple rows (city, state,
 latitude, longitude, plus a name where the source has one) and PUT them to the matching

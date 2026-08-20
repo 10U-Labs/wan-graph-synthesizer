@@ -18,7 +18,7 @@ from typing import Any
 
 from test_fixtures.aws import get_log_group_info
 
-_GROUP = "/aws/lambda/wan-graph-synthesizer-carriers"
+_GROUP = "/aws/lambda/wan-synthesizer-carriers"
 
 
 def _logs(*groups: dict[str, Any]) -> Any:

@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "wan-graph-synthesizer",
+    "title": "wan-synthesizer",
     "description": "Graphs as REST resources: carriers, providers, the carrier merge (substrate), and tenants' WANs. Inputs are writable; computed graphs are read-only. One JSON format throughout.",
     "version": "1.0.0"
   },

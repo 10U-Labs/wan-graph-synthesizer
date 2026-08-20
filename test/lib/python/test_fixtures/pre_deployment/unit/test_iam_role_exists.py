@@ -33,7 +33,7 @@ def _iam(*known: str) -> Any:
     )
 
 
-_ROLE = "wan-graph-synthesizer-wan-role"
+_ROLE = "wan-synthesizer-wan-lambda"
 
 
 def test_a_role_iam_answers_for_reads_present() -> None:
@@ -48,4 +48,4 @@ def test_a_role_iam_does_not_hold_reads_absent() -> None:
 
 def test_a_role_under_another_name_is_not_the_role_asked_for() -> None:
     """The name is the whole of the question, so a near miss is a miss."""
-    assert iam_role_exists(_iam(_ROLE), "wan-graph-synthesizer") is False
+    assert iam_role_exists(_iam(_ROLE), "wan-synthesizer") is False

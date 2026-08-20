@@ -1,4 +1,4 @@
-# Working in wan-graph-synthesizer
+# Working in wan-synthesizer
 
 These are the standing conventions for working in this repository. Each
 section links the longer write-up behind it, one note per topic under
