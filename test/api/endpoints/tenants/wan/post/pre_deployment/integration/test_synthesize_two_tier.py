@@ -108,8 +108,10 @@ def test_forced_pop_is_placed_in_the_backbone() -> None:
 def test_forced_roadm_is_seated_in_the_backbone() -> None:
     """A pinned ROADM is honored as a backbone node.
 
-    ROADMs are eligible like any other point, and a force always wins regardless; this
-    is the mechanism DAF's Great Falls, MT and Minot, ND pins rely on.
+    The force is what seats it, whatever kind the point is. The operator's own pins are
+    all forced PoPs -- `Great Falls, MT` and `Minot, ND` under `backbone.forced.nodes` in
+    `etc/daf.yml` are carrier rows like any other -- so the ROADM here is made by
+    `ring_inputs_with_roadm`, which recasts one vertex of the in-memory ring.
     """
     assert "P3" in FORCED_ROADM.synthesis.backbone_ids
 
