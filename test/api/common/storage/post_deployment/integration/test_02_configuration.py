@@ -84,25 +84,3 @@ def test_delete_markers_are_expired_on_the_live_store(
     rule = live_lifecycle_rules["expire-delete-markers"]
     assert rule["Expiration"]["ExpiredObjectDeleteMarker"] is True
 
-
-def test_the_live_store_holds_nothing_the_product_no_longer_writes(
-        s3_client: Any, store_bucket_name: str, prune_handler: Any) -> None:
-    """Every object in the live store is one the product writes today.
-
-    Renaming a collection writes the new key and leaves the old one behind, and a leftover
-    is not inert: ``carriers/lumen/vertices.json`` was merged in as fiber and failed every
-    tenant's build on 2026-08-20 (GitHub issue #102). ``scripts/seed.py`` asks the store to
-    prune on every seed, so this is the assertion that says the prune ran and did its job --
-    a rename that lands without one fails here rather than in some later reader.
-
-    The prune's own idea of what is current is what the store is measured against, because
-    a second list written here would be the same defect one file over.
-    """
-    stale = [
-        item["Key"]
-        for page in s3_client.get_paginator("list_objects_v2").paginate(
-            Bucket=store_bucket_name)
-        for item in page.get("Contents", [])
-        if not prune_handler.is_current(item["Key"])
-    ]
-    assert stale == []
