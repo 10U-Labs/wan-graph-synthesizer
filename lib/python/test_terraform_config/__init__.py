@@ -5,6 +5,10 @@ as literal ``output`` blocks in ``lib/opentofu/common/outputs.tf``. It parses
 those blocks via the ``hcl2`` library so tests never hardcode an account id,
 region, bucket, or Lambda function name.
 
+One value is not an output: ``store_bucket_name`` reads the store's name off
+``aws_s3_bucket.store`` in the storage stack, because that is where the product's
+single bucket is declared and where a rename of it lands.
+
 Example usage::
 
     from test_terraform_config import common_outputs, TEST_AWS_REGION
