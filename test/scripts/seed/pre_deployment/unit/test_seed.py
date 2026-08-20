@@ -21,6 +21,7 @@ from seed import (
     _mapping_rows,
     _off_net_rows,
     _post,
+    _post_json,
     _put,
     _rows,
     _slug,
@@ -365,6 +366,17 @@ def test_post_prints_the_response_status(capsys: pytest.CaptureFixture[str]) -> 
     """_post prints the response status."""
     _post("http://api", "carriers/merge")
     assert "-> 200" in capsys.readouterr().out
+
+
+def test_post_json_decodes_the_json_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_post_json returns the operation's answer decoded from JSON.
+
+    The one POST whose answer is read rather than discarded: the store's prune names the
+    keys it took out, and the seed prints them into the seeding job's log.
+    """
+    monkeypatch.setattr(
+        urllib.request, "urlopen", UrlopenRecorder(body=b'{"deleted": ["csps/a.json"]}'))
+    assert _post_json("http://api", "store/prune") == {"deleted": ["csps/a.json"]}
 
 
 def test_get_uses_the_get_method(urlopen_recorder: UrlopenRecorder) -> None:
