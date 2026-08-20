@@ -1,7 +1,7 @@
 terraform {
   backend "s3" {
-    bucket = "10ulabs-terraform-state-us-east-2"
-    key          = "wan-graph-synthesizer/endpoints/tenants/wan/post/terraform.tfstate"
+    bucket       = "10ulabs-terraform-state-us-east-2"
+    key          = "wan-synthesizer/endpoints/tenants/wan/post/terraform.tfstate"
     region       = "us-east-2"
     encrypt      = true
     use_lockfile = true

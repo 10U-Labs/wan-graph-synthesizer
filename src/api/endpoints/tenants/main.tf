@@ -25,7 +25,7 @@ data "terraform_remote_state" "routing" {
 
   config = {
     bucket = module.common.state_bucket
-    key    = "wan-graph-synthesizer/common/routing/terraform.tfstate"
+    key    = "wan-synthesizer/common/routing/terraform.tfstate"
     region = module.common.aws_region
   }
 }
@@ -35,7 +35,7 @@ data "terraform_remote_state" "storage" {
 
   config = {
     bucket = module.common.state_bucket
-    key    = "wan-graph-synthesizer/common/storage/terraform.tfstate"
+    key    = "wan-synthesizer/common/storage/terraform.tfstate"
     region = module.common.aws_region
   }
 }
