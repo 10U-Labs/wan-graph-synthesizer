@@ -104,8 +104,7 @@ def test_delete_markers_are_expired_on_the_live_store(
 def _lambda_bodies(document: dict[str, Any]) -> Iterator[dict[str, Any]]:
     """Every ``aws_lambda_function`` block a parsed ``.tf`` document declares."""
     for block in document.get("resource", []):
-        for body in block.get("aws_lambda_function", {}).values():
-            yield body
+        yield from block.get("aws_lambda_function", {}).values()
 
 
 def _resolved(expression: str, local_values: dict[str, str]) -> str:

@@ -349,8 +349,13 @@ jobs:
         with:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+      # --upgrade is here for boto3. The runner ships 1.34.46 in dist-packages, which
+      # satisfies a bare `pip install boto3` and calls datetime.utcnow(); the tests below
+      # run with --pythonwarnings=error, so that call's DeprecationWarning fails the one
+      # test in this job that reads AWS. pip installs into ~/.local, which comes first on
+      # sys.path, so the older copy is shadowed rather than uninstalled.
       - name: Install tools
-        run: pip install boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
       # Each module is named in a --cov of its own rather than lib/python covered as a
       # whole, so the next module to arrive without tests fails here instead of being
       # carried by its neighbours' numbers (GitHub issue #52).
