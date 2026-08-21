@@ -18,10 +18,10 @@ exactly
 how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
 200-mile target.
 
-The measurement itself is not here. Eight of the fourteen questions below are answered by
-recomputing a number from the published collections rather than by reading one back, and
-that recomputation lives in lib/python/test_published_syntheses/, where a unit tier can hold
-it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
+The measurement itself is not here. Nine of the seventeen questions below are answered by
+recomputing a number from the published collections, or from the carrier files git holds,
+rather than by reading one back, and that recomputation lives in
+lib/python/test_published_syntheses/, where a unit tier can hold it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
 broken one depending on which way its error runs, and this tier has no second source of the
 answer with which to notice; leaving it here left it graded only by the deployment it
 exists to grade (GitHub issue #50). What that module does not do is measure through
@@ -52,6 +52,7 @@ from test_published_syntheses import (
     overbuilt_pairs,
     overrun_links,
     removable_paths,
+    sellable_ways_out,
     worst_haul,
 )
 
@@ -425,24 +426,50 @@ def test_no_published_network_runs_fewer_miles_than_the_floor_it_publishes(
     ) == {}
 
 
+def _city_names() -> dict[tuple[str, str], str]:
+    """Every city the carriers have a point in, under the name a published hop carries.
+
+    A fiber row names its two ends by municipality and state, and a published hop names a
+    city the way an operator pins one: ``City, ST`` for a place in the United States and
+    ``City, Country`` everywhere else. The country is in ``data/pops/*.csv`` and not in the
+    fiber files, so the two are read together here -- the same join
+    ``synthesizer.codec.load_merged_carriers`` makes when it resolves a fiber row against
+    the points the carriers hold.
+    """
+    named: dict[tuple[str, str], str] = {}
+    for path in sorted((seed.DATA / "pops").glob("*.csv")):
+        with path.open(encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                region = (
+                    row["State"] if row["Country"] == "United States" else row["Country"]
+                )
+                named[(row["Municipality"], row["State"])] = (
+                    f"{row['Municipality']}, {region}"
+                )
+    return named
+
+
 def _fiber_by_carrier() -> dict[str, set[frozenset[str]]]:
     """Which city pairs each carrier has fiber between, as the published links spell them.
 
-    Read from ``data/fiber_segments/*.csv``, the files ``scripts/seed.py`` pushes, and keyed
-    by ``City, ST`` because that is the name the synthesizer publishes a hop under. A pair
-    is order-independent: a length of fiber is the same fiber whichever way a path runs
-    over it.
+    Read from ``data/fiber_segments/*.csv``, the files ``scripts/seed.py`` pushes, and
+    keyed by the name a published hop carries. A pair is order-independent: a length of
+    fiber is the same fiber whichever way a path runs over it.
+
+    A row naming a city no carrier has a point in is left out, which is what the build does
+    with it too: such a row resolves against nothing and never reaches the merged map.
     """
+    named = _city_names()
     held: dict[str, set[frozenset[str]]] = {}
     for path in sorted((seed.DATA / "fiber_segments").glob("*.csv")):
+        pairs: set[frozenset[str]] = set()
         with path.open(encoding="utf-8") as handle:
-            held[path.stem] = {
-                frozenset({
-                    f"{row['A_Municipality']}, {row['A_State']}",
-                    f"{row['Z_Municipality']}, {row['Z_State']}",
-                })
-                for row in csv.DictReader(handle)
-            }
+            for row in csv.DictReader(handle):
+                near = named.get((row["A_Municipality"], row["A_State"]))
+                far = named.get((row["Z_Municipality"], row["Z_State"]))
+                if near and far:
+                    pairs.add(frozenset({near, far}))
+        held[path.stem] = pairs
     return held
 
 
@@ -517,3 +544,92 @@ def test_every_published_path_over_a_carriers_fiber_names_that_carrier(
     only the paths crossing fiber some carrier does hold are asked.
     """
     assert not _paths_naming_no_carrier(delivered_syntheses)
+
+
+def _tenants_fiber(synthesis: dict[str, Any]) -> dict[str, set[frozenset[str]]]:
+    """The fiber each carrier could sell this tenant a path over, as city pairs.
+
+    Every carrier's own file, plus the synthetic lateral fiber the operator lays into a
+    fabricated site. That fiber is nobody's, so every carrier's path may run over it, which
+    is the rule ``synthesizer.graphs.adjacency_by_carrier`` applies to a segment naming no
+    carrier. It is read off the tenant's own published links, since the carrier files
+    record none of it.
+    """
+    held = _fiber_by_carrier()
+    anybody = _anybodys_fiber(held)
+    laid = {
+        hop for link in synthesis["links"] for hop in _hops(link) if hop not in anybody
+    }
+    return {carrier: pairs | laid for carrier, pairs in held.items()}
+
+
+def _cities_with_fiber(held: dict[str, set[frozenset[str]]]) -> set[str]:
+    """Every city some carrier's fiber reaches, whoever it is."""
+    return {city for pair in _anybodys_fiber(held) for city in pair}
+
+
+def _paths_one_peer_may_end(synthesis: dict[str, Any]) -> int:
+    """How many of a site's ways out one peer may end, given the seats the config allows.
+
+    One wherever the config allows peers enough to reach instead, and above one where it
+    does not: a backbone capped at two seats has one peer to reach, so a tenant asking for
+    two ways out can only be answered by two paths to it. This is
+    ``synthesizer.ceiling.paths_per_peer`` worked out from the tenant's own config rather
+    than read off the build.
+    """
+    peers = synthesis["seat_cap"] - 1
+    asked = synthesis["number_of_diverse_paths"]
+    return max(1, -(-asked // peers)) if peers > 0 else 1
+
+
+def _overstated_ceilings(syntheses: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Per tenant, every published ceiling above what its carriers could be asked to quote.
+
+    A site the carriers' fiber does not reach at all is left out rather than reported at
+    nothing: no file records the fiber it stands on, so there is nothing out here to hold
+    its ceiling against.
+    """
+    found: dict[str, list[str]] = {}
+    for synthesis in syntheses:
+        held = _tenants_fiber(synthesis)
+        reached = _cities_with_fiber(held)
+        cities = _published_cities(synthesis)
+        per_peer = _paths_one_peer_may_end(synthesis)
+        for entry in synthesis["status"].get("diverse_paths", {}).get("ceilings", []):
+            city = str(entry["name"])
+            if city not in reached:
+                continue
+            sellable = sellable_ways_out(
+                held, city, frozenset(cities - {city}), per_peer
+            )
+            if int(entry["ceiling"]) > sellable:
+                found.setdefault(synthesis["tenant"], []).append(
+                    f"{city} at {entry['ceiling']} against {sellable}"
+                )
+    return found
+
+
+def test_no_published_networks_ceiling_is_higher_than_the_paths_its_carriers_can_sell(
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    """Every ceiling a build published is one its carriers could between them be asked to quote.
+
+    A ceiling is what a site could hold, and every target the build holds a site to is the
+    smaller of that and the tenant's number, so a ceiling too high asks a site for a way out
+    nobody sells and prices the floor beside it for one too. Yurop published 8,844.892 miles
+    against a floor of 9,141.641 it had already beaten, because Boston, MA was counted for
+    two ways out where Zayo, Lumen and Cogent hold one apiece and only Zayo's reaches
+    anywhere else Yurop pins (GitHub issue #111).
+
+    This is the assertion that names the figure rather than the network. The two mileages
+    the tier already holds against each other both come out of the same build, so a
+    disagreement between them says only that one of the two is wrong; recomputing the
+    ceilings from ``data/fiber_segments/*.csv`` and ``data/pops/*.csv`` one carrier at a
+    time is a second source, and it says which.
+
+    Recomputed generously on purpose: each carrier is asked on its own and the answers are
+    added, though two carriers' answers may cross the same city and a city carrying two
+    ways out is one way out the moment it goes. What is being asked is whether a published
+    ceiling is above anything anybody could sell, so the direction that errs leaves a sound
+    ceiling passing rather than failing a healthy network.
+    """
+    assert not _overstated_ceilings(delivered_syntheses)

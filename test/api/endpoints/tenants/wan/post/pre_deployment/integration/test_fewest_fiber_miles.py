@@ -29,6 +29,18 @@ relaxation, and publishes that relaxation's own answer as the floor under the wh
 -- no synthesis meeting the same requirements runs fewer miles than that. The synthesis it
 produces is at most twice the floor. An implementation that has lost the guarantee through a
 defect fails here, which is a thing an approximation cannot otherwise report about itself.
+
+A third graph carries the owners. Neither of the two above says who has fiber where, and a
+segment naming no carrier is one every carrier's path may run over, so on both of them what
+a site can be sold and what its fiber alone could carry are the same number by construction.
+The third is a ring of four cities, two of them seats, whose way round through ``q`` is half
+Zayo's and half Lumen's -- a way round nobody quotes, since a path is ordered from one
+carrier end to end. Each seat therefore holds one way out and not the two the ring's shape
+suggests, and a floor priced for two would sit above the fiber the synthesis actually
+orders. That is what Yurop published: 8,844.892 miles ordered against a floor of 9,141.641
+it had already beaten, because Boston, MA was priced for a second way out no carrier sells
+(GitHub issue #111).
+
 """
 
 from __future__ import annotations
@@ -157,3 +169,58 @@ def test_that_synthesis_is_the_same_synthesis_when_every_pass_of_its_search_give
     """
     monkeypatch.setattr(linear_program, "_SECONDS_A_PASS_MAY_RUN", 0.0)
     assert _many_pass_artifacts().synthesis.metrics.physical_miles == fixtures.MANY_PASS_MILES
+
+
+# A ring of four cities with two seats, and the owners written on the fiber. Lumen has the
+# way round through ``p`` whole; the way round through ``q`` is Zayo's on the way out of
+# ``w`` and Lumen's on the way in to ``x``, so nobody can quote it. Each seat holds one way
+# out and not the two the ring's shape offers, and the way nobody sells is priced at three
+# hundred against the two hundred of the way somebody does, so the shorter way is also the
+# sellable one and the answer is forced whole.
+_SPLIT_SITES = ("w", "x")
+_SPLIT_TRANSIT = ("p", "q")
+_SPLIT_SEGMENTS = {
+    ("w", "p"): (100.0, ("lumen",)),
+    ("p", "x"): (100.0, ("lumen",)),
+    ("w", "q"): (150.0, ("zayo",)),
+    ("q", "x"): (150.0, ("lumen",)),
+}
+SPLIT_ARTIFACTS = fixtures.synthesis_over_owned_fiber(
+    _SPLIT_SITES, _SPLIT_SEGMENTS, _ASKED_FOR, _SPLIT_TRANSIT
+)
+SPLIT_ASKED_ONE_ARTIFACTS = fixtures.synthesis_over_owned_fiber(
+    _SPLIT_SITES, _SPLIT_SEGMENTS, 1, _SPLIT_TRANSIT
+)
+# Five millimetres, so an equality between two mileages is not decided by the last bit of a
+# float coming back from a solved program.
+_SLACK = 1e-6
+
+
+def test_no_synthesis_runs_fewer_miles_than_the_floor_it_publishes() -> None:
+    """The split ring orders at least the miles it says no synthesis can go below.
+
+    A synthesis under its own floor is arithmetic that has come apart, and until this graph
+    arrived no fixture in this tier could produce it: the floor is measured over the
+    requirements the search wrote down, and on fiber naming no owner those requirements are
+    exactly what the shape allows. Here they are not, and a floor still priced for the way
+    round nobody sells would come out at five hundred miles over a synthesis that correctly
+    orders two hundred.
+    """
+    assert SPLIT_ARTIFACTS.synthesis.metrics.physical_miles >= (
+        SPLIT_ARTIFACTS.synthesis.metrics.backbone_lower_bound_miles - _SLACK
+    )
+
+
+def test_a_site_whose_ways_out_are_split_between_carriers_is_floored_at_what_it_can_buy(
+) -> None:
+    """Two ways out asked for over this ring is floored where one way out is: two hundred miles.
+
+    The tightening stated as a number rather than as an inequality. Both seats can be sold
+    one way out and no more, so a tenant asking for two is answered at one and the floor is
+    the two hundred miles of the way round through ``p`` -- the same number this fiber is
+    floored at when the tenant asks for one outright, which is the requirement written down
+    by hand at what a carrier can sell.
+    """
+    assert SPLIT_ARTIFACTS.synthesis.metrics.backbone_lower_bound_miles == pytest.approx(
+        SPLIT_ASKED_ONE_ARTIFACTS.synthesis.metrics.backbone_lower_bound_miles
+    )

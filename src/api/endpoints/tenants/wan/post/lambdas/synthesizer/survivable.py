@@ -27,6 +27,16 @@ program's own answer is a floor under the whole problem. It is published beside 
 as ``backbone_lower_bound_miles``, because a claim that a synthesis is close to the shortest
 one there is means nothing until the shortest one there is has a number.
 
+What a site can be given is what one carrier can sell it. A path is ordered from one
+company and paid for every month, so two ways out of a site whose halves belong to
+different companies are one way out and not two, and a requirement written down for two is
+a requirement no operator can buy. Every requirement below is therefore lowered to
+``synthesizer.ceiling.diverse_path_ceilings``, the same number
+:func:`synthesizer.stages.finalize` holds the finished synthesis to. Left uncapped, the
+floor is priced for ways out nobody sells and can come out above the fiber the synthesis
+beside it actually ordered: Yurop published 8,844.892 miles against a floor of 9,141.641
+(GitHub issue #111).
+
 Two requirements are written down rather than one, and they are not the same requirement.
 Element connectivity between every pair of backbone nodes is the one the bound above is
 proved for, and it treats the sites at a path's two ends as never failing. What this
@@ -42,10 +52,16 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
-from synthesizer.ceiling import BackupPathLimit
+from synthesizer.ceiling import (
+    BackupPathLimit,
+    PathProofInputs,
+    diverse_path_ceilings,
+    paths_per_peer,
+)
 from synthesizer.flow_cuts import Separation, SeparationQuestion, weakest_separation
+from synthesizer.graphs import build_adjacency
 from synthesizer.input_graph import FiberSegment
 from synthesizer.linear_program import GrowingSegmentProgram, SegmentChoice, SegmentRow
 
@@ -64,20 +80,31 @@ class FiberInputs:
     """The fiber a synthesis may be built from and what the tenant asks it to carry.
 
     ``ways_out`` is the tenant's ``number_of_diverse_paths``, asked of every backbone node
-    and of every pair of them. ``per_peer`` is how many of a site's ways out one peer may
-    take, which is one wherever the tenant's config allows peers enough to reach instead
-    (see :func:`synthesizer.ceiling.paths_per_peer`); above one, a peer stops being a city
-    a way out is charged for and becomes a destination two ways out may share. ``limit`` is
-    the operator's backup path multiple, which decides which of the carrier's fiber an
-    admissible path could run over at all.
+    and of every pair of them. ``seat_cap`` is the most backbone sites the tenant's config
+    allows, which is ``backbone.node_count.max`` in its ``etc/`` file; it decides how many
+    of a site's ways out one peer may take (see
+    :func:`synthesizer.ceiling.paths_per_peer`), which is one wherever the config allows
+    peers enough to reach instead and above one where it does not, and there a peer stops
+    being a city a way out is charged for and becomes a destination two ways out may share.
+    ``limit`` is the operator's backup path multiple, which decides which of the carrier's
+    fiber an admissible path could run over at all.
+
+    ``fiber_by_carrier`` is the same fiber split into what each carrier could sell a path
+    over (see :func:`synthesizer.graphs.adjacency_by_carrier`). An operator orders a path
+    from one carrier, so what a site can be given is what one carrier can sell it, and this
+    is what :func:`_capped` measures each requirement against. Empty is fiber that names no
+    carrier, which every carrier's path may run over.
     """
 
     backbone_ids: tuple[str, ...]
     fiber_segments: Mapping[tuple[str, str], FiberSegment]
     all_distances: Mapping[str, Mapping[str, float]]
     ways_out: int = 3
-    per_peer: int = 1
+    seat_cap: int | None = None
     limit: BackupPathLimit | None = None
+    fiber_by_carrier: dict[str, dict[str, list[tuple[str, float]]]] = field(
+        default_factory=dict
+    )
 
 
 @dataclass(frozen=True)
@@ -192,10 +219,10 @@ def admissible_fiber(inputs: FiberInputs) -> dict[tuple[str, str], float]:
     }
 
 
-def _ways_out_requirement(site: str, inputs: FiberInputs) -> _Requirement:
+def _ways_out_requirement(site: str, inputs: FiberInputs, per_peer: int) -> _Requirement:
     """What one site is owed: as many ways out as the tenant asked, ending at its peers."""
     peers = frozenset(inputs.backbone_ids) - {site}
-    spared = frozenset({site}) if inputs.per_peer == 1 else frozenset({site}) | peers
+    spared = frozenset({site}) if per_peer == 1 else frozenset({site}) | peers
     return _Requirement(site, peers, spared, inputs.ways_out)
 
 
@@ -218,16 +245,56 @@ def _question(
     return SeparationQuestion(requirement.site, requirement.peers, requirement.spared, held)
 
 
-def _capped(requirement: _Requirement, whole: Mapping[tuple[str, str], float]) -> _Requirement:
-    """The same requirement, lowered to what the carrier's fiber can actually carry.
+def _ceilings(inputs: FiberInputs) -> dict[str, int]:
+    """The ways out each backbone node could hold once a path is bought from one carrier.
+
+    :func:`synthesizer.ceiling.diverse_path_ceilings` over the whole of the fiber and the
+    same carrier split, which is the identical call :func:`synthesizer.stages.finalize`
+    makes at ``stages.py:93`` to work out what each site is then held to. Both halves of
+    the build ask one function one question, so the fiber is never bought for a site that
+    can hold more ways out than the finished synthesis will be credited with (GitHub issue
+    #111).
+
+    A node the fiber says nothing about has no entry, and :func:`_capped` reads that as
+    nothing: there is no fiber to give it a way out over, which is the truth about it.
+    """
+    return diverse_path_ceilings(PathProofInputs(
+        inputs.backbone_ids,
+        build_adjacency(dict(inputs.fiber_segments)),
+        inputs.limit,
+        inputs.ways_out,
+        inputs.seat_cap,
+        inputs.fiber_by_carrier,
+    ))
+
+
+def _capped(
+    requirement: _Requirement, whole: Mapping[tuple[str, str], float], ceiling: int
+) -> _Requirement:
+    """The same requirement, lowered to what one carrier could actually sell this site.
 
     A site behind a single point of failure on the carrier's fiber cannot be given two ways
     out by any amount of buying, so asking for two would leave the program with no answer
     at all rather than with the honest one. Lowering it here is what keeps every row the
     program is given a row some synthesis can meet, and the shortfall is then reported by
     ``synthesizer.validation.backbone_mesh_independence_deficient`` rather than hidden.
+
+    ``ceiling`` is the first of the two lowerings and the one GitHub issue #111 added. A
+    path is bought from one carrier end to end, so a site whose two ways out are only two
+    when the halves of one of them are stitched together from two owners holds one way out
+    and not two. Boston, MA under Yurop was such a site: its three ways out belong to Zayo,
+    Lumen and Cogent separately and only Zayo's reaches any other city Yurop pins, so the
+    floor was priced for two ways out nobody sells and published 9,141.641 miles over a
+    synthesis that correctly ran 8,844.892.
+
+    The separation search below it stays, and it is what the pairwise requirements written
+    by :func:`_between_requirement` are lowered by. A ceiling counts a site's ways out to
+    distinct peers, which is not what it takes to separate one named pair, so a pairwise
+    row lowered to the ceiling alone could still be a row the fiber cannot meet -- and a
+    requirement no amount of buying can answer is a search that never ends rather than a
+    synthesis with an honest shortfall in it.
     """
-    required = requirement.required
+    required = min(requirement.required, ceiling)
     while required > 0 and weakest_separation(_question(requirement, whole), required):
         required -= 1
     return replace(requirement, required=required)
@@ -236,7 +303,7 @@ def _capped(requirement: _Requirement, whole: Mapping[tuple[str, str], float]) -
 def _requirements(
     inputs: FiberInputs, fiber: Mapping[tuple[str, str], float]
 ) -> list[_Requirement]:
-    """Everything the fiber has to do, each already lowered to what the carrier can carry.
+    """Everything the fiber has to do, each already lowered to what one carrier can sell.
 
     One requirement per site for the ways out it is owed, and one per peer of the
     best-served site for the paths between them. The site the pairwise requirements are
@@ -245,14 +312,23 @@ def _requirements(
     node's shortfall.
     """
     whole = {segment: 1.0 for segment in fiber}
+    ceilings = _ceilings(inputs)
+    per_peer = paths_per_peer(
+        inputs.seat_cap, len(inputs.backbone_ids), inputs.ways_out
+    )
     ways_out = [
-        _capped(_ways_out_requirement(site, inputs), whole) for site in inputs.backbone_ids
+        _capped(
+            _ways_out_requirement(site, inputs, per_peer), whole, ceilings.get(site, 0)
+        )
+        for site in inputs.backbone_ids
     ]
     if not ways_out:
         return []
     root = min(ways_out, key=lambda owed: (-owed.required, owed.site)).site
     return ways_out + [
-        _capped(_between_requirement(root, peer, inputs), whole)
+        _capped(
+            _between_requirement(root, peer, inputs), whole, ceilings.get(root, 0)
+        )
         for peer in sorted(set(inputs.backbone_ids) - {root})
     ]
 

@@ -6,8 +6,16 @@ equal mileage for a solver to pick between. A four-site ring is the clearest of 
 site is owed two ways out, each site has exactly two segments, and the only synthesis meeting
 that is the whole ring, whose mileage is the ring's own. The rest are that ring with one
 part changed -- a long chord nothing needs, a chain that leaves a site behind one city, two
-triangles held apart by a single segment, a pair with two ways round it -- so that each
+triangles held apart by a single segment, a pair with two ways round it, and that pair
+again with the two halves of one way round belonging to different carriers -- so that each
 test turns on one part of the choice and the fixture beside it says which.
+
+Only the last of them writes an owner on any fiber, and it is the one graph here that can
+tell what a site can be sold from what its fiber alone could carry. A path is ordered from
+one carrier end to end, so a way round assembled from two owners is a way round nobody
+quotes; every other fixture here names no carrier, and fiber naming no carrier is fiber
+every carrier's path may run over, so the two counts agree on all of them by construction
+(GitHub issue #111).
 
 One graph here is not shaped by hand, and it is the last. The choice is made by writing a
 requirement down as an answer violates it and solving again, and every graph above settles
@@ -27,7 +35,7 @@ import pytest
 
 import fixtures
 from synthesizer.ceiling import BackupPathLimit
-from synthesizer.graphs import build_adjacency, distances_from
+from synthesizer.graphs import adjacency_by_carrier, build_adjacency, distances_from
 from synthesizer.input_graph import FiberSegment
 from synthesizer.survivable import (
     FiberChoice,
@@ -57,15 +65,50 @@ def _all_distances(
     return distances_from(build_adjacency(links), cities)
 
 
+def _asking(
+    links: dict[tuple[str, str], FiberSegment],
+    backbone_ids: tuple[str, ...],
+    seat_cap: int | None = None,
+    ways_out: int = _WAYS_OUT,
+) -> FiberInputs:
+    """What a backbone of these sites asks of this fiber, with no bound on a path's length.
+
+    The carriers are split the way ``synthesizer.backbone._bought_fiber`` splits them, so a
+    fixture that says who owns a segment is answered on what one owner can sell and a
+    fixture that says nothing about owners is answered on the whole map.
+    """
+    return FiberInputs(
+        backbone_ids, links, _all_distances(links), ways_out, seat_cap, None,
+        adjacency_by_carrier(links),
+    )
+
+
 def _chosen(
     links: dict[tuple[str, str], FiberSegment],
     backbone_ids: tuple[str, ...],
-    per_peer: int = 1,
+    seat_cap: int | None = None,
+    ways_out: int = _WAYS_OUT,
 ) -> FiberChoice:
     """The fiber a backbone of these sites is built from, with no bound on a path's length."""
-    return choose_fiber(
-        FiberInputs(backbone_ids, links, _all_distances(links), _WAYS_OUT, per_peer)
-    )
+    return choose_fiber(_asking(links, backbone_ids, seat_cap, ways_out))
+
+
+def _owed(
+    links: dict[tuple[str, str], FiberSegment],
+    backbone_ids: tuple[str, ...],
+    site: str,
+    seat_cap: int | None = None,
+) -> int:
+    """How many ways out the search writes down for one site over this fiber.
+
+    ``_requirements`` writes one ways-out requirement per backbone node first, in the order
+    the sites are given, and the pairwise requirements after them, so the site's own row is
+    the one at its own position.
+    """
+    inputs = _asking(links, backbone_ids, seat_cap)
+    return _requirements(inputs, admissible_fiber(inputs))[
+        backbone_ids.index(site)
+    ].required
 
 
 def _bought_miles(
@@ -89,7 +132,7 @@ def _admissible(multiple: float | None) -> frozenset[tuple[str, str]]:
     """The crossing graph's fiber a path inside this backup path multiple could run over."""
     limit = None if multiple is None else BackupPathLimit(multiple, _CROSSING_DISTANCES)
     return frozenset(admissible_fiber(FiberInputs(
-        _CROSSING_SITES, fixtures.CROSSING_LINKS, _CROSSING_DISTANCES, _WAYS_OUT, 1, limit
+        _CROSSING_SITES, fixtures.CROSSING_LINKS, _CROSSING_DISTANCES, _WAYS_OUT, None, limit
     )))
 
 
@@ -221,7 +264,7 @@ def test_a_site_behind_a_single_point_of_failure_is_asked_for_what_its_fiber_can
 _TWIN_WAYS = physical({
     ("a", "p"): 1.0, ("b", "p"): 1.0, ("a", "q"): 1.0, ("b", "q"): 1.0,
 })
-_TWIN_CHOICE = _chosen(_TWIN_WAYS, ("a", "b"), per_peer=2)
+_TWIN_CHOICE = _chosen(_TWIN_WAYS, ("a", "b"), seat_cap=2)
 
 
 def test_a_pair_allowed_two_ways_between_them_is_given_both_ways_round() -> None:
@@ -233,6 +276,84 @@ def test_a_pair_allowed_two_ways_between_them_is_given_both_ways_round() -> None
     issue #58).
     """
     assert _TWIN_CHOICE.segments == frozenset(_TWIN_WAYS)
+
+
+# The same pair with two ways round, now with owners written on the fiber. An operator
+# orders a path from one carrier from end to end (GitHub issue #106), so a way round whose
+# two halves belong to different owners is a way round nobody can be asked to quote. In
+# ``_TWIN_SPLIT`` Zayo has three of the four segments and Lumen has the fourth, so the way
+# round through ``p`` is Zayo's whole and the way round through ``q`` is nobody's: ``a``
+# holds one way out and not two. ``_TWIN_OWNED`` is the same four segments and the same
+# mileage with one owner per way round, where both are sellable and ``a`` holds two. Which
+# of the two a fixture is, is the only thing that differs between them.
+_TWIN_SPLIT = fixtures.carrier_fiber_segments({
+    ("a", "p"): (1.0, ("zayo",)),
+    ("b", "p"): (1.0, ("zayo",)),
+    ("a", "q"): (1.0, ("zayo",)),
+    ("b", "q"): (1.0, ("lumen",)),
+})
+_TWIN_OWNED = fixtures.carrier_fiber_segments({
+    ("a", "p"): (1.0, ("zayo",)),
+    ("b", "p"): (1.0, ("zayo",)),
+    ("a", "q"): (1.0, ("lumen",)),
+    ("b", "q"): (1.0, ("lumen",)),
+})
+_TWIN_SPLIT_CHOICE = _chosen(_TWIN_SPLIT, ("a", "b"), seat_cap=2)
+_TWIN_SPLIT_ASKED_ONE = _chosen(_TWIN_SPLIT, ("a", "b"), seat_cap=2, ways_out=1)
+
+
+def test_a_site_is_owed_only_the_ways_out_one_carrier_can_sell() -> None:
+    """``a`` is written down for one way out, though the fiber alone would give it two.
+
+    This is the defect GitHub issue #111 is about, asked of the requirement rather than of
+    the miles. Boston, MA under Yurop was the live case: it has fiber to seven cities and
+    three real ways out, split between Zayo, Lumen and Cogent, and only Zayo's reaches any
+    other city Yurop pins -- so it holds one way out and not two. Written down for two, the
+    floor is priced for a way out no operator can buy, and Yurop published 8,844.892 miles
+    against a floor of 9,141.641 it had already beaten.
+    """
+    assert _owed(_TWIN_SPLIT, ("a", "b"), "a", seat_cap=2) == 1
+
+
+def test_a_site_is_owed_both_ways_out_where_one_carrier_has_each() -> None:
+    """The same geometry with one owner per way round still writes ``a`` down for two.
+
+    A site's ways out may be bought from several carriers, one path each, which is what an
+    operator does. This is the behaviour the lowering above must not break: it is the
+    stitching of two owners into one path that nobody sells, not the holding of two paths
+    from two owners.
+    """
+    assert _owed(_TWIN_OWNED, ("a", "b"), "a", seat_cap=2) == 2
+
+
+def test_fiber_nobody_owns_is_owed_to_every_carrier() -> None:
+    """The identical geometry with no owners recorded writes ``a`` down for two as well.
+
+    Fiber naming no carrier is the synthetic local fiber an operator lays themselves, and
+    every carrier's path may run over it, so it constrains nothing. Asserting it here is
+    what says the lowering above is the ownership and not the shape: all three fixtures are
+    four one-mile segments in the same four places.
+    """
+    assert _owed(_TWIN_WAYS, ("a", "b"), "a", seat_cap=2) == 2
+
+
+def test_the_floor_is_measured_over_the_requirements_the_build_is_held_to() -> None:
+    """Two ways out asked for over the split fiber is floored where one way out is.
+
+    The floor is published as ``backbone_lower_bound_miles`` and read as the fewest miles
+    any synthesis meeting this tenant's requirements could run, so the requirements it is
+    measured over have to be the ones the synthesis is held to. Both sites here can be sold
+    one way out and no more, so the tenant asking for two is answered at one and the floor
+    is the two miles of the way round through ``p`` -- the same number the same fiber is
+    floored at when the tenant asks for one outright.
+
+    Left uncapped the second way round would be priced in as well, and the floor would come
+    out at all four miles: above the two the synthesis beside it correctly runs, which is
+    the arithmetic Yurop's build published.
+    """
+    assert _TWIN_SPLIT_CHOICE.lower_bound_miles == pytest.approx(
+        _TWIN_SPLIT_ASKED_ONE.lower_bound_miles
+    )
 
 
 # Two triangles joined by the one segment between ``c`` and ``d``. Each site has two segments
@@ -266,9 +387,7 @@ def test_the_segment_the_first_answer_missed_is_bought_once_it_is_written_down()
 # the one after it, so none of them could ever reach a limit on how many passes the search
 # may take; this one takes 26. See ``fixtures.MANY_PASS_SEGMENTS``.
 _MANY_PASS = physical(fixtures.MANY_PASS_SEGMENTS)
-_MANY_PASS_INPUTS = FiberInputs(
-    fixtures.MANY_PASS_SITES, _MANY_PASS, _all_distances(_MANY_PASS), _WAYS_OUT, 1
-)
+_MANY_PASS_INPUTS = _asking(_MANY_PASS, fixtures.MANY_PASS_SITES)
 _MANY_PASS_CHOICE = _chosen(_MANY_PASS, fixtures.MANY_PASS_SITES)
 _MANY_PASS_FIBER = admissible_fiber(_MANY_PASS_INPUTS)
 
@@ -316,6 +435,7 @@ _CASES: tuple[tuple[str, FiberChoice, dict[tuple[str, str], FiberSegment]], ...]
     ("chain", _CHAIN_CHOICE, _CHAIN),
     ("two triangles", _TRIANGLES_CHOICE, _TWO_TRIANGLES),
     ("pair with two ways round", _TWIN_CHOICE, _TWIN_WAYS),
+    ("pair whose second way round changes hands", _TWIN_SPLIT_CHOICE, _TWIN_SPLIT),
     ("twelve cities and five seats", _MANY_PASS_CHOICE, _MANY_PASS),
 )
 

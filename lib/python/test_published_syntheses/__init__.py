@@ -2,15 +2,18 @@
 
 The delivered-synthesis layer reads what the deployed synthesizer published and judges it.
 This module is both halves of that job: the reader that asks the service for a tenant's
-network and for the state of its build, and the seven measurements that cannot be answered
+network and for the state of its build, and the eight measurements that cannot be answered
 by reading a number back -- whether the fiber joins every backbone seat into one network,
 what the worst haul of a published network really is, whether any published link wanders
 further from the straight line than its tenant allows, whether any of them wanders further
 than the fiber it runs over made necessary, whether any pair of sites was drawn with more
 paths between them than the tenant bought, whether any path the operator did not pin could
 be taken out with no site losing a diverse path, no site cut off and no city's loss newly
-splitting the fiber, and how many miles of carrier fiber the network ordered, which is the
-figure the floor a build publishes under itself is there to be held against.
+splitting the fiber, how many miles of carrier fiber the network ordered, which is the
+figure the floor a build publishes under itself is there to be held against, and how many
+ways out of a city its carriers could between them be asked to quote, which is what a
+published ceiling has to be held against if it is to be held against anything outside the
+build that produced it.
 
 The reading goes through the API and not through the S3 bucket the synthesizer writes to.
 The bucket holds only what the synthesizer chose to publish, which is three of the eight
@@ -37,6 +40,7 @@ from __future__ import annotations
 import heapq
 import json
 import math
+from collections import deque
 from itertools import combinations
 from typing import Any
 from urllib.error import HTTPError
@@ -582,3 +586,138 @@ def ordered_fiber_miles(synthesis: dict[str, Any]) -> float:
         link["distance_miles"] for link in synthesis["paths"] if link["link_kind"] == FIBER
     ]
     return sum(segments)
+
+
+# The two halves of a city a walk out of a backbone site may cross, and the place every
+# such walk ends. A city carries one way out and no more, so the walk arrives at one half,
+# spends the single unit joining the halves, and leaves by the other; a city already
+# carrying a way out has nothing left to join its halves with.
+_ARRIVING = "into "
+_LEAVING = "out of "
+_SINK = "a peer"
+
+
+def _joined_by(pairs: set[frozenset[str]]) -> dict[str, set[str]]:
+    """Every city one carrier's fiber names, with the cities it has fiber straight to.
+
+    A pair naming one city twice is a length of fiber from a place to itself, which carries
+    nobody anywhere and is left out -- the same rows ``synthesizer.codec.
+    load_merged_carriers`` drops when it builds the merged map.
+    """
+    ends = [sorted(pair) for pair in pairs if len(pair) == 2]
+    return _joined_to([(both[0], both[1]) for both in ends])
+
+
+def _capacity(
+    joined: dict[str, set[str]], city: str, peers: frozenset[str], per_peer: int
+) -> dict[str, dict[str, int]]:
+    """How much each step of a walk out of ``city`` may carry before it is spent.
+
+    A city carries one way out and no more, which is what makes two ways out of a site two
+    rather than one: a walk arrives at ``into <city>``, spends the single unit joining that
+    half to ``out of <city>``, and leaves. The site being counted and the peers it is
+    counted towards are the ends of a way out rather than cities it crosses, so carrying one
+    does not spend them -- the site has no joining unit at all and a peer's is left wide
+    open. How many ways out one peer may end is ``per_peer``, which is the arc from the peer
+    to the place every walk ends.
+    """
+    plenty = len(peers) * per_peer + 1
+    left: dict[str, dict[str, int]] = {
+        _ARRIVING + place: {_LEAVING + place: plenty if place in peers else 1}
+        for place in joined
+        if place != city
+    }
+    for place, neighbours in joined.items():
+        left[_LEAVING + place] = {_ARRIVING + neighbour: 1 for neighbour in neighbours}
+    for peer in peers:
+        if peer in joined:
+            left[_LEAVING + peer][_SINK] = per_peer
+    left[_SINK] = {}
+    for tail, heads in list(left.items()):
+        for head in heads:
+            left.setdefault(head, {}).setdefault(tail, 0)
+    return left
+
+
+def _walk_to_a_peer(
+    left: dict[str, dict[str, int]], source: str
+) -> dict[str, str] | None:
+    """The fewest-hop way from ``source`` to a peer over capacity nobody has spent yet.
+
+    Read back as the step each half was reached from, so the caller can follow it home.
+    ``None`` is a carrier with nothing left to sell out of this city.
+    """
+    came: dict[str, str] = {source: source}
+    queue: deque[str] = deque([source])
+    while queue:
+        tail = queue.popleft()
+        for head, spare in left[tail].items():
+            if spare > 0 and head not in came:
+                came[head] = tail
+                if head == _SINK:
+                    return came
+                queue.append(head)
+    return None
+
+
+def _sellable_over(
+    joined: dict[str, set[str]], city: str, peers: frozenset[str], per_peer: int
+) -> int:
+    """The most ways out of ``city`` one carrier's own fiber could carry.
+
+    One walk to a peer at a time, each spending a unit of every city it crosses, until no
+    unspent capacity reaches a peer at all. That is a maximum flow with unit city
+    capacities, which is the largest number of ways out no single city's loss takes two of,
+    and it is bounded from above rather than measured exactly on purpose: this is here to
+    say a published ceiling is not higher than what somebody could be asked to quote, so
+    erring high leaves a real ceiling passing and erring low would fail a healthy network.
+    """
+    left = _capacity(joined, city, peers, per_peer)
+    source = _LEAVING + city
+    if source not in left:
+        return 0
+    sold = 0
+    came = _walk_to_a_peer(left, source)
+    while came is not None:
+        head = _SINK
+        while head != source:
+            tail = came[head]
+            left[tail][head] -= 1
+            left[head][tail] += 1
+            head = tail
+        sold += 1
+        came = _walk_to_a_peer(left, source)
+    return sold
+
+
+def sellable_ways_out(
+    fiber_by_carrier: dict[str, set[frozenset[str]]],
+    city: str,
+    peers: frozenset[str],
+    per_peer: int,
+) -> int:
+    """The most ways out of ``city`` its carriers could between them be asked to quote.
+
+    An operator orders a path from one company and pays that company for it every month, so
+    a way out assembled from two companies' fiber is not a product anybody sells (GitHub
+    issue #106). Each carrier is therefore asked on its own over its own fiber, and the
+    answers are added: a site's ways out may be bought from several carriers, one path each,
+    which is what an operator really does.
+
+    Adding them is deliberately generous. Two carriers' answers can cross the same city, and
+    a city carrying two ways out is one way out the moment it goes, so the number an
+    operator could really hold is at most this and often less. What this is for is holding a
+    published ceiling against a source outside the build that produced it, and a bound from
+    above is the direction that leaves a sound ceiling passing.
+
+    The total is capped at what the peers can between them end, since a way out is charged
+    for the peer it reaches. ``per_peer`` is how many ways out one peer may end, which is
+    one wherever the tenant's config allows peers enough to reach instead.
+    """
+    return min(
+        sum(
+            _sellable_over(_joined_by(pairs), city, peers, per_peer)
+            for pairs in fiber_by_carrier.values()
+        ),
+        len(peers) * per_peer,
+    )

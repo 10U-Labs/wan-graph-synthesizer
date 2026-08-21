@@ -29,12 +29,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from synthesizer.ceiling import (
-    BackupPathLimit,
-    PathProofInputs,
-    independent_paths,
-    paths_per_peer,
-)
+from synthesizer.ceiling import BackupPathLimit, PathProofInputs, independent_paths
 from synthesizer.input_graph import FiberSegment, carriers_along, link_key
 from synthesizer.graphs import (
     adjacency_by_carrier,
@@ -320,13 +315,15 @@ def _bought_fiber(
     bought, and their own segments join what was bought. An operator who writes a pair into
     ``etc/*.yml`` has decided that pair is joined, and a choice made to answer everybody
     else's requirements has no standing to overrule it.
+
+    ``by_carrier`` goes to the choice as well as to the pins. A path is bought from one
+    carrier end to end, so what a site is owed is what one carrier can sell it, and the
+    choice needs the split to know that (see :func:`synthesizer.survivable._capped`).
     """
-    per_peer = paths_per_peer(
-        constraints.seat_cap, len(backbone_ids), constraints.number_of_diverse_paths
-    )
     choice = choose_fiber(FiberInputs(
         backbone_ids, fiber_segments, all_distances,
-        constraints.number_of_diverse_paths, per_peer, constraints.limit,
+        constraints.number_of_diverse_paths, constraints.seat_cap, constraints.limit,
+        by_carrier,
     ))
     drawn = (
         _pinned_path(pair, by_carrier, fiber_segments)
