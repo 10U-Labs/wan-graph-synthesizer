@@ -100,6 +100,15 @@ def _put(client: Any, carrier: str, event: dict[str, Any]) -> dict[str, Any]:
     return _response(200, {"updated": f"{carrier}/{collection}"})
 
 
+def _delete(client: Any, carrier: str) -> dict[str, Any]:
+    """Remove every object belonging to a carrier."""
+    bucket = os.environ["STORE_BUCKET"]
+    listing = client.list_objects_v2(Bucket=bucket, Prefix=f"carriers/{carrier}/")
+    for item in listing.get("Contents", []):
+        client.delete_object(Bucket=bucket, Key=item["Key"])
+    return _response(200, {"deleted": carrier})
+
+
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     """Dispatch a carriers request by method: read, replace, or delete."""
     client = _s3()
@@ -110,8 +119,5 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     if not carrier:
         return _response(404, {"error": "carrier required"})
     if method == "DELETE":
-        bucket = os.environ["STORE_BUCKET"]
-        for collection in ("pops", "fiber-segments"):
-            client.delete_object(Bucket=bucket, Key=f"carriers/{carrier}/{collection}.json")
-        return _response(200, {"deleted": carrier})
+        return _delete(client, carrier)
     return _put(client, carrier, event)

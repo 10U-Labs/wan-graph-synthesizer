@@ -82,3 +82,39 @@ def test_carrier_put_leaves_the_other_collection_file(monkeypatch: pytest.Monkey
     with patch("boto3.client", side_effect=write_clients(objects, [])):
         module.lambda_handler(event, None)
     assert json.loads(objects["carriers/lumen/fiber-segments.json"]) == [{"e": 1}]
+
+
+def _store_after_deleting(
+        monkeypatch: pytest.MonkeyPatch, stored: dict[str, bytes], carrier: str
+) -> dict[str, bytes]:
+    """The store as it stands once one carrier has been deleted, addressed by its id."""
+    module = load_handler("carriers", monkeypatch)
+    event = {"httpMethod": "DELETE", "pathParameters": {"carrier": carrier}}
+    with patch("boto3.client", side_effect=write_clients(stored, [])):
+        module.lambda_handler(event, None)
+    return stored
+
+
+def test_carrier_delete_removes_an_object_the_endpoint_never_wrote(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """A DELETE clears the whole carrier, not only the two collections a PUT writes."""
+    stored = {"carriers/lumen/pops.json": b"[]", "carriers/lumen/vertices.json": b"[]"}
+    assert _store_after_deleting(monkeypatch, stored, "lumen") == {}
+
+
+def test_carrier_delete_leaves_another_carrier_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A DELETE of one carrier stays inside that carrier's prefix."""
+    stored = {"carriers/lumen/pops.json": b"[]", "carriers/zayo/pops.json": b"[]"}
+    kept = list(_store_after_deleting(monkeypatch, stored, "lumen"))
+    assert kept == ["carriers/zayo/pops.json"]
+
+
+def test_a_deleted_carrier_is_no_longer_listed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The carrier ids GET /carriers answers are what an operator reads after a delete."""
+    module = load_handler("carriers", monkeypatch)
+    stored = {"carriers/lumen/vertices.json": b"[]", "carriers/zayo/pops.json": b"[]"}
+    removal = {"httpMethod": "DELETE", "pathParameters": {"carrier": "lumen"}}
+    with patch("boto3.client", side_effect=write_clients(stored, [])):
+        module.lambda_handler(removal, None)
+        listed = module.lambda_handler({"httpMethod": "GET"}, None)
+    assert json.loads(listed["body"]) == ["zayo"]
