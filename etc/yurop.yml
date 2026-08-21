@@ -4,7 +4,7 @@ access:
     homes: []
   homing_degree: 1
 backbone:
-  coverage_target_miles: 1200
+  coverage_target_miles: 745
   forced:
     nodes:
       - Ashburn, VA
@@ -13,7 +13,7 @@ backbone:
   max_backup_path_multiple: 3
   node_count:
     max: 99
-    min: 3
+    min: 2
   number_of_diverse_paths: 1
   prohibited:
     nodes: []
