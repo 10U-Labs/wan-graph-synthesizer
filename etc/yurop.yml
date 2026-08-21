@@ -8,8 +8,8 @@ backbone:
   forced:
     nodes:
       - Ashburn, VA
-      - Boston, MA
       - Huntingdon, United Kingdom
+      - New York, NY
       - Stuttgart, Germany
     paths: []
   max_backup_path_multiple: 3
