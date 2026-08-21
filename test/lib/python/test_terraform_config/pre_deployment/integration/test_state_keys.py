@@ -14,13 +14,21 @@ here instead of on the next apply.
 They live in this module because its subtree runs in the ``test-repo-libraries`` job of
 every workflow, so a stack filed at the wrong address fails every workflow on the push
 that files it rather than only its own.
+
+The last test reads the live state bucket rather than the files on disk. Deleting a
+stack directory destroys nothing -- the Lambda, the role and the log group stay in AWS
+and the state object that could remove them stays in the bucket, reachable by no
+workflow -- so what is stored has to be held against what is declared for the leftover
+to be visible at all (GitHub issue #103).
 """
 
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from repo_utils import REPO_ROOT
+from test_terraform_config import STATE_BUCKET
 
 PREFIX = "wan-synthesizer/"
 SRC = REPO_ROOT / "src"
@@ -78,3 +86,31 @@ def test_every_remote_state_read_names_a_key_some_stack_writes() -> None:
     which is the silence this file exists to break.
     """
     assert _read_keys() - set(_declared_keys().values()) == set()
+
+
+def _stored_keys(s3_client: Any) -> set[str]:
+    """Every object the live state bucket holds under this repository's prefix.
+
+    An apply holding the state lock leaves a ``.tflock`` object beside the state object
+    it locks, and the workflows one push starts apply at the same time as each other, so
+    a listing taken while any of them is running sees one. A lock is not a stack, and
+    the one that made it takes it away when the apply ends, so they are dropped here.
+    """
+    pages = s3_client.get_paginator("list_objects_v2").paginate(
+        Bucket=STATE_BUCKET, Prefix=PREFIX
+    )
+    return {
+        stored["Key"]
+        for page in pages
+        for stored in page.get("Contents", [])
+        if not stored["Key"].endswith(".tflock")
+    }
+
+
+def test_every_stored_state_object_is_a_stack_that_still_exists(s3_client: Any) -> None:
+    """Every state object stored under the prefix belongs to a stack ``src/`` declares.
+
+    This is the one that fails on the push that deletes a stack directory without
+    destroying it first, and it fails in every workflow that push starts.
+    """
+    assert _stored_keys(s3_client) - set(_declared_keys().values()) == set()

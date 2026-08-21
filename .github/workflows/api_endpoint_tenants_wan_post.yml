@@ -333,9 +333,22 @@ jobs:
   # tier on results that will be thrown away.
   test-repo-libraries:
     name: test-repo-libraries
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # test_state_keys.py lists the state bucket and holds what is stored there against
+      # the stacks src/ declares, which is how a stack directory deleted without a destroy
+      # first is caught (GitHub issue #103). That is the only test in this job that reads
+      # AWS, and it has to run here rather than in one stack's own tier because a leftover
+      # belongs to no stack.
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
       - name: Install tools
         run: pip install boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
       # Each module is named in a --cov of its own rather than lib/python covered as a
