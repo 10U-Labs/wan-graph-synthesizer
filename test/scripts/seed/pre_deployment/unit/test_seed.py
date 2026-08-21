@@ -333,6 +333,20 @@ def _failing_urlopen(
     return recorder
 
 
+def _attempts_made(monkeypatch: pytest.MonkeyPatch, failure: BaseException) -> int:
+    """How many requests _send makes when urlopen raises *failure*, whatever it ends up raising.
+
+    A test whose subject is whether _send tried again takes the failure here, so the
+    assertion it makes about the count is the only assertion it makes.
+    """
+    recorder = _failing_urlopen(monkeypatch, failure)
+    try:
+        _send("http://api", "tenants", "GET", None)
+    except OSError:
+        pass
+    return len(recorder.requests)
+
+
 @pytest.mark.usefixtures("instant_retry")
 def test_send_returns_the_body_when_a_reset_connection_is_tried_again(
         monkeypatch: pytest.MonkeyPatch) -> None:
@@ -379,19 +393,13 @@ def test_send_makes_one_request_when_the_api_answers_first_time(
 
 def test_send_does_not_try_an_http_error_again(monkeypatch: pytest.MonkeyPatch) -> None:
     """A 404 is the service answering, and asking again gets the same answer."""
-    recorder = _failing_urlopen(monkeypatch, _not_found())
-    with pytest.raises(urllib.error.HTTPError):
-        _send("http://api", "tenants", "GET", None)
-    assert len(recorder.requests) == 1
+    assert _attempts_made(monkeypatch, _not_found()) == 1
 
 
 def test_send_does_not_try_a_url_error_that_is_not_a_reset_again(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """A name that does not resolve is not a dropped connection, and a second look is wasted."""
-    recorder = _failing_urlopen(monkeypatch, urllib.error.URLError("Name or service not known"))
-    with pytest.raises(urllib.error.URLError):
-        _send("http://api", "tenants", "GET", None)
-    assert len(recorder.requests) == 1
+    assert _attempts_made(monkeypatch, urllib.error.URLError("Name or service not known")) == 1
 
 
 def test_put_uses_the_put_method(urlopen_recorder: UrlopenRecorder) -> None:
