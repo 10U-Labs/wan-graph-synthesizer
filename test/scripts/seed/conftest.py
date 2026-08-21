@@ -19,6 +19,17 @@ def urlopen_recorder(monkeypatch: pytest.MonkeyPatch) -> UrlopenRecorder:
 
 
 @pytest.fixture
+def instant_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Take the pause _send waits out before a retry down to nothing.
+
+    The seed waits a second before trying a dropped connection again, which is a
+    reasonable pause on a real network and a second of a unit tier's runtime spent
+    asleep for every test that reaches it.
+    """
+    monkeypatch.setattr(seed, "RETRY_PAUSE_SECONDS", 0)
+
+
+@pytest.fixture
 def put_recorder(monkeypatch: pytest.MonkeyPatch) -> CallRecorder:
     """Replace seed._put with a recorder of its (api, path, body) calls."""
     recorder = CallRecorder()

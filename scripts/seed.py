@@ -23,6 +23,8 @@ from __future__ import annotations
 import csv
 import json
 import sys
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, cast
@@ -32,6 +34,8 @@ import yaml
 from repo_utils import REPO_ROOT
 
 DEFAULT_API = "https://api.10ulabs.com/wan-synthesizer"
+# How long _send waits before trying a dropped connection a second time.
+RETRY_PAUSE_SECONDS = 1.0
 DATA = REPO_ROOT / "data"
 ETC = REPO_ROOT / "etc"
 
@@ -123,17 +127,53 @@ def _slug(stem: str) -> str:
     return stem.replace("_", "-")
 
 
+def _is_dropped_connection(failure: OSError) -> bool:
+    """Whether *failure* is the peer dropping the connection with no answer behind it.
+
+    A reset reaches the caller two ways: raised as it stands when the connection dies
+    while the body is being read, and wrapped in a ``urllib.error.URLError`` when it dies
+    during the TLS handshake. An ``HTTPError`` is the service answering and is never one
+    of these, and a ``URLError`` for any other reason -- a name that does not resolve, a
+    host that refuses -- is a failure a second attempt would meet again.
+    """
+    if isinstance(failure, urllib.error.HTTPError):
+        return False
+    if isinstance(failure, urllib.error.URLError):
+        return isinstance(failure.reason, ConnectionResetError)
+    return isinstance(failure, ConnectionResetError)
+
+
+def _send_once(request: urllib.request.Request, method: str, path: str) -> bytes:
+    """Make one attempt at *request* and return its body, raising on a non-2xx response."""
+    with urllib.request.urlopen(request, timeout=60) as response:
+        print(f"  {method} /{path} -> {response.status}", flush=True)
+        return cast("bytes", response.read())
+
+
 def _send(api: str, path: str, method: str, body: bytes | None) -> bytes:
-    """Send a JSON request to the API and return its body, raising on a non-2xx response."""
+    """Send a JSON request to the API and return its body, raising on a non-2xx response.
+
+    A connection the peer resets is tried a second time, after RETRY_PAUSE_SECONDS, and a
+    second reset raises. The seeding pass and the end-to-end tier together make around
+    ninety requests to api.10ulabs.com, TLS connections there are reset now and then, and
+    one such reset used to fail the whole run (GitHub issue #105). Retrying is safe here
+    because a reset is the connection dying with no response behind it, so there is no
+    request the service may already have acted on.
+    """
     request = urllib.request.Request(
         f"{api}/{path}",
         data=body,
         method=method,
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        print(f"  {method} /{path} -> {response.status}", flush=True)
-        return cast("bytes", response.read())
+    try:
+        return _send_once(request, method, path)
+    except OSError as failure:
+        if not _is_dropped_connection(failure):
+            raise
+    print(f"  {method} /{path} -> connection reset, trying once more", flush=True)
+    time.sleep(RETRY_PAUSE_SECONDS)
+    return _send_once(request, method, path)
 
 
 def _put(api: str, path: str, body: Any) -> None:

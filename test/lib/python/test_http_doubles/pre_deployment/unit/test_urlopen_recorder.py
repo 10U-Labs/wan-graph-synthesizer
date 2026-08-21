@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import urllib.request
 
+import pytest
+
 from test_http_doubles import EMPTY_LISTING, UrlopenRecorder
 
 _BASE = "https://api.example.test/wan-synthesizer"
@@ -71,3 +73,35 @@ def test_a_timeout_the_client_sets_is_accepted_and_ignored() -> None:
     recorder = UrlopenRecorder()
     recorder(_request(f"{_BASE}/tenants"), timeout=30.0)
     assert len(recorder.requests) == 1
+
+
+def test_a_failure_the_recorder_was_built_with_is_raised_in_place_of_an_answer() -> None:
+    """A client that copes with a dropped connection needs one to cope with."""
+    recorder = UrlopenRecorder(failures=[ConnectionResetError(104, "Connection reset by peer")])
+    with pytest.raises(ConnectionResetError):
+        recorder(_request(f"{_BASE}/tenants"))
+
+
+def test_the_request_that_failed_is_recorded_before_it_fails() -> None:
+    """A client that retries is judged on the attempts it made, so a failed one counts."""
+    recorder = UrlopenRecorder(failures=[ConnectionResetError()])
+    with pytest.raises(ConnectionResetError):
+        recorder(_request(f"{_BASE}/tenants"))
+    assert len(recorder.requests) == 1
+
+
+def test_the_failures_are_raised_oldest_first() -> None:
+    """A client whose second attempt fails differently is exercised by the order."""
+    recorder = UrlopenRecorder(failures=[ConnectionResetError(), TimeoutError()])
+    with pytest.raises(ConnectionResetError):
+        recorder(_request(f"{_BASE}/tenants"))
+    with pytest.raises(TimeoutError):
+        recorder(_request(f"{_BASE}/tenants"))
+
+
+def test_the_recorder_answers_once_its_failures_are_spent() -> None:
+    """A retry that succeeds is the case the client is written for."""
+    recorder = UrlopenRecorder(body=b'[{"id": "f-35"}]', failures=[ConnectionResetError()])
+    with pytest.raises(ConnectionResetError):
+        recorder(_request(f"{_BASE}/tenants"))
+    assert recorder(_request(f"{_BASE}/tenants")).read() == b'[{"id": "f-35"}]'

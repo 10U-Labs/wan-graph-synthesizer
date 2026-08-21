@@ -14,6 +14,7 @@ from __future__ import annotations
 import socketserver
 import threading
 import urllib.request
+from collections.abc import Sequence
 from typing import Any, cast
 
 EMPTY_LISTING = b"[]"
@@ -39,19 +40,33 @@ class FakeResponse:
 
 
 class UrlopenRecorder:
-    """A drop-in for ``urllib.request.urlopen`` that records its requests."""
+    """A drop-in for ``urllib.request.urlopen`` that records its requests.
 
-    def __init__(self, status: int = 200, body: bytes = EMPTY_LISTING) -> None:
+    *failures* are exceptions raised in place of an answer, one per call and oldest
+    first: a recorder built with one of them fails the first call it is given and
+    answers every call after it. That is how a client is asked what it does when the
+    network drops a connection, which a double that always answers cannot show. The
+    request is recorded before the raise, so a client that tries again is judged on
+    every attempt it made rather than on the ones that got through.
+    """
+
+    def __init__(
+            self, status: int = 200, body: bytes = EMPTY_LISTING,
+            failures: Sequence[BaseException] = (),
+    ) -> None:
         self.requests: list[urllib.request.Request] = []
         self._status = status
         self._body = body
+        self._failures = list(failures)
 
     def __call__(
             self, request: urllib.request.Request, timeout: float = 0.0,
     ) -> FakeResponse:
-        """Record *request* and return a fake response with the fixed status."""
+        """Record *request*, then raise its failure or return a fake response."""
         del timeout
         self.requests.append(request)
+        if self._failures:
+            raise self._failures.pop(0)
         return FakeResponse(self._status, self._body)
 
     def paths(self, base: str) -> list[str]:

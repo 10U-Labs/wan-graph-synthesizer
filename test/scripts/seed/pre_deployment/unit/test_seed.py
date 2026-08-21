@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import sys
+import urllib.error
 import urllib.request
+from email.message import Message
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +26,7 @@ from seed import (
     _post_json,
     _put,
     _rows,
+    _send,
     _slug,
     build_merged_carriers,
     build_tenants,
@@ -310,6 +313,85 @@ def test_off_net_rows_keeps_a_seat_whose_state_differs(
     """A city name a carrier serves in another state is a different place, so it stays."""
     path = _off_net_file(tmp_path, monkeypatch, "Reston,TX")
     assert _off_net_rows(path) == [{"municipality": "Reston", "state": "TX"}]
+
+
+def _reset() -> ConnectionResetError:
+    """A peer resetting the connection, as ssl raises it out of a read."""
+    return ConnectionResetError(104, "Connection reset by peer")
+
+
+def _not_found() -> urllib.error.HTTPError:
+    """A 404 as urlopen raises it: the service answering, not the connection dying."""
+    return urllib.error.HTTPError("http://api/tenants", 404, "Not Found", Message(), None)
+
+
+def _failing_urlopen(
+        monkeypatch: pytest.MonkeyPatch, *failures: BaseException) -> UrlopenRecorder:
+    """Put a recorder raising *failures*, oldest first, in place of urlopen."""
+    recorder = UrlopenRecorder(body=b'[{"id": "f-35"}]', failures=failures)
+    monkeypatch.setattr(urllib.request, "urlopen", recorder)
+    return recorder
+
+
+@pytest.mark.usefixtures("instant_retry")
+def test_send_returns_the_body_when_a_reset_connection_is_tried_again(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """A connection the peer drops is tried once more, and the second attempt is the answer.
+
+    One reset out of the roughly ninety requests a seed run and its end-to-end tier make
+    used to fail the whole of it (GitHub issue #105).
+    """
+    _failing_urlopen(monkeypatch, _reset())
+    assert _send("http://api", "tenants", "GET", None) == b'[{"id": "f-35"}]'
+
+
+@pytest.mark.usefixtures("instant_retry")
+def test_send_tries_a_reset_connection_again_wherever_the_reset_was_raised(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """A reset during the TLS handshake arrives wrapped in a URLError rather than as itself."""
+    _failing_urlopen(monkeypatch, urllib.error.URLError(_reset()))
+    assert _send("http://api", "tenants", "GET", None) == b'[{"id": "f-35"}]'
+
+
+@pytest.mark.usefixtures("instant_retry")
+def test_send_raises_when_every_attempt_is_reset(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The retry gives up after one go, so a service that is really gone fails the run."""
+    _failing_urlopen(monkeypatch, _reset(), _reset())
+    with pytest.raises(ConnectionResetError):
+        _send("http://api", "tenants", "GET", None)
+
+
+@pytest.mark.usefixtures("instant_retry")
+def test_send_says_it_is_trying_a_reset_connection_again(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """A silent retry leaves a job log that cannot be told from one where nothing happened."""
+    _failing_urlopen(monkeypatch, _reset())
+    _send("http://api", "tenants", "GET", None)
+    assert "connection reset" in capsys.readouterr().out
+
+
+def test_send_makes_one_request_when_the_api_answers_first_time(
+        urlopen_recorder: UrlopenRecorder) -> None:
+    """The retry is for a connection that died, so an answered request is never sent twice."""
+    _send("http://api", "tenants", "GET", None)
+    assert len(urlopen_recorder.requests) == 1
+
+
+def test_send_does_not_try_an_http_error_again(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A 404 is the service answering, and asking again gets the same answer."""
+    recorder = _failing_urlopen(monkeypatch, _not_found())
+    with pytest.raises(urllib.error.HTTPError):
+        _send("http://api", "tenants", "GET", None)
+    assert len(recorder.requests) == 1
+
+
+def test_send_does_not_try_a_url_error_that_is_not_a_reset_again(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """A name that does not resolve is not a dropped connection, and a second look is wasted."""
+    recorder = _failing_urlopen(monkeypatch, urllib.error.URLError("Name or service not known"))
+    with pytest.raises(urllib.error.URLError):
+        _send("http://api", "tenants", "GET", None)
+    assert len(recorder.requests) == 1
 
 
 def test_put_uses_the_put_method(urlopen_recorder: UrlopenRecorder) -> None:
