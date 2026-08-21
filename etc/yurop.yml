@@ -25,6 +25,7 @@ inputs:
   forced: data/off_net/yurop.csv
   locations:
     Yurop: data/tenants/yurop.csv
+  providers: data/providers/yurop.csv
 label: Yurop
 settings:
   backbone_search_memory_share: 0.6
