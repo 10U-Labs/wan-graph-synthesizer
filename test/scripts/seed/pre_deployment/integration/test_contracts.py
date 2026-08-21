@@ -294,36 +294,24 @@ def _tenants_written(paths: list[str], resource: str) -> int:
     return sum(1 for path in paths if re.fullmatch(rf"tenants/[^/]+/{resource}", path))
 
 
-def test_pipeline_writes_a_label_for_every_tenant(
-        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Seeding writes a label resource for every tenant config file."""
-    paths = _seed(urlopen_recorder, monkeypatch)
-    assert _tenants_written(paths, "label") == len(list(seed.ETC.glob("*.yml")))
+@pytest.mark.parametrize("resource", ["forced-homes", "label", "provider-regions"])
+def test_pipeline_writes_a_document_for_every_tenant(
+        resource: str, urlopen_recorder: UrlopenRecorder,
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """Seeding writes each of these three resources for every tenant config file.
 
+    Each is a resource a tenant can hold nothing in. ``forced-homes`` is an empty list
+    in every config today, ``provider-regions`` is empty for a tenant whose own sites
+    are its whole demand, and ``label`` carries the empty string for a config naming
+    none. That emptiness is exactly the state that would hide a tenant seeded without
+    the document at all -- and the synthesizer reads its config resources
+    unconditionally, so a tenant missing one gets no WAN rather than a default.
 
-def test_pipeline_writes_a_provider_regions_document_for_every_tenant(
-        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Seeding writes a provider-regions resource for every tenant config file.
-
-    A tenant naming no regions file is seeded an empty list, which is exactly the state
-    that would hide a tenant seeded without the document at all -- and the synthesizer
-    reads its config resources unconditionally, so a tenant missing one gets no WAN
-    rather than a default.
+    One test over the three rather than three tests, because the three bodies differ
+    only in the resource name and jscpd counts that as a clone.
     """
     paths = _seed(urlopen_recorder, monkeypatch)
-    assert _tenants_written(paths, "provider-regions") == len(list(seed.ETC.glob("*.yml")))
-
-
-def test_pipeline_writes_a_forced_homes_document_for_every_tenant(
-        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Seeding writes a forced-homes resource for every tenant config file.
-
-    The list is empty in every config, which is exactly the state that would hide a
-    tenant seeded without the document at all -- and the synthesizer reads its config
-    resources unconditionally, so a tenant missing one gets no WAN rather than a default.
-    """
-    paths = _seed(urlopen_recorder, monkeypatch)
-    assert _tenants_written(paths, "forced-homes") == len(list(seed.ETC.glob("*.yml")))
+    assert _tenants_written(paths, resource) == len(list(seed.ETC.glob("*.yml")))
 
 
 def _merged_carriers() -> tuple[list[Site], dict[tuple[str, str], FiberSegment]]:
