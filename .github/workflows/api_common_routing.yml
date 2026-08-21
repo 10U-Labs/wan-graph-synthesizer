@@ -261,11 +261,11 @@ jobs:
   #
   # Two shapes were proposed for this and neither works. A workflow of its own, named for
   # lib/python/ the way seed.yml is named for scripts/seed.py, cannot put itself ahead of
-  # the eleven workflows that consume the modules: GitHub Actions orders nothing between
-  # workflows started by the same push, and this repository declares no workflow_run or
-  # workflow_call to build an order from. An expression `if` reading this job's result is
-  # not a substitute for the needs: edges either, because a job that only reads another
-  # job's result can start before that job has finished.
+  # the workflows that consume the modules: GitHub Actions orders nothing between workflows
+  # started by the same push, and this repository declares no workflow_run or workflow_call
+  # to build an order from. An expression `if` reading this job's result is not a substitute
+  # for the needs: edges either, because a job that only reads another job's result can
+  # start before that job has finished.
   #
   # Every workflow runs every module's tests, not only the ones its own tests import.
   # Scoping the job to what a workflow imports would make its contents a function of an
@@ -278,12 +278,12 @@ jobs:
   # rather than behind them: a check costs seconds and produces nothing anyone waits on, so
   # holding the shared modules behind one bought nothing. The edges out of this job
   # survived. unit-tests and pre-deployment-integration-tests still wait on it, because a
-  # reader facing eleven red consumers has to be told which shared module broke them, where
-  # one red job and ten skipped ones has already told them. reconciliation waits on it too,
-  # along with every other gate in the workflow, because it runs tofu apply against live
-  # AWS: a tier's result can be disbelieved after the fact, an apply cannot be taken back,
-  # and a run that carries on past a broken module spends that apply and its post-deployment
-  # tier on results that will be thrown away.
+  # reader facing red consumers has to be told which shared module broke them, where one red
+  # job and the rest skipped has already told them. reconciliation waits on it too, along
+  # with every other gate in the workflow, because it runs tofu apply against live AWS: a
+  # tier's result can be disbelieved after the fact, an apply cannot be taken back, and a
+  # run that carries on past a broken module spends that apply and its post-deployment tier
+  # on results that will be thrown away.
   test-repo-libraries:
     name: test-repo-libraries
     permissions:

@@ -228,11 +228,11 @@ jobs:
   #
   # Two shapes were proposed for this and neither works. A workflow of its own, named for
   # lib/python/ the way this one is named for scripts/seed.py, cannot put itself ahead of
-  # the eleven workflows that consume the modules: GitHub Actions orders nothing between
-  # workflows started by the same push, and this repository declares no workflow_run or
-  # workflow_call to build an order from. An expression `if` reading this job's result is
-  # not a substitute for the needs: edges either, because a job that only reads another
-  # job's result can start before that job has finished.
+  # the workflows that consume the modules: GitHub Actions orders nothing between workflows
+  # started by the same push, and this repository declares no workflow_run or workflow_call
+  # to build an order from. An expression `if` reading this job's result is not a substitute
+  # for the needs: edges either, because a job that only reads another job's result can
+  # start before that job has finished.
   #
   # Every workflow runs every module's tests, not only the ones its own tests import.
   # Scoping the job to what a workflow imports would make its contents a function of an
@@ -251,12 +251,12 @@ jobs:
   # this job in a needs: of their own and carry no if at all, so a red one skips them both,
   # and seeding needs those two along with the nine checks, so one red job here skips the
   # rest of the run. e2e-tests names this job beside seeding, rather than
-  # letting the edge arrive down the chain: a reader facing eleven red consumers has to be
-  # told which shared module broke them, where one red job and ten skipped ones has already
-  # told them. Deploying past a broken module costs more than a wrong report, too — seeding
-  # PUTs the git-authored inputs to the live API, POSTs the builds and then waits up to the
-  # 900 seconds of _BUILD_DEADLINE_SECONDS in
-  # test/scripts/seed/post_deployment/e2e/conftest.py for results that will be thrown away.
+  # letting the edge arrive down the chain: a reader facing red consumers has to be told
+  # which shared module broke them, where one red job and the rest skipped has already told
+  # them. Deploying past a broken module costs more than a wrong report, too — seeding PUTs
+  # the git-authored inputs to the live API, POSTs the builds and then waits up to the 900
+  # seconds of _BUILD_DEADLINE_SECONDS in test/scripts/seed/post_deployment/e2e/conftest.py
+  # for results that will be thrown away.
   test-repo-libraries:
     name: test-repo-libraries
     permissions:
