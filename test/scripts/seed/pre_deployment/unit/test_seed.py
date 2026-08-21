@@ -557,6 +557,22 @@ def test_push_tenants_puts_the_provider_regions_its_config_names(
     assert bodies["tenants/f-35/provider-regions"] == [{"city": "Reston", "state": "VA"}]
 
 
+def test_push_tenants_uses_empty_provider_regions_when_absent(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        put_recorder: CallRecorder) -> None:
+    """A config naming no providers file still gets the resource, holding an empty list.
+
+    A tenant may have no cloud demand at all -- etc/yurop.yml is one -- and says so by
+    leaving inputs.providers out. The resource is still written, because the synthesizer
+    reads every config resource unconditionally and a tenant missing one gets no WAN
+    rather than a default.
+    """
+    bodies = _pushed_bodies(
+        tmp_path, monkeypatch, put_recorder,
+        _TENANT_YML.replace("  providers: regions/providers.csv\n", ""))
+    assert bodies["tenants/f-35/provider-regions"] == []
+
+
 def test_push_tenants_reads_off_net_when_present(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
         put_recorder: CallRecorder) -> None:

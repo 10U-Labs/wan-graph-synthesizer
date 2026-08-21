@@ -198,7 +198,13 @@ def push_providers(api: str) -> None:
 
 
 def push_tenants(api: str) -> list[str]:
-    """Push each tenant's inputs and return the tenant ids (for the build step)."""
+    """Push each tenant's inputs and return the tenant ids (for the build step).
+
+    A tenant whose sites are its whole demand names no file under ``inputs.providers``
+    and is pushed an empty ``provider-regions`` document. The document is still written,
+    because the synthesizer reads every config resource and a missing one is a failed
+    build rather than a tenant with no cloud regions.
+    """
     tenant_ids: list[str] = []
     for path in sorted(ETC.glob("*.yml")):
         config = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -213,7 +219,7 @@ def push_tenants(api: str) -> list[str]:
         prohibited = backbone.get("prohibited", {})
         homes = access.get("forced", {}).get("homes", [])
         locations = _mapping_rows(inputs.get("locations", {}))
-        regions = _rows(REPO_ROOT / inputs["providers"])
+        regions = _rows(REPO_ROOT / inputs["providers"]) if inputs.get("providers") else []
         off_net_file = inputs.get("forced")
         off_net = _off_net_rows(off_net_file) if off_net_file else []
         print(f"tenant {tid}: {len(locations)} sites, {len(regions)} regions, "

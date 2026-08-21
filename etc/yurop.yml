@@ -1,0 +1,32 @@
+---
+access:
+  forced:
+    homes: []
+  homing_degree: 2
+backbone:
+  coverage_target_miles: 745
+  forced:
+    nodes:
+      - Ashburn, VA
+      - Boston, MA
+      - Huntingdon, United Kingdom
+      - Stuttgart, Germany
+    paths: []
+  max_backup_path_multiple: 3
+  node_count:
+    max: 99
+    min: 3
+  number_of_diverse_paths: 2
+  prohibited:
+    nodes: []
+    paths: []
+  promote_high_degree_convergences: false
+inputs:
+  forced: data/off_net/yurop.csv
+  locations:
+    Yurop: data/tenants/yurop.csv
+label: Yurop
+settings:
+  backbone_search_memory_share: 0.6
+  bytes_per_backbone_combination: 160
+  compass_sector_count: 8

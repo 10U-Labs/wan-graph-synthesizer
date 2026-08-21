@@ -218,19 +218,34 @@ def test_pipeline_writes_no_knob_the_synthesizer_does_not_read(
     } == {frozenset({"backbone_coverage_target_miles", "backbone_max_backup_path_multiple"})}
 
 
+def _configs_naming_a_providers_file() -> set[str]:
+    """The tenant ids whose config names a regions file under ``inputs.providers``.
+
+    A tenant with no cloud demand names none and is seeded an empty document, so the
+    roster is no longer the count of tenants that end up with regions. etc/yurop.yml is
+    that tenant: its five sites are the whole of its demand.
+    """
+    return {
+        tenant
+        for tenant, config in _tenant_configs().items()
+        if config.get("inputs", {}).get("providers")
+    }
+
+
 def test_pipeline_writes_every_tenant_the_regions_of_the_file_its_config_names(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Every tenant is seeded regions from the bare path its ``inputs.providers`` names.
+    """Every tenant naming a regions file is seeded regions from the bare path it names.
 
     The config names the file and only the file holds the rows, so neither side says
     alone that a tenant ends up with any regions at all. A shape the reader mishandles
     is the failure this catches: it delivers an empty document rather than an error, and
-    a tenant seeded no regions has no cloud demand to home.
+    a tenant seeded no regions has no cloud demand to home. A tenant that names no file
+    is excused, because an empty document is then the answer its config asked for.
     """
     _seed(urlopen_recorder, monkeypatch)
     written = _written_by_tenant(urlopen_recorder, "provider-regions")
     seeded = sum(1 for regions in written.values() if regions)
-    assert seeded == len(list(seed.ETC.glob("*.yml")))
+    assert seeded == len(_configs_naming_a_providers_file())
 
 
 def _declared_off_net_paths() -> set[str]:
@@ -284,6 +299,19 @@ def test_pipeline_writes_a_label_for_every_tenant(
     """Seeding writes a label resource for every tenant config file."""
     paths = _seed(urlopen_recorder, monkeypatch)
     assert _tenants_written(paths, "label") == len(list(seed.ETC.glob("*.yml")))
+
+
+def test_pipeline_writes_a_provider_regions_document_for_every_tenant(
+        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Seeding writes a provider-regions resource for every tenant config file.
+
+    A tenant naming no regions file is seeded an empty list, which is exactly the state
+    that would hide a tenant seeded without the document at all -- and the synthesizer
+    reads its config resources unconditionally, so a tenant missing one gets no WAN
+    rather than a default.
+    """
+    paths = _seed(urlopen_recorder, monkeypatch)
+    assert _tenants_written(paths, "provider-regions") == len(list(seed.ETC.glob("*.yml")))
 
 
 def test_pipeline_writes_a_forced_homes_document_for_every_tenant(
@@ -493,8 +521,9 @@ def _demand(config: dict[str, Any]) -> list[Site]:
     not places asking to be served.
     """
     inputs = config["inputs"]
+    providers = inputs.get("providers")
     places = load_sites(_mapping_rows(inputs.get("locations", {})))
-    places += load_regions(_rows(REPO_ROOT / inputs["providers"]))
+    places += load_regions(_rows(REPO_ROOT / providers)) if providers else []
     return [place for place in places if not place.exempt_from_distance_constraint]
 
 
