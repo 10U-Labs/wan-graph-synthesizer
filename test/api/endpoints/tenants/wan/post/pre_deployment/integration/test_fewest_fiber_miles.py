@@ -179,7 +179,7 @@ def test_that_synthesis_is_the_same_synthesis_when_every_pass_of_its_search_give
 # sellable one and the answer is forced whole.
 _SPLIT_SITES = ("w", "x")
 _SPLIT_TRANSIT = ("p", "q")
-_SPLIT_SEGMENTS = {
+_SPLIT_SEGMENTS: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
     ("w", "p"): (100.0, ("lumen",)),
     ("p", "x"): (100.0, ("lumen",)),
     ("w", "q"): (150.0, ("zayo",)),

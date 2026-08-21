@@ -21,8 +21,9 @@ how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles ag
 The measurement itself is not here. Nine of the seventeen questions below are answered by
 recomputing a number from the published collections, or from the carrier files git holds,
 rather than by reading one back, and that recomputation lives in
-lib/python/test_published_syntheses/, where a unit tier can hold it to literal inputs. A helper that measures wrongly fails a healthy network or passes a
-broken one depending on which way its error runs, and this tier has no second source of the
+lib/python/test_published_syntheses/, where a unit tier can hold it to literal inputs. A
+helper that measures wrongly fails a healthy network or passes a broken one depending on
+which way its error runs, and this tier has no second source of the
 answer with which to notice; leaving it here left it graded only by the deployment it
 exists to grade (GitHub issue #50). What that module does not do is measure through
 ``synthesizer.coverage``: the report under test is what that module produced, so
