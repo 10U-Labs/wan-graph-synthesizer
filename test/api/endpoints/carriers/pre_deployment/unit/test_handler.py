@@ -99,7 +99,7 @@ def test_carrier_delete_removes_an_object_the_endpoint_never_wrote(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """A DELETE clears the whole carrier, not only the two collections a PUT writes."""
     stored = {"carriers/lumen/pops.json": b"[]", "carriers/lumen/vertices.json": b"[]"}
-    assert _store_after_deleting(monkeypatch, stored, "lumen") == {}
+    assert not _store_after_deleting(monkeypatch, stored, "lumen")
 
 
 def test_carrier_delete_leaves_another_carrier_alone(monkeypatch: pytest.MonkeyPatch) -> None:
