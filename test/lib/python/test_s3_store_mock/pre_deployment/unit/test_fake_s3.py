@@ -88,3 +88,24 @@ def test_a_listing_given_as_empty_is_served_empty() -> None:
     """An empty listing is a case in its own right and not the absence of one."""
     client = fake_s3({"carriers/lumen/pops.json": b"[]"}, keys=[])
     assert client.list_objects_v2(Bucket="store")["Contents"] == []
+
+
+def test_a_listing_narrowed_by_prefix_leaves_out_what_is_not_under_it() -> None:
+    """A handler deleting one carrier lists that carrier, so the answer must exclude others."""
+    client = fake_s3({"carriers/lumen/pops.json": b"[]", "carriers/zayo/pops.json": b"[]"})
+    listing = client.list_objects_v2(Bucket="store", Prefix="carriers/lumen/")
+    assert listing["Contents"] == [{"Key": "carriers/lumen/pops.json"}]
+
+
+def test_a_prefix_the_store_has_nothing_under_lists_nothing() -> None:
+    """Deleting a carrier the store never held is a case of its own, not a missing answer."""
+    client = fake_s3({"carriers/lumen/pops.json": b"[]"})
+    assert client.list_objects_v2(Bucket="store", Prefix="carriers/ghost/")["Contents"] == []
+
+
+def test_a_listing_given_outright_is_narrowed_by_prefix_too() -> None:
+    """The reader contract states its listing, and the handler reading it passes a prefix."""
+    keys = ["carriers/lumen/pops.json", "tenants/daf/label.json"]
+    client = fake_s3({}, keys=keys)
+    listing = client.list_objects_v2(Bucket="store", Prefix="tenants/")
+    assert listing["Contents"] == [{"Key": "tenants/daf/label.json"}]

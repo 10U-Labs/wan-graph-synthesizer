@@ -38,10 +38,17 @@ def fake_s3(objects: dict[str, bytes], keys: list[str] | None = None) -> Any:
         objects.pop(kwargs["Key"], None)
         return {}
 
-    def list_objects_v2(**_kwargs: Any) -> dict[str, Any]:
-        """Return a canned listing of object keys."""
+    def list_objects_v2(**kwargs: Any) -> dict[str, Any]:
+        """Return a canned listing of object keys, narrowed by ``Prefix`` as S3 narrows it.
+
+        A handler that lists ``carriers/lumen/`` and deletes what comes back is judged on
+        the store afterwards, so a listing that hands it every key makes a delete of the
+        whole collection indistinguishable from a delete of the one carrier. With no
+        ``Prefix`` the filter is the empty string and the whole listing comes back.
+        """
+        prefix = kwargs.get("Prefix", "")
         listed = keys if keys is not None else list(objects)
-        return {"Contents": [{"Key": key} for key in listed]}
+        return {"Contents": [{"Key": key} for key in listed if key.startswith(prefix)]}
 
     return SimpleNamespace(
         get_object=get_object,
