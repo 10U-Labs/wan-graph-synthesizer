@@ -52,7 +52,6 @@ def finalize(
         ceilings=diverse_path_ceilings(PathProofInputs(
             synthesis.backbone_ids,
             adjacency,
-            None,
             params.tuning.backbone_number_of_diverse_paths,
             params.max_backbone_count,
             adjacency_by_carrier(fiber_segments),
