@@ -1,25 +1,25 @@
 ---
 name: autopilot
-description: Start or stop the standing reminders that keep an autonomous issue-solving session on the rails. Use when the user says "start autopilot", "go autonomous on issues above N", "stop autopilot", or asks to clear the reminders. Takes "start <issue-number>" or "stop".
+description: Start or stop the standing reminders that keep an autonomous issue-solving session on the rails. Use when the user says "start autopilot", "go autonomous on the open issues", "stop autopilot", or asks to clear the reminders. Takes "start" or "stop".
 ---
 
 # Autopilot
 
 Eight recurring reminders, one per standing rule, that fire back into this session while it works through open issues on its own. Each rule gets its own reminder so that no rule can be quietly dropped from a merged block of text, and the fire times are staggered across the ten-minute period so they arrive one at a time rather than as a wall.
 
-The argument is the sub-command: `start <issue-number>` or `stop`.
+The argument is the sub-command: `start` or `stop`.
 
 `CronCreate`, `CronList` and `CronDelete` are deferred tools: the session is told their names but not their schemas, so a call made before the schema is fetched fails with `InputValidationError` and creates nothing. Fetch them first with `ToolSearch`, query `select:CronCreate,CronList,CronDelete`: `start` calls `CronCreate`, `stop` calls `CronList` and `CronDelete`.
 
 ## Start
 
-The issue number is required — it is the `{X}` in the `:01` reminder, and it is the floor for the repository the session is running in: every open issue above it there is in scope. An issue reached by following a dependency out of that set is in scope as well, whatever its number and whatever repository it lives in, because numbering in one repository says nothing about another — this one is at #100 and `10U-Labs/10ulabs.com` is already at #488. If the user did not give an issue number, ask for it before creating anything.
+Every open issue in the repository the session is running in is in scope, and `start` takes no argument. An issue reached by following a dependency out of that set is in scope as well, whatever repository it lives in, because numbering in one repository says nothing about another — this one is at #113 and `10U-Labs/10ulabs.com` is already at #488. The floor this used to take was a number below which open issues were left alone, which is a thing the sequence already says: an issue nobody should work yet is one something else blocks, written down as a `blocked_by` edge that every reader can see, rather than as a number one session was told once.
 
-Create eight jobs with `CronCreate`, exactly as listed below. Use `recurring: true` (the default). Substitute the issue number for `{X}` in the first prompt and leave the other seven verbatim. Each `cron` field is a distinct offset within the same ten-minute period, so the seven reminders never land together:
+Create eight jobs with `CronCreate`, exactly as listed below. Use `recurring: true` (the default), and take all eight prompts verbatim. Each `cron` field is a distinct offset within the same ten-minute period, so the seven reminders never land together:
 
 | Offset | Cron | Prompt |
 | --- | --- | --- |
-| :01 | `1,11,21,31,41,51 * * * *` | `REMINDER: Continue to solve open issues greater than issue {X} autonomously, unless you need human feedback about ANYTHING — not just about the next open issue.` |
+| :01 | `1,11,21,31,41,51 * * * *` | `REMINDER: Continue to solve the open issues autonomously, unless you need human feedback about ANYTHING — not just about the next open issue.` |
 | :03 | `3,13,23,33,43,53 * * * *` | `REMINDER: Issues must be solved through a single commit & push.` |
 | :04 | `4,14,24,34,44,54 * * * *` | `REMINDER: Issues must be solved through a set of indivisible Claude tasks.` |
 | :05 | `5,15,25,35,45,55 * * * *` | `REMINDER: Lead with what the thing is for. Every paragraph — in chat as much as in issues, commits and comments — opens with a plain sentence saying what the thing is and what it does, before any file, function or line is named. Say what a defect costs in ordinary words near the top, not in the seventh paragraph. Then cut the details that change nothing the reader would do.` |
@@ -28,9 +28,9 @@ Create eight jobs with `CronCreate`, exactly as listed below. Use `recurring: tr
 | :08 | `8,18,28,38,48,58 * * * *` | `REMINDER: An issue you file goes into the sequence before you go back to work. Add a blocked_by edge: the issue in hand is blocked by the new one if it cannot be finished without it, otherwise whichever issue in the set cannot be finished without it, otherwise the new issue is blocked by the tail of the sequence. Never leave a filed issue with no edge.` |
 | :09 | `9,19,29,39,49,59 * * * *` | `REMINDER: When you come up against a new problem, file a GitHub issue. A problem in the program — src/, lib/python/, scripts/, lib/opentofu/ — gets the sub-headers "Problem", "Why Unit Tests Did Not Catch It", "Why Integration Tests Did Not Catch It", "Why E2E Tests Did Not Catch It", "Which Unit, Integration, or E2E regression tests would prevent this from happening again?", and "Proposed Solution". A problem in a config, a map, a workflow file or the docs gets "Problem" and "Proposed Solution" only, and owes no tests.` |
 
-Then tell the user which issue number is in force, that eight reminders are running, and the two limits that come with them: the jobs live in this session only and are gone when it ends, and recurring jobs auto-expire after seven days.
+Then tell the user that eight reminders are running, and the two limits that come with them: the jobs live in this session only and are gone when it ends, and recurring jobs auto-expire after seven days.
 
-Then start working, in the same turn that created the jobs. Read the open issues above `{X}` with `gh issue list`, then read `gh api repos/{owner}/{repo}/issues/{number}/dependencies/blocked_by` for each of them; every entry names the repository its blocker lives in. Follow those entries, and the entries of the issues they reach, until nothing new comes back, and add every open issue found this way to the set. Then take the lowest-numbered issue in the set that no open issue blocks, preferring the repository the session is running in when two are equally unblocked, and begin solving it under the standing rules the reminders carry — committing in whichever repository its `Proposed Solution` names, and reading that repository's CI to confirm it. Running this skill is starting the work; the eight jobs only keep it on the rails once it is going.
+Then start working, in the same turn that created the jobs. Read the open issues with `gh issue list`, then read `gh api repos/{owner}/{repo}/issues/{number}/dependencies/blocked_by` for each of them; every entry names the repository its blocker lives in. Follow those entries, and the entries of the issues they reach, until nothing new comes back, and add every open issue found this way to the set. Then take the lowest-numbered issue in the set that no open issue blocks, preferring the repository the session is running in when two are equally unblocked, and begin solving it under the standing rules the reminders carry — committing in whichever repository its `Proposed Solution` names, and reading that repository's CI to confirm it. Running this skill is starting the work; the eight jobs only keep it on the rails once it is going.
 
 An issue filed during a run goes into the sequence before the session goes back to work. A `blocked_by` edge points from the issue that waits to the issue it waits on, and which issue gets the edge follows from three cases that between them cover everything. If the issue in hand cannot be finished until the new one is, the issue in hand gets the new one as a `blocked_by`, which puts the new issue immediately in front of it — and in front of the whole sequence when the issue in hand is its head, which is how #100 came to sit before #96. If some other issue in the set cannot be finished until the new one is, that issue gets the new one as a `blocked_by`. If neither is true, the new issue gets an edge to the tail of the sequence, the one open issue in the set that no other open issue is blocked by, which is #82 today. There is no fourth case and nothing to choose between: an issue is either needed before something already in the sequence or it is not.
 
