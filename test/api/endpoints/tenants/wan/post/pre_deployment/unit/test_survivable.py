@@ -188,6 +188,13 @@ def test_the_fiber_selected_is_fiber_one_carrier_can_sell_a_whole_path_over() ->
     ).segments == _SELLABLE
 
 
+_DISTANT_PEER_SITES = ("hil", "sea", "syd")
+_DISTANT_PEER_CHOICE = choose_fiber(FiberInputs(
+    _DISTANT_PEER_SITES, fixtures.DISTANT_PEER_LINKS, _WAYS_OUT, None,
+    adjacency_by_carrier(fixtures.DISTANT_PEER_LINKS),
+))
+
+
 def _distant_peer_ceilings(segments: frozenset[tuple[str, str]]) -> dict[str, int]:
     return diverse_path_ceilings(PathProofInputs(
         _DISTANT_PEER_SITES,

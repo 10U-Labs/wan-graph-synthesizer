@@ -3,7 +3,7 @@ from __future__ import annotations
 import heapq
 import math
 from collections import deque
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterator
 
 from synthesizer.input_graph import FiberSegment, link_key
 

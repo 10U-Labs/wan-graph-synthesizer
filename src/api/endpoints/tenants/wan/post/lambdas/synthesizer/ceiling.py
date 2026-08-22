@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import heapq
 import math
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from synthesizer.graphs import reachable_over
