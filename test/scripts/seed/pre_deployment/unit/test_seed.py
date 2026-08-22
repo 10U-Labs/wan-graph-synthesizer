@@ -83,7 +83,9 @@ def _write_csv(path: Path, header: str, *rows: str) -> None:
 
 def _one_carrier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(seed, "DATA", tmp_path)
-    _write_csv(tmp_path / "fiber_segments" / "lumen.csv", "a_city,z_city", "Reston,Denver")
+    _write_csv(
+        tmp_path / "fiber_segments" / "terrestrial" / "lumen.csv",
+        "a_city,z_city", "Reston,Denver")
     _write_csv(
         tmp_path / "pops" / "lumen.csv",
         "Municipality,State", "Reston,VA", "Denver,CO")
@@ -197,16 +199,22 @@ def test_mapping_rows_drops_the_grouping_labels(
 def test_carrier_names_returns_sorted_stems(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(seed, "DATA", tmp_path)
-    _write_csv(tmp_path / "fiber_segments" / "lumen.csv", "a_city,z_city", "X,Y")
-    _write_csv(tmp_path / "fiber_segments" / "cogent.csv", "a_city,z_city", "X,Y")
+    _write_csv(
+        tmp_path / "fiber_segments" / "terrestrial" / "lumen.csv", "a_city,z_city", "X,Y")
+    _write_csv(
+        tmp_path / "fiber_segments" / "submarine" / "lumen.csv", "a_city,z_city", "X,Y")
+    _write_csv(
+        tmp_path / "fiber_segments" / "terrestrial" / "cogent.csv", "a_city,z_city", "X,Y")
     assert _carrier_names() == ["cogent", "lumen"]
 
 
 def test_carrier_names_ignores_non_csv_files(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(seed, "DATA", tmp_path)
-    _write_csv(tmp_path / "fiber_segments" / "lumen.csv", "a_city,z_city", "X,Y")
-    (tmp_path / "fiber_segments" / "notes.txt").write_text("x", encoding="utf-8")
+    _write_csv(
+        tmp_path / "fiber_segments" / "terrestrial" / "lumen.csv", "a_city,z_city", "X,Y")
+    (tmp_path / "fiber_segments" / "terrestrial" / "notes.txt").write_text(
+        "x", encoding="utf-8")
     assert _carrier_names() == ["lumen"]
 
 

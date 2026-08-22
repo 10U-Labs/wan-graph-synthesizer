@@ -228,7 +228,9 @@ def _merged_carriers() -> tuple[list[Site], dict[tuple[str, str], FiberSegment]]
         for row in _rows(path)
     ]
     segments = [
-        row for path in sorted((seed.DATA / "fiber_segments").glob("*.csv")) for row in _rows(path)
+        row
+        for path in sorted(seed.FIBER_SEGMENTS.glob("*/*.csv"))
+        for row in _rows(path)
     ]
     return load_merged_carriers(points, segments)
 

@@ -228,7 +228,7 @@ def _city_names() -> dict[tuple[str, str], str]:
 def _fiber_by_carrier() -> dict[str, set[frozenset[str]]]:
     named = _city_names()
     held: dict[str, set[frozenset[str]]] = {}
-    for path in sorted((seed.DATA / "fiber_segments").glob("*.csv")):
+    for path in sorted(seed.FIBER_SEGMENTS.glob("*/*.csv")):
         pairs: set[frozenset[str]] = set()
         with path.open(encoding="utf-8") as handle:
             for row in csv.DictReader(handle):
@@ -236,7 +236,7 @@ def _fiber_by_carrier() -> dict[str, set[frozenset[str]]]:
                 far = named.get((row["Z_Municipality"], row["Z_State"]))
                 if near and far:
                     pairs.add(frozenset({near, far}))
-        held[path.stem] = pairs
+        held.setdefault(path.stem, set()).update(pairs)
     return held
 
 
