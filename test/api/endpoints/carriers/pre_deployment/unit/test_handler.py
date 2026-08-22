@@ -57,7 +57,10 @@ def test_carrier_fiber_segments_accept_the_endpoint_columns(
         monkeypatch: pytest.MonkeyPatch) -> None:
     module = load_handler("carriers", monkeypatch)
     objects: dict[str, bytes] = {}
-    row = {"a_municipality": "A", "a_state": "X", "z_municipality": "B", "z_state": "Y"}
+    row = {
+        "a_municipality": "A", "a_state": "X",
+        "z_municipality": "B", "z_state": "Y", "submarine": False,
+    }
     with patch("boto3.client", side_effect=write_clients(objects, [])):
         module.lambda_handler(write_event(_WRITER, "fiber-segments", [row]), None)
     assert json.loads(objects["carriers/lumen/fiber-segments.json"]) == [row]

@@ -7,7 +7,7 @@ import boto3
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 _SITE_FIELDS = {"municipality", "state", "country", "latitude", "longitude"}
-_LINK_FIELDS = {"a_municipality", "a_state", "z_municipality", "z_state"}
+_LINK_FIELDS = {"a_municipality", "a_state", "z_municipality", "z_state", "submarine"}
 
 
 def _validate_rows(body: Any, required: set[str]) -> str | None:
