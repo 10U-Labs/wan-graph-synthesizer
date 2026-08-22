@@ -624,7 +624,7 @@ MANY_PASS_SEGMENTS = {
 }
 MANY_PASS_SITES = ("c", "d", "j", "k", "l")
 MANY_PASS_TRANSIT = ("a", "b", "e", "f", "g", "h", "i")
-MANY_PASS_MILES = 159.0
+MANY_PASS_MILES = 162.0
 
 
 SELLABLE_WAYS_SITES = ("a", "b")

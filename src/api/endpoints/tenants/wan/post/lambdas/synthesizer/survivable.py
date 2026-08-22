@@ -71,6 +71,12 @@ class _Asked:
 
 
 @dataclass(frozen=True)
+class _WaysOut:
+    toward_each: list[_Requirement]
+    together: list[_Requirement]
+
+
+@dataclass(frozen=True)
 class _BudgetSlack:
     reach: Mapping[str, float]
     spare: Mapping[str, float]
@@ -232,7 +238,7 @@ def _asked_of_all_peers(
     return _Asked(site, peers, spared, reach, able)
 
 
-def _ways_out_rows(site: str, writing: _Writing) -> list[_Requirement]:
+def _ways_out_rows(site: str, writing: _Writing) -> _WaysOut:
     peers = frozenset(writing.inputs.backbone_ids) - {site}
     spared = frozenset({site}) if writing.per_peer == 1 else frozenset({site}) | peers
     capacity = ways_out_by_carrier_and_peer(site, writing.proof)
@@ -249,8 +255,9 @@ def _ways_out_rows(site: str, writing: _Writing) -> list[_Requirement]:
         ],
         writing.whole,
     )
-    return toward_each + _rows_for(
-        _asked_of_all_peers(site, spared, capacity, peer_fiber), writing
+    return _WaysOut(
+        toward_each,
+        _rows_for(_asked_of_all_peers(site, spared, capacity, peer_fiber), writing),
     )
 
 
@@ -298,9 +305,11 @@ def _requirements(
         return []
     root = min(
         ways_out.items(),
-        key=lambda owed: (-sum(row.required for row in owed[1]), owed[0]),
+        key=lambda owed: (-sum(row.required for row in owed[1].together), owed[0]),
     )[0]
-    return [row for rows in ways_out.values() for row in rows] + [
+    return [
+        row for rows in ways_out.values() for row in rows.toward_each + rows.together
+    ] + [
         row
         for peer in sorted(set(inputs.backbone_ids) - {root})
         for row in _between_rows(root, peer, writing)

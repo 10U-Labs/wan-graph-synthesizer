@@ -65,7 +65,7 @@ def _owed(
     inputs = _asking(links, backbone_ids, seat_cap)
     fiber = admissible_fiber(inputs)
     return sum(
-        row.required for row in _ways_out_rows(site, _writing(inputs, fiber))
+        row.required for row in _ways_out_rows(site, _writing(inputs, fiber)).together
     )
 
 
@@ -228,7 +228,7 @@ def _fiber_the_row_toward(
     writing = _writing(inputs, admissible_fiber(inputs))
     return frozenset(
         segment
-        for row in _ways_out_rows(site, writing)
+        for row in _ways_out_rows(site, writing).toward_each
         if row.peers == frozenset({peer})
         for segment in row.over
     )
