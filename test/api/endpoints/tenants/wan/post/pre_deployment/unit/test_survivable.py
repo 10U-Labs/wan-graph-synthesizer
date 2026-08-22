@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 
 import fixtures
-from synthesizer.ceiling import BackupPathLimit
+from synthesizer.ceiling import (
+    BackupPathLimit,
+    PathProofInputs,
+    diverse_path_ceilings,
+)
 from synthesizer.graphs import adjacency_by_carrier, build_adjacency, distances_from
 from synthesizer.input_graph import FiberSegment
 from synthesizer.survivable import (
@@ -208,15 +212,63 @@ def test_the_fiber_selected_is_fiber_one_carrier_can_sell_a_whole_path_over() ->
 
 
 _NEAR_AND_FAR_DISTANCES = _all_distances(fixtures.NEAR_AND_FAR_LINKS)
-_NEAR_AND_FAR_CHOICE = choose_fiber(FiberInputs(
-    fixtures.NEAR_AND_FAR_SITES, fixtures.NEAR_AND_FAR_LINKS, _NEAR_AND_FAR_DISTANCES,
-    _WAYS_OUT, None, BackupPathLimit(3.0, _NEAR_AND_FAR_DISTANCES),
-    adjacency_by_carrier(fixtures.NEAR_AND_FAR_LINKS),
-))
+
+
+def _fiber_the_row_toward(
+    links: dict[tuple[str, str], FiberSegment],
+    backbone_ids: tuple[str, ...],
+    limit: BackupPathLimit,
+    site: str,
+    peer: str,
+) -> frozenset[tuple[str, str]]:
+    inputs = FiberInputs(
+        backbone_ids, links, _all_distances(links), _WAYS_OUT, None, limit,
+        adjacency_by_carrier(links),
+    )
+    writing = _writing(inputs, admissible_fiber(inputs))
+    return frozenset(
+        segment
+        for row in _ways_out_rows(site, writing)
+        if row.peers == frozenset({peer})
+        for segment in row.over
+    )
 
 
 def test_a_way_round_past_the_bound_is_not_selected_for_the_pair_it_is_past_it_for() -> None:
-    assert ("a", "q") not in _NEAR_AND_FAR_CHOICE.segments
+    assert _fiber_the_row_toward(
+        fixtures.NEAR_AND_FAR_LINKS,
+        fixtures.NEAR_AND_FAR_SITES,
+        BackupPathLimit(3.0, _NEAR_AND_FAR_DISTANCES),
+        "a",
+        "b",
+    ) == frozenset({("a", "b")})
+
+
+_DISTANT_PEER_SITES = ("hil", "sea", "syd")
+_DISTANT_PEER_DISTANCES = _all_distances(fixtures.DISTANT_PEER_LINKS)
+_DISTANT_PEER_LIMIT = BackupPathLimit(3.0, _DISTANT_PEER_DISTANCES)
+_DISTANT_PEER_CHOICE = choose_fiber(FiberInputs(
+    _DISTANT_PEER_SITES, fixtures.DISTANT_PEER_LINKS, _DISTANT_PEER_DISTANCES,
+    _WAYS_OUT, None, _DISTANT_PEER_LIMIT,
+    adjacency_by_carrier(fixtures.DISTANT_PEER_LINKS),
+))
+
+
+def _distant_peer_ceilings(segments: frozenset[tuple[str, str]]) -> dict[str, int]:
+    return diverse_path_ceilings(PathProofInputs(
+        _DISTANT_PEER_SITES,
+        build_adjacency({
+            segment: fixtures.DISTANT_PEER_LINKS[segment] for segment in segments
+        }),
+        _DISTANT_PEER_LIMIT,
+        _WAYS_OUT,
+    ))
+
+
+def test_the_fiber_selected_for_a_site_carries_every_way_out_its_fiber_carries() -> None:
+    assert _distant_peer_ceilings(_DISTANT_PEER_CHOICE.segments) == _distant_peer_ceilings(
+        frozenset(fixtures.DISTANT_PEER_LINKS)
+    ) == {"hil": 2, "sea": 1, "syd": 2}
 
 
 _MANY_PASS = physical(fixtures.MANY_PASS_SEGMENTS)

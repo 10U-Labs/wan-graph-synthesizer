@@ -8,7 +8,7 @@ from synthesizer.ceiling import (
     BackupPathLimit,
     PathProofInputs,
     paths_per_peer,
-    ways_out_by_carrier,
+    ways_out_by_carrier_and_peer,
 )
 from synthesizer.flow_cuts import Separation, SeparationQuestion, weakest_separation
 from synthesizer.graphs import build_adjacency
@@ -61,9 +61,8 @@ class _Writing:
 @dataclass(frozen=True)
 class _Asked:
     site: str
-    peers: frozenset[str]
     spared: frozenset[str]
-    over: frozenset[tuple[str, str]]
+    over: Mapping[tuple[str, str], frozenset[tuple[str, str]]]
 
 
 @dataclass(frozen=True)
@@ -174,24 +173,26 @@ def _carried(requirement: _Requirement, whole: Mapping[tuple[str, str], float]) 
     return required
 
 
-def _shared_out(owed: int, capacity: Mapping[str, int]) -> dict[str, int]:
-    shares: dict[str, int] = {}
+def _shared_out(
+    owed: int, capacity: Mapping[tuple[str, str], int]
+) -> dict[tuple[str, str], int]:
+    shares: dict[tuple[str, str], int] = {}
     left = owed
-    for carrier, able in sorted(capacity.items(), key=lambda entry: (-entry[1], entry[0])):
-        shares[carrier] = min(able, left)
-        left -= shares[carrier]
+    for bucket, able in sorted(capacity.items(), key=lambda entry: (-entry[1], entry[0])):
+        shares[bucket] = min(able, left)
+        left -= shares[bucket]
     return shares
 
 
 def _rows_for(
-    asked: _Asked, writing: _Writing, capacity: Mapping[str, int]
+    asked: _Asked, writing: _Writing, capacity: Mapping[tuple[str, str], int]
 ) -> list[_Requirement]:
     rows = [
         _Requirement(
-            asked.site, asked.peers, asked.spared, share,
-            asked.over & writing.by_carrier[carrier],
+            asked.site, frozenset({peer}), asked.spared, share,
+            asked.over[(carrier, peer)],
         )
-        for carrier, share in _shared_out(writing.inputs.ways_out, capacity).items()
+        for (carrier, peer), share in _shared_out(writing.inputs.ways_out, capacity).items()
         if share
     ]
     lowered = [replace(row, required=_carried(row, writing.whole)) for row in rows]
@@ -202,29 +203,28 @@ def _ways_out_rows(site: str, writing: _Writing) -> list[_Requirement]:
     inputs = writing.inputs
     peers = frozenset(inputs.backbone_ids) - {site}
     spared = frozenset({site}) if writing.per_peer == 1 else frozenset({site}) | peers
-    return _rows_for(
-        _Asked(site, peers, spared, _within_budget(inputs, writing.fiber, site, peers)),
-        writing,
-        ways_out_by_carrier(site, writing.proof),
-    )
+    capacity = ways_out_by_carrier_and_peer(site, writing.proof)
+    over = {
+        (carrier, peer): writing.by_carrier[carrier]
+        & _within_budget(inputs, writing.fiber, site, frozenset({peer}))
+        for carrier, peer in capacity
+    }
+    return _rows_for(_Asked(site, spared, over), writing, capacity)
 
 
 def _between_rows(root: str, peer: str, writing: _Writing) -> list[_Requirement]:
-    asked = _Asked(
-        root,
-        frozenset({peer}),
-        frozenset(writing.inputs.backbone_ids),
-        frozenset(writing.fiber),
-    )
+    over = {
+        (carrier, peer): segments for carrier, segments in writing.by_carrier.items()
+    }
+    asked = _Asked(root, frozenset(writing.inputs.backbone_ids), over)
     capacity = {
-        carrier: _carried(
+        bucket: _carried(
             _Requirement(
-                asked.site, asked.peers, asked.spared, writing.inputs.ways_out,
-                asked.over & segments,
+                root, frozenset({peer}), asked.spared, writing.inputs.ways_out, segments,
             ),
             writing.whole,
         )
-        for carrier, segments in writing.by_carrier.items()
+        for bucket, segments in over.items()
     }
     return _rows_for(asked, writing, capacity)
 

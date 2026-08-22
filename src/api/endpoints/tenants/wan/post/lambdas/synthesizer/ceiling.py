@@ -390,12 +390,14 @@ def _ways_out_and_their_carriers(
     )
 
 
-def ways_out_by_carrier(node: str, inputs: PathProofInputs) -> dict[str, int]:
+def ways_out_by_carrier_and_peer(
+    node: str, inputs: PathProofInputs
+) -> dict[tuple[str, str], int]:
     per_peer = _per_peer(inputs)
     by_carrier = _paths_over_each_carrier(node, inputs, per_peer)
-    counted = {carrier: 0 for carrier in by_carrier}
-    for carrier, _path in _kept_with_their_carriers(node, inputs, by_carrier, per_peer):
-        counted[carrier] += 1
+    counted: dict[tuple[str, str], int] = {}
+    for carrier, path in _kept_with_their_carriers(node, inputs, by_carrier, per_peer):
+        counted[(carrier, path[-1])] = counted.get((carrier, path[-1]), 0) + 1
     return counted
 
 
