@@ -8,7 +8,6 @@ backbone:
   forced:
     nodes:
       - Ashburn, VA
-      - Boston, MA
       - Cheyenne, WY
       - Great Falls, MT
       - Hillsboro, OR
