@@ -1,6 +1,6 @@
 # Lead with what it is for
 
-Every paragraph opens with a plain sentence saying what the thing is and what it is for. The identifiers come after that sentence. This holds in chat replies, issue and pull-request bodies, commit messages, docstrings, comments and these notes, and it holds section by section rather than once at the top. Assume the reader has not opened the files and will not open them while reading.
+Every paragraph opens with a plain sentence saying what the thing is and what it is for. The identifiers come after that sentence. This holds in chat replies, issue and pull-request bodies, commit messages and these notes, and it holds section by section rather than once at the top. Assume the reader has not opened the files and will not open them while reading.
 
 A name written before that sentence is a demand rather than a service. Telling a reader that `settled`, at line 105 of `lib/python/test_published_syntheses/__init__.py`, decides when a tenant's build has stopped moving tells them nothing until they know that anything waits, what it waits for, and why a wait is needed at all. Say that first: the tests can read `tenants/daf/wan.json` before the synthesizer Lambda has rewritten it, so `delivered_syntheses_fixture` at line 54 of `test/scripts/seed/post_deployment/e2e/conftest.py` sleeps until the rewrite lands. Then name the function that decides when to stop sleeping, and the line it is on. The names are owed either way; the order decides whether the reader can use them.
 

@@ -1,18 +1,3 @@
-"""Score a carrier PoP's strength: path diversity, compass spread, and straightness.
-
-Backbone nodes are chosen for strength rather than mileage (the source mapbook has
-no distances), so this scoring is the search's primary objective. It is isolated
-here because it depends only on the precomputed graph context, not on the search
-machinery that consumes it.
-
-The protection term counts diverse paths rather than fiber segments. A city can have a
-great many segments and funnel almost all of them through one or two upstream cities, in
-which case the segments are one path wearing many coats; another can have few segments and
-send every one of them somewhere separate. Measured over the merged carrier files, Los
-Angeles has eighteen segments and carries six diverse paths while Cheyenne has eleven and
-carries eight, so ranking the two by segments ranks them backwards.
-"""
-
 from __future__ import annotations
 
 import math
@@ -26,7 +11,6 @@ from synthesizer.graphs import reconstruct_path
 
 
 def link_bearing(origin: Site, neighbor: Site) -> float:
-    """Initial compass bearing in degrees from one site toward another."""
     lat1, lat2 = math.radians(origin.lat), math.radians(neighbor.lat)
     delta_lon = math.radians(neighbor.lon - origin.lon)
     x = math.sin(delta_lon) * math.cos(lat2)
@@ -41,14 +25,6 @@ def link_sectors(
     pop_by_id: dict[str, Site],
     compass_sector_count: int,
 ) -> set[int]:
-    """The distinct compass sectors the PoP's links point toward.
-
-    The compass is divided into ``compass_sector_count`` equal sectors, each centred on a
-    direction rather than starting at one, so a due-north link lands in the middle of
-    sector zero rather than on its link. Deriving the width here from the same number
-    the score divides by is what keeps the direction term between 0 and 1: at eight,
-    the sectors are the 45-degree octants with the 22.5-degree offset this always used.
-    """
     width = 360.0 / compass_sector_count
     origin = pop_by_id[pop_id]
     return {
@@ -61,7 +37,6 @@ def site_straightness(
     pop_by_id: dict[str, Site],
     predecessors: dict[str, str],
 ) -> float:
-    """Mean directness to reachable PoPs: straight-line over the path's own geometry."""
     origin = pop_by_id[pop_id]
     ratios: list[float] = []
     for dest_id in predecessors:
@@ -77,14 +52,6 @@ def site_straightness(
 
 @dataclass(frozen=True)
 class DiversePathBounds:
-    """Every candidate site's diverse path bound, and the largest bound among them.
-
-    ``per_site`` is the bound itself and ``largest`` is what the strength score divides
-    by, so the protection term stays within 0..1 and keeps the weighting the three terms
-    were given. A site the merged carriers say nothing about has no entry and scores zero,
-    which is the truth about it: no fiber in the inputs is no path anyone can path.
-    """
-
     per_site: Mapping[str, int]
     largest: int
 
@@ -93,37 +60,6 @@ def diverse_path_bounds(
     candidate_ids: set[str],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> DiversePathBounds:
-    """Each candidate site's diverse path bound, computed once for the whole run.
-
-    The bound counts paths from a site to *every other candidate site* that share no
-    city along the way -- one max flow per site (see
-    :func:`synthesizer.ceiling.independent_path_ceiling`). Counting to the candidates
-    rather than to a chosen backbone is what makes it affordable: diversity is otherwise
-    a property of the set, changing with every set the search considers, and a max flow
-    inside a loop that enumerates millions of them is not something anyone can pay for.
-
-    The bound is also honest about which way it errs. Any backbone the search settles on
-    is a subset of these candidates, so it offers a path fewer places to end and no
-    choice of set can exceed the bound. Adding fiber can only raise a maximum flow, so
-    the bound stays true as the map grows -- the same reason the seed contract measures
-    against the pins rather than against a synthesis nobody has built yet.
-
-    The exact set-dependent measure is not replaced, only kept out of the hot loop: the
-    coverage growth step still asks what a candidate's fiber can carry against the actual
-    grown backbone (see :func:`synthesizer.coverage.candidate_mesh_ceiling`), because it
-    weighs a handful of candidates rather than millions of sets.
-
-    The tenant's backup path multiple is deliberately not applied here, and the reason is
-    the same one that makes this bound affordable. It counts paths to every other candidate,
-    so every city on the map is a peer a path may legitimately end at -- and a path that
-    ends where it was going is not a detour, whatever its length. A crossing to a landing
-    point is measured against the direct distance to that same landing point and comes out
-    at one. So the bound has almost nothing to say at this scale: over the carrier files in
-    ``data/`` it moves no candidate's score at all, while costing more than ten times what
-    the count itself does. It bites where the peers are an actual backbone and the far side
-    of an ocean is not among them, which is the growth step above and the mesh routing,
-    and it is applied at both.
-    """
     sites = tuple(sorted(candidate_ids))
     ground = PathProofInputs(sites, adjacency)
     per_site = {site: independent_path_ceiling(site, ground) for site in sites}
@@ -137,17 +73,6 @@ def backbone_strength(
     bounds: DiversePathBounds,
     compass_sector_count: int,
 ) -> float:
-    """Score a PoP's strength: diversity plus spread plus straightness (~0..3).
-
-    ``compass_sector_count`` both cuts the compass into sectors and divides the count of
-    sectors the links reach, so the direction term stays within 0..1 whatever the
-    setting holds and the three terms keep the weighting they were given.
-
-    The first term is how many diverse paths the site's fiber can carry rather than how
-    many segments touch it (see :func:`diverse_path_bounds`). Spread and straightness stay
-    as they were: spread and diversity are related but not the same, and straightness is
-    about haul rather than protection.
-    """
     diverse = bounds.per_site.get(pop_id, 0)
     spread = len(link_sectors(pop_id, inputs.adjacency, pop_by_id, compass_sector_count))
     straight = site_straightness(pop_id, pop_by_id, inputs.all_predecessors[pop_id])

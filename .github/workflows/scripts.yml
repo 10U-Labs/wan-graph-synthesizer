@@ -3,6 +3,17 @@ concurrency:
   cancel-in-progress: true
   group: scripts
 jobs:
+  assert-no-comments:
+    name: assert-no-comments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pyyaml
+      - name: Assert nothing this repository publishes carries a comment
+        run: >-
+          PYTHONPATH=lib/python:scripts
+          python3 -c 'import sys, assert_no_comments; sys.exit(assert_no_comments.main())'
   assert-no-inline-directives:
     name: assert-no-inline-directives
     runs-on: ubuntu-latest
@@ -40,7 +51,7 @@ jobs:
       - name: Assert every lib/python definition is used outside its own tests
         run: >-
           PYTHONPATH=lib/python
-          python3 scripts/assert_python_definition_is_used.py --outside-own-tests
+          python3 -c 'import sys, assert_python_definition_is_used as check; sys.exit(check.main(["--outside-own-tests"]))'
   assert-no-unused-python-definition:
     name: assert-no-unused-python-definition
     runs-on: ubuntu-latest
@@ -49,7 +60,7 @@ jobs:
       - name: Assert every lib/python definition is used somewhere
         run: >-
           PYTHONPATH=lib/python
-          python3 scripts/assert_python_definition_is_used.py
+          python3 -c 'import sys, assert_python_definition_is_used as check; sys.exit(check.main([]))'
   assert-one-assert-per-pytest:
     name: assert-one-assert-per-pytest
     runs-on: ubuntu-latest
@@ -121,6 +132,7 @@ jobs:
           PYTHONPATH=lib/python:scripts:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint --recursive=y
           scripts/ lib/python/
+          --disable=missing-module-docstring,missing-class-docstring,missing-function-docstring
           --fail-on=C,R,W --fail-under=10.0
   pylint-tests:
     name: pylint-tests
@@ -134,7 +146,26 @@ jobs:
           PYTHONPATH=.:lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint --recursive=y
           test/scripts/ test/lib/python/
+          --disable=missing-module-docstring,missing-class-docstring,missing-function-docstring
           --fail-on=C,R,W --fail-under=10.0
+  test-assert-no-comments:
+    name: test-assert-no-comments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pytest pytest-cov pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts
+          python3 -m pytest
+          test/scripts/assert_no_comments/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=assert_no_comments
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
   test-assert-python-definition-is-used:
     name: test-assert-python-definition-is-used
     runs-on: ubuntu-latest

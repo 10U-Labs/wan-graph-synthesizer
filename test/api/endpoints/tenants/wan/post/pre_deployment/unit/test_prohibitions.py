@@ -1,5 +1,3 @@
-"""Unit tests for barring a PoP from the backbone (prohibited_backbone)."""
-
 from __future__ import annotations
 
 import pytest
@@ -14,7 +12,6 @@ physical = fixtures.fiber_segments_from
 
 
 def test_apply_role_overrides_resolves_prohibited_backbone() -> None:
-    """A prohibited-backbone name resolves to its site id in the overrides."""
     params = SynthesisParams(exclusions=RoleExclusions(prohibited_backbone_names=("P0",)))
     _sites, _links, overrides = apply_role_overrides(
         [pop("P0"), pop("P1")], physical({("P0", "P1"): 1.0}), params
@@ -23,14 +20,12 @@ def test_apply_role_overrides_resolves_prohibited_backbone() -> None:
 
 
 def test_apply_role_overrides_rejects_an_unknown_prohibited_name() -> None:
-    """An unknown prohibited-backbone PoP name is rejected, not silently dropped."""
     params = SynthesisParams(exclusions=RoleExclusions(prohibited_backbone_names=("Nowhere",)))
     with pytest.raises(ValueError):
         apply_role_overrides([pop("P0")], physical({("P0", "P1"): 1.0}), params)
 
 
 def test_synthesize_bars_a_prohibited_pop_from_the_backbone() -> None:
-    """A prohibited-backbone override keeps that PoP out of the selected backbone."""
     synthesis = synthesize_two_tier(
         fixtures.ring_sites(),
         fixtures.ring_fiber_segments(),

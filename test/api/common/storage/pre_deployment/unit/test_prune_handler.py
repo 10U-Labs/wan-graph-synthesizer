@@ -1,15 +1,3 @@
-"""Unit tests for the store's prune endpoint Lambda handler.
-
-The prune takes out every object stored under a name the product no longer writes, which
-is what a rename leaves behind. What it must never take out is what the product does
-write, so most of these cases are about what survives: a leftover deleted costs a re-seed,
-a live collection deleted costs whatever nothing else holds a copy of.
-
-The keys here are the shapes the live store actually holds -- a carrier's two files, the
-merge's two, the provider regions, a tenant's inputs and published WAN, the two working
-areas, and a prefix whose endpoint was deleted.
-"""
-
 from __future__ import annotations
 
 import json
@@ -43,56 +31,47 @@ _STALE = [
 
 
 def _store() -> dict[str, bytes]:
-    """A store holding both what the product writes today and what renames left behind."""
     return {key: b"[]" for key in _CURRENT + _STALE}
 
 
 def _prune(handler: Any, objects: dict[str, bytes]) -> Any:
-    """POST the prune against a store holding ``objects``, and return its parsed body."""
     with patch("boto3.client", return_value=fake_s3(objects)):
         response = handler.lambda_handler({"httpMethod": "POST"}, None)
     return json.loads(response["body"])
 
 
 def test_the_prune_deletes_every_stale_object(prune_handler: Any) -> None:
-    """Every key stored under a name the product no longer writes is named as deleted."""
     assert _prune(prune_handler, _store())["deleted"] == sorted(_STALE)
 
 
 def test_the_prune_leaves_every_current_object_where_it_is(prune_handler: Any) -> None:
-    """Nothing the product writes today is taken out, which is the half that must not fail."""
     objects = _store()
     _prune(prune_handler, objects)
     assert sorted(objects) == sorted(_CURRENT)
 
 
 def test_the_prune_leaves_the_working_areas_alone(prune_handler: Any) -> None:
-    """source/ holds the pushed inputs and builds/ the artifacts the bucket expires itself."""
     objects = {"source/anything.csv": b"", "builds/whatever/scratch.json": b""}
     assert _prune(prune_handler, objects)["deleted"] == []
 
 
 def test_the_prune_takes_out_a_prefix_whose_endpoint_was_deleted(prune_handler: Any) -> None:
-    """csps/ and data-centers/ have no endpoint to reach them, so nothing under them is current."""
     objects = {"csps/aws/vertices.json": b"", "data-centers/qts/facilities.json": b""}
     held = sorted(objects)
     assert _prune(prune_handler, objects)["deleted"] == held
 
 
 def test_the_prune_takes_out_a_bare_prefix_marker(prune_handler: Any) -> None:
-    """A zero-byte folder marker is not a collection the product writes."""
     assert _prune(prune_handler, {"carriers/": b""})["deleted"] == ["carriers/"]
 
 
 def test_a_second_prune_finds_nothing_left_to_do(prune_handler: Any) -> None:
-    """Running it twice is running it once: every later seed reports an empty list."""
     objects = _store()
     _prune(prune_handler, objects)
     assert _prune(prune_handler, objects)["deleted"] == []
 
 
 def test_the_prune_reads_every_page_of_the_listing(prune_handler: Any) -> None:
-    """A listing answers a thousand keys at a time, and the rest must not survive by luck."""
     pages = [
         {"Contents": [{"Key": "csps/aws/vertices.json"}],
          "IsTruncated": True, "NextContinuationToken": "more"},
@@ -108,12 +87,6 @@ def test_the_prune_reads_every_page_of_the_listing(prune_handler: Any) -> None:
 
 
 def test_the_prune_removes_a_key_rather_than_tombstoning_it(prune_handler: Any) -> None:
-    """Every delete names the version, so no key is left listed behind a delete marker.
-
-    Versioning on the store is suspended, so a delete naming no version writes a marker
-    over the key and the key goes on being listed. The bucket's own lifecycle rule sweeps
-    such markers, but a day later; a prune means remove.
-    """
     named: list[str | None] = []
     fake = fake_s3({"csps/aws/vertices.json": b""})
     fake.delete_object = lambda **kwargs: named.append(kwargs.get("VersionId"))
@@ -123,7 +96,6 @@ def test_the_prune_removes_a_key_rather_than_tombstoning_it(prune_handler: Any) 
 
 
 def test_a_get_says_what_would_go_without_deleting_it(prune_handler: Any) -> None:
-    """The read is how an operator sees the list before anything is taken out."""
     objects = _store()
     with patch("boto3.client", return_value=fake_s3(objects)):
         prune_handler.lambda_handler({"httpMethod": "GET"}, None)
@@ -131,7 +103,6 @@ def test_a_get_says_what_would_go_without_deleting_it(prune_handler: Any) -> Non
 
 
 def test_a_get_names_the_same_keys_the_prune_would_delete(prune_handler: Any) -> None:
-    """What the read reports and what the write takes out are the same list."""
     with patch("boto3.client", return_value=fake_s3(_store())):
         response = prune_handler.lambda_handler({"httpMethod": "GET"}, None)
     assert json.loads(response["body"])["stale"] == sorted(_STALE)

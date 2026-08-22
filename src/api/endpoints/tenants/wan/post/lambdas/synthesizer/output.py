@@ -1,5 +1,3 @@
-"""Build the synthesis payload the REST API serves to the browser."""
-
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -14,17 +12,10 @@ from synthesizer.validation import included_site_ids
 
 
 def sorted_fiber_segments(synthesis: Synthesis) -> list[tuple[str, str]]:
-    """Return the synthesis's physical link keys in sorted order."""
     return sorted(synthesis.fiber_segment_keys)
 
 
 def included_demand_count(sites: Iterable[Site], synthesis: Synthesis) -> int:
-    """Count demand sites actually homed into the synthesis.
-
-    Mirrors the synthesis-membership semantics of the backbone count: a demand site
-    only counts once it is homed to a backbone node (i.e. it appears in
-    :func:`included_site_ids`), not merely because it was loaded as demand.
-    """
     included = included_site_ids(synthesis)
     return sum(
         1 for site in sites if not is_carrier_pop(site) and site.id in included
@@ -32,16 +23,10 @@ def included_demand_count(sites: Iterable[Site], synthesis: Synthesis) -> int:
 
 
 def _demand_path_kind(source_site: Site) -> str:
-    """Label a demand-to-backbone access link by its source site kind."""
     return "provider_to_backbone" if source_site.kind == PROVIDER_KIND else "tenant_to_backbone"
 
 
 def synthesis_payload(sources: SourceFiles, artifacts: SynthesisArtifacts) -> dict[str, Any]:
-    """Build the full synthesis, sites, links, and validation report as a dict.
-
-    This is the single serialization the REST API slices into its atomic
-    endpoints, so the frontend consumes one coherent synthesis computation.
-    """
     sites = artifacts.sites
     fiber_segments = artifacts.fiber_segments
     synthesis = artifacts.synthesis
@@ -64,11 +49,6 @@ def synthesis_payload(sources: SourceFiles, artifacts: SynthesisArtifacts) -> di
             "fiber_segment_count": len(synthesis.fiber_segment_keys),
             "access_miles": round(synthesis.metrics.access_miles, 3),
             "physical_carrier_miles": round(synthesis.metrics.physical_miles, 3),
-            # The fewest fiber miles any backbone meeting this tenant's requirements could
-            # have run (see :mod:`synthesizer.survivable`). It sits beside the miles the
-            # synthesis actually ordered because the two are only meaningful together: a
-            # figure for what was ordered says nothing about whether it was worth ordering
-            # until there is a figure for what the same requirements could have cost.
             "backbone_lower_bound_miles": round(
                 synthesis.metrics.backbone_lower_bound_miles, 3
             ),

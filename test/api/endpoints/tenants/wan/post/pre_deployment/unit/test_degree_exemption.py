@@ -1,9 +1,3 @@
-"""Unit tests for exempting a backbone node from the diverse path count.
-
-These pin the resolution step: the operator writes PoP names, and the search reads ids.
-What an exemption then does to selection and to validation is pinned with those units.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -17,7 +11,6 @@ physical = fixtures.fiber_segments_from
 
 
 def test_apply_role_overrides_resolves_a_degree_exempt_name() -> None:
-    """A degree-exempt name resolves to its site id in the overrides."""
     params = SynthesisParams(degree_exempt_backbone_names=("P0",))
     _sites, _links, overrides = apply_role_overrides(
         [pop("P0"), pop("P1")], physical({("P0", "P1"): 1.0}), params
@@ -26,7 +19,6 @@ def test_apply_role_overrides_resolves_a_degree_exempt_name() -> None:
 
 
 def test_apply_role_overrides_exempts_nobody_by_default() -> None:
-    """A synthesis naming no exempt node holds every backbone node to the degree."""
     _sites, _links, overrides = apply_role_overrides(
         [pop("P0"), pop("P1")], physical({("P0", "P1"): 1.0}), SynthesisParams()
     )
@@ -34,7 +26,6 @@ def test_apply_role_overrides_exempts_nobody_by_default() -> None:
 
 
 def test_apply_role_overrides_rejects_an_unknown_degree_exempt_name() -> None:
-    """An unknown degree-exempt PoP name is rejected, not silently dropped."""
     params = SynthesisParams(degree_exempt_backbone_names=("Nowhere",))
     with pytest.raises(ValueError, match="degree_exempt_backbone"):
         apply_role_overrides([pop("P0")], physical({("P0", "P1"): 1.0}), params)

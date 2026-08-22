@@ -1,8 +1,3 @@
-"""Layer 4 (state): the declared routing state matches AWS reality.
-
-Run ``tofu plan`` and confirm nothing it would create already exists in AWS
-outside of state. Skipped on a cold stack with no prior state.
-"""
 from __future__ import annotations
 
 import pytest
@@ -14,7 +9,6 @@ ROUTING_DIR = REPO_ROOT / "src" / "api" / "common" / "routing"
 
 
 def _has_existing_state() -> bool:
-    """Report whether the stack already has resources tracked in state."""
     return bool(get_state_resources(ROUTING_DIR))
 
 
@@ -23,5 +17,4 @@ def _has_existing_state() -> bool:
     reason="Cold state - no prior OpenTofu state to validate against",
 )
 def test_no_orphaned_resources() -> None:
-    """No resource the stack would create already exists unmanaged in AWS."""
     assert not find_orphaned_resources(ROUTING_DIR)

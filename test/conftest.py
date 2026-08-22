@@ -1,5 +1,3 @@
-"""Shared pytest fixtures and import path setup for the WAN synthesizer tests."""
-
 from __future__ import annotations
 
 import sys

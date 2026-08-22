@@ -1,8 +1,3 @@
-"""Boto3 client fixtures shared by the wan dispatcher post-deployment tier.
-
-The foundation (``test_fixtures.aws``) provides every client this tier needs -- the
-dispatcher is a plain Lambda reached through the IAM, Lambda and CloudWatch Logs clients.
-"""
 from __future__ import annotations
 
 from test_fixtures.aws import (

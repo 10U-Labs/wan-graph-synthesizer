@@ -3,6 +3,17 @@ concurrency:
   cancel-in-progress: true
   group: api-endpoint-tenants-wan-post-${{ github.ref }}
 jobs:
+  assert-no-comments:
+    name: assert-no-comments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pyyaml
+      - name: Assert nothing this repository publishes carries a comment
+        run: >-
+          PYTHONPATH=lib/python:scripts
+          python3 -c 'import sys, assert_no_comments; sys.exit(assert_no_comments.main())'
   assert-no-inline-directives:
     name: assert-no-inline-directives
     runs-on: ubuntu-latest
@@ -153,13 +164,6 @@ jobs:
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
       - name: Install tools
         run: pip install boto3 boto3-stubs pytest 'python-hcl2<8' pyyaml
-      # These three files measure the shape of what was just deployed: the synthesizer
-      # exists, its runtime and memory match the declaration, and its role can reach the
-      # store. None of them reads a synthesis. Whether the configs in etc/ synthesize into the
-      # networks they ask for is asked by test/scripts/seed/post_deployment/e2e/, which runs
-      # in seed.yml after its seeding job: measuring a published network is only meaningful
-      # once the config it is measured against has been delivered and rebuilt, and seeding
-      # is what does that (GitHub issues #47 and #49).
       - name: Run post-deployment integration tests against live AWS
         run: >-
           PYTHONPATH=.:lib/python
@@ -188,38 +192,12 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install tools
         run: pip install pylint boto3 boto3-stubs highspy==1.15.1 pytest pyyaml types-PyYAML
-      # This source lint disables pylint's broad-exception-caught (W0718) check.
-      # post/lambdas/synthesizer/handler.py is the synthesizer Lambda that builds a tenant's
-      # WAN, and it deliberately wraps the whole build in a catch-all
-      # `except Exception`. The synthesizer's contract is to record the tenant's status
-      # in S3 -- "synthesizing" when it starts, "success" once the WAN is published, and
-      # "fail" on ANY failure -- so a customer polling for their WAN always reaches a terminal
-      # answer. The expected failure (an infeasible synthesis) is a ValueError, but it
-      # is not the only thing that can go wrong: reading the merged carriers and tenant
-      # inputs from S3 can raise a boto error, and an unforeseen bug can raise
-      # anything at all. If such an error were allowed to escape, the synthesizer would
-      # exit with the status still on "synthesizing", and the customer would wait forever
-      # for a result that never resolves. The catch-all is what guarantees every
-      # run ends by writing a terminal status. pylint flags catch-all handlers
-      # because they usually hide bugs, which is a sound default, but here turning
-      # any failure into a recorded "fail" status is precisely the job of this
-      # top-level task runner. Because this repo forbids both inline
-      # `# pylint: disable` comments and linter config files, the suppression is
-      # expressed as a command-line flag on this job's pylint run.
-      #
-      # --max-attributes is raised to 8 for the same reason. SynthesisInputs is the
-      # precomputed read-only context the whole backbone search shares -- sites,
-      # links, adjacency, the all-pairs shortest paths, and the carrier graph's
-      # bridgeless component map (the fiber-resilience oracle). These are one
-      # cohesive bundle computed once and threaded through the search; splitting them
-      # to satisfy the default of 7 would scatter a single concept, so the limit is
-      # nudged by one rather than the data artificially partitioned.
       - name: Run pylint on source
         run: >-
           PYTHONPATH=lib/python:src:src/api/endpoints/tenants/wan/post/lambdas
           python3 -m pylint
           src/api/endpoints/tenants/wan/post/lambdas/synthesizer/
-          --disable=broad-exception-caught
+          --disable=broad-exception-caught,missing-module-docstring,missing-class-docstring,missing-function-docstring
           --max-attributes=8
           --fail-on=C,R,W --fail-under=10.0
   pylint-tests:
@@ -240,11 +218,13 @@ jobs:
           test/lib/python/test_module_utils
           test/lib/python/test_s3_store_mock
           test/lib/python/test_terraform_config
+          --disable=missing-module-docstring,missing-class-docstring,missing-function-docstring
           --fail-on=C,R,W --fail-under=10.0
   reconciliation:
     if: github.ref == 'refs/heads/main'
     name: reconciliation
     needs:
+      - assert-no-comments
       - assert-no-inline-directives
       - assert-no-linter-config-files
       - assert-one-assert-per-pytest
@@ -270,11 +250,6 @@ jobs:
         with:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      # The same two wheels validate-stack fetches -- highspy 1.15.1 and numpy 2.3.5, the
-      # contents of aws_lambda_layer_version.solver. This job runs tofu apply, so the layer
-      # zip built here is the one AWS receives; the sha256 check is what says it is the
-      # wheel that was pinned. It runs before tofu because data.archive_file.solver_layer
-      # reads the unpacked directory during the plan.
       - name: Fetch and unpack the solver wheels the Lambda layer is built from
         run: |
           wheels=$RUNNER_TEMP/solver_wheels
@@ -298,42 +273,6 @@ jobs:
         run: |
           tofu -chdir=src/api/endpoints/tenants/wan/post init -input=false
           tofu -chdir=src/api/endpoints/tenants/wan/post apply -auto-approve -input=false
-  # The nine modules under lib/python/ are the fixtures, doubles, loaders and readers the
-  # rest of the suite is written on top of, and this job is where they are the subject
-  # rather than the setup. Without it a defect in one of them reaches the reader as a
-  # failure in whatever tier consumed it, named for the subject that tier was testing: a
-  # probe that reads a present log group as absent fails a post-deployment tier and names
-  # the log group, and no result anywhere names the module that was wrong (GitHub issue
-  # #53).
-  #
-  # Two shapes were proposed for this and neither works. A workflow of its own, named for
-  # lib/python/ the way seed.yml is named for scripts/seed.py, cannot put itself ahead of
-  # the workflows that consume the modules: GitHub Actions orders nothing between workflows
-  # started by the same push, and this repository declares no workflow_run or workflow_call
-  # to build an order from. An expression `if` reading this job's result is not a substitute
-  # for the needs: edges either, because a job that only reads another job's result can
-  # start before that job has finished.
-  # .github/workflows/scripts.yml runs all nine modules' tests as well, under a --cov
-  # gate each, and does not replace this job for the same reason: it is a separate
-  # workflow, so nothing orders it ahead of the tiers here that import the modules.
-  #
-  # Every workflow runs every module's tests, not only the ones its own tests import.
-  # Scoping the job to what a workflow imports would make its contents a function of an
-  # import graph nobody maintains, so a new import would silently widen what should have
-  # been checked and nothing would report that it had not. The modules are pure Python
-  # exercised against literals, so running all nine costs little.
-  #
-  # GitHub issue #56 redrew the edges around this job. The eleven static-analysis checks
-  # are eleven jobs now and all start when the workflow does, and this job starts with them
-  # rather than behind them: a check costs seconds and produces nothing anyone waits on, so
-  # holding the shared modules behind one gained nothing. The edges out of this job
-  # survived. unit-tests and pre-deployment-integration-tests still wait on it, because a
-  # reader facing red consumers has to be told which shared module broke them, where one red
-  # job and the rest skipped has already told them. reconciliation waits on it too, along
-  # with every other gate in the workflow, because it runs tofu apply against live AWS: a
-  # tier's result can be disbelieved after the fact, an apply cannot be taken back, and a
-  # run that carries on past a broken module spends that apply and its post-deployment tier
-  # on results that will be thrown away.
   test-repo-libraries:
     name: test-repo-libraries
     permissions:
@@ -342,26 +281,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      # test_state_keys.py lists the state bucket and holds what is stored there against
-      # the stacks src/ declares, which is how a stack directory deleted without a destroy
-      # first is caught (GitHub issue #103). That is the only test in this job that reads
-      # AWS, and it has to run here rather than in one stack's own tier because a leftover
-      # belongs to no stack.
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-region: us-east-2
           role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
-      # --upgrade is here for boto3. The runner ships 1.34.46 in dist-packages, which
-      # satisfies a bare `pip install boto3` and calls datetime.utcnow(); the tests below
-      # run with --pythonwarnings=error, so that call's DeprecationWarning fails the one
-      # test in this job that reads AWS. pip installs into ~/.local, which comes first on
-      # sys.path, so the older copy is shadowed rather than uninstalled.
       - name: Install tools
         run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
-      # Each module is named in a --cov of its own rather than lib/python covered as a
-      # whole, so the next module to arrive without tests fails here instead of being
-      # carried by its neighbours' numbers (GitHub issue #52).
       - name: Run the shared modules' unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
@@ -388,10 +314,6 @@ jobs:
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=100
-      # test_http_doubles is the ninth module and is gated here rather than on the step
-      # above. It publishes a stub API server, and the code that answers a request only
-      # runs when a client sends one, which its integration tests do and its unit tests do
-      # not. Coverage is counted per pytest run, so this step takes both of its tiers.
       - name: Run the shared modules' integration tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
@@ -414,9 +336,6 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install tools
         run: pip install boto3 boto3-stubs highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
-      # What remains gated here is the synthesizer this workflow deploys, at 100% of its
-      # branches. The shared modules its tests import are gated in test-repo-libraries,
-      # which every job in this workflow that imports them runs after.
       - name: Run unit tests with a 100% coverage gate
         run: >-
           PYTHONPATH=.:lib/python:scripts:src:src/api/endpoints/tenants/wan/post/lambdas
@@ -433,16 +352,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      # The two wheels aws_lambda_layer_version.solver ships to the synthesizer: highspy
-      # 1.15.1, the HiGHS solver that lambdas/synthesizer/linear_program.py calls, and numpy
-      # 2.3.5, which highspy needs. They are unpacked under
-      # src/api/endpoints/tenants/wan/post/.terraform/solver_layer/ and nowhere else under
-      # src/, because pylint-source, mypy-source and copy-paste-source read every .py they
-      # find under src/ and would report on code nobody here wrote. A wheel is a zip, so
-      # unzip is all it takes to unpack one. Both are pinned by URL and checked by sha256,
-      # so a file replaced on PyPI fails here rather than reaching AWS. This step runs
-      # before tofu because data.archive_file.solver_layer reads that directory during the
-      # plan, and the plan fails outright if it does not exist.
       - name: Fetch and unpack the solver wheels the Lambda layer is built from
         run: |
           wheels=$RUNNER_TEMP/solver_wheels
@@ -474,24 +383,11 @@ on:
       - src/api/endpoints/tenants/wan/post/**
       - test/api/endpoints/tenants/wan/conftest.py
       - test/api/endpoints/tenants/wan/post/**
-      # The tests over the nine shared modules in lib/python/. test-repo-libraries runs
-      # every one of them rather than the subset this workflow's own tests import, so a
-      # change to any of them has to be able to start this workflow.
       - test/lib/python/**
-      # The shared test support this endpoint's tests are the only importers of; a change
-      # to it can break them, so it has to be able to trigger them.
       - test/fixtures.py
       - lib/python/**
       - lib/opentofu/common/**
-      # The list of what the API serves. The delivered-synthesis layer's reader is held
-      # against it before deployment, so a path renamed or withdrawn here has to be able
-      # to fail that check.
       - src/www/api/openapi.json
-      # The unit and contract tests over the measuring helpers reach the API base and the
-      # sender through seed's rules, so a change to them is a change to what those tests
-      # read. etc/ is deliberately not here: a config change needs no tofu apply over the
-      # synthesizer stack, and seed.yml both delivers it and measures the networks it
-      # rebuilds, so triggering this workflow too would only deploy a second time.
       - scripts/seed.py
       - .github/workflows/api_endpoint_tenants_wan_post.yml
   workflow_dispatch: {}

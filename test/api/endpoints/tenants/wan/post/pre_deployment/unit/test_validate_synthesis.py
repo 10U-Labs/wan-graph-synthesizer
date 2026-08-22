@@ -1,10 +1,3 @@
-"""Unit tests for the synthesis validation checks.
-
-The two requirements under test: every demand site must home to exactly the configured
-number of distinct backbone nodes, and every backbone node must wire to its configured
-number of nearest backbone nodes on the mesh.
-"""
-
 from __future__ import annotations
 
 import fixtures
@@ -21,7 +14,6 @@ from synthesizer.input_graph import Site, link_key
 
 
 def make_pop(site_id: str) -> Site:
-    """Test helper: build a carrier PoP site."""
     return Site(id=site_id, name=site_id, kind="PoP", coords=(0.0, 0.0))
 
 
@@ -31,7 +23,6 @@ def build_synthesis(
     access_paths: list[AccessPath],
     physical_pairs: list[tuple[str, str]],
 ) -> Synthesis:
-    """Test helper: build a Synthesis from tier ids, access links, and physical pairs."""
     return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=transit_ids,
@@ -42,14 +33,12 @@ def build_synthesis(
     )
 
 
-# A diamond: demand site A reaches B1 via X and B2 via Y, plus a backbone mesh link.
 GOOD = build_synthesis(
     backbone_ids=("B1", "B2"),
     transit_ids=("X", "Y"),
     access_paths=[AccessPath("A", "B1", 1.0), AccessPath("A", "B2", 1.0)],
     physical_pairs=[("X", "B1"), ("Y", "B2"), ("B1", "B2")],
 )
-# Demand site A homes to only one backbone node, so it lacks redundancy.
 SINGLE_HOMED = build_synthesis(
     backbone_ids=("B1", "B2"),
     transit_ids=(),
@@ -62,24 +51,20 @@ SINGLE_SITES = [make_pop(name) for name in ("A", "B1", "B2")]
 
 
 def test_good_synthesis_homes_demand_with_redundancy() -> None:
-    """A demand site homed to two backbone nodes meets the redundancy requirement."""
     report = validate_synthesis(GOOD_SITES, GOOD)
     assert report["access_sites_with_required_backbone_links"] is True
 
 
 def test_good_synthesis_has_no_missing_redundancy() -> None:
-    """A demand site homed to two backbone nodes is not flagged as deficient."""
     assert not demand_without_backbone_redundancy(GOOD, 2)
 
 
 def test_backbone_mesh_survives_any_one_link_loss_with_fewer_than_two_nodes() -> None:
-    """A backbone with fewer than two nodes is trivially survives the loss of any one link."""
     synthesis = build_synthesis(("B1",), (), [], [])
     report = validate_synthesis([make_pop("B1")], synthesis)
     assert report["backbone_mesh_survives_any_one_link_loss"] is True
 
 
-# A demand site "s" homed to three backbone nodes, for the configurable-count check.
 TRIPLE_HOMED = build_synthesis(
     backbone_ids=("B1", "B2", "B3"),
     transit_ids=(),
@@ -90,33 +75,24 @@ TRIPLE_HOMED_SITES = [make_pop(name) for name in ("s", "B1", "B2", "B3")]
 
 
 def test_homing_passes_at_the_configured_count() -> None:
-    """Demand homed to the configured number of backbone nodes passes the check."""
     report = validate_synthesis(TRIPLE_HOMED_SITES, TRIPLE_HOMED, access_backbone_links=3)
     assert report["access_sites_with_required_backbone_links"] is True
 
 
 def test_homing_fails_above_the_configured_count() -> None:
-    """Demand homed to more than the configured number of backbone nodes is flagged.
-
-    The homing requirement is exact, so three homes against a configured count of two
-    fails just as one home would.
-    """
     assert demand_without_backbone_redundancy(TRIPLE_HOMED, 2) == ["s"]
 
 
 def test_homing_fails_below_the_configured_count() -> None:
-    """A single-homed demand site fails the two-link redundancy requirement."""
     report = validate_synthesis(SINGLE_SITES, SINGLE_HOMED)
     assert report["access_sites_with_required_backbone_links"] is False
 
 
 def test_missing_redundancy_names_the_failing_demand_site() -> None:
-    """The deficiency list names the demand site short of its required homes."""
     assert demand_without_backbone_redundancy(SINGLE_HOMED, 2) == ["A"]
 
 
 def _mesh_synthesis(backbone_ids: tuple[str, ...], pairs: list[tuple[str, str]]) -> Synthesis:
-    """A synthesis whose only paths are the given backbone-to-backbone mesh links."""
     return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=(),
@@ -136,7 +112,6 @@ def _mesh_report(
     degree_exempt: frozenset[str] = frozenset(),
     ceilings: dict[str, int] | None = None,
 ) -> ValidationReport:
-    """Validate a backbone-only synthesis defined by its mesh links."""
     return validate_synthesis(
         [make_pop(name) for name in backbone_ids],
         _mesh_synthesis(backbone_ids, pairs),
@@ -144,69 +119,57 @@ def _mesh_report(
     )
 
 
-# Five nodes each wired to at least three others: a 5-cycle plus three chords.
 _HEALTHY = (
     ("C1", "C2", "C3", "C4", "C5"),
     [("C1", "C2"), ("C2", "C3"), ("C3", "C4"), ("C4", "C5"), ("C5", "C1"),
      ("C1", "C3"), ("C2", "C4"), ("C3", "C5")],
 )
-# Five nodes wired so C3, C4, and C5 keep only two mesh links -- below the target.
 _DEFICIENT = (
     ("C1", "C2", "C3", "C4", "C5"),
     [("C1", "C2"), ("C1", "C3"), ("C1", "C4"), ("C2", "C4"), ("C2", "C5"), ("C3", "C5")],
 )
-# Three nodes cannot reach a target of three, so the diverse-path rule is moot.
 _SMALL = (("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3"), ("C1", "C3")])
 
 
 def test_backbone_meeting_the_target_satisfies_the_mesh_rule() -> None:
-    """Five nodes each wired to three or more others meet the three-link target."""
     assert _mesh_report(*_HEALTHY)["backbone_meets_mesh_link_target"] is True
 
 
 def test_backbone_below_the_target_fails_the_mesh_rule() -> None:
-    """Nodes left with only two mesh links fail the three-link target."""
     assert _mesh_report(*_DEFICIENT)["backbone_meets_mesh_link_target"] is False
 
 
 def test_number_of_diverse_paths_is_configurable() -> None:
-    """The same nodes meet a lowered target of two links each."""
     assert _mesh_report(*_DEFICIENT, backbone_number_of_diverse_paths=2)[
         "backbone_meets_mesh_link_target"
     ] is True
 
 
 def test_backbone_below_the_target_names_the_deficient_nodes() -> None:
-    """The deficient list names every node left under the three-link target."""
     report = _mesh_report(*_DEFICIENT)
     assert {item["id"] for item in report["backbone_diverse_paths_deficient"]} == {"C3", "C4", "C5"}
 
 
 def test_exempting_every_short_node_satisfies_the_mesh_rule() -> None:
-    """A mesh whose only shortfalls are at exempt nodes meets the target."""
     report = _mesh_report(*_DEFICIENT, degree_exempt=frozenset({"C3", "C4", "C5"}))
     assert report["backbone_meets_mesh_link_target"] is True
 
 
 def test_exempting_one_short_node_leaves_the_others_reported() -> None:
-    """Exempting C3 says nothing about C4 and C5, which stay under the target."""
     report = _mesh_report(*_DEFICIENT, degree_exempt=frozenset({"C3"}))
     assert {item["id"] for item in report["backbone_diverse_paths_deficient"]} == {"C4", "C5"}
 
 
 def test_the_report_names_the_exempt_nodes() -> None:
-    """The report names the nodes the degree was not asked of, so the exemption is visible."""
     report = _mesh_report(*_DEFICIENT, degree_exempt=frozenset({"C3"}))
     assert report["backbone_degree_exempt"] == [{"id": "C3", "name": "C3"}]
 
 
 def test_the_report_names_no_exempt_node_by_default() -> None:
-    """A synthesis exempting nobody says so, rather than leaving the reader to infer it."""
     assert _mesh_report(*_HEALTHY)["backbone_degree_exempt"] == []
 
 
 def test_the_report_names_a_node_whose_target_the_tool_lowered() -> None:
-    """A target the tool lowered on its own is read in the report, not inferred from counts."""
     report = _mesh_report(*_DEFICIENT, ceilings={"C3": 2})
     assert report["backbone_diverse_paths_ceiling_limited"] == [
         {"id": "C3", "name": "C3", "ceiling": 2}
@@ -214,18 +177,10 @@ def test_the_report_names_a_node_whose_target_the_tool_lowered() -> None:
 
 
 def test_the_report_lowers_nobody_when_the_fiber_meets_the_degree() -> None:
-    """With no target lowered the field is empty, so a reduction is what it distinguishes."""
     assert _mesh_report(*_HEALTHY)["backbone_diverse_paths_ceiling_limited"] == []
 
 
 def test_the_report_gives_every_measured_node_its_count_and_its_target() -> None:
-    """Each node's ceiling is read beside the target it produced, lowered or not.
-
-    The list above names only the nodes the tool held below the configured degree, which is
-    what an operator acts on and not enough to check the number behind it. A reader outside
-    the build needs both to tell a site short of a link somebody can wire from a site short
-    of one the backup path multiple refuses (GitHub issue #45).
-    """
     report = _mesh_report(*_DEFICIENT, ceilings={"C3": 2, "C4": 4})
     assert report["backbone_diverse_paths_ceilings"] == [
         {"id": "C3", "name": "C3", "ceiling": 2, "target": 2},
@@ -234,27 +189,15 @@ def test_the_report_gives_every_measured_node_its_count_and_its_target() -> None
 
 
 def test_the_report_measures_no_node_the_merged_carriers_said_nothing_about() -> None:
-    """A node with no ceiling recorded owes the full degree and is not reported as measured.
-
-    Reporting it would have to invent a ceiling to sit beside the target, and no fiber in
-    the inputs is absence of evidence rather than a measurement of zero.
-    """
     report = _mesh_report(*_DEFICIENT, ceilings={"C3": 2})
     assert [entry["id"] for entry in report["backbone_diverse_paths_ceilings"]] == ["C3"]
 
 
-# The report of nodes holding more links than were asked for is driven by what put each
-# link there, which a hand-built mesh does not record, so it is exercised over syntheses that
-# do carry it -- see ``test_above_target_report.py``.
-
-
 def test_small_backbone_is_exempt_from_the_mesh_rule() -> None:
-    """With only three nodes the three-link target cannot apply, so it passes."""
     assert _mesh_report(*_SMALL)["backbone_meets_mesh_link_target"] is True
 
 
 def _independence_report(paths: list[tuple[str, ...]]) -> ValidationReport:
-    """Validate one of the shared/diverse drawn meshes against a two-link target."""
     return validate_synthesis(
         [make_pop(name) for name in (*fixtures.SHARED_TRANSIT_BACKBONE, "x", "y")],
         fixtures.meshed_backbone_synthesis(paths, fixtures.SHARED_TRANSIT_BACKBONE),
@@ -263,39 +206,33 @@ def _independence_report(paths: list[tuple[str, ...]]) -> ValidationReport:
 
 
 def test_shared_transit_fails_the_independent_mesh_target() -> None:
-    """A node whose two links cross one transit city misses the two-link target."""
     assert _independence_report(fixtures.SHARED_TRANSIT_PATHS)[
         "backbone_meets_independent_mesh_link_target"
     ] is False
 
 
 def test_shared_transit_names_the_node_that_falls_short() -> None:
-    """The independence list names the node whose links a single city would both take."""
     report = _independence_report(fixtures.SHARED_TRANSIT_PATHS)
     assert {item["id"] for item in report["backbone_mesh_independence_deficient"]} == {"a"}
 
 
 def test_diverse_transit_meets_the_independent_mesh_target() -> None:
-    """The same mesh with one link redrawn through its own city meets the target."""
     assert _independence_report(fixtures.DIVERSE_TRANSIT_PATHS)[
         "backbone_meets_independent_mesh_link_target"
     ] is True
 
 
 def test_healthy_backbone_survives_any_one_link_loss() -> None:
-    """A backbone that survives any single link loss is reported resilient."""
     assert _mesh_report(*_HEALTHY)["backbone_mesh_survives_any_one_link_loss"] is True
 
 
 def test_bridged_backbone_is_not_survives_any_one_link_loss() -> None:
-    """A backbone with a bridge (a chain) is flagged as not surviving the loss of any one link."""
     chain = _mesh_synthesis(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
     report = validate_synthesis([make_pop(n) for n in ("C1", "C2", "C3")], chain)
     assert report["backbone_mesh_survives_any_one_link_loss"] is False
 
 
 def _drawn_synthesis(backbone_ids: tuple[str, ...], path_uses: list[SynthesisPath]) -> Synthesis:
-    """A backbone-only synthesis defined directly by the fiber its paths run over."""
     return Synthesis(
         backbone_ids=backbone_ids,
         transit_ids=(),
@@ -306,9 +243,6 @@ def _drawn_synthesis(backbone_ids: tuple[str, ...], path_uses: list[SynthesisPat
     )
 
 
-# Logical links A-B and A-C both path over the shared first hop A-X, so the city-pair
-# mesh (A-B, A-C, B-C) is a triangle -- logically bridgeless -- while the physical
-# fiber hangs A off the lone segment A-X. A non-mesh path use rides along, ignored.
 _SHARED_CORRIDOR = _drawn_synthesis(
     ("A", "B", "C"),
     [
@@ -318,8 +252,6 @@ _SHARED_CORRIDOR = _drawn_synthesis(
         SynthesisPath("access", "B", "C", ("B", "C"), 1.0),
     ],
 )
-# Backbone A-B carried over two segment-disjoint corridors -- the direct A-B and the detour
-# A-Y-B -- so the physical fiber survives the loss of either.
 _DISJOINT_PATHS = _drawn_synthesis(
     ("A", "B"),
     [
@@ -330,46 +262,37 @@ _DISJOINT_PATHS = _drawn_synthesis(
 
 
 def test_shared_physical_corridor_is_not_survives_any_one_link_loss() -> None:
-    """Logical links sharing one fiber segment offer no real redundancy, so the check fails."""
     report = validate_synthesis([make_pop(n) for n in ("A", "X", "B", "C")], _SHARED_CORRIDOR)
     assert report["backbone_mesh_survives_any_one_link_loss"] is False
 
 
 def test_segment_disjoint_paths_are_survives_any_one_link_loss() -> None:
-    """Two segment-disjoint corridors between the backbone nodes survive any single cut."""
     report = validate_synthesis([make_pop(n) for n in ("A", "B", "Y")], _DISJOINT_PATHS)
     assert report["backbone_mesh_survives_any_one_link_loss"] is True
 
 
 def test_backbone_mesh_survives_any_one_site_loss_with_fewer_than_two_nodes() -> None:
-    """A backbone with fewer than two nodes is trivially survives the loss of any one site."""
     synthesis = build_synthesis(("B1",), (), [], [])
     report = validate_synthesis([make_pop("B1")], synthesis)
     assert report["backbone_mesh_survives_any_one_site_loss"] is True
 
 
 def test_healthy_backbone_survives_any_one_site_loss() -> None:
-    """A backbone that survives any single city loss is reported city-survivable."""
     assert _mesh_report(*_HEALTHY)["backbone_mesh_survives_any_one_site_loss"] is True
 
 
 def test_chain_backbone_is_not_survives_any_one_site_loss() -> None:
-    """A backbone with a cut city (a chain's middle) is flagged as not city-survivable."""
     chain = _mesh_synthesis(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
     report = validate_synthesis([make_pop(n) for n in ("C1", "C2", "C3")], chain)
     assert report["backbone_mesh_survives_any_one_site_loss"] is False
 
 
 def test_an_undrawn_backbone_node_is_not_survives_any_one_site_loss() -> None:
-    """A backbone node no drawn segment reaches reads as disconnected, so the check fails."""
     synthesis = _mesh_synthesis(("C1", "C2", "C3"), [("C1", "C2")])
     report = validate_synthesis([make_pop(n) for n in ("C1", "C2", "C3")], synthesis)
     assert report["backbone_mesh_survives_any_one_site_loss"] is False
 
 
-# A bowtie: two backbone triangles {B1,B2,H} and {H,B3,B4} sharing the transit city H. No
-# segment is a bridge, so the fiber survives any single segment's loss; but H is a cut city
-# whose loss splits the backbone -- where segment- and city-survivability diverge.
 _BOWTIE_SYNTHESIS = _drawn_synthesis(
     ("B1", "B2", "B3", "B4"),
     [
@@ -385,18 +308,15 @@ _BOWTIE_SITES = [make_pop(name) for name in ("B1", "B2", "B3", "B4", "H")]
 
 
 def test_bowtie_backbone_survives_any_one_link_loss() -> None:
-    """A bowtie has no bridge, so the fiber survives any single segment's loss."""
     report = validate_synthesis(_BOWTIE_SITES, _BOWTIE_SYNTHESIS)
     assert report["backbone_mesh_survives_any_one_link_loss"] is True
 
 
 def test_bowtie_backbone_is_not_survives_any_one_site_loss() -> None:
-    """The bowtie's shared city is a cut, so the fiber does not survive that city's loss."""
     report = validate_synthesis(_BOWTIE_SITES, _BOWTIE_SYNTHESIS)
     assert report["backbone_mesh_survives_any_one_site_loss"] is False
 
 
-# Two disjoint physical links leave the synthesis graph in two components.
 _DISCONNECTED = build_synthesis(
     backbone_ids=("B1", "B2", "B3", "B4"),
     transit_ids=(),
@@ -407,19 +327,16 @@ _DISCONNECTED_SITES = [make_pop(name) for name in ("B1", "B2", "B3", "B4")]
 
 
 def test_disconnected_synthesis_reports_multiple_components() -> None:
-    """A synthesis in two pieces is reported with a component count above one."""
     report = validate_synthesis(_DISCONNECTED_SITES, _DISCONNECTED)
     assert report["component_count"] == 2
 
 
 def test_disconnected_synthesis_skips_articulation_search() -> None:
-    """With more than one component the synthesis has no articulation points listed."""
     report = validate_synthesis(_DISCONNECTED_SITES, _DISCONNECTED)
     assert report["articulation_points"] == []
 
 
 def test_degree_deficient_site_is_named() -> None:
-    """A site with fewer than two distinct neighbours is named as degree-deficient."""
     report = validate_synthesis(_DISCONNECTED_SITES, _DISCONNECTED)
     assert {item["id"] for item in report["degree_deficient_sites"]} == {
         "B1", "B2", "B3", "B4",
@@ -427,13 +344,11 @@ def test_degree_deficient_site_is_named() -> None:
 
 
 def test_empty_synthesis_reports_zero_min_degree() -> None:
-    """A synthesis including no sites reports a minimum neighbour degree of zero."""
     empty = build_synthesis((), (), [], [])
     assert validate_synthesis([], empty)["min_distinct_neighbor_degree"] == 0
 
 
 def test_articulation_point_is_flagged() -> None:
-    """A cut site whose loss splits the synthesis is reported as an articulation point."""
     chain = _mesh_synthesis(("C1", "C2", "C3"), [("C1", "C2"), ("C2", "C3")])
     report = validate_synthesis([make_pop(n) for n in ("C1", "C2", "C3")], chain)
     assert {item["id"] for item in report["articulation_points"]} == {"C2"}

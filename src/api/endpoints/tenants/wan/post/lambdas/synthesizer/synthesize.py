@@ -1,35 +1,3 @@
-"""Synthesize a two-tier backbone/demand WAN over the carrier graph.
-
-Backbone nodes are chosen for strength, not mileage (the source mapbook has no
-distances): each node's strength is how many diverse paths its fiber can carry plus
-compass spread plus path straightness, and the strongest feasible set of at least the
-configured ``min_backbone_count`` wins, with total last-mile only breaking ties. The
-backbone then grows past that floor while any demand site is farther than
-``backbone_coverage_target_miles`` from every selected backbone node, each added node
-being the one that leaves the demand hauls shortest read worst-first -- so extra backbone
-nodes appear only where they bring demand closer, never as a mileage cost minimized
-over candidate sets.
-
-A final convergence pass then promotes natural hubs: any data-center city where at least
-``CONVERGENCE_BACKBONE_DEGREE`` of the synthesis's own drawn fiber lines meet is forced
-into the backbone and the synthesis is recomputed, repeating until a redraw finds no new
-hub. The count is per-synthesis (this synthesis's used physical links), not the merged
-carriers' degree, so a city that hubs one tenant need not hub another.
-
-Eligibility is gated twice: a carrier PoP may serve as a backbone node only if it has
-at least two physical links AND sits at a data-center city (a colocation provider
-operates a cage there). The operator's forced backbone pins are gated the same way
-(in ``synthesizer.overrides``).
-
-Every demand site (a unified tenant site or provider region) homes to its
-``access_backbone_links`` nearest selected backbone nodes. There is no last-mile fiber
-data, so a home is the logical link from a demand site to a backbone node, not a
-path over fiber -- the only requirement is that enough backbone nodes exist to home to.
-On top of the algorithm, the operator may pin roles by PoP name (``RoleOverrides``,
-resolved by ``apply_role_overrides``): force a PoP onto the backbone, or exclude it
-from it.
-"""
-
 from __future__ import annotations
 
 import itertools
@@ -58,29 +26,15 @@ from synthesizer.strength import backbone_strength, diverse_path_bounds
 
 logger = logging.getLogger(__name__)
 
-# How often the backbone-set scan logs a progress heartbeat. A single size can
-# enumerate millions of sets; without this the scan goes silent between "new best"
-# lines.
 _SEARCH_LOG_INTERVAL = 50_000
 
-# A carrier PoP where at least this many of the synthesis's own drawn fiber lines converge
-# is a natural hub; if it also sits at a data-center city it is promoted into the backbone
-# and the synthesis is recomputed (GitHub issue #4). The count is per-synthesis (the synthesis's
-# used physical links), never the merged carriers' degree.
 CONVERGENCE_BACKBONE_DEGREE = 3
-
-
 
 
 def compute_eligible_backbone_ids(
     carrier_pops: list[Site],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> set[str]:
-    """Carrier PoPs that may serve as backbone nodes.
-
-    A PoP needs at least two physical links to ever path redundantly, so degree-one
-    PoPs (spurs) are excluded.
-    """
     return {
         pop.id
         for pop in carrier_pops
@@ -92,16 +46,6 @@ def convergence_promotion_ids(
     synthesis: Synthesis,
     min_degree: int = CONVERGENCE_BACKBONE_DEGREE,
 ) -> set[str]:
-    """Non-backbone carrier PoPs where this synthesis's fiber converges.
-
-    A PoP qualifies when at least ``min_degree`` of *this synthesis's* drawn physical links
-    meet at it. The count comes from ``synthesis.fiber_segment_keys`` -- the fiber actually
-    drawn for this synthesis -- so the measure is per-synthesis, never the merged carriers'
-    degree. A non-backbone carrier PoP only ever carries those links as a transit node
-    (demand homes to backbone nodes, never to transit), so its incident count is exactly
-    the number of the synthesis's lines meeting there. PoPs already seated in the backbone
-    are excluded; the caller forces the rest in and redraws.
-    """
     counts: dict[str, int] = {}
     for left, right in synthesis.fiber_segment_keys:
         counts[left] = counts.get(left, 0) + 1
@@ -118,7 +62,6 @@ def all_pairs_shortest(
     carrier_pops: list[Site],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, str]]]:
-    """Run Dijkstra from every Carrier PoP for reuse across backbone sets."""
     all_distances: dict[str, dict[str, float]] = {}
     all_predecessors: dict[str, dict[str, str]] = {}
     for pop in carrier_pops:
@@ -131,7 +74,6 @@ def validate_pop_graph(
     fiber_segments: dict[tuple[str, str], FiberSegment],
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> None:
-    """Raise if the physical link graph and Carrier PoP set are inconsistent."""
     pop_ids = {pop.id for pop in carrier_pops}
     physical_site_ids = {site_id for link in fiber_segments for site_id in link}
     if not pop_ids.issuperset(physical_site_ids):
@@ -143,19 +85,16 @@ def validate_pop_graph(
 
 
 def backbone_set_strength(backbone_ids: tuple[str, ...], plan: _SearchPlan) -> float:
-    """Total strength of a backbone set: the primary objective the search maximizes."""
     return sum(plan.strength_by_id[backbone_id] for backbone_id in backbone_ids)
 
 
 def free_backbone_candidates(plan: _SearchPlan) -> list[str]:
-    """Backbone candidates the search may choose freely, excluding required nodes."""
     return [
         pop_id for pop_id in plan.backbone_candidates if pop_id not in plan.required_backbone
     ]
 
 
 def backbone_combination_count(plan: _SearchPlan, size: int) -> int:
-    """How many backbone sets of ``size`` exist once required nodes are fixed in."""
     required = len(plan.required_backbone)
     if required > size:
         return 0
@@ -163,7 +102,6 @@ def backbone_combination_count(plan: _SearchPlan, size: int) -> int:
 
 
 def backbone_combinations(plan: _SearchPlan, size: int) -> list[tuple[str, ...]]:
-    """Every ``size``-node set, with the required backbone nodes fixed into each one."""
     required = tuple(sorted(plan.required_backbone))
     if len(required) > size:
         return []
@@ -179,23 +117,6 @@ def best_backbone_at_size(
     plan: _SearchPlan,
     size: int,
 ) -> tuple[str, ...] | None:
-    """The seats of the strongest feasible backbone of exactly ``size`` nodes, or None.
-
-    Any operator-forced backbone nodes are fixed into every candidate set; the rest
-    are chosen by strength (the spec forbids mileage as a synthesis cost), with total
-    last-mile only breaking ties among equally strong sets. Backbone sets are tried
-    strongest-first and scored cheaply (feasibility plus demand homing, no paths
-    drawn). Because strength is non-increasing down that order, the moment a feasible
-    set is in hand the search stops as soon as a candidate is strictly weaker.
-
-    Seats come back rather than a synthesis because nothing here needs one. Coverage growth
-    reads the seats and rebuilds over whatever it settles on, so a synthesis drawn here is
-    thrown away the moment a node is seated past this size -- 234 of DOW's 438 seconds,
-    which is what put that tenant past the fifteen minutes AWS allows a Lambda (GitHub
-    issue #72). Feasibility does not need one either: ``build_synthesis_for_backbone``
-    returns ``None`` in exactly the case ``evaluate_backbone`` does, and every candidate
-    set below has already been through ``evaluate_backbone``.
-    """
     combos = sorted(
         backbone_combinations(plan, size),
         key=lambda combo: -backbone_set_strength(combo, plan),
@@ -226,13 +147,6 @@ def best_backbone_at_size(
 
 
 def total_memory_bytes() -> int:
-    """The memory available to this process, in bytes.
-
-    On Lambda, honor ``AWS_LAMBDA_FUNCTION_MEMORY_SIZE`` (the function's configured limit,
-    in MB) -- ``sysconf`` would report the host's RAM, far more than the function actually
-    has, and oversize the backbone enumeration into an OOM kill. Off Lambda (local, tests),
-    fall back to the installed physical RAM.
-    """
     configured_mb = os.environ.get("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
     if configured_mb:
         return int(configured_mb) * 1024 * 1024
@@ -240,11 +154,8 @@ def total_memory_bytes() -> int:
 
 
 def enumeration_limit(memory_bytes: int, params: SynthesisParams) -> int:
-    """How many backbone sets fit in the share of RAM the enumeration may use."""
     budget = params.tuning.search_memory_budget
     return int(memory_bytes * budget.memory_share / budget.bytes_per_combination)
-
-
 
 
 def search_best_synthesis(
@@ -252,19 +163,6 @@ def search_best_synthesis(
     params: SynthesisParams,
     plan: _SearchPlan,
 ) -> Synthesis:
-    """Build the strongest feasible synthesis, then grow the backbone until demand is close.
-
-    The backbone count is a floor, not an exact target. The search first finds the
-    strongest feasible set at ``min_backbone_count`` (total last-mile only breaking
-    ties), growing the backbone one PoP at a time only if no feasible synthesis exists at a
-    size. It then adds nodes past that floor while some demand site is farther than
-    ``backbone_coverage_target_miles`` from every selected node, each added node being the
-    best-connected candidate that brings those distances inside the target -- so extra
-    nodes appear only where they close a gap, and the one seated is chosen for the fiber
-    it can carry rather than the miles it saves. Enumerating each size must fit
-    the share of RAM
-    the search may use, or the synthesis is refused rather than risk exhausting memory.
-    """
     limit = enumeration_limit(total_memory_bytes(), params)
     base: tuple[str, ...] | None = None
     max_size = len(plan.backbone_candidates)
@@ -299,12 +197,6 @@ def search_best_synthesis(
 
 @dataclass(frozen=True)
 class SearchGraph:
-    """The graph every candidate backbone set is scored against.
-
-    The sites split into carrier PoPs and access sites, the fiber between the PoPs, and
-    the shortest paths and biconnected blocks computed over it once for the whole run.
-    """
-
     carrier_pops: list[Site]
     all_access: list[Site]
     adjacency: dict[str, list[tuple[str, float]]]
@@ -317,7 +209,6 @@ def build_search_graph(
     sites: list[Site],
     fiber_segments: dict[tuple[str, str], FiberSegment],
 ) -> SearchGraph:
-    """Split the sites into PoPs and access sites and precompute the shared graph."""
     carrier_pops = [site for site in sites if is_carrier_pop(site)]
     all_access = [site for site in sites if not is_carrier_pop(site)]
     adjacency = build_adjacency(fiber_segments)
@@ -336,15 +227,6 @@ def build_search_plan(
     params: SynthesisParams,
     promoted_backbone_ids: frozenset[str] = frozenset(),
 ) -> _SearchPlan:
-    """Compute site strengths and backbone candidates.
-
-    Required backbone nodes are the operator-forced backbone nodes plus any
-    ``promoted_backbone_ids`` the convergence pass has fixed in (already eligible by
-    construction). Every eligible PoP is a backbone candidate, ranked nationally by
-    strength. The operator's resolved forced-path links ride along for the
-    routing stage. The nodes the diverse path count is not asked of do not: the exemption is
-    validation's, and the handler carries it there itself.
-    """
     pop_by_id = {pop.id: pop for pop in inputs.carrier_pops}
     bounds = diverse_path_bounds(eligible_ids, inputs.adjacency)
     strength_by_id = {
@@ -377,11 +259,6 @@ def synthesize_two_tier(
     params: SynthesisParams,
     overrides: RoleOverrides | None = None,
 ) -> Synthesis:
-    """Synthesize a two-tier WAN over the Carrier graph for the given parameters.
-
-    ``overrides`` carries operator role pins already resolved to site ids; pass
-    ``None`` for an unpinned synthesis.
-    """
     overrides = overrides if overrides is not None else RoleOverrides()
     if params.min_backbone_count < 2:
         raise ValueError(

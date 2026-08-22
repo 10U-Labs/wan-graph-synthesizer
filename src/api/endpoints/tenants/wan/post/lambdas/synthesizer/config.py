@@ -1,12 +1,3 @@
-"""Resolve the WAN synthesizer configuration from an already-parsed mapping.
-
-Everything the operator tunes -- the input paths, the role pins and exclusions,
-the backbone count, and the algorithm dials -- arrives as one parsed mapping (the
-tenant's stored config JSON). Any key it omits falls back to the matching
-built-in default, so a partial (even empty) mapping still yields a valid
-configuration.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -38,13 +29,6 @@ DEFAULT_REGIONAL_LINKS = ["data/fiber_segments/dcn.csv", "data/fiber_segments/vi
 
 @dataclass(frozen=True)
 class AppConfig:
-    """A fully resolved configuration: file paths, synthesis params, pinned links.
-
-    ``links`` carries the three lists of operator-written links -- pinned mesh pairs,
-    forced homes, and pruned mesh pairs -- each still named rather than resolved to ids,
-    since resolution needs the graph the overrides layer holds and this one does not.
-    """
-
     input_files: InputFiles
     params: SynthesisParams
     label: str = ""
@@ -52,7 +36,6 @@ class AppConfig:
 
 
 def _mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
-    """Return a named sub-mapping, defaulting to empty and rejecting non-mappings."""
     section = data.get(key, {})
     if not isinstance(section, dict):
         raise ValueError(f"config section '{key}' must be a mapping")
@@ -60,7 +43,6 @@ def _mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def _str_list(data: dict[str, Any], key: str, default: list[str]) -> tuple[str, ...]:
-    """Return a list-of-strings config value as a tuple, rejecting other shapes."""
     value = data.get(key, default)
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError(f"config key '{key}' must be a list of strings")
@@ -68,12 +50,6 @@ def _str_list(data: dict[str, Any], key: str, default: list[str]) -> tuple[str, 
 
 
 def _required_bool(data: dict[str, Any], key: str) -> bool:
-    """Return a required boolean config value, rejecting an absent or non-bool value.
-
-    ``promote_high_degree_convergences_to_backbone_nodes`` has no default: every tenant
-    must state whether a high-degree hub is promoted into the backbone, so a missing key is
-    an error rather than a silently-filled fallback (as with the two redundancy degrees).
-    """
     if key not in data:
         raise ValueError(f"config key '{key}' is required and has no default")
     value = data[key]
@@ -83,17 +59,6 @@ def _required_bool(data: dict[str, Any], key: str) -> bool:
 
 
 def _required_int(data: dict[str, Any], key: str) -> int:
-    """Return a required integer config value, rejecting an absent or non-int value.
-
-    The two redundancy degrees (``backbone-number-of-diverse-paths``, ``access-homing-degree``)
-    have no default: every tenant must state each one, so a missing key is an error
-    rather than a silently-filled fallback. ``backbone_coverage_target_miles`` is
-    required on the same terms -- every tenant must state how far the backbone must
-    grow to cover its demand -- and is an integer because the growth stop test
-    compares it against a great-circle haul standing in for a last-mile build, which
-    is wrong by tens of miles, so a fraction of one states a resolution the synthesis
-    does not have.
-    """
     if key not in data:
         raise ValueError(f"config key '{key}' is required and has no default")
     value = data[key]
@@ -103,22 +68,6 @@ def _required_int(data: dict[str, Any], key: str) -> int:
 
 
 def _required_ratio(data: dict[str, Any], key: str) -> float:
-    """Return a required ratio config value, rejecting an absent, non-numeric or flat one.
-
-    ``backbone_max_backup_path_multiple`` has no default, on the same terms as the two
-    redundancy degrees and the coverage target: how much detour a protect path may take is
-    an engineering decision about the network being asked for, and a tenant that has not made
-    it must not have one made on its behalf.
-
-    A ratio rather than a mileage, so a fraction is meaningful here where it is not on the
-    coverage target -- the number multiplies a distance instead of standing in for one, and
-    2.5 states a real bound rather than a precision the synthesis does not have.
-
-    At or below one the bound admits nothing but the shortest path. That is not a tight
-    bound but a contradiction: a protect path is a detour by definition, so every synthesis
-    would be refused rather than bounded, and an operator writing it has not meant to
-    forbid path diversity outright.
-    """
     if key not in data:
         raise ValueError(f"config key '{key}' is required and has no default")
     value = data[key]
@@ -130,12 +79,6 @@ def _required_ratio(data: dict[str, Any], key: str) -> float:
 
 
 def _named_link_list(synthesis: dict[str, Any], key: str) -> tuple[NamedLink, ...]:
-    """Parse one list of operator-written pairs of site names, rejecting bad shapes.
-
-    Each entry maps string ``source``/``target`` and nothing else: the key it is written
-    under says which tier it acts on, so there is nothing left for the entry to declare.
-    An absent ``key`` defaults to an empty list (nothing written).
-    """
     value = synthesis.get(key, [])
     if not isinstance(value, list):
         raise ValueError(f"config key '{key}' must be a list")
@@ -150,13 +93,6 @@ def _named_link_list(synthesis: dict[str, Any], key: str) -> tuple[NamedLink, ..
 
 
 def _operator_links(synthesis: dict[str, Any]) -> OperatorLinks:
-    """Parse the three lists of operator-written links, one per tier they act on.
-
-    ``forced_paths`` pins mesh pairs, ``forced_homes`` pins a demand site onto a named
-    backbone node, and ``excluded_paths`` prunes mesh pairs. Each is read the same way,
-    because after the split there is nothing tier-specific left to parse -- the tiers differ
-    in how the names are resolved, which is what ``synthesizer.overrides`` does.
-    """
     return OperatorLinks(
         backbone=_named_link_list(synthesis, "forced_paths"),
         access=_named_link_list(synthesis, "forced_homes"),
@@ -165,7 +101,6 @@ def _operator_links(synthesis: dict[str, Any]) -> OperatorLinks:
 
 
 def _site_paths(tenant: object, value: object) -> list[tuple[str, Path]]:
-    """Expand one tenant's value (a path or list of paths) into (tenant, path) pairs."""
     items = value if isinstance(value, list) else [value]
     pairs: list[tuple[str, Path]] = []
     for path in items:
@@ -176,7 +111,6 @@ def _site_paths(tenant: object, value: object) -> list[tuple[str, Path]]:
 
 
 def _site_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
-    """Resolve the tenant -> sites-CSV(s) mapping into sorted (tenant, path) pairs."""
     value = inputs.get("sites", DEFAULT_SITES)
     if not isinstance(value, dict):
         raise ValueError("config key 'sites' must be a mapping of tenant to path")
@@ -185,7 +119,6 @@ def _site_files(inputs: dict[str, Any]) -> tuple[tuple[str, Path], ...]:
 
 
 def _input_files(inputs: dict[str, Any]) -> InputFiles:
-    """Resolve the input-file configuration into an :class:`InputFiles`."""
     regional_links = _str_list(inputs, "regional_links", DEFAULT_REGIONAL_LINKS)
     off_net = inputs.get("off_net")
     return InputFiles(
@@ -196,9 +129,6 @@ def _input_files(inputs: dict[str, Any]) -> InputFiles:
     )
 
 
-# The keys the settings resource defines. Anything else in a stored settings document
-# is an operator typo or a key that has been renamed, and either way the value it holds
-# steers nothing -- so it is refused rather than silently replaced by a default.
 SETTINGS_KEYS = frozenset({
     "backbone_search_memory_share",
     "bytes_per_backbone_combination",
@@ -207,7 +137,6 @@ SETTINGS_KEYS = frozenset({
 
 
 def _checked_settings(settings: dict[str, Any]) -> dict[str, Any]:
-    """Return the settings mapping, rejecting any key the resource does not define."""
     unknown = sorted(set(settings) - SETTINGS_KEYS)
     if unknown:
         raise ValueError(
@@ -217,13 +146,6 @@ def _checked_settings(settings: dict[str, Any]) -> dict[str, Any]:
 
 
 def _sector_count(settings: dict[str, Any], default: int) -> int:
-    """Return the compass sector count, rejecting a non-integer or one below one.
-
-    The count both cuts the compass into sectors and divides the sector tally in the
-    strength score, so zero is a division by zero and a fraction is a sector geometry
-    nothing can produce. Parse time is the only place either can be refused before a
-    synthesis run starts.
-    """
     value = settings.get("compass_sector_count", default)
     if not isinstance(value, int) or isinstance(value, bool) or value < 1:
         raise ValueError("settings key 'compass_sector_count' must be an integer of at least 1")
@@ -231,15 +153,6 @@ def _sector_count(settings: dict[str, Any], default: int) -> int:
 
 
 def _memory_share(settings: dict[str, Any], default: float) -> float:
-    """Return the share of memory the backbone search may use, rejecting a bad value.
-
-    Above 1 the limit authorises more memory than the function has, so a large job is
-    killed by the runtime instead of refused cleanly -- the exact failure the setting
-    exists to prevent, reached by changing the setting meant to prevent it. At 0 every
-    backbone size is refused with an error that talks about a RAM budget and never
-    mentions configuration. Parse time is the only point either can be refused before a
-    synthesis run starts; failing inside ``enumeration_limit`` would waste the graph load.
-    """
     value = settings.get("backbone_search_memory_share", default)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError("settings key 'backbone_search_memory_share' must be a number")
@@ -251,17 +164,6 @@ def _memory_share(settings: dict[str, Any], default: float) -> float:
 
 
 def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
-    """Resolve the tuning and settings configuration into a :class:`Tuning`.
-
-    The operator's requirements -- the two degrees, the coverage target and the backup
-    path multiple -- come from ``tuning``, which the assembler builds from the ``knobs``
-    resource and the two degree resources. The implementation dials come from
-    ``settings``, and only from there: a value left behind under ``knobs`` is not read,
-    so it falls back to the dataclass default rather than quietly continuing to steer
-    the search. A settings document carrying a key the resource does not define -- a
-    typo, or a name from before a rename -- is refused outright, since defaulting past
-    it would run the synthesis on values nobody chose (see :func:`_checked_settings`).
-    """
     base = Tuning()
     settings = _checked_settings(settings)
     return Tuning(
@@ -286,7 +188,6 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
 def _params(
     synthesis: dict[str, Any], tuning: dict[str, Any], settings: dict[str, Any]
 ) -> SynthesisParams:
-    """Resolve the synthesis, tuning and settings configuration into :class:`SynthesisParams`."""
     base = SynthesisParams()
     return SynthesisParams(
         min_backbone_count=synthesis.get("min_backbone_count", base.min_backbone_count),
@@ -304,11 +205,6 @@ def _params(
 
 
 def config_from_data(data: dict[str, Any]) -> AppConfig:
-    """Resolve an already-parsed config mapping into a :class:`AppConfig`.
-
-    Any key the mapping omits falls back to the matching built-in default, so a
-    partial (even empty) mapping still yields a valid configuration.
-    """
     synthesis = _mapping(data, "synthesis")
     return AppConfig(
         input_files=_input_files(_mapping(data, "inputs")),
@@ -319,7 +215,6 @@ def config_from_data(data: dict[str, Any]) -> AppConfig:
 
 
 def _degree(parts: dict[str, Any], resource: str) -> int:
-    """Read a required ``{"degree": int}`` document for a redundancy resource."""
     if resource not in parts:
         raise ValueError(f"required tenant resource '{resource}' is missing")
     doc = parts[resource]
@@ -332,21 +227,6 @@ def _degree(parts: dict[str, Any], resource: str) -> int:
 
 
 def app_config_from_parts(parts: dict[str, Any]) -> AppConfig:
-    """Assemble an :class:`AppConfig` from the per-resource tenant documents.
-
-    Each operator concern is its own stored document (``forced-backbone-nodes``,
-    ``forced-homes``, ``prohibited-paths``, ``backbone-number-of-diverse-paths``, ``knobs``,
-    ...). This reshapes those documents into the canonical mapping
-    :func:`config_from_data` expects and delegates to it, so all parsing and validation
-    stays in one place. The two redundancy degrees are required -- a missing one raises
-    in :func:`_degree`.
-
-    ``knobs`` carries the operator's coverage target and ``settings`` the
-    implementation dials, and the two are passed on separately: nothing merges them, so
-    a dial left behind under ``knobs`` is not read at all.
-    ``input_files`` is left at its defaults: the deployed synthesizer reads its fiber
-    from the merged carriers, not from these documents.
-    """
     count = _mapping(parts, "backbone-node-count")
     synthesis: dict[str, Any] = {
         "forced_backbone": parts.get("forced-backbone-nodes", []),

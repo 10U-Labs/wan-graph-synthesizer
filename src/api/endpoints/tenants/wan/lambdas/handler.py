@@ -1,14 +1,3 @@
-"""WAN create endpoint: start a tenant's synthesizer and report its status.
-
-    POST /wan-synthesizer/tenants/{tenant}/wan -> 202; start the create
-    GET  /wan-synthesizer/tenants/{tenant}/wan -> the WAN's status (422 with no WAN)
-
-The synthesize math takes longer than API Gateway's ~29s cap, so a POST async-invokes
-the synthesizer Lambda and returns immediately; the synthesizer writes the finished WAN
-and a status marker to S3. A GET reads that marker -- 422 when the build finished without
-a WAN, 404 before the first create. Self-contained (stdlib + boto3); single-file Lambda.
-"""
-
 import json
 import logging
 import os
@@ -22,46 +11,34 @@ logger.setLevel(logging.INFO)
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
 
-# The two ways a build ends with no WAN to serve. ``fail`` is the synthesizer deciding no
-# valid WAN is possible for the tenant; ``timeout`` is AWS killing the invocation part-way,
-# recorded by the failure handler at its on_failure destination. They tell the caller
-# different things -- one to change the tenant's config, one to try again -- but neither
-# leaves a WAN behind, so the GET answers 422 for both rather than 200 with a body the
-# caller has to read to find out there is nothing in it.
 STATUSES_WITH_NO_WAN = frozenset({"fail", "timeout"})
 
 
 def _s3() -> Any:
-    """Return the cached S3 client, creating it on first use."""
     if "s3" not in _CLIENTS:
         _CLIENTS["s3"] = boto3.client("s3", region_name="us-east-2")
     return _CLIENTS["s3"]
 
 
 def _lambda() -> Any:
-    """Return the cached Lambda client, creating it on first use."""
     if "lambda" not in _CLIENTS:
         _CLIENTS["lambda"] = boto3.client("lambda", region_name="us-east-2")
     return _CLIENTS["lambda"]
 
 
 def clear_clients() -> None:
-    """Drop cached clients (tests reset between cases)."""
     _CLIENTS.clear()
 
 
 def _response(status: int, body: Any) -> dict[str, Any]:
-    """Build an API Gateway proxy response with open CORS."""
     return {"statusCode": status, "headers": dict(_HEADERS), "body": json.dumps(body)}
 
 
 def _status_key(tenant: str) -> str:
-    """The S3 key holding a tenant's WAN status marker."""
     return f"tenants/{tenant}/wan-status.json"
 
 
 def _write_status(tenant: str, payload: dict[str, Any]) -> None:
-    """Write a tenant's WAN status marker to the store."""
     _s3().put_object(
         Bucket=os.environ["STORE_BUCKET"],
         Key=_status_key(tenant),
@@ -70,12 +47,6 @@ def _write_status(tenant: str, payload: dict[str, Any]) -> None:
 
 
 def _start_create(tenant: str) -> None:
-    """Mark the WAN as creating and async-invoke the synthesizer.
-
-    ``InvocationType="Event"`` fires the synthesizer and returns at once, so the POST
-    answers within API Gateway's timeout; the synthesizer moves the status to
-    ``synthesizing`` and then ``success``/``fail``/``timeout`` as it runs.
-    """
     _write_status(tenant, {"status": "creating", "tenant": tenant})
     _lambda().invoke(
         FunctionName=os.environ["SYNTHESIZER_FUNCTION_NAME"],
@@ -85,7 +56,6 @@ def _start_create(tenant: str) -> None:
 
 
 def _read_status(tenant: str) -> dict[str, Any]:
-    """Serve a tenant's WAN status: 422 when no WAN was built, 404 before any create."""
     client = _s3()
     try:
         body = client.get_object(
@@ -99,7 +69,6 @@ def _read_status(tenant: str) -> dict[str, Any]:
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    """Dispatch an API Gateway request: POST starts a create, GET reports status."""
     tenant = (event.get("pathParameters") or {}).get("tenant")
     if not tenant:
         return _response(404, {"error": "tenant required"})

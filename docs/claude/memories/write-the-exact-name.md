@@ -1,6 +1,6 @@
 # Write the exact name
 
-Every noun that has a name in the repository is written by that name. This holds everywhere — chat replies, issue and pull-request bodies, commit messages, docstrings, comments, and these notes — and it is not a rule about issues alone.
+Every noun that has a name in the repository is written by that name. This holds everywhere — chat replies, issue and pull-request bodies, commit messages, and these notes — and it is not a rule about issues alone.
 
 A name is a thing the reader can open: a path, a function, a file and line, an S3 object key, a workflow file, a config key, an endpoint and its method. `settled` at line 105 of `lib/python/test_published_syntheses/__init__.py` is a name. "The delivered-synthesis layer" is not. When a phrase cannot be pasted into a search box and land somewhere, it is not naming anything, and the reader has to reconstruct what was meant from context that the writer had and they do not.
 

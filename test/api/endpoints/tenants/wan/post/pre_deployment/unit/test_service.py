@@ -1,5 +1,3 @@
-"""Unit tests for the two-tier synthesis pipeline runner."""
-
 from __future__ import annotations
 
 import fixtures
@@ -8,7 +6,6 @@ from fixtures import run_synthesis
 
 
 def test_run_synthesis_is_connected() -> None:
-    """Run synthesis over a solvable graph validates as connected."""
     artifacts = run_synthesis(
         fixtures.ring_sites(), fixtures.ring_fiber_segments(), fixtures.ring_params()
     )
@@ -16,7 +13,6 @@ def test_run_synthesis_is_connected() -> None:
 
 
 def test_run_synthesis_honors_a_forced_backbone_pop() -> None:
-    """A forced carrier PoP is seated on the backbone the pipeline produces."""
     synthesis = run_synthesis(
         fixtures.ring_sites(),
         fixtures.ring_fiber_segments(),
@@ -29,7 +25,6 @@ def test_run_synthesis_honors_a_forced_backbone_pop() -> None:
 
 
 def test_run_synthesis_seats_a_forced_off_net_site_as_backbone() -> None:
-    """A forced off-net site is seated as a backbone node via its local-fiber twin."""
     site = fixtures.off_net_site("Dulles Hub", 40.5, -100.0)
     synthesis = run_synthesis(
         fixtures.ring_sites(),

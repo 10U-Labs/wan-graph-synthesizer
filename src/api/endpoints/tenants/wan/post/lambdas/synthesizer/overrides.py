@@ -1,13 +1,3 @@
-"""Resolve operator role pins into search role overrides.
-
-The synthesizer's search consumes a :class:`~synthesizer.model.RoleOverrides`
-describing which PoPs are forced backbone nodes, which are barred from the
-backbone, and how the operator's forced links resolve to ids. This module builds
-that object from the operator's force-pins (resolved by name), gated by the set of
-data-center cities a colocation provider operates in. It runs before the search
-and never calls back into it.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Set as AbstractSet
@@ -24,17 +14,11 @@ from synthesizer.model import (
 
 
 def pop_id_by_name(carrier_pops: list[Site]) -> dict[str, str]:
-    """Map each Carrier PoP's display name to its site id for pin resolution."""
     return {pop.name: pop.id for pop in carrier_pops}
 
 def resolve_pinned_ids(
     names: tuple[str, ...], name_to_id: dict[str, str], label: str
 ) -> set[str]:
-    """Resolve operator-supplied PoP names to ids, rejecting any unknown name.
-
-    ``label`` is the config field the names came from; it names the offending field
-    in the error so the operator knows which list to fix.
-    """
     resolved: set[str] = set()
     for name in names:
         if name not in name_to_id:
@@ -46,10 +30,6 @@ def reject_override_conflicts(
     forced_backbone: set[str],
     prohibited_backbone: AbstractSet[str] = frozenset(),
 ) -> None:
-    """Reject contradictory backbone pins.
-
-    A PoP cannot be both forced onto and prohibited from the backbone tier.
-    """
     clash = forced_backbone & prohibited_backbone
     if clash:
         raise ValueError(
@@ -62,14 +42,6 @@ def _resolve_operator_pins(
     sites: list[Site],
     params: SynthesisParams,
 ) -> tuple[set[str], set[str], set[str]]:
-    """Resolve operator backbone pins, gated by the data-center cities.
-
-    Returns the forced-backbone, prohibited-backbone and degree-exempt id sets. A forced
-    pin at a city no colocation provider serves is rejected -- the data-center gate
-    applies to operator forces too. An exemption is not a pin and is not gated: it says
-    only that the diverse path count is not asked of that node, which decides nothing about
-    where the node may sit.
-    """
     carrier_pops = [site for site in sites if is_carrier_pop(site)]
     name_to_id = pop_id_by_name(carrier_pops)
     forced_backbone = resolve_pinned_ids(
@@ -88,13 +60,6 @@ def _resolve_operator_pins(
 def _forced_backbone_endpoint(
     name: str, name_to_id: dict[str, str], forced_backbone: set[str], label: str
 ) -> str:
-    """Resolve a backbone endpoint a forced path or a forced home named, requiring a pin.
-
-    ``label`` is the config field the endpoint was written in; it names the offending
-    field in the error so the operator knows which list to fix. Both callers pass it
-    rather than the parameter carrying a default, since a default is one list's name
-    hard-coded one indirection further away and the next caller inherits it.
-    """
     if name not in name_to_id:
         raise ValueError(f"{label} backbone not found in the Carrier graph: {name}")
     backbone_id = name_to_id[name]
@@ -106,7 +71,6 @@ def _forced_backbone_endpoint(
 def _backbone_backbone_pair(
     path: NamedLink, name_to_id: dict[str, str], forced_backbone: set[str]
 ) -> tuple[str, str]:
-    """Resolve a backbone-backbone path's endpoints to a forced-backbone link key."""
     left = _forced_backbone_endpoint(path.source, name_to_id, forced_backbone, "forced-path")
     right = _forced_backbone_endpoint(path.target, name_to_id, forced_backbone, "forced-path")
     return link_key(left, right)
@@ -118,13 +82,6 @@ def _forced_home_pair(
     name_to_id: dict[str, str],
     forced_backbone: set[str],
 ) -> tuple[str, str]:
-    """Resolve a forced home to an ordered ``(access id, backbone id)`` pair.
-
-    The source must be a demand site -- something that is not a carrier PoP -- and the
-    target a PoP the operator also forced onto the backbone, since a home can only lead to
-    a node the synthesis is guaranteed to seat. The pair is ordered because its two ends are
-    not interchangeable, unlike a mesh pair's ``link_key``.
-    """
     if home.source not in access_name_to_id:
         raise ValueError(f"forced-home access node not found: {home.source}")
     backbone = _forced_backbone_endpoint(home.target, name_to_id, forced_backbone, "forced-home")
@@ -132,14 +89,12 @@ def _forced_home_pair(
 
 
 def _excluded_backbone_endpoint(name: str, name_to_id: dict[str, str]) -> str:
-    """Resolve an excluded backbone-backbone endpoint, requiring only a carrier PoP."""
     if name not in name_to_id:
         raise ValueError(f"prohibited-path backbone not found in the Carrier graph: {name}")
     return name_to_id[name]
 
 
 def _removed_backbone_pair(path: NamedLink, name_to_id: dict[str, str]) -> tuple[str, str]:
-    """Resolve an excluded backbone-backbone path's endpoints to an link key."""
     left = _excluded_backbone_endpoint(path.source, name_to_id)
     right = _excluded_backbone_endpoint(path.target, name_to_id)
     return link_key(left, right)
@@ -149,12 +104,6 @@ def _removed_backbone_links(
     paths: tuple[NamedLink, ...],
     name_to_id: dict[str, str],
 ) -> frozenset[tuple[str, str]]:
-    """Resolve operator-pruned backbone-backbone pairs to link keys.
-
-    Each endpoint need only be a carrier PoP (an unknown name raises a ``ValueError``);
-    the pair is pruned only when the synthesizer seats both as backbone nodes, otherwise
-    it is a no-op. Pinning the endpoints as forced backbone nodes is not required.
-    """
     return frozenset(_removed_backbone_pair(path, name_to_id) for path in paths)
 
 
@@ -163,14 +112,6 @@ def resolve_forced_links(
     sites: list[Site],
     forced_backbone: set[str],
 ) -> ForcedLinks:
-    """Resolve the operator's written links to id-typed link sets, validating each tier.
-
-    Returns the :class:`ForcedLinks` twin of ``links``, field for field. Nothing here has
-    to work out which tier an entry belongs to: the three lists arrive already separated,
-    so each is simply resolved by the rule its own tier has. A forced endpoint must
-    already be seated in the tier that rule requires, or a ``ValueError`` names the
-    offending pair; a pruned ``removed_backbone`` endpoint need only be a carrier PoP.
-    """
     name_to_id = pop_id_by_name([site for site in sites if is_carrier_pop(site)])
     access_name_to_id = {
         site.name: site.id for site in sites if not is_carrier_pop(site)
@@ -194,18 +135,6 @@ def apply_role_overrides(
     params: SynthesisParams,
     links: OperatorLinks = OperatorLinks(),
 ) -> tuple[list[Site], dict[tuple[str, str], FiberSegment], RoleOverrides]:
-    """Resolve operator pins into the search's role overrides.
-
-    Operator forced backbone nodes stay required; ``links`` are resolved to id-typed link
-    sets against the seated backbone -- mesh pairs pinned in, homes pinned onto a named
-    node, and mesh pairs pruned out.
-    ``params.exclusions.prohibited_backbone_names`` are barred from the backbone tier
-    and land in ``RoleOverrides.prohibited_backbone_ids``.
-    ``params.degree_exempt_backbone_names`` resolve the same way
-    into ``RoleOverrides.degree_exempt_backbone_ids``, the nodes the diverse path count is not
-    asked of. The graph is returned unchanged (operator pins resolve to
-    existing carrier-PoP ids; demand attachment is the caller's earlier stage).
-    """
     forced_backbone, prohibited_backbone, degree_exempt = _resolve_operator_pins(
         sites, params
     )

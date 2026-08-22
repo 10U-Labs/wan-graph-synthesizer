@@ -1,8 +1,3 @@
-# The prune handler's role. It is the one role in the product that may delete from the
-# store, which is the whole of what the endpoint does, so the permission is written here
-# rather than added to a role that already reads and writes: an endpoint that only ever
-# replaces a key it names has no business holding s3:DeleteObject.
-
 resource "aws_iam_role" "prune" {
   name = local.role_name
 

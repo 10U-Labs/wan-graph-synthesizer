@@ -1,29 +1,3 @@
-"""Parse shared OpenTofu configuration for tests and tooling.
-
-This module is the single source of truth for configuration values that live
-as literal ``output`` blocks in ``lib/opentofu/common/outputs.tf``. It parses
-those blocks via the ``hcl2`` library so tests never hardcode an account id,
-region, bucket, or Lambda function name.
-
-One value is not an output: ``store_bucket_name`` reads the store's name off
-``aws_s3_bucket.store`` in the storage stack, because that is where the product's
-single bucket is declared and where a rename of it lands.
-
-Nothing here reads the deploy role. Every workflow reaches it through the
-``OIDC_ROLE_ARN`` repository variable, which is a GitHub setting rather than
-anything in this repository, so it is not a value this module can parse.
-
-Example usage::
-
-    from test_terraform_config import common_outputs, TEST_AWS_REGION
-
-    config = common_outputs()
-    account = config["aws_account_id"]
-    handlers = config["lambda_handler_names"]
-
-    # For unit-test mock data (fake ARNs, URLs, etc.):
-    mock_arn = f"arn:aws:sns:{TEST_AWS_REGION}:123456789012:test-topic"
-"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -38,14 +12,6 @@ STORAGE_MAIN_FILE: Path = REPO_ROOT / "src" / "api" / "common" / "storage" / "ma
 
 
 def load_tf(path: Path) -> dict[str, object]:
-    """Load and parse an OpenTofu ``.tf`` file into a dict.
-
-    Args:
-        path: Path to the ``.tf`` file to parse.
-
-    Returns:
-        The parsed HCL document as a nested dict.
-    """
     with open(path, encoding="utf-8") as handle:
         return cast("dict[str, object]", hcl2_load(handle))
 
@@ -55,16 +21,6 @@ def find_resource(
     resource_type: str,
     resource_name: str,
 ) -> dict[str, object] | None:
-    """Locate a single resource block within a parsed ``.tf`` document.
-
-    Args:
-        tf_config: A document returned by :func:`load_tf`.
-        resource_type: Terraform resource type (e.g. ``aws_s3_bucket``).
-        resource_name: Terraform-local resource name (the second label).
-
-    Returns:
-        The resource body as a dict, or ``None`` if no such block exists.
-    """
     resources = tf_config.get("resource", [])
     if not isinstance(resources, list):
         return None
@@ -80,18 +36,6 @@ def find_resource(
 
 
 def output_values(path: Path) -> dict[str, object]:
-    """Return the literal value of every ``output`` block in a ``.tf`` file.
-
-    Each ``output "name" { value = ... }`` block is reduced to its parsed
-    literal value. String outputs become ``str`` and map outputs (such as
-    ``lambda_handler_names``) become ``dict``.
-
-    Args:
-        path: Path to a ``.tf`` file declaring ``output`` blocks.
-
-    Returns:
-        A dict mapping each output name to its literal value.
-    """
     document = load_tf(path)
     blocks = document.get("output", [])
     values: dict[str, object] = {}
@@ -107,20 +51,10 @@ def output_values(path: Path) -> dict[str, object]:
 
 
 def common_outputs() -> dict[str, object]:
-    """Return the literal values of every output in ``common/outputs.tf``.
-
-    Returns:
-        A dict mapping each shared output name to its literal value.
-    """
     return output_values(COMMON_OUTPUTS_FILE)
 
 
 def lambda_handler_names() -> dict[str, str]:
-    """Return the per-resource Lambda function names from common outputs.
-
-    Returns:
-        A dict mapping each REST resource key to its Lambda function name.
-    """
     raw = common_outputs().get("lambda_handler_names", {})
     if not isinstance(raw, dict):
         return {}
@@ -128,13 +62,6 @@ def lambda_handler_names() -> dict[str, str]:
 
 
 def store_bucket_name() -> str:
-    """The name the storage stack declares for the product's single S3 store.
-
-    Every endpoint's Lambda is handed this name as ``STORE_BUCKET``, read off the storage
-    stack's remote state at plan time. A test that wants to know which bucket a live
-    Lambda ought to be pointed at asks here, so the answer comes from the one place the
-    name is written rather than from a literal beside the assertion.
-    """
     bucket = find_resource(load_tf(STORAGE_MAIN_FILE), "aws_s3_bucket", "store")
     if bucket is None:
         raise AssertionError("aws_s3_bucket.store is not declared in the storage stack")
@@ -142,13 +69,9 @@ def store_bucket_name() -> str:
 
 
 def _string_output(name: str, fallback: str) -> str:
-    """Return a string-valued common output, falling back if absent."""
     value = common_outputs().get(name, fallback)
     return value if isinstance(value, str) else fallback
 
 
-# Single source of truth for the AWS region and state bucket, derived from the
-# shared OpenTofu common module. Use TEST_AWS_REGION in unit tests for mock data
-# (fake ARNs, URLs, etc.) instead of hardcoding region strings.
 TEST_AWS_REGION: str = _string_output("aws_region", "us-east-2")
 STATE_BUCKET: str = _string_output("state_bucket", "10ulabs-terraform-state-us-east-2")

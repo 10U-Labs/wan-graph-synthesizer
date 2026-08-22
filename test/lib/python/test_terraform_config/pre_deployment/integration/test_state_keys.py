@@ -1,27 +1,3 @@
-"""Contract: every stack files its state at the address its own path names.
-
-OpenTofu keeps one JSON object per stack recording every AWS resource that stack made and
-the id AWS gave it. That object is how the next apply knows the API Gateway, the bucket
-and the Lambdas already exist; an apply that cannot find it believes it is starting from
-nothing and tries to create all of them again.
-
-What a wrong address costs is silence. A ``terraform_remote_state`` pointed at a key
-nothing writes is not an error -- it is an empty set of outputs, so the stack reading it
-loses the bucket name or the gateway id and carries on. These tests hold the ten-odd
-declarations against each other so a key that moves in one place and not another fails
-here instead of on the next apply.
-
-They live in this module because its subtree runs in the ``test-repo-libraries`` job of
-every workflow, so a stack filed at the wrong address fails every workflow on the push
-that files it rather than only its own.
-
-The last test reads the live state bucket rather than the files on disk. Deleting a
-stack directory destroys nothing -- the Lambda, the role and the log group stay in AWS
-and the state object that could remove them stays in the bucket, reachable by no
-workflow -- so what is stored has to be held against what is declared for the leftover
-to be visible at all (GitHub issue #103).
-"""
-
 from __future__ import annotations
 
 import re
@@ -38,7 +14,6 @@ _KEY = re.compile(r'^\s*key\s*=\s*"([^"]+)"', re.M)
 
 
 def _declared_keys() -> dict[str, str]:
-    """The state key each ``backend.tf`` under ``src/`` declares, by its stack's path."""
     keys = {}
     for backend in sorted(SRC.rglob("backend.tf")):
         match = _KEY.search(backend.read_text(encoding="utf-8"))
@@ -48,7 +23,6 @@ def _declared_keys() -> dict[str, str]:
 
 
 def _read_keys() -> set[str]:
-    """Every state key a ``terraform_remote_state`` block anywhere under ``src/`` names."""
     return {
         match.group(1)
         for path in sorted(SRC.rglob("*.tf"))
@@ -58,11 +32,6 @@ def _read_keys() -> set[str]:
 
 
 def test_every_stack_files_its_state_under_its_own_path() -> None:
-    """Each stack's key is the prefix, its path under ``src/api/``, and the state file.
-
-    Asserted as one mapping rather than stack by stack, so a stack filed under another
-    stack's path fails as loudly as one filed under a stale prefix.
-    """
     expected = {
         stack: f"{PREFIX}{stack}/terraform.tfstate" for stack in _declared_keys()
     }
@@ -70,32 +39,14 @@ def test_every_stack_files_its_state_under_its_own_path() -> None:
 
 
 def test_every_remote_state_read_names_the_repository_prefix() -> None:
-    """Every key read across stacks begins with this repository's state prefix.
-
-    The eight existing substring assertions in the endpoints' own contract tiers check
-    which stack is being read and start after the prefix, so they pass whatever it is --
-    including a prefix naming a different product.
-    """
     assert {key for key in _read_keys() if not key.startswith(PREFIX)} == set()
 
 
 def test_every_remote_state_read_names_a_key_some_stack_writes() -> None:
-    """Every key read across stacks is one a ``backend.tf`` declares.
-
-    A read pointed at a key nothing writes returns empty outputs rather than failing,
-    which is the silence this file exists to break.
-    """
     assert _read_keys() - set(_declared_keys().values()) == set()
 
 
 def _stored_keys(s3_client: Any) -> set[str]:
-    """Every object the live state bucket holds under this repository's prefix.
-
-    An apply holding the state lock leaves a ``.tflock`` object beside the state object
-    it locks, and the workflows one push starts apply at the same time as each other, so
-    a listing taken while any of them is running sees one. A lock is not a stack, and
-    the one that made it takes it away when the apply ends, so they are dropped here.
-    """
     pages = s3_client.get_paginator("list_objects_v2").paginate(
         Bucket=STATE_BUCKET, Prefix=PREFIX
     )
@@ -108,9 +59,4 @@ def _stored_keys(s3_client: Any) -> set[str]:
 
 
 def test_every_stored_state_object_is_a_stack_that_still_exists(s3_client: Any) -> None:
-    """Every state object stored under the prefix belongs to a stack ``src/`` declares.
-
-    This is the one that fails on the push that deletes a stack directory without
-    destroying it first, and it fails in every workflow that push starts.
-    """
     assert _stored_keys(s3_client) - set(_declared_keys().values()) == set()

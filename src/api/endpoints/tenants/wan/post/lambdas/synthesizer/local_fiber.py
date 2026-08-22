@@ -1,17 +1,3 @@
-"""Attach a non-PoP site to the backbone via synthetic local-fiber links.
-
-A site that carries no fiber of its own (a forced installation, an off-net
-operator seat) can still be seated on the carrier backbone by standing up a
-co-located carrier-PoP *twin* at its coordinates and wiring that twin to the
-nearest existing carrier PoPs with synthetic local-fiber links. The twin's name
-matches the site, so an operator force-pin resolves onto it and the rest of the
-synthesizer is none the wiser. A site without at least :data:`LOCAL_FIBER_MIN_LINKS`
-carrier PoPs within :data:`LOCAL_FIBER_RADIUS_MILES` cannot be biconnected into the
-backbone, so the twin is not built (the caller decides whether that is a skip or an
-error). This module is the single home of that primitive, shared by the
-installation and off-net seating layers.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,12 +17,6 @@ LOCAL_FIBER_RADIUS_MILES = 300.0
 
 @dataclass(frozen=True)
 class LocalFiberTwinSettings:
-    """How to seat a local-fiber twin: link note and reach cap.
-
-    ``max_radius`` of ``None`` removes the distance cap so an operator-forced site is
-    always seated, wired to its nearest carrier PoPs regardless of distance.
-    """
-
     note: str
     max_radius: float | None = LOCAL_FIBER_RADIUS_MILES
 
@@ -44,12 +24,6 @@ class LocalFiberTwinSettings:
 def nearest_carrier_pops(
     site: Site, carrier_pops: list[Site], links: int, max_radius: float | None
 ) -> list[Site]:
-    """The up-to-``links`` nearest carrier PoPs, capped at ``max_radius`` if given.
-
-    ``max_radius`` of ``None`` removes the distance cap: the nearest ``links`` PoPs
-    are returned regardless of distance. This honours an operator force even where our
-    public data records no nearby fiber -- fiber exists everywhere, we just lack it.
-    """
     ranked = sorted(
         ((haversine_miles(site, pop), pop) for pop in carrier_pops),
         key=lambda item: (item[0], item[1].id),
@@ -62,7 +36,6 @@ def nearest_carrier_pops(
 
 
 def unique_twin_id(base: str, used_ids: set[str]) -> str:
-    """A twin id derived from ``base`` that no existing site already uses."""
     site_id = base
     suffix = 2
     while site_id in used_ids:
@@ -77,12 +50,6 @@ def build_local_fiber_twin(
     carrier_pops: list[Site],
     settings: LocalFiberTwinSettings,
 ) -> tuple[Site, dict[tuple[str, str], FiberSegment]] | None:
-    """A co-located carrier-PoP twin for ``site`` plus its local-fiber links.
-
-    Returns the ``KIND_POP`` twin and its synthetic links to the nearest carrier
-    PoPs, or ``None`` only when fewer than :data:`LOCAL_FIBER_MIN_LINKS` carrier PoPs
-    are available to wire to (``settings.max_radius`` of ``None`` lifts the distance cap).
-    """
     neighbors = nearest_carrier_pops(
         site, carrier_pops, LOCAL_FIBER_LINKS, settings.max_radius
     )

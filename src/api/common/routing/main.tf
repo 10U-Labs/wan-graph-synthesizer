@@ -1,9 +1,3 @@
-# This repo's OWN regional API Gateway, built from the OpenAPI spec (one Lambda
-# per resource, registered via x-amazon-apigateway-integration). 10ulabs.com's
-# CloudFront adds one origin (api_gateway_execute_domain) + one behavior for
-# /wan-synthesizer/*, so every route reaches this gateway. New endpoints are
-# added by editing openapi.json + their own stack -- no change here.
-
 module "common" {
   source = "../../../../lib/opentofu/common"
 }
@@ -16,8 +10,6 @@ locals {
   apigw_prefix = "arn:aws:apigateway:${local.aws_region}:lambda:path/2015-03-31/functions"
   lambda_arn   = "arn:aws:lambda:${local.aws_region}:${local.aws_account_id}:function"
 
-  # Integration ARN per Lambda function name (built without a cross-stack read;
-  # each endpoint stack creates its function with this deterministic name).
   integration = {
     for key, name in local.names :
     key => "${local.apigw_prefix}/${local.lambda_arn}:${name}/invocations"

@@ -1,5 +1,3 @@
-"""Unit tests for seating operator-forced off-net locations via local fiber."""
-
 from __future__ import annotations
 
 import pytest
@@ -10,7 +8,6 @@ from synthesizer.model import is_carrier_pop
 from synthesizer.input_graph import Site
 
 def _pops() -> list[Site]:
-    """Three closely spaced carrier PoPs an off-net twin can home to."""
     return [
         fixtures.carrier_pop("P0", 0.0, 0.0),
         fixtures.carrier_pop("P1", 0.0, 1.0),
@@ -22,52 +19,40 @@ def _realize(
     *sites: Site,
     forced: frozenset[str] = frozenset(),
 ) -> SeatedOffNetSites:
-    """Realize the given off-net sites against the three carrier PoPs."""
     return realize_off_net_sites(_pops(), {}, list(sites), forced)
 
 
 def test_realize_seats_a_forced_site() -> None:
-    """A forced off-net site near carrier PoPs is seated as a local-fiber twin."""
     result = _realize(fixtures.off_net_site("dulles", 0.0, 0.5), forced=frozenset({"dulles"}))
     assert len(result.seat_ids) == 1
 
 
 def test_seated_twin_id_carries_the_off_net_prefix() -> None:
-    """The seated twin's id is namespaced with the off-net prefix."""
     result = _realize(fixtures.off_net_site("dulles", 0.0, 0.5), forced=frozenset({"dulles"}))
     assert next(iter(result.seat_ids)).startswith("offnet_")
 
 
 def test_realize_adds_local_fiber_links() -> None:
-    """The twin gains synthetic local-fiber links to its nearest carrier PoPs."""
     result = _realize(fixtures.off_net_site("dulles", 0.0, 0.5), forced=frozenset({"dulles"}))
     assert len(result.fiber_segments) == 3
 
 
 def test_seated_twin_is_a_carrier_pop() -> None:
-    """The twin is a carrier PoP, so it flows through the backbone machinery."""
     result = _realize(fixtures.off_net_site("dulles", 0.0, 0.5), forced=frozenset({"dulles"}))
     seat_id = next(iter(result.seat_ids))
     assert is_carrier_pop(next(v for v in result.sites if v.id == seat_id)) is True
 
 
 def test_realize_ignores_unforced_sites() -> None:
-    """An off-net site the operator did not force is never seated."""
     result = _realize(fixtures.off_net_site("dulles", 0.0, 0.5))
     assert result.seat_ids == frozenset()
 
 
 def test_isolated_forced_site_raises() -> None:
-    """A forced site with too few carrier PoPs in range fails loudly."""
     with pytest.raises(ValueError):
         _realize(fixtures.off_net_site("remote", 0.0, 10.0), forced=frozenset({"remote"}))
 
 
 def test_a_forced_site_that_is_already_a_carrier_pop_is_rejected() -> None:
-    """A forced off-net name that is also a carrier PoP fails loudly rather than seating.
-
-    The roster offers seats where no carrier point is, so naming one that exists is a
-    seat that cannot be built, and the pin it names would resolve onto two sites.
-    """
     with pytest.raises(ValueError, match="already a carrier PoP: P0"):
         _realize(fixtures.off_net_site("P0", 0.0, 0.5), forced=frozenset({"P0"}))

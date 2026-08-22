@@ -1,15 +1,3 @@
-# The single store for the whole product, and the one endpoint that deletes from it.
-# Layout (S3 key prefixes):
-#   source/    -- git-authored inputs pushed via the API (carriers/providers/tenants)
-#   builds/    -- per-create working artifacts (lifecycle-expired)
-#   carriers/  providers/  tenants/  -- published graph JSON the read endpoints serve
-# Builds write here; every read endpoint serves from here. Renaming a collection leaves
-# the old key where it was, so POST /wan-synthesizer/store/prune takes out everything
-# stored under a name the product no longer writes (GitHub issue #102); its handler is
-# below, and it is the only thing in the product holding s3:DeleteObject on this bucket.
-# The store holds one copy of each key: versioning is suspended below, so an
-# overwrite replaces what was there rather than stacking another copy behind it.
-
 resource "aws_s3_bucket" "store" {
   bucket = "wan-synthesizer-store-us-east-2"
 }
@@ -29,13 +17,6 @@ resource "aws_s3_bucket_versioning" "store" {
   }
 }
 
-# Two rules, both needed. Per-create working artifacts under builds/ are
-# disposable: expire them so the bucket does not accumulate intermediate graph
-# snapshots. And a delete that names no version id writes a delete marker over
-# the key instead of removing it, so the second rule takes the marker away once
-# nothing is left underneath it -- without it a deleted key stays in the bucket
-# forever. The two cannot be one rule: S3 rejects an expiration that sets
-# expired_object_delete_marker alongside days or date.
 resource "aws_s3_bucket_lifecycle_configuration" "store" {
   bucket = aws_s3_bucket.store.id
 
@@ -70,9 +51,6 @@ locals {
   role_name     = "wan-synthesizer-prune-lambda"
 }
 
-# The gateway is read for its id alone, to say which API may invoke the handler. Nothing in
-# routing reads this stack back: it builds every integration ARN from the deterministic
-# function names in lib/opentofu/common, so the two stacks deploy in either order.
 data "terraform_remote_state" "routing" {
   backend = "s3"
 

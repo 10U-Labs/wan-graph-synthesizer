@@ -1,10 +1,3 @@
-"""Boto3 client fixtures shared by the synthesizer post-deployment tier.
-
-The foundation (``test_fixtures.aws``) provides every client this tier needs: the
-synthesizer is a plain Lambda reached through the IAM, Lambda and CloudWatch Logs clients.
-There is no S3 client here, because the networks the synthesizer publishes are read back
-from the API that serves them rather than from the store it writes them to.
-"""
 from __future__ import annotations
 
 from test_fixtures.aws import (

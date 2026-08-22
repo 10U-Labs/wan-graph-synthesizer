@@ -1,18 +1,3 @@
-"""Carriers endpoint: read and write a carrier's input graph in the S3 store.
-
-    GET    /wan-synthesizer/carriers                     -> the carrier ids
-    GET    /wan-synthesizer/carriers/{carrier}/pops  -> that carrier's PoPs
-    GET    /wan-synthesizer/carriers/{carrier}/fiber-segments     -> that carrier's fiber
-    PUT    /wan-synthesizer/carriers/{carrier}/pops  -> replace its PoPs
-    PUT    /wan-synthesizer/carriers/{carrier}/fiber-segments     -> replace its fiber
-    DELETE /wan-synthesizer/carriers/{carrier}           -> remove the carrier
-
-A write persists to the store and nothing else. Rebuilding the dependents (the carrier
-merge and each tenant's WAN) is done by explicit operations the caller invokes
-(``POST /carriers/merge`` and ``POST /tenants/{t}/wan``), so a write endpoint never
-triggers a build. Self-contained (stdlib + boto3); deployed as a single-file Lambda.
-"""
-
 import json
 import os
 from typing import Any
@@ -21,13 +6,11 @@ import boto3
 
 _CLIENTS: dict[str, Any] = {}
 _HEADERS = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-# A carrier's points and fiber segments are bare geographic rows; reject anything else.
 _SITE_FIELDS = {"municipality", "state", "country", "latitude", "longitude"}
 _LINK_FIELDS = {"a_municipality", "a_state", "z_municipality", "z_state"}
 
 
 def _validate_rows(body: Any, required: set[str]) -> str | None:
-    """Return an error message if body is not a list of rows each having exactly the fields."""
     if not isinstance(body, list):
         return "expected a list of rows"
     for row in body:
@@ -37,24 +20,20 @@ def _validate_rows(body: Any, required: set[str]) -> str | None:
 
 
 def _s3() -> Any:
-    """Return the cached S3 client, creating it on first use."""
     if "s3" not in _CLIENTS:
         _CLIENTS["s3"] = boto3.client("s3", region_name="us-east-2")
     return _CLIENTS["s3"]
 
 
 def clear_clients() -> None:
-    """Drop cached clients (tests reset between cases)."""
     _CLIENTS.clear()
 
 
 def _response(status: int, body: Any) -> dict[str, Any]:
-    """Build an API Gateway proxy response with open CORS."""
     return {"statusCode": status, "headers": dict(_HEADERS), "body": json.dumps(body)}
 
 
 def _carrier_ids(client: Any) -> list[str]:
-    """List the carrier ids: the first path segment under carriers/, minus the merge."""
     listing = client.list_objects_v2(Bucket=os.environ["STORE_BUCKET"], Prefix="carriers/")
     ids = {
         item["Key"].removeprefix("carriers/").split("/", 1)[0]
@@ -64,7 +43,6 @@ def _carrier_ids(client: Any) -> list[str]:
 
 
 def _read_collection(client: Any, carrier: str, collection: str) -> Any:
-    """Read one of a carrier's stored row lists, or None when it is absent."""
     key = f"carriers/{carrier}/{collection}.json"
     try:
         body = client.get_object(Bucket=os.environ["STORE_BUCKET"], Key=key)["Body"].read()
@@ -74,7 +52,6 @@ def _read_collection(client: Any, carrier: str, collection: str) -> Any:
 
 
 def _get(client: Any, carrier: str | None, event: dict[str, Any]) -> dict[str, Any]:
-    """Serve the carriers collection or one carrier's sites/links."""
     if not carrier:
         return _response(200, _carrier_ids(client))
     collection = event.get("path", "").rsplit("/", 1)[-1]
@@ -87,7 +64,6 @@ def _get(client: Any, carrier: str | None, event: dict[str, Any]) -> dict[str, A
 
 
 def _put(client: Any, carrier: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Replace one of a carrier's collections (its own file). Rebuilds are a separate POST."""
     collection = event.get("path", "").rsplit("/", 1)[-1]
     if collection not in ("pops", "fiber-segments"):
         return _response(404, {"error": collection})
@@ -101,7 +77,6 @@ def _put(client: Any, carrier: str, event: dict[str, Any]) -> dict[str, Any]:
 
 
 def _delete(client: Any, carrier: str) -> dict[str, Any]:
-    """Remove every object belonging to a carrier."""
     bucket = os.environ["STORE_BUCKET"]
     listing = client.list_objects_v2(Bucket=bucket, Prefix=f"carriers/{carrier}/")
     for item in listing.get("Contents", []):
@@ -110,7 +85,6 @@ def _delete(client: Any, carrier: str) -> dict[str, Any]:
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    """Dispatch a carriers request by method: read, replace, or delete."""
     client = _s3()
     method = event.get("httpMethod", "GET")
     carrier = (event.get("pathParameters") or {}).get("carrier")

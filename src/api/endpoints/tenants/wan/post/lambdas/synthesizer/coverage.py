@@ -1,17 +1,3 @@
-"""Grow the backbone past its strength-chosen base until demand is close enough.
-
-The search picks the strongest backbone it can at the floor. That backbone answers a
-question about fiber, not about where anybody actually is, so some demand may still sit
-farther from it than the operator allows. This module adds nodes until that is no longer
-true, and decides which node to add.
-
-Two questions decide a round and they are asked in that order: coverage says which
-candidates are admissible, and fiber says which of those is worth seating. Both are written
-up where they are answered, in :func:`grow_backbone_for_coverage` and
-:func:`best_coverage_candidate`. What the delivered synthesis did about the target is
-reported by :func:`coverage_report`, since growth can stop without having met it.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -27,8 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class CoverageReport(TypedDict):
-    """What a delivered synthesis does about the coverage target it was built to."""
-
     target_miles: float
     worst_haul_miles: float
     sites_above_target: int
@@ -40,11 +24,6 @@ def demand_hauls(
     access_sites: list[Site],
     pop_by_id: dict[str, Site],
 ) -> list[float]:
-    """Each demand site's straight-line miles to its nearest backbone node.
-
-    The coverage signal the search drives down by adding backbone nodes: the hauls an
-    operator sees on the map, and the quantity the coverage target is stated in.
-    """
     nodes = [pop_by_id[backbone_id] for backbone_id in backbone_ids]
     return [
         min(haversine_miles(access, node) for node in nodes) for access in access_sites
@@ -56,28 +35,11 @@ def coverage_haul_profile(
     access_sites: list[Site],
     pop_by_id: dict[str, Site],
 ) -> tuple[float, ...]:
-    """Every non-exempt site's haul to its nearest backbone node, worst first.
-
-    Sites the operator marked exempt from the distance constraint (OCONUS) are dropped:
-    each may sit farther than any backbone node can reach, so counting one would hold growth
-    open to the node cap. They still drive hub scoring and home to their nearest node
-    elsewhere; only coverage ignores them. An all-exempt synthesis reads as empty.
-
-    The whole list rather than its worst entry, because one number cannot say whether a hub
-    helped anybody. Two sites that need separate hubs and whose hauls sit within a mile of
-    each other take turns at the top of the list, so a hub rescuing either one moves the
-    worst number by the gap between them and by nothing else -- a hub bringing a site four
-    hundred miles closer reads as having achieved four tenths of a mile, and a second site
-    at exactly equal haul makes it read as having achieved nothing at all. Compared position
-    by position, the same hub is plainly the better synthesis: the two lists first differ where
-    the rescued site used to be.
-    """
     covered = [v for v in access_sites if not v.exempt_from_distance_constraint]
     return tuple(sorted(demand_hauls(backbone_ids, covered, pop_by_id), reverse=True))
 
 
 def coverage_worst_haul(profile: tuple[float, ...]) -> float:
-    """The worst haul in a coverage profile -- the stop signal. An empty profile reads 0."""
     return max(profile, default=0.0)
 
 
@@ -87,15 +49,6 @@ def coverage_report(
     pop_by_id: dict[str, Site],
     target_miles: float,
 ) -> CoverageReport:
-    """Measure a finished synthesis against the coverage target it was built to.
-
-    Growth ends on one of four things -- the target met, the seat cap reached, the
-    candidates exhausted, or no candidate improving on the synthesis in hand -- and only the
-    first is success. Rather than carry which one fired, this measures the synthesis that came
-    out: the worst haul over the sites the target applies to, and how many of them sit
-    outside it. A synthesis that stopped short then says so somewhere a caller can read it,
-    instead of being published under the same word as one that met the target.
-    """
     profile = coverage_haul_profile(backbone_ids, access_sites, pop_by_id)
     worst = coverage_worst_haul(profile)
     return {
@@ -113,18 +66,6 @@ def coverage_candidate_hauls(
     plan: _SearchPlan,
     pop_by_id: dict[str, Site],
 ) -> list[tuple[tuple[float, ...], str]]:
-    """Each free candidate's non-exempt haul profile once it joins the backbone.
-
-    This is the same quantity :func:`coverage_haul_profile` measures and the same one the
-    growth loop stops on, which is the whole point of it. A round opens because some site
-    the target applies to is too far from every backbone node, so the candidate worth
-    seating is the one that leaves that site closest -- not the one that shaves the most
-    miles off sites already inside the target, and not one chosen with the help of sites
-    the target was deliberately lifted from.
-
-    Infeasible additions (a candidate whose promotion strands demand) are dropped, so
-    every returned pair is a buildable grown set beside the coverage it would deliver.
-    """
     hauls: list[tuple[tuple[float, ...], str]] = []
     for candidate_id in free:
         candidate_set = tuple(sorted((*backbone_ids, candidate_id)))
@@ -141,22 +82,6 @@ def candidate_mesh_ceiling(
     adjacency: dict[str, list[tuple[str, float]]],
     limit: BackupPathLimit | None = None,
 ) -> int:
-    """How many independently failing links ``candidate_id`` could hold once it joins.
-
-    The number of paths from it to the rest of the grown backbone that no single city's
-    loss takes two of (see :func:`synthesizer.ceiling.independent_path_ceiling`).
-
-    This is not the number of fiber segments leaving the city, and the difference is the
-    whole reason to measure it rather than count them. A city with three segments whose
-    branches funnel through one upstream city can hold two links that fail independently,
-    not three, so a raw segment count would say it can carry a backbone node when its fiber
-    cannot.
-
-    ``limit`` bounds how far the paths counted may run (see
-    :func:`synthesizer.ceiling.independent_paths`). A hub credited with a path it could
-    only take by crossing an ocean is chosen for protection the operator will not order, so
-    the bound belongs to the ranking as much as to the routing.
-    """
     return independent_path_ceiling(
         candidate_id,
         PathProofInputs(tuple(sorted((*backbone_ids, candidate_id))), adjacency, limit),
@@ -170,25 +95,6 @@ def best_coverage_candidate(
     target_miles: float,
     limit: BackupPathLimit | None = None,
 ) -> str:
-    """Which improving candidate to seat: the best connected of those that satisfy coverage.
-
-    The coverage target is a constraint on how far the backbone may leave demand, not a cost
-    to be minimised. Once a candidate brings the worst haul inside the target it has fully
-    answered the question the round asked, and seating a nearer one instead gains nothing the
-    operator asked for. So coverage narrows the field and does not order it.
-
-    Among the candidates left, the one whose fiber can carry the most independently failing
-    links wins (see :func:`candidate_mesh_ceiling`). A hub is chosen for what its fiber can
-    do rather than for where it sits, which is the position the base backbone search already
-    takes when it ranks sets by strength, and the reason the spec forbids mileage as a synthesis
-    cost. A city that satisfies coverage and then cannot hold the links a backbone node is
-    required to hold has not solved the problem, it has moved it.
-
-    Distance decides only what fiber cannot. Where no candidate reaches the target none has
-    answered the round, so the one leaving the best haul profile is seated and the next
-    round asks again -- a preference for well-connected fiber must never hold a gap open.
-    Ties are settled by profile and then by id, so the choice is deterministic.
-    """
     satisfying = [
         pair for pair in improving if coverage_worst_haul(pair[0]) <= target_miles
     ]
@@ -211,61 +117,6 @@ def grow_backbone_for_coverage(
     params: SynthesisParams,
     pop_by_id: dict[str, Site],
 ) -> Synthesis:
-    """Add backbone nodes beyond the strength-chosen base until demand is close enough.
-
-    While some demand site the target applies to is farther than
-    ``backbone_coverage_target_miles`` from every selected backbone node, seat one more
-    candidate and rebuild the synthesis around it. Extra nodes are thus coverage-driven:
-    strength still chooses the base backbone, and the operator's coverage target is a
-    constraint on how far the backbone may leave demand, not a mileage cost minimized over
-    candidate sets. Growth stops once every non-exempt demand site is within target, the
-    backbone reaches ``max_backbone_count``, no remaining candidate leaves any site nearer
-    than the synthesis already does, or the candidates are exhausted. Only the first of those
-    is success, which is why :func:`coverage_report` measures what came out.
-
-    Two questions decide a round and they are asked in that order. Which candidates are
-    admissible is a coverage question, and one measure has to answer it in all three places
-    -- the stop test, the scoring and the progress filter -- or the loop argues with itself.
-    That measure is the haul profile over the sites the target applies to: every one of
-    their hauls, worst first, compared position by position. Were candidates scored by the
-    summed haul over every site instead, a round could be won by a node that shortens many
-    sites already inside the target while leaving the far one where it was, and the exempt
-    sites, exempt precisely because they are far from everything, would contribute the
-    largest terms to that sum and so have the most say in a choice they were lifted out of.
-    The round would spend a node and come round again with the gap still open.
-
-    Judging progress on the worst haul alone was the same error read the other way. It
-    asks whether the worst number on the board moved rather than whether a hub helped a
-    site, and the two part company the moment a second site is queued just behind the
-    first: seating the hub that rescues the leader promotes the runner-up, the board barely
-    moves, and the round reports that nothing improved while a site went from five hundred
-    miles of haul to fifty. Two sites at exactly equal haul deadlock such a test at any
-    tolerance, which is why there is no tolerance to tune here and the profiles are simply
-    compared. Growth is bounded regardless: each round spends a candidate, and the stop
-    test above ends it as soon as the target is met.
-
-    Which of the admissible candidates to seat is not a coverage question at all, and
-    answering it with distance was the second half of the same mistake. Among candidates
-    that satisfy the target, the best-connected one is seated (see
-    :func:`best_coverage_candidate`), because a hub that meets the distance requirement and
-    then cannot hold the links a backbone node owes has not solved anything.
-
-    The synthesis itself is drawn once, at the end, over whatever the rounds settled on. Every
-    round asks its questions of the backbone's ids -- where the sites are, which candidates
-    are admissible, which is best connected -- and none of them reads a drawn synthesis, so
-    drawing one per round was drawing a synthesis nobody looked at. It cost little while the
-    paths were laid a pair at a time; the fiber for a whole synthesis is now chosen at once
-    (see :mod:`synthesizer.survivable`), which is the expensive step of a build, and a
-    backbone that grows from three seats to thirty-four would have paid it thirty-one times
-    over.
-
-    The seats it starts from come in as ids rather than as a synthesis for the same reason.
-    Choosing the fiber for a base backbone and then seating one more node past it drew a
-    whole synthesis nobody read, which cost DOW 234 of its 438 seconds and put that tenant
-    past the fifteen minutes AWS allows a Lambda (GitHub issue #72). Growth that seats
-    nothing draws the same one synthesis over the same seats, so there is no shorter path
-    through here to keep.
-    """
     target_miles = params.tuning.backbone_coverage_target_miles
     backbone_ids = base_ids
     free = [pop_id for pop_id in plan.backbone_candidates if pop_id not in backbone_ids]
@@ -276,10 +127,6 @@ def grow_backbone_for_coverage(
         if params.max_backbone_count is not None and len(backbone_ids) >= params.max_backbone_count:
             logger.info("Coverage growth stopped at the %d-node cap", len(backbone_ids))
             break
-        # One quantity runs the whole round: the haul profile over the sites the target
-        # applies to. It decides whether to stop, which candidate wins, and whether any
-        # candidate is worth seating -- so the round cannot be won by a node that does
-        # nothing about the gap that opened it, nor abandoned by a node that plainly helps.
         profile = coverage_haul_profile(backbone_ids, inputs.access_sites, pop_by_id)
         worst = coverage_worst_haul(profile)
         if worst <= target_miles:
@@ -307,6 +154,5 @@ def grow_backbone_for_coverage(
         free.remove(best_id)
         logger.info("Added node %s for coverage; now %d nodes", best_id, len(backbone_ids))
     grown = build_synthesis_for_backbone(backbone_ids, inputs, plan)
-    # The base seats and every candidate seated above passed evaluate_backbone, so this builds.
     assert grown is not None
     return grown

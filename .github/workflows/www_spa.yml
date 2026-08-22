@@ -3,9 +3,20 @@ concurrency:
   cancel-in-progress: true
   group: www-spa
 jobs:
+  assert-no-comments:
+    name: assert-no-comments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pyyaml
+      - name: Assert nothing this repository publishes carries a comment
+        run: >-
+          PYTHONPATH=lib/python:scripts
+          python3 -c 'import sys, assert_no_comments; sys.exit(assert_no_comments.main())'
   deploy:
     if: github.ref == 'refs/heads/main'
-    needs: [yamllint]
+    needs: [assert-no-comments, yamllint]
     permissions:
       contents: read
       id-token: write

@@ -1,16 +1,3 @@
-"""Carrier merge endpoint: draw every carrier's PoPs and fiber on one map.
-
-    POST /wan-synthesizer/carriers/merge          -> (re)build the merged carriers
-    GET  /wan-synthesizer/carriers/merge/pops -> the merged carriers' PoPs
-    GET  /wan-synthesizer/carriers/merge/fiber-segments    -> the merged carriers' fiber
-
-The merged carriers are just every carrier's points and fiber segments unioned, each row
-tagged with the carrier it came from (taken from its endpoint path) so a segment resolves
-to its own carrier's points. Cross-carrier colocation is resolved later, per tenant, by the
-synthesizer. So the merge needs no synthesis logic and stays a self-contained (stdlib +
-boto3) single-file Lambda.
-"""
-
 import json
 import os
 from typing import Any
@@ -23,37 +10,24 @@ _MERGE_KEYS = {
     "pops": "carriers/merge/pops.json",
     "fiber-segments": "carriers/merge/fiber-segments.json",
 }
-# The only two file names a carrier stores under. Anything else under carriers/ is
-# not one of them and is left alone: a leftover from an older name would otherwise be
-# merged in as fiber and every synthesis would fail on the columns it does not carry.
 _CARRIER_FILES = ("pops.json", "fiber-segments.json")
 
 
 def _s3() -> Any:
-    """Return the cached S3 client, creating it on first use."""
     if "s3" not in _CLIENTS:
         _CLIENTS["s3"] = boto3.client("s3", region_name="us-east-2")
     return _CLIENTS["s3"]
 
 
 def clear_clients() -> None:
-    """Drop cached clients (tests reset between cases)."""
     _CLIENTS.clear()
 
 
 def _response(status: int, body: Any) -> dict[str, Any]:
-    """Build an API Gateway proxy response with open CORS."""
     return {"statusCode": status, "headers": dict(_HEADERS), "body": json.dumps(body)}
 
 
 def _build_merged_carriers(client: Any) -> dict[str, int]:
-    """Union every carrier's points and fiber segments (each tagged with its carrier).
-
-    Reads ``carriers/{c}/pops.json`` and ``carriers/{c}/fiber-segments.json`` for every
-    carrier, skipping the merge's own output and any other file under ``carriers/``,
-    stamps each row with its carrier id, and writes the two merged row lists. Returns
-    their sizes.
-    """
     bucket = os.environ["STORE_BUCKET"]
     listing = client.list_objects_v2(Bucket=bucket, Prefix="carriers/")
     pops: list[dict[str, Any]] = []
@@ -73,7 +47,6 @@ def _build_merged_carriers(client: Any) -> dict[str, int]:
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    """Build the merged carriers (POST) or serve one of their collections (GET)."""
     client = _s3()
     if event.get("httpMethod") == "POST":
         return _response(200, _build_merged_carriers(client))

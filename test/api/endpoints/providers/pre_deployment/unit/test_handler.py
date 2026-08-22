@@ -1,9 +1,3 @@
-"""Unit tests for the providers endpoint Lambda handler.
-
-The providers endpoint stores a single fixed regions object (no id, no listing), so
-its tests are the single-resource contract bound to the endpoint's data.
-"""
-
 from __future__ import annotations
 
 from typing import Any
@@ -19,6 +13,4 @@ _CFG: dict[str, Any] = {
 
 
 class TestProvidersRegions(RegionsContract):
-    """The single-resource contract, applied to the providers endpoint."""
-
     CFG = _CFG

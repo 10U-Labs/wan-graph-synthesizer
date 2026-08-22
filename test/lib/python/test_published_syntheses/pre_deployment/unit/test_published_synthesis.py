@@ -1,12 +1,3 @@
-"""Unit tests for reading one tenant's published network from the API.
-
-The service is replaced by a stand-in that answers each path from a canned document, so
-what is held to account here is what the reader asks for and what it makes of the answers,
-with no deployment and no network involved. The three cases are the three answers the WAN
-endpoint gives: a build that has published, a build still running, and a build that failed,
-which the endpoint reports by refusing the request with a 422 whose body says so.
-"""
-
 from __future__ import annotations
 
 import json
@@ -23,7 +14,6 @@ from seed import DEFAULT_API
 from test_http_doubles import FakeResponse
 from test_published_syntheses import published_synthesis
 
-# One tenant's config as ``etc/`` declares it, cut down to the block the reader reads.
 _CONFIG: dict[str, Any] = {
     "backbone": {
         "coverage_target_miles": 200,
@@ -52,13 +42,7 @@ _SUCCEEDED = {
 
 
 def _answering(bodies: dict[str, Any], code: int = 200) -> Callable[..., FakeResponse]:
-    """A ``urlopen`` stand-in answering each path out of *bodies* with status *code*.
-
-    A code of 400 or more is raised rather than returned, which is what urllib does with
-    the 422 the WAN endpoint answers with for a build that failed.
-    """
     def urlopen(request: urllib.request.Request, timeout: float = 0.0) -> FakeResponse:
-        """Answer one request from the canned bodies, by the path it names."""
         del timeout
         path = request.full_url.removeprefix(f"{DEFAULT_API}/")
         body = json.dumps(bodies[path]).encode()
@@ -70,19 +54,6 @@ def _answering(bodies: dict[str, Any], code: int = 200) -> Callable[..., FakeRes
 
 def test_a_published_network_is_read_beside_the_demands_its_config_makes(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """A ``success`` tenant carries its five collections, the seven git holds, and its floor.
-
-    The two demand collections arrive as one, since every site the coverage target applies
-    to is measured the same way whether the tenant or a cloud provider owns it. The floor
-    comes out of the build's own status: it is the fewest fiber miles the same requirements
-    could have been met with, and a network is only judged against it once it is read
-    beside the network itself.
-
-    The pairs the operator pinned come out of the config and never off the published links,
-    which carry the build's own reason for each path. A build that pinned a path nobody
-    asked it to pin is a defect this module reports, so it cannot be the source of the list
-    the report is measured against (GitHub issue #78).
-    """
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
         "tenants/daf/wan": _SUCCEEDED,
         "tenants/daf/backbone-nodes": [_NODE],
@@ -110,11 +81,6 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
 
 def test_a_tenant_whose_build_has_not_published_is_read_with_no_network(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """The collections are not asked for at all until a build has published one.
-
-    They answer 404 until then, so asking would turn a tenant whose build is simply still
-    running into an error that stops every test in the layer instead of one report.
-    """
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
         "tenants/daf/wan": {"status": "synthesizing", "tenant": "daf"},
     }))
@@ -126,11 +92,6 @@ def test_a_tenant_whose_build_has_not_published_is_read_with_no_network(
 
 def test_a_build_the_service_refuses_to_serve_is_read_as_what_it_says_went_wrong(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """A failed build is a state this layer reports, not an error it dies of.
-
-    The endpoint answers 422 and urllib raises, but the body it raised with is the status
-    document, and that document is what says which tenant failed and why.
-    """
     monkeypatch.setattr(urllib.request, "urlopen", _answering({
         "tenants/daf/wan": {"status": "fail", "reason": "no valid WAN is possible"},
     }, code=422))

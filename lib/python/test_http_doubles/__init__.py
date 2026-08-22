@@ -1,14 +1,3 @@
-"""Reusable, network-free HTTP test doubles.
-
-``UrlopenRecorder`` replaces ``urllib.request.urlopen`` in-process so unit and
-integration tests can assert what a client would send without touching the
-network. ``StubApi`` runs a real localhost server that records the requests it
-receives, for end-to-end tests that drive a CLI as a subprocess. Both reply with a
-canned body -- an empty JSON listing unless a test asks for another -- so a client
-that reads what it fetched can be exercised. ``CallRecorder`` records arbitrary
-calls. No live resource is ever touched.
-"""
-
 from __future__ import annotations
 
 import socketserver
@@ -21,35 +10,21 @@ EMPTY_LISTING = b"[]"
 
 
 class FakeResponse:
-    """A context-manager stand-in for an HTTP response object."""
-
     def __init__(self, status: int = 200, body: bytes = EMPTY_LISTING) -> None:
         self.status = status
         self._body = body
 
     def read(self) -> bytes:
-        """The response body, as a client reading the stream would get it."""
         return self._body
 
     def __enter__(self) -> "FakeResponse":
         return self
 
     def __exit__(self, *_exc: object) -> None:
-        """Leave the context; there is nothing to clean up."""
         return None
 
 
 class UrlopenRecorder:
-    """A drop-in for ``urllib.request.urlopen`` that records its requests.
-
-    *failures* are exceptions raised in place of an answer, one per call and oldest
-    first: a recorder built with one of them fails the first call it is given and
-    answers every call after it. That is how a client is asked what it does when the
-    network drops a connection, which a double that always answers cannot show. The
-    request is recorded before the raise, so a client that tries again is judged on
-    every attempt it made rather than on the ones that got through.
-    """
-
     def __init__(
             self, status: int = 200, body: bytes = EMPTY_LISTING,
             failures: Sequence[BaseException] = (),
@@ -62,7 +37,6 @@ class UrlopenRecorder:
     def __call__(
             self, request: urllib.request.Request, timeout: float = 0.0,
     ) -> FakeResponse:
-        """Record *request*, then raise its failure or return a fake response."""
         del timeout
         self.requests.append(request)
         if self._failures:
@@ -70,31 +44,23 @@ class UrlopenRecorder:
         return FakeResponse(self._status, self._body)
 
     def paths(self, base: str) -> list[str]:
-        """Recorded resource paths with the ``{base}/`` prefix removed."""
         prefix = f"{base}/"
         return [request.full_url[len(prefix):] for request in self.requests]
 
 
 class CallRecorder:
-    """Record the positional arguments of each call made to it."""
-
     def __init__(self) -> None:
         self.calls: list[tuple[Any, ...]] = []
 
     def __call__(self, *args: Any) -> None:
-        """Record one call's positional arguments."""
         self.calls.append(args)
 
     def nth(self, index: int) -> list[Any]:
-        """The *index*-th positional argument of every recorded call."""
         return [call[index] for call in self.calls]
 
 
 class _RecordingHandler(socketserver.StreamRequestHandler):
-    """Read one HTTP request, record it, and reply with the server's status."""
-
     def read_request(self) -> tuple[str, str, str]:
-        """Read and return the (method, path, body) of one HTTP request."""
         request_line = self.rfile.readline().decode("ascii", "replace")
         parts = request_line.split()
         method, path = (parts[0], parts[1]) if len(parts) >= 2 else ("", "")
@@ -109,7 +75,6 @@ class _RecordingHandler(socketserver.StreamRequestHandler):
         return method, path, self.rfile.read(length).decode("utf-8", "replace")
 
     def handle(self) -> None:
-        """Record one request and reply with the server's configured status and body."""
         server = cast("_RecordingServer", self.server)
         server.records.append(self.read_request())
         reason = "OK" if server.status < 400 else "Error"
@@ -122,8 +87,6 @@ class _RecordingHandler(socketserver.StreamRequestHandler):
 
 
 class _RecordingServer(socketserver.ThreadingTCPServer):
-    """A threaded TCP server that records the requests its handler receives."""
-
     allow_reuse_address = True
 
     def __init__(self, status: int, body: bytes) -> None:
@@ -134,8 +97,6 @@ class _RecordingServer(socketserver.ThreadingTCPServer):
 
 
 class StubApi:
-    """A localhost HTTP server that records requests and replies with a status."""
-
     def __init__(self, status: int = 200, body: bytes = EMPTY_LISTING) -> None:
         self._server = _RecordingServer(status, body)
         self._thread = threading.Thread(
@@ -143,13 +104,11 @@ class StubApi:
 
     @property
     def url(self) -> str:
-        """The base URL clients should target, e.g. ``http://127.0.0.1:54321``."""
         address = cast("tuple[str, int]", self._server.server_address)
         return f"http://127.0.0.1:{address[1]}"
 
     @property
     def records(self) -> list[tuple[str, str, str]]:
-        """The (method, path, body) of every request received so far."""
         return self._server.records
 
     def __enter__(self) -> "StubApi":
@@ -157,6 +116,5 @@ class StubApi:
         return self
 
     def __exit__(self, *_exc: object) -> None:
-        """Stop serving and release the socket."""
         self._server.shutdown()
         self._server.server_close()

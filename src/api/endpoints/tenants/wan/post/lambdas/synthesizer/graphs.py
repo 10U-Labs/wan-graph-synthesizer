@@ -1,5 +1,3 @@
-"""Graph algorithms: shortest paths and connectivity."""
-
 from __future__ import annotations
 
 import heapq
@@ -14,14 +12,6 @@ def distances_from(
     adjacency: dict[str, list[tuple[str, float]]],
     sources: Iterable[str],
 ) -> dict[str, dict[str, float]]:
-    """Shortest-path distances to every city, from each of ``sources``.
-
-    One Dijkstra per source. Enough for the backup path limit, which needs the distance
-    from the site being measured and from each of its peers and nothing else, so the callers
-    that already hold all-pairs distances pass those straight in rather than paying for
-    this. A source the merged carriers do not carry gets a row holding only itself, which is
-    what Dijkstra returns for it and reads correctly as reaching nothing.
-    """
     return {source: dijkstra(adjacency, source)[0] for source in sources}
 
 
@@ -30,11 +20,6 @@ def dijkstra(
     source: str,
     blocked: frozenset[tuple[str, str]] = frozenset(),
 ) -> tuple[dict[str, float], dict[str, str]]:
-    """Shortest-path distances and predecessors from a single source.
-
-    ``blocked`` is a set of ``link_key`` fiber segments the search may not traverse --
-    used to draw a detour around a segment already carrying backbone traffic.
-    """
     distances = {source: 0.0}
     predecessors: dict[str, str] = {}
     queue = [(0.0, source)]
@@ -55,7 +40,6 @@ def dijkstra(
     return distances, predecessors
 
 def reconstruct_path(source: str, target: str, predecessors: dict[str, str]) -> tuple[str, ...]:
-    """Rebuild the site path from source to target via the predecessor map."""
     if source == target:
         return (source,)
     if target not in predecessors:
@@ -70,13 +54,11 @@ def reconstruct_path(source: str, target: str, predecessors: dict[str, str]) -> 
     return tuple(path)
 
 def path_link_keys(path: tuple[str, ...]) -> set[tuple[str, str]]:
-    """Return the set of link keys traversed by a site path."""
     return {link_key(path[index], path[index + 1]) for index in range(len(path) - 1)}
 
 def undirected_adjacency(
     site_ids: set[str], links: set[tuple[str, str]]
 ) -> dict[str, set[str]]:
-    """Build an undirected neighbor map restricted to the given site ids."""
     adjacency: dict[str, set[str]] = {site_id: set() for site_id in site_ids}
     for left, right in links:
         if left in adjacency and right in adjacency:
@@ -85,7 +67,6 @@ def undirected_adjacency(
     return adjacency
 
 def connected_components(site_ids: set[str], links: set[tuple[str, str]]) -> list[list[str]]:
-    """Return the connected components of the synthesis graph as sorted id lists."""
     adjacency = undirected_adjacency(site_ids, links)
     remaining = set(adjacency)
     components: list[list[str]] = []
@@ -105,12 +86,6 @@ def connected_components(site_ids: set[str], links: set[tuple[str, str]]) -> lis
     return components
 
 def bridges(site_ids: set[str], links: set[tuple[str, str]]) -> set[tuple[str, str]]:
-    """Return the links whose removal would raise the graph's component count.
-
-    A bridge lies on no cycle, so deleting it splits its component in two. Site
-    sets here are tiny (a handful of backbone nodes), so each link is probed by
-    removal rather than via a linear-time bridge search.
-    """
     base = len(connected_components(site_ids, links))
     return {
         link
@@ -123,14 +98,6 @@ def _lowlink_dfs(
     on_link: Callable[[str, str], None],
     on_finish: Callable[[str, str, int, int], None],
 ) -> None:
-    """Iterative Tarjan low-link sweep, the shared skeleton of the connectivity passes.
-
-    Calls ``on_link(u, v)`` for every tree link and every back link (to an ancestor), in
-    DFS order, and ``on_finish(node, parent, low_node, disc_parent)`` when a node's subtree
-    is done -- enough for both the bridge and the biconnected-block sweeps to do their own
-    bookkeeping without restating the traversal. Run iteratively (an explicit stack) so a
-    long carrier graph cannot blow the recursion limit.
-    """
     disc: dict[str, int] = {}
     low: dict[str, int] = {}
     parent: dict[str, str | None] = {}
@@ -169,12 +136,6 @@ def _lowlink_dfs(
                 on_finish(node, up, low[node], disc[up])
 
 def bridge_links(adjacency: dict[str, list[tuple[str, float]]]) -> set[tuple[str, str]]:
-    """Every bridge segment of a weighted graph, found in one linear DFS.
-
-    An link ``(u, v)`` is a bridge when the subtree rooted at ``v`` has no back link
-    reaching ``u`` or above (``low[v] > disc[u]``). Suited to the full carrier graph, where
-    the link-probing :func:`bridges` would be far too slow.
-    """
     found: set[tuple[str, str]] = set()
 
     def record(node: str, up: str, low_node: int, disc_up: int) -> None:
@@ -185,14 +146,6 @@ def bridge_links(adjacency: dict[str, list[tuple[str, float]]]) -> set[tuple[str
     return found
 
 def bridgeless_components(adjacency: dict[str, list[tuple[str, float]]]) -> dict[str, int]:
-    """Label each site with its bridgeless component id.
-
-    Two sites share a component exactly when no single segment separates them -- so a
-    set of backbone nodes can be wired into a fiber-resilient (bridgeless) mesh iff they
-    all carry the same label. Computed once over the carrier graph and reused as the
-    search's cheap feasibility oracle. Deleting the bridges leaves the components as the
-    connected pieces; a site whose every segment is a bridge is its own singleton.
-    """
     cut = bridge_links(adjacency)
     surviving = {
         link_key(node, neighbor)
@@ -212,11 +165,6 @@ def _record_block(
     marker: tuple[str, str],
     blocks: list[set[str]],
 ) -> None:
-    """Pop one biconnected component off the link stack down to ``marker``.
-
-    Records the popped sites as a new block only when it is non-trivial (more than one
-    segment); a single-segment pop is a bridge and earns no block.
-    """
     block = [link_stack.pop()]
     while block[-1] != marker:
         block.append(link_stack.pop())
@@ -226,24 +174,6 @@ def _record_block(
 def biconnected_block_membership(
     adjacency: dict[str, list[tuple[str, float]]],
 ) -> dict[str, frozenset[int]]:
-    """Label each site with the non-trivial biconnected blocks it belongs to.
-
-    A block is the largest piece no single site's loss can split -- a set of sites
-    on a common cycle.
-    Blocks overlap: a cut site belongs to several, so each site carries a *set* of
-    block ids (unlike :func:`bridgeless_components`, whose bridgeless components form a
-    clean partition). A set of backbone nodes can be wired into a city-survivable
-    (no single-site cut) physical mesh iff they all share one common block, so the gate
-    is a non-empty intersection of their block sets.
-
-    Bridge segments are conventionally their own block, but two cities joined only by a
-    bridge are not on a common cycle and do not even survive that one segment's loss; such
-    trivial (single-link) blocks get **no id**, so a city all of whose segments are bridges
-    maps to the empty set and
-    fails the gate. A Hopcroft--Tarjan pass over an explicit link stack, driven by the shared
-    iterative low-link DFS (:func:`_lowlink_dfs`): each segment is pushed as it is walked, and a
-    finished node whose subtree cannot climb above its parent closes off one block.
-    """
     link_stack: list[tuple[str, str]] = []
     blocks: list[set[str]] = []
 
@@ -261,26 +191,16 @@ def biconnected_block_membership(
     }
 
 def survives_any_one_link_loss(site_ids: set[str], links: set[tuple[str, str]]) -> bool:
-    """True if the graph is connected and survives the loss of any single link.
-
-    A graph survives the loss of any one link when it is connected and bridgeless.
-    """
     if len(connected_components(site_ids, links)) != 1:
         return False
     return not bridges(site_ids, links)
 
 def survives_any_one_site_loss(site_ids: set[str], links: set[tuple[str, str]]) -> bool:
-    """True if the graph is connected and survives the loss of any single site.
-
-    A graph survives the loss of any one site when it is connected and has no
-    articulation point -- the city-loss analogue of :func:`survives_any_one_link_loss`.
-    """
     if len(connected_components(site_ids, links)) != 1:
         return False
     return not articulation_points(site_ids, links)
 
 def articulation_points(site_ids: set[str], links: set[tuple[str, str]]) -> set[str]:
-    """Return cut sites whose removal would disconnect the synthesis graph."""
     adjacency = undirected_adjacency(site_ids, links)
     visited: set[str] = set()
     discovery: dict[str, int] = {}
@@ -321,7 +241,6 @@ def articulation_points(site_ids: set[str], links: set[tuple[str, str]]) -> set[
 def build_adjacency(
     links: dict[tuple[str, str], FiberSegment],
 ) -> dict[str, list[tuple[str, float]]]:
-    """Build a sorted weighted adjacency map from the physical links."""
     adjacency: dict[str, list[tuple[str, float]]] = {}
     for (left, right), link in links.items():
         adjacency.setdefault(left, []).append((right, link.distance_miles))
@@ -334,18 +253,6 @@ def build_adjacency(
 def adjacency_by_carrier(
     links: dict[tuple[str, str], FiberSegment],
 ) -> dict[str, dict[str, list[tuple[str, float]]]]:
-    """One adjacency per carrier: the fiber that carrier could sell a path over.
-
-    An operator orders a path from one carrier, so the fiber a path may be assembled from
-    is one carrier's own segments plus the segments no carrier owns -- the synthetic local
-    fiber a fabricated twin is wired on, which the operator lays themselves. Each carrier
-    gets its whole map that way, and a path found over one of these adjacencies is a path
-    somebody can be asked to quote.
-
-    Fiber naming no carrier at all yields no entries. That is every fixture built by hand
-    and every caller with no merged carriers behind it, and it reads correctly as nothing
-    to split by.
-    """
     carriers = sorted({carrier for link in links.values() for carrier in link.carriers})
     return {
         carrier: build_adjacency({

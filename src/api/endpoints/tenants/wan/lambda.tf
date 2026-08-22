@@ -1,9 +1,3 @@
-# The dispatching Lambda: POST async-invokes the synthesizer Lambda, GET reports the
-# tenant's WAN status from the store. The synthesizer lives in its own stack
-# (`./post/`); the dispatcher references it by its deterministic derived name
-# (`module.common.lambda_handler_names.wan`-synthesizer), so the two stacks stay decoupled
-# -- no cross-stack resource reference or remote state.
-
 data "terraform_remote_state" "routing" {
   backend = "s3"
 

@@ -1,9 +1,3 @@
-"""Unit tests for the carriers endpoint Lambda handler.
-
-The read/write behaviour shared with the other framework endpoints comes from the
-contracts; the carrier-specific links columns and per-collection isolation are here.
-"""
-
 from __future__ import annotations
 
 import json
@@ -52,20 +46,15 @@ _WRITER: dict[str, Any] = {
 
 
 class TestCarriersReader(ReaderContract):
-    """The shared read-side contract, applied to the carriers endpoint."""
-
     CFG = _READER
 
 
 class TestCarriersWriter(WriterContract):
-    """The shared write-side contract, applied to the carriers endpoint."""
-
     CFG = _WRITER
 
 
 def test_carrier_fiber_segments_accept_the_endpoint_columns(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """A carrier fiber-segments PUT with the four endpoint columns is stored."""
     module = load_handler("carriers", monkeypatch)
     objects: dict[str, bytes] = {}
     row = {"a_municipality": "A", "a_state": "X", "z_municipality": "B", "z_state": "Y"}
@@ -75,7 +64,6 @@ def test_carrier_fiber_segments_accept_the_endpoint_columns(
 
 
 def test_carrier_put_leaves_the_other_collection_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A carrier sites PUT writes only the sites file, leaving links untouched."""
     module = load_handler("carriers", monkeypatch)
     objects = {"carriers/lumen/fiber-segments.json": json.dumps([{"e": 1}]).encode()}
     event = write_event(_WRITER, "pops", _WRITER["valid"])
@@ -87,7 +75,6 @@ def test_carrier_put_leaves_the_other_collection_file(monkeypatch: pytest.Monkey
 def _store_after_deleting(
         monkeypatch: pytest.MonkeyPatch, stored: dict[str, bytes], carrier: str
 ) -> dict[str, bytes]:
-    """The store as it stands once one carrier has been deleted, addressed by its id."""
     module = load_handler("carriers", monkeypatch)
     event = {"httpMethod": "DELETE", "pathParameters": {"carrier": carrier}}
     with patch("boto3.client", side_effect=write_clients(stored, [])):
@@ -97,20 +84,17 @@ def _store_after_deleting(
 
 def test_carrier_delete_removes_an_object_the_endpoint_never_wrote(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """A DELETE clears the whole carrier, not only the two collections a PUT writes."""
     stored = {"carriers/lumen/pops.json": b"[]", "carriers/lumen/vertices.json": b"[]"}
     assert not _store_after_deleting(monkeypatch, stored, "lumen")
 
 
 def test_carrier_delete_leaves_another_carrier_alone(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A DELETE of one carrier stays inside that carrier's prefix."""
     stored = {"carriers/lumen/pops.json": b"[]", "carriers/zayo/pops.json": b"[]"}
     kept = list(_store_after_deleting(monkeypatch, stored, "lumen"))
     assert kept == ["carriers/zayo/pops.json"]
 
 
 def test_a_deleted_carrier_is_no_longer_listed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The carrier ids GET /carriers answers are what an operator reads after a delete."""
     module = load_handler("carriers", monkeypatch)
     stored = {"carriers/lumen/vertices.json": b"[]", "carriers/zayo/pops.json": b"[]"}
     removal = {"httpMethod": "DELETE", "pathParameters": {"carrier": "lumen"}}
