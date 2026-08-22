@@ -8,7 +8,7 @@ companies rather than one path from none of them.
 
 What it is for is holding a published ceiling against a source outside the build that
 produced it. A build that counted a site's ways out over everybody's fiber at once would
-credit it with ways out nobody sells, and a floor priced for those sits above the fiber the
+credit it with ways out nobody sells, and a floor measured over those sits above the fiber the
 network beside it actually ordered -- Yurop published 8,844.892 miles against a floor of
 9,141.641 it had already beaten (GitHub issue #111). Boston, MA is the shape that did it,
 and the first fixture below is Boston: fiber in three directions, three owners, and only
@@ -72,7 +72,7 @@ def test_a_city_whose_second_way_out_changes_hands_can_be_sold_only_the_first() 
 
     Zayo's fiber carries Boston as far as Ashburn, VA and Lumen's stops at Stamford, CT, so
     the second way out exists only if the two are stitched together, and nobody quotes that.
-    A build crediting Boston with two prices its floor for a way out no operator can buy.
+    A build crediting Boston with two floors it over a way out no operator can order.
     """
     assert sellable_ways_out(_SPLIT, _BOSTON, frozenset({_ASHBURN}), 1) == 1
 
@@ -80,8 +80,8 @@ def test_a_city_whose_second_way_out_changes_hands_can_be_sold_only_the_first() 
 def test_a_city_is_sold_a_way_out_by_each_carrier_that_has_one() -> None:
     """Two carriers with a way out apiece sell Boston two, which is what an operator holds.
 
-    The behaviour the lowering above must not break: a site's ways out may be bought from
-    several companies, one path each. It is the stitching that nobody sells, not the buying
+    The behaviour the lowering above must not break: a site's ways out may be ordered from
+    several companies, one path each. It is the stitching that nobody sells, not the ordering
     from more than one.
     """
     assert sellable_ways_out(

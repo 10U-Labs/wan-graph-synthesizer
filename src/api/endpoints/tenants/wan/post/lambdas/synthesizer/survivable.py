@@ -1,25 +1,32 @@
 """Choose the fiber a whole backbone is built from at once, and say how short it could be.
 
 A tenant asks for a number of ways out of every backbone node that no one city's loss
-takes two of. Which segments of the carrier's fiber to buy so that every node has them is
+takes two of. Which segments of the carrier's fiber to select so that every node has them is
 one question about the whole synthesis, and this module answers it as one question rather
 than as a sequence of decisions about one pair of sites at a time. Deciding a pair at a
-time is what left 54 of the 192 published paths buying nobody a way out, 23,917 miles of
+time is what left 54 of the 192 published paths gaining nobody a way out, 23,917 miles of
 fiber that the six tenants declared then paid for every month and got nothing for (GitHub
 issue #60): each decision was defensible when it was taken and none was ever revisited.
 
-The problem has a name. Choosing the fewest-mile set of fiber segments in which every pair
-of backbone nodes is joined by as many paths sharing no city as the tenant asked for is
-the survivable network synthesis problem, and it is NP-hard -- the case where every
-requirement is two contains Hamiltonian cycle -- so no exact method finishes on a national
-map. What is available is a method with a proven limit on how far past the ideal it can
-land, by iterative rounding of the linear-programming relaxation: hold each segment
-anywhere between none of it and all of it, buy the fewest miles that meet every
-requirement, and take the segments the answer holds at half or more as bought outright
-(Fleischer, Jain and Williamson 2006, on the half-integrality of Jain 2001). Repeat over
-what is still unmet. For element connectivity -- paths sharing no fiber segment and no
-city between their two ends -- that lands within twice the fewest miles any synthesis could
-have run.
+Every segment is either in the answer or out of it, and deciding them that way has no fast
+exact method. Choosing the fewest-mile set of fiber segments in which every pair of
+backbone nodes is joined by as many paths sharing no city as the tenant asked for is the
+survivable network synthesis problem, and it is NP-hard -- the case where every requirement
+is two contains Hamiltonian cycle -- so nothing that answers it in whole segments finishes
+on a national map. What this module does instead is let the solver answer in fractions,
+where the same question is a linear program and comes back in milliseconds, and then
+convert that answer to whole segments a few at a time: hold each segment anywhere between
+none of it and all of it, take the fewest miles that meet every requirement, and select
+outright every segment the answer holds at half or more. Repeat over what is still unmet.
+
+Answering in fractions is what earns the guarantee, and the guarantee is the reason for the
+detour. Jain's result says a fewest-miles fractional answer always holds some segment at
+half or more, so every round selects something and the search always ends; and for element
+connectivity -- paths sharing no fiber segment and no city between their two ends -- what it
+ends with runs at most twice the fewest miles any synthesis could have run (Fleischer, Jain
+and Williamson 2006, on the half-integrality of Jain 2001). A rule that read the map
+directly and added segments by eye would be quicker to write and could be beaten by any
+margin at all; this one cannot be beaten by more than double.
 
 The relaxation is where the second half of the answer comes from. No synthesis can run fewer
 miles than a program whose every row is a requirement that synthesis has to meet, so the
@@ -28,7 +35,7 @@ as ``backbone_lower_bound_miles``, because a claim that a synthesis is close to 
 one there is means nothing until the shortest one there is has a number.
 
 What a site can be given is what one carrier can sell it, and no further than the operator
-would order. A path is bought from one company end to end and paid for every month, so two
+would order. A path is ordered from one company end to end and paid for every month, so two
 ways out of a site whose halves belong to different companies are one way out and not two;
 and a path running further from the straight line than the tenant's
 ``backbone.max_backup_path_multiple`` allows is one nobody orders at all. Every requirement
@@ -40,7 +47,7 @@ over the carriers by :func:`synthesizer.ceiling.ways_out_by_carrier` -- the same
 Writing them over the whole map instead is what made the fiber chosen here beside the
 point. The answer met requirements with ways out nobody sells and detours nobody would
 order, ``synthesizer.backbone._ways_out_of`` then drew 29 of the 37 backbone seats over the
-carriers' whole fiber rather than over what was bought, and the floor published beside the
+carriers' whole fiber rather than over what was selected, and the floor published beside the
 synthesis was a floor for a network no operator could have built: DoW ran 9,294.692 miles
 against 7,361.252 (GitHub issue #113). The narrower half of the same defect had already
 been answered for the floor alone by lowering each requirement to a ceiling, after Yurop
@@ -54,7 +61,7 @@ repository actually asks of a site is narrower: ``synthesizer.validation.
 diverse_path_count`` charges a way out for the peer it ends at, so two ways out of a site
 that both run through one peer are one way out rather than two. That requirement is
 written down as well, once per site, and the fiber has to meet both. Writing only the
-first would let the program buy a synthesis where every way out of a site runs through one of
+first would let the program select a synthesis where every way out of a site runs through one
 its peers, which the tenant did not ask for and validation would refuse.
 
 Splitting the rows by carrier costs the bound nothing. A synthesis meeting rows that each
@@ -82,7 +89,7 @@ from synthesizer.input_graph import FiberSegment
 from synthesizer.linear_program import GrowingSegmentProgram, SegmentChoice, SegmentRow
 
 # What counts as holding a segment outright. Half of it is the share Jain's half-integrality
-# result guarantees some segment reaches, and taking those is what makes the finished choice
+# result guarantees some segment reaches, and selecting those is what makes the finished choice
 # at most twice the fewest miles any synthesis could have run.
 _HELD_OUTRIGHT = 0.5
 
@@ -144,7 +151,7 @@ class _Requirement:
     a way out is charged for.
 
     ``over`` is the fiber this requirement may be met with, and it is what makes the row a
-    row somebody can buy. An operator orders a path from one company end to end and no
+    row somebody can order. An operator orders a path from one company end to end and no
     further than their backup path multiple allows, so a requirement is written over one
     carrier's segments, cut to the ones a path from this site to these peers could run on
     inside that bound. A requirement written over the whole map instead is answered by ways
@@ -165,7 +172,7 @@ class _Writing:
 
     ``fiber`` is the admissible fiber and ``by_carrier`` is it split into what each company
     could sell a path over. ``whole`` is that fiber held outright, which is what a
-    requirement is lowered against: a row no amount of buying could answer is a search that
+    requirement is lowered against: a row no amount of fiber could answer is a search that
     never ends rather than a synthesis with an honest shortfall in it. ``per_peer`` is how
     many of a site's ways out one peer may take and ``proof`` is what
     :func:`synthesizer.ceiling.ways_out_by_carrier` is asked with.
@@ -210,7 +217,7 @@ class _BudgetSlack:
 
 @dataclass
 class _Search:
-    """The program as it stands, beside the fiber it is written over and what it has bought.
+    """The program as it stands, beside the fiber it is written over and what it has selected.
 
     The rows only ever grow: a separation the fiber could not survive at one point in the
     search is a separation no later answer may ignore, so every row found is carried into
@@ -223,7 +230,7 @@ class _Search:
     column: dict[tuple[str, str], int]
     program: GrowingSegmentProgram
     written: set[tuple[tuple[int, ...], float]]
-    bought: frozenset[tuple[str, str]]
+    selected: frozenset[tuple[str, str]]
 
 
 def _slack_from(
@@ -269,7 +276,7 @@ def admissible_fiber(inputs: FiberInputs) -> dict[tuple[str, str], float]:
     than that pair's budget only when ``d(a,u) + len(u,v) + d(v,b)`` fits inside it. A
     segment failing that for every site and every peer, in both of its orientations, is
     fiber no admissible path can use, and leaving it out of the choice is what stops the
-    program buying an ocean crossing to protect a state line (GitHub issue #44).
+    program selecting an ocean crossing to protect a state line (GitHub issue #44).
 
     With no bound in hand every segment is admissible, which is the behaviour of every
     caller with no tenant to be measured against.
@@ -303,7 +310,7 @@ def _within_budget(
     and the sharper answer is what its own ways-out requirement is written over: without it
     the program can meet a requirement with a way round that runs further than the tenant's
     backup path multiple allows, which :func:`synthesizer.ceiling.independent_paths` then
-    refuses to count, and the site reads short over the fiber that was bought for it
+    refuses to count, and the site reads short over the fiber that was selected for it
     (GitHub issue #113).
 
     With no bound in hand every segment will do, which is every caller with no tenant to be
@@ -364,7 +371,7 @@ def _carried(requirement: _Requirement, whole: Mapping[tuple[str, str], float]) 
     """The most of a requirement this fiber could ever meet, at most what it asks for.
 
     A site behind a single point of failure on one carrier's fiber cannot be given two ways
-    out over it by any amount of buying, so asking for two would leave the program with no
+    out over it by any amount of fiber, so asking for two would leave the program with no
     answer at all rather than with the honest one. What comes back is the largest number
     the fiber survives every separation of, found by asking for one fewer until it does,
     and the shortfall is then reported by
@@ -379,7 +386,7 @@ def _carried(requirement: _Requirement, whole: Mapping[tuple[str, str], float]) 
 def _shared_out(owed: int, capacity: Mapping[str, int]) -> dict[str, int]:
     """How many ways each carrier is asked for, the company that can carry most asked first.
 
-    A path is bought from one company end to end, so a tenant's number is met a carrier at
+    A path is ordered from one company end to end, so a tenant's number is met a carrier at
     a time and has to be spread over the carriers that can reach the site. The ablest is
     asked first and the rest take what is left, so the fewest companies are involved: an
     operator holding two paths from one carrier and none from a third has one contract
@@ -423,12 +430,12 @@ def _ways_out_rows(site: str, writing: _Writing) -> list[_Requirement]:
 
     Over the fiber a path from this site to those peers may run on, which is the same
     arithmetic :func:`synthesizer.ceiling._admissible_adjacency` puts the site's paths
-    through when they are read back, so what is bought here is what can be found there.
+    through when they are read back, so what is selected here is what can be found there.
 
     Spread over the carriers by how many of the site's ways out each of them supplies,
     which :func:`synthesizer.ceiling.ways_out_by_carrier` reads off the same proof
     :func:`synthesizer.stages.finalize` later holds the site to. One rule, so the fiber
-    bought for a site and the number it is then credited with cannot disagree.
+    selected for a site and the number it is then credited with cannot disagree.
     """
     inputs = writing.inputs
     peers = frozenset(inputs.backbone_ids) - {site}
@@ -559,10 +566,10 @@ def _rows(
 
 
 def _held(
-    fiber: Mapping[tuple[str, str], float], bought: frozenset[tuple[str, str]]
+    fiber: Mapping[tuple[str, str], float], selected: frozenset[tuple[str, str]]
 ) -> dict[tuple[str, str], float]:
-    """How much of each candidate segment is held once ``bought`` is taken outright."""
-    return {segment: 1.0 if segment in bought else 0.0 for segment in fiber}
+    """How much of each candidate segment is held, with ``selected`` held outright."""
+    return {segment: 1.0 if segment in selected else 0.0 for segment in fiber}
 
 
 def _shares(
@@ -592,16 +599,16 @@ def _write(search: _Search, rows: list[SegmentRow]) -> bool:
 
 
 def _solve_search(search: _Search, fix: bool) -> SegmentChoice:
-    """Solve the program as it stands, with what has been bought held outright or not.
+    """Solve the program as it stands, with what has been selected held outright or not.
 
-    Holding the bought segments outright is what the rounding needs: each round asks what
+    Holding the selected segments outright is what the rounding needs: each round asks what
     the fewest miles are given the choices already made. Letting them go is what the
     published floor needs, since a floor under the whole problem may take nothing about
     this particular search for granted.
     """
     if fix:
         search.program.hold_whole(
-            frozenset(search.column[segment] for segment in search.bought)
+            frozenset(search.column[segment] for segment in search.selected)
         )
     else:
         search.program.hold_nothing()
@@ -615,9 +622,9 @@ def _tighten(search: _Search, requirements: list[_Requirement]) -> SegmentChoice
     many to write out, so they are written down as an answer violates them: solve with the
     rows so far, search each requirement over the shares that came back, add what that
     found, and solve again. It ends when the answer meets every requirement there is and
-    not only the ones on paper, which is what its caller then buys fiber on the strength of.
+    not only the ones on paper, which is what its caller then selects fiber on the strength of.
 
-    Stopping anywhere short of that buys fiber to meet requirements the answer was never
+    Stopping anywhere short of that selects fiber to meet requirements the answer was never
     held to. A cap of 24 passes used to stand here, and every one of the six tenants
     declared then needed hundreds -- 645 for DAF, 1,382 for AFGSC, which ``etc/`` no longer
     declares -- so 36 of Two-Node's 37 rounds spent the cap and rounded an answer that still
@@ -638,17 +645,17 @@ def _tighten(search: _Search, requirements: list[_Requirement]) -> SegmentChoice
 
 
 def _round_up(search: _Search, choice: SegmentChoice) -> frozenset[tuple[str, str]]:
-    """The segments this round buys outright: every one the answer holds at half or more.
+    """The segments this round selects outright: every one the answer holds at half or more.
 
     Jain's result says a fewest-miles answer always holds some segment at half or more, so
-    a round always buys something and the search always ends. The fallback is for the
+    a round always selects something and the search always ends. The fallback is for the
     arithmetic rather than the mathematics: the two requirements written here are not the
     single family that result is proved for, so where an answer holds nothing that high the
-    round buys the segment it holds most of, which keeps the search finite either way.
+    round selects the segment it holds most of, which keeps the search finite either way.
     """
     shares = _shares(choice, search.order)
     left = [
-        (share, segment) for segment, share in shares.items() if segment not in search.bought
+        (share, segment) for segment, share in shares.items() if segment not in search.selected
     ]
     fresh = frozenset(
         segment for share, segment in left if share >= _HELD_OUTRIGHT - _TOLERANCE
@@ -659,12 +666,12 @@ def _round_up(search: _Search, choice: SegmentChoice) -> frozenset[tuple[str, st
 def choose_fiber(inputs: FiberInputs) -> FiberChoice:
     """The fiber to build this backbone from, and the fewest miles any synthesis could run.
 
-    Rounds of buying, each one a fewest-miles answer over every requirement written down so
-    far with the earlier rounds' segments held outright, until the fiber bought meets every
-    requirement on its own. Then one last answer with nothing held outright, which is the
+    Rounds of selecting, each one a fewest-miles answer over every requirement written down
+    so far with the earlier rounds' segments held outright, until the fiber selected meets
+    every requirement on its own. Then one last answer with nothing held outright, which is the
     floor: no synthesis meeting these requirements runs fewer miles than that.
 
-    A backbone the carrier's fiber says nothing about buys nothing and is floored at
+    A backbone the carrier's fiber says nothing about selects nothing and is floored at
     nothing, which is the truth about it -- there is no fiber to choose from, so the
     shortfall belongs to the report rather than to a program with no columns.
     """
@@ -681,9 +688,9 @@ def choose_fiber(inputs: FiberInputs) -> FiberChoice:
         frozenset(),
     )
     while True:
-        shortfalls = _shortfalls(requirements, _held(fiber, search.bought))
+        shortfalls = _shortfalls(requirements, _held(fiber, search.selected))
         if not shortfalls:
             break
         _write(search, _rows(shortfalls, search.column))
-        search.bought |= _round_up(search, _tighten(search, requirements))
-    return FiberChoice(search.bought, _solve_search(search, fix=False).miles)
+        search.selected |= _round_up(search, _tighten(search, requirements))
+    return FiberChoice(search.selected, _solve_search(search, fix=False).miles)

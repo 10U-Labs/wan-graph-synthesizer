@@ -676,12 +676,12 @@ def crossing_transit_names() -> tuple[str, ...]:
     return tuple(sorted(set(CROSSING_COORDS) - CROSSING_ELIGIBLE))
 
 
-# Three backbone sites reaching one another over three shared hub cities, priced so the
+# Three backbone sites reaching one another over three shared hub cities, measured so the
 # shortest way out of one site is not the shortest way back out of another. That is what
 # makes the two ends of a pair prove different fiber to each other: each proof is the
 # shortest set of paths out of its own site, and the two sites have different other peers
 # to keep clear of. ``a`` is short through ``h2`` and long through ``h1``, ``b`` is the
-# other way round, and ``c`` is cheap through both -- so a proves h1 to b and h2 to c, b
+# other way round, and ``c`` is short through both -- so a proves h1 to b and h2 to c, b
 # proves h1 to a and h3 to c, and c proves h2 to a and h1 to b. Only the pair b-c is proved
 # twice: five miles the way b proved it and two the way c did.
 SHARED_HUB_SEGMENTS = {
@@ -844,16 +844,16 @@ TWO_POCKET_IDS = ["a", "b", "c", "d", "e", "f"]
 
 # --- the fiber choice's separation search: a map that takes hundreds of passes -----------
 
-# Twelve cities of carrier fiber, five of them backbone seats, priced in whole miles. The
+# Twelve cities of carrier fiber, five of them backbone seats, measured in whole miles. The
 # fiber choice writes its requirements down as an answer violates them, and on this map that
 # takes 26 passes before the answer meets every requirement there is. That is what the
 # fixture is for: a cap of 24 passes stood in ``synthesizer.survivable`` until GitHub issue
 # #63, and every graph the suite had before this one is answered by the first solve or the
 # one after it, so no test could reach a search that runs long enough for a cap to bind.
 #
-# Left to finish, the search buys seven segments running 159 miles, which is exactly the
-# floor it publishes -- there is no shorter synthesis meeting the same requirements. Stopped at
-# 24 passes it buys thirteen segments running 291 against that same floor, and the synthesis
+# Left to finish, the search selects seven segments running 159 miles, which is exactly the
+# floor it publishes -- there is no shorter synthesis meeting the same requirements. Stopped
+# at 24 passes it selects thirteen segments running 291 against that same floor, and the synthesis
 # drawn over them orders 176 miles of fiber an operator pays for every month.
 MANY_PASS_SEGMENTS = {
     ("a", "c"): 32.0, ("a", "e"): 22.0, ("a", "f"): 18.0, ("a", "g"): 25.0,
@@ -871,11 +871,11 @@ MANY_PASS_SEGMENTS = {
 # carrier can carry and the finished synthesis is one no site is short in.
 MANY_PASS_SITES = ("c", "d", "j", "k", "l")
 MANY_PASS_TRANSIT = ("a", "b", "e", "f", "g", "h", "i")
-# What the search buys once it is allowed to finish, and the miles those segments run.
+# What the search selects once it is allowed to finish, and the miles those segments run.
 MANY_PASS_MILES = 159.0
 
 
-# --- the fiber a network is drawn over is the fiber the choice bought --------------------
+# --- the fiber a network is drawn over is the fiber the choice selected --------------------
 #
 # Two graphs for the two halves of GitHub issue #113, shared because three files drive them:
 # the unit tier over ``synthesizer.survivable.choose_fiber`` alone, the unit tier over

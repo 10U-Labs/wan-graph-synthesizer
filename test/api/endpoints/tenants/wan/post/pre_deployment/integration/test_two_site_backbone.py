@@ -29,7 +29,7 @@ from synthesizer.model import LINK_FOR_TARGET
 
 _SITES = ("a", "b")
 _ASKED_FOR = 2
-# Three disjoint ways from a to b, priced so the third is plainly the one to leave out.
+# Three disjoint ways from a to b, measured so the third is plainly the one to leave out.
 _SEGMENTS = {
     ("a", "north"): 100.0, ("north", "b"): 100.0,
     ("a", "south"): 200.0, ("south", "b"): 200.0,
@@ -62,13 +62,13 @@ def test_the_two_paths_share_no_city_but_the_two_sites() -> None:
 
 
 def test_both_paths_are_ones_the_two_sites_reached_for_themselves() -> None:
-    """Two paths over one pair is what a two-site backbone asking for two paths buys.
+    """Two paths over one pair is what a two-site backbone asking for two paths gets.
 
     There was a fifth reason a path could carry until GitHub issue #60 -- a detour added
     afterwards to keep a city off the only path -- and a synthesis that drew one path and then
     repaired it would have shown up here as that reason rather than as the tenant's own
     number. The fiber is chosen for the whole synthesis at once now, so the two paths are the
-    two the sites were bought and neither is a repair of the other.
+    two the sites were owed and neither is a repair of the other.
     """
     assert [use.reason for use in _MESH] == [LINK_FOR_TARGET, LINK_FOR_TARGET]
 

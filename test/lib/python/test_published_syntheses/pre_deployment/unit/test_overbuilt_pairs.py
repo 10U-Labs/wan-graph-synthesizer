@@ -1,4 +1,4 @@
-"""Unit tests for the second path between two sites that buys neither of them a way out.
+"""Unit tests for the second path between two sites that gains neither of them a way out.
 
 The helper reads a published network and reports the pairs of backbone sites holding a path
 nobody needed. Nothing outside the build could ask this before, and the reason to ask it is
@@ -12,7 +12,7 @@ one way or the other, and what separates the ones reported from the ones passed 
 whether setting the longest path between a pair aside costs one of its two ends a way out
 it was asked for.
 
-The tenant buys two paths throughout. Sites and cities are named the same in these fixtures,
+The tenant asks for two paths throughout. Sites and cities are named the same in these fixtures,
 since the published links list the cities a path crosses by name and the pair by id.
 
 A pair served under either order of its two ends is one pair, and the case is tested because
@@ -31,7 +31,7 @@ from test_published_syntheses import overbuilt_pairs
 def _link(source: str, target: str, *transit: str) -> dict[str, Any]:
     """One published path between two sites, crossing the transit cities given.
 
-    Priced by the cities it crosses, so a path round by two cities is the longer of two and
+    Measured by the cities it crosses, so a path round by two cities is the longer of two and
     the one the helper sets aside.
     """
     return {
@@ -63,7 +63,7 @@ _SPARE_PATH = [
 
 
 def test_a_pair_holding_a_path_neither_end_needs_is_reported_with_its_count() -> None:
-    """Both ends keep the two paths they bought without it, so nobody needed the second."""
+    """Both ends keep the two paths they had without it, so nobody needed the second."""
     assert overbuilt_pairs(_synthesis(_SPARE_PATH)) == [("east <-> west", 2)]
 
 
@@ -74,7 +74,7 @@ def test_a_pair_whose_second_path_is_a_ways_out_is_not_reported() -> None:
 
 
 def test_a_second_path_crossing_the_same_city_as_the_first_is_reported() -> None:
-    """It fails with the first, so it is a path bought and no protection gained."""
+    """It fails with the first, so it is a path ordered and no protection gained."""
     synthesis = _synthesis([
         _link("west", "east", "m1"),
         _link("west", "east", "m1", "x"),

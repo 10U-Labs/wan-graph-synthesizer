@@ -219,11 +219,11 @@ def test_the_chorded_ring_names_the_spur_whose_target_it_lowered() -> None:
 def test_a_chorded_node_ends_above_the_number_because_a_peer_asked() -> None:
     """Some node holds more ways out than the three asked of it, and no node asked for more.
 
-    A site takes the number its tenant bought and no more. Six nodes owing three ways out
+    A site takes the number its tenant asked for and no more. Six nodes owing three ways out
     apiece, and one of them held to two by its own fiber, come to seventeen ends; the paths
     that carry them have thirty-four ends between them, so at least one node is holding a
     path some peer reached for. Which node that is depends on which of the ten segments the
-    fiber choice leaves unbought, and there is nothing in the tenant's config that decides
+    fiber choice leaves unselected, and there is nothing in the tenant's config that decides
     it -- so what is worth pinning is that it happens, not who it happens to.
     """
     assert max(
@@ -240,7 +240,7 @@ def test_the_chorded_ring_names_the_nodes_holding_more_than_was_asked() -> None:
 def test_every_link_past_the_number_is_attributed_to_a_peer() -> None:
     """No node is over on the tool's own account: every extra link names the peer.
 
-    This is the guarantee the exact target buys. A link above the number has to trace back
+    This is the guarantee the exact target gains. A link above the number has to trace back
     to somebody's requirement, and on this graph every one of them traces to a peer that
     needed the node to reach its own.
     """

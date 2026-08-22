@@ -14,7 +14,7 @@ being thrown away once they have been counted.
 
 Because they are wired, their length is part of the answer. A path this module returns is
 fiber the synthesis orders: ``synthesizer.backbone.backbone_mesh`` reads a site's ways out off
-the fiber the synthesis bought by calling :func:`independent_paths` over it, and draws them
+the fiber the synthesis selected by calling :func:`independent_paths` over it, and draws them
 segment for segment. So the flow is a minimum-cost maximum flow, mileage on each arc: it
 returns the largest set of paths no one city's loss takes two of, and out of every set that
 size it returns the one running the fewest fiber miles. Callers may rely on both halves.
@@ -22,7 +22,7 @@ Counting cities instead is what put 220 miles of protection between Ashburn and 
 a 7,471-mile path through Paris (GitHub issue #44), and left roughly a tenth of the fiber
 the five tenants' proofs reach for reached for on nothing (GitHub issue #57).
 
-The ceiling is the point where the thing path diversity buys runs out. Below it a node is
+The ceiling is the point where the thing path diversity gains runs out. Below it a node is
 leaving built fiber unused; above it every further link must, by the max-flow min-cut
 theorem, re-cross a city the node already depends on -- real fiber with real capacity,
 but not another independent link, because there is nowhere else for it to go. That is why
@@ -85,7 +85,7 @@ class BackupPathLimit:
 
     ``multiple`` multiplies the distance from a site to the peer a path ends at, giving
     that path its budget: a protect path takes a detour, and this says how much of
-    one the operator is buying. It is the tenant's own
+    one the operator allows. It is the tenant's own
     ``backbone.max_backup_path_multiple``, carried in from the config unchanged.
     ``distances`` supplies the shortest-path rows the test needs -- one for the site being
     measured and one for each of its peers, which the callers holding all-pairs distances
@@ -506,7 +506,7 @@ class PathProofInputs:
 
     ``limit`` of ``None`` leaves every path admissible, which is the behaviour of the
     callers with no tenant in hand -- the backbone search ranking candidate sites, which is
-    asking what a site's fiber can do rather than what this tenant is buying.
+    asking what a site's fiber can do rather than what this tenant asked for.
 
     ``seat_cap`` is the most backbone sites the tenant's config allows, which is
     ``backbone.node_count.max`` in its ``etc/`` file. ``None`` is an operator who capped
@@ -546,8 +546,8 @@ def paths_per_peer(seat_cap: int | None, seats: int, paths_wanted: int) -> int:
     The seats the operator allows are what count them, not the seats a run filled, wherever
     the operator has said: ``seat_cap`` is ``backbone.node_count.max`` from the tenant's
     ``etc/`` file. The two differ whenever a synthesis seats fewer sites than its cap, and it
-    is the config that says what kind of network is being bought -- a tenant that allows
-    ninety-nine sites has bought a network where a site reaches other peers, whatever one
+    is the config that says what kind of network is being asked for -- a tenant that allows
+    ninety-nine sites has asked for a network where a site reaches other peers, whatever one
     run seated, so reading the run instead would let a pair of its sites be joined twice
     (GitHub issue #59). ``seat_cap`` of ``None`` is an operator who capped nothing, and a
     caller with no tenant in hand; ``seats`` is then the whole of what is known about how
@@ -676,7 +676,7 @@ def independent_paths(node: str, inputs: PathProofInputs) -> list[tuple[str, ...
     a node short of what its fiber allows, they are what it is short of, and wiring them is
     what closes the gap -- which is the reason this returns the paths rather than only
     counting them. It is also why their length is worth minimising: the mesh lays them
-    verbatim, so a path proved here is fiber somebody buys.
+    verbatim, so a path proved here is fiber somebody orders.
 
     ``limit`` bounds how far a path may run against the direct distance to the peer it
     ends at, and is a separate question from which of the cheapest paths are taken. A
@@ -713,7 +713,7 @@ def independent_paths(node: str, inputs: PathProofInputs) -> list[tuple[str, ...
     A path is ordered from one carrier, so where ``inputs.fiber_by_carrier`` says who has
     what, the proof runs once over each carrier's own fiber and the answers are put
     together with no city spent twice (see :func:`_no_city_twice`). Every path that comes
-    back is then one somebody can quote, and a site's ways out may still be bought from
+    back is then one somebody can quote, and a site's ways out may still be ordered from
     several carriers -- one path each -- which is what an operator does. Fiber naming no
     carrier leaves that empty and the proof runs once over the whole of it, as it always
     has.
@@ -802,7 +802,7 @@ def ways_out_by_carrier(node: str, inputs: PathProofInputs) -> dict[str, int]:
     Adding these up gives the site's ceiling, which is what
     :func:`diverse_path_ceilings` reports and what
     :func:`synthesizer.stages.finalize` holds the finished synthesis to. One rule and one
-    answer, so the fiber bought for a site and the number that site is later held to cannot
+    answer, so the fiber selected for a site and the number that site is later held to cannot
     drift apart (GitHub issue #113).
     """
     per_peer = _per_peer(inputs)

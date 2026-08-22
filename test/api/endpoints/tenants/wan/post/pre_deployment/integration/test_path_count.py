@@ -14,7 +14,7 @@ What this file asks changed with GitHub issue #60. It used to pin the exact numb
 the four passes happened to join, and the four passes are gone: the fiber for the whole
 synthesis is chosen at once now, so which pairs end up joined falls out of that choice and a
 number written down here would pin an answer nobody argued for. What is worth pinning is
-what the tenant bought -- that a generous graph does not become a full mesh, that every
+what the tenant asked for -- that a generous graph does not become a full mesh, that every
 path in the synthesis answers somebody's requirement, and that no path in it could be taken
 back out without costing somebody something.
 """
@@ -32,7 +32,7 @@ from synthesizer.validation import backbone_mesh_pairs
 _SITES = tuple(f"S{index}" for index in range(6))
 _ASKED_FOR = 2
 _FULL_MESH = len(_SITES) * (len(_SITES) - 1) // 2
-# A clique: every pair has its own fiber segment, priced by how far apart the two sites sit.
+# A clique: every pair has its own fiber segment, measured by how far apart the two sites sit.
 _SEGMENTS = {
     (_SITES[left], _SITES[right]): 100.0 * (right - left)
     for left, right in combinations(range(len(_SITES)), 2)
@@ -54,7 +54,7 @@ def test_the_synthesis_does_not_wire_the_full_mesh() -> None:
 
 
 def test_every_site_still_holds_the_paths_its_tenant_asked_for() -> None:
-    """Buying less fiber is only worth doing if it costs no site a way out, so nobody is short."""
+    """Fewer fiber miles are worth having only if no site loses a way out, so nobody is short."""
     assert ARTIFACTS.validation["backbone_mesh_independence_deficient"] == []
 
 
@@ -62,7 +62,7 @@ def test_every_path_in_the_synthesis_answers_a_sites_own_requirement() -> None:
     """No path is here because the ground was generous; each one is a site's own way out.
 
     The operator pinned nothing on this graph, so the only ground left is a site reaching
-    for the number of diverse paths it was bought. A path on no ground at all is exactly
+    for the number of diverse paths it was owed. A path on no ground at all is exactly
     what GitHub issue #60 found 54 of.
     """
     assert {use.reason for use in _MESH} == {LINK_FOR_TARGET}

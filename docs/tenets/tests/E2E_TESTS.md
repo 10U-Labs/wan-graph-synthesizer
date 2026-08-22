@@ -25,10 +25,10 @@ Every tier below it reports what the program says about itself. A unit returns a
 
 End-to-end tests are few, and each one stands for a journey that leaves the program unusable to its callers when it breaks: the request arrives, the work it asks for is done, and what comes back is what the caller was promised.
 
-These are the most expensive tests there are. They are slow, they run against a live environment with everything that implies, and they can fail for reasons that are outside the program entirely. The cost is what keeps the tier small. It buys the one thing no cheaper tier can give: that the deployed program serves the caller it was deployed for.
+These are the most expensive tests there are. They are slow, they run against a live environment with everything that implies, and they can fail for reasons that are outside the program entirely. The cost is what keeps the tier small. It gains the one thing no cheaper tier can give: that the deployed program serves the caller it was deployed for.
 
 An edge case in a parser is not a journey. It is cheaper, clearer and
-faster to diagnose as a unit test, and putting it here buys nothing but
+faster to diagnose as a unit test, and putting it here gains nothing but
 runtime.
 
 ## Safe Where It Runs

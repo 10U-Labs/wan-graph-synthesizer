@@ -1,14 +1,14 @@
 """Integration test: how many fiber miles a whole synthesis orders, and how few it could have.
 
 A synthesis grows by paths that are each defensible on their own. That is how 54 of the 192
-published paths came to buy nobody a way out, 23,917 miles of fiber six tenants were paying
+published paths came to gain nobody a way out, 23,917 miles of fiber six tenants were paying
 for then and got nothing for (GitHub issue #60): every one of them was the shortest way
 to join the pair it joined, or the shortest way round a city carrying the network, and no
 assertion anywhere asked what the synthesis cost in total. A total is the only assertion that
 notices that, so this file makes one, over a graph whose answer can be worked out by hand.
 
-The graph is four sites on a ring of hundred-mile segments with the two chords priced at two
-hundred and fifty. Every site is bought two ways out and has three fiber directions to find
+The graph is four sites on a ring of hundred-mile segments with the two chords running two
+hundred and fifty. Every site is owed two ways out and has three fiber directions to find
 them in, so the ring is the answer and the chords are what make it an answer rather than the
 only synthesis there is. Four sites needing two ways out apiece come to eight ends, and a
 segment carries two, so no synthesis holds fewer than four segments; the four shortest are the
@@ -18,7 +18,7 @@ The ring cannot reach every way this goes wrong, because its answer is settled b
 solve the search runs. ``synthesizer.survivable`` writes its requirements down as an answer
 violates them, and a limit of 24 passes on that used to stand in the module: on a graph
 answered in one pass a limit of any size is invisible, and on the six real maps there were
-then, which needed between 645 and 1,382 passes, it stopped every search early and bought
+then, which needed between 645 and 1,382 passes, it stopped every search early and selected
 fiber on an answer that still missed requirements (GitHub issue #63). So a second graph runs
 here, twelve cities of carrier fiber with five backbone seats, whose search takes 26 passes.
 Left to finish it delivers the 159 miles of its own floor; stopped at 24 it delivered 176.
@@ -36,9 +36,9 @@ a site can be sold and what its fiber alone could carry are the same number by c
 The third is a ring of four cities, two of them seats, whose way round through ``q`` is half
 Zayo's and half Lumen's -- a way round nobody quotes, since a path is ordered from one
 carrier end to end. Each seat therefore holds one way out and not the two the ring's shape
-suggests, and a floor priced for two would sit above the fiber the synthesis actually
+suggests, and a floor measured for two would sit above the fiber the synthesis actually
 orders. That is what Yurop published: 8,844.892 miles ordered against a floor of 9,141.641
-it had already beaten, because Boston, MA was priced for a second way out no carrier sells
+it had already beaten, because Boston, MA was written down for a second way out no carrier sells
 (GitHub issue #111).
 
 """
@@ -57,7 +57,7 @@ from synthesizer.survivable import FiberInputs, choose_fiber
 _SITES = ("w", "x", "y", "z")
 _ASKED_FOR = 2
 # The ring and its two chords. A chord is the shortest way between the two sites it joins,
-# which is exactly what a pass drawing one pair at a time would reach for, and it buys
+# which is exactly what a pass drawing one pair at a time would reach for, and it gains
 # neither of them a way out the ring has not already given them.
 _SEGMENTS = {
     ("w", "x"): 100.0, ("x", "y"): 100.0, ("y", "z"): 100.0, ("z", "w"): 100.0,
@@ -100,7 +100,7 @@ def test_the_delivered_synthesis_runs_no_further_than_twice_that_floor() -> None
     )
 
 
-def test_every_site_still_holds_the_two_ways_out_it_was_bought() -> None:
+def test_every_site_still_holds_the_two_ways_out_it_was_owed() -> None:
     """Four hundred miles is only a saving if it costs no site a way out, and it costs none."""
     assert ARTIFACTS.validation["backbone_mesh_independence_deficient"] == []
 
@@ -125,11 +125,11 @@ MANY_PASS_ARTIFACTS = _many_pass_artifacts()
 
 
 def test_a_synthesis_whose_search_takes_many_passes_orders_the_fewest_miles_there_are() -> None:
-    """159 miles delivered over a graph that needs 26 passes to work out what to buy.
+    """159 miles delivered over a graph that needs 26 passes to work out what to select.
 
     Pinned, because the number is what moves when the search stops early: cut off at 24
     passes this same graph delivered 176 miles, fiber the operator holds and pays for every
-    month having bought nothing with it.
+    month having gained nothing by it.
     """
     assert MANY_PASS_ARTIFACTS.synthesis.metrics.physical_miles == fixtures.MANY_PASS_MILES
 
@@ -150,10 +150,10 @@ def test_that_synthesis_orders_exactly_the_floor_it_publishes_rather_than_twice_
     )
 
 
-def test_every_seat_on_that_synthesis_holds_the_two_ways_out_it_was_bought() -> None:
+def test_every_seat_on_that_synthesis_holds_the_two_ways_out_it_was_owed() -> None:
     """Fewer miles is only a saving if it costs no site a way out, and it costs none here.
 
-    The cheapest way to run few miles is to buy fiber that leaves a site short, so the
+    The surest way to run few miles is to select fiber that leaves a site short, so the
     mileage above means nothing without this beside it.
     """
     assert MANY_PASS_ARTIFACTS.validation["backbone_mesh_independence_deficient"] == []
@@ -177,7 +177,7 @@ def test_that_synthesis_is_the_same_synthesis_when_every_pass_of_its_search_give
 # A ring of four cities with two seats, and the owners written on the fiber. Lumen has the
 # way round through ``p`` whole; the way round through ``q`` is Zayo's on the way out of
 # ``w`` and Lumen's on the way in to ``x``, so nobody can quote it. Each seat holds one way
-# out and not the two the ring's shape offers, and the way nobody sells is priced at three
+# out and not the two the ring's shape offers, and the way nobody sells runs three
 # hundred against the two hundred of the way somebody does, so the shorter way is also the
 # sellable one and the answer is forced whole.
 _SPLIT_SITES = ("w", "x")
@@ -205,7 +205,7 @@ def test_no_synthesis_runs_fewer_miles_than_the_floor_it_publishes() -> None:
     A synthesis under its own floor is arithmetic that has come apart, and until this graph
     arrived no fixture in this tier could produce it: the floor is measured over the
     requirements the search wrote down, and on fiber naming no owner those requirements are
-    exactly what the shape allows. Here they are not, and a floor still priced for the way
+    exactly what the shape allows. Here they are not, and a floor still measured over the way
     round nobody sells would come out at five hundred miles over a synthesis that correctly
     orders two hundred.
     """
@@ -240,7 +240,7 @@ SELLABLE_ARTIFACTS = fixtures.synthesis_over_owned_fiber(
 )
 
 
-def _fiber_the_choice_bought() -> frozenset[tuple[str, str]]:
+def _fiber_the_choice_selected() -> frozenset[tuple[str, str]]:
     """The segments ``choose_fiber`` picks for that graph, on the terms the pipeline gives it.
 
     Asked again here because a finished synthesis does not carry the choice's answer, only
@@ -259,18 +259,18 @@ def _fiber_the_choice_bought() -> frozenset[tuple[str, str]]:
     )).segments
 
 
-def test_the_delivered_synthesis_orders_only_fiber_the_choice_bought_for_it() -> None:
+def test_the_delivered_synthesis_orders_only_fiber_the_choice_selected_for_it() -> None:
     """Every segment the finished synthesis holds is one ``choose_fiber`` picked.
 
-    The expensive step of a build is deciding which of the carriers' segments to buy, and
+    The expensive step of a build is deciding which of the carriers' segments to use, and
     the whole synthesizer is arranged around making that decision once for the whole
     backbone. A network drawn over fiber the choice never picked is that decision made for
     nothing, and it is what the six live tenants were getting: 29 of the 37 backbone seats
     ``etc/`` declares were drawn over the carriers' whole map instead, and 38 of the 68
-    fiber segments DoW's paths ran over had never been bought (GitHub issue #113).
+    fiber segments DoW's paths ran over had never been selected (GitHub issue #113).
 
     Asserted at the tier that runs the whole pipeline, because the two halves that used to
     disagree sit in different modules -- ``synthesizer.survivable`` chose the fiber and
     ``synthesizer.backbone`` drew over it -- and no unit of either can see the disagreement.
     """
-    assert set(SELLABLE_ARTIFACTS.synthesis.fiber_segment_keys) <= _fiber_the_choice_bought()
+    assert set(SELLABLE_ARTIFACTS.synthesis.fiber_segment_keys) <= _fiber_the_choice_selected()

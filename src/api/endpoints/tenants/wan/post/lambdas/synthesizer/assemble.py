@@ -210,7 +210,7 @@ def synthesis_paths(
     """Draw the backbone-to-backbone paths for a synthesis, and the floor they are judged against.
 
     The operator's instructions are gathered here and handed over whole: the pairs they
-    pinned, the pairs they struck out, how many ways out each site is bought, how far a
+    pinned, the pairs they struck out, how many ways out each site is owed, how far a
     path may run against the direct distance between its ends, and how many seats their
     config allows. What comes back is the paths and the fewest miles any synthesis meeting the
     same requirements could have run (see :class:`synthesizer.backbone.BackboneMesh`).

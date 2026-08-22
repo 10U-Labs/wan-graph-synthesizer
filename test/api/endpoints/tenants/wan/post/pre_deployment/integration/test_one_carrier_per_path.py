@@ -3,14 +3,14 @@
 A path is one thing an operator orders, from one company, and pays for every month. Half
 of Lumen's Denver to Salt Lake City and half of Zayo's Salt Lake City to Reno is not a
 product anybody quotes, so a synthesis that draws one has handed its tenant a network they
-cannot buy. That is the defect GitHub issue #106 is about, and this is the whole pipeline
+cannot order. That is the defect GitHub issue #106 is about, and this is the whole pipeline
 run over fiber that says who owns it.
 
 The map is a square of four sites on hundred-mile sides, two of them Lumen's and two
 Zayo's, with a shortcut across the middle through a fifth city no provider has a cage in.
 The shortcut is the case: it is ten miles each side against a hundred, so it is far and
-away the cheapest way from ``a`` to ``c`` and any synthesis blind to ownership takes it --
-and its two halves belong to different companies, so there is nobody to buy it from. What
+away the shortest way from ``a`` to ``c`` and any synthesis blind to ownership takes it --
+and its two halves belong to different companies, so there is nobody to order it from. What
 is left when it is refused is the square, whose two sides out of ``a`` come from two
 different carriers, which is what an operator really does: one path from each of two
 companies rather than one path from neither.
@@ -60,13 +60,13 @@ def test_every_drawn_path_names_the_carrier_it_is_ordered_from() -> None:
     assert all(use.carrier in ("lumen", "zayo") for use in _MESH)
 
 
-def test_the_cheap_way_that_changes_hands_is_not_drawn() -> None:
+def test_the_short_way_that_changes_hands_is_not_drawn() -> None:
     """Twenty miles beats two hundred, and it is still not a path anybody sells."""
     assert not [use for use in _MESH if _SHORTCUT_CITY in use.path]
 
 
-def test_a_sites_ways_out_may_be_bought_from_different_carriers() -> None:
-    """Diverse paths are diverse fiber, not one supplier: a buys one path from each."""
+def test_a_sites_ways_out_may_be_ordered_from_different_carriers() -> None:
+    """Diverse paths are diverse fiber, not one supplier: a orders one path from each."""
     assert _carriers_at("a") == {"lumen", "zayo"}
 
 

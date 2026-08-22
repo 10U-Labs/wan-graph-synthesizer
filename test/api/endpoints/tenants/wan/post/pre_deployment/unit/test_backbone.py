@@ -62,15 +62,15 @@ def _drawn(
     return backbone_mesh(sites, _distances(links), links, constraints)
 
 
-def _bought(
+def _selected(
     links: dict[tuple[str, str], FiberSegment],
     sites: tuple[str, ...],
     constraints: BackboneConstraints,
 ) -> frozenset[tuple[str, str]]:
-    """The fiber the choice buys for this backbone, asked on the same terms the mesh asks.
+    """The fiber the choice selects for this backbone, asked on the same terms the mesh asks.
 
     ``backbone_mesh`` does not hand the choice's answer back, so it is asked again here with
-    the inputs ``_bought_fiber`` builds. What the two have to agree about is which segments
+    the inputs ``_selected_fiber`` builds. What the two have to agree about is which segments
     come back, and that is what the assertion standing on this compares.
     """
     return choose_fiber(FiberInputs(
@@ -124,10 +124,10 @@ def _joining(mesh: BackboneMesh, left: str, right: str) -> SynthesisPath:
     )
 
 
-# Four sites on a ring of hundred-mile segments, with the two chords priced at two hundred
+# Four sites on a ring of hundred-mile segments, with the two chords running two hundred
 # and fifty. Every site needs two ways out and has only two fiber directions to find them
 # in, so the ring is the whole of the answer: four paths, four hundred miles, and neither
-# chord bought. The chords are what make it an answer rather than the only graph there is.
+# chord selected. The chords are what make it an answer rather than the only graph there is.
 _SQUARE_SITES = ("w", "x", "y", "z")
 _SQUARE_LINKS = physical({
     ("w", "x"): 100.0, ("x", "y"): 100.0, ("y", "z"): 100.0, ("z", "w"): 100.0,
@@ -144,8 +144,8 @@ def test_the_square_is_drawn_with_one_path_a_pair_round_the_ring() -> None:
     }
 
 
-def test_the_square_buys_neither_of_the_chords() -> None:
-    """A chord costs two hundred and fifty miles and buys nobody a way out, so it is not bought.
+def test_the_square_selects_neither_of_the_chords() -> None:
+    """A chord runs two hundred and fifty miles and gains nobody a way out, so it is left.
 
     The old passes could reach for one: a chord is the shortest way between the two sites it
     joins, and a pass drawing that pair on its own had no way to see that the ring already
@@ -190,7 +190,7 @@ def test_a_path_names_both_of_the_sites_that_reached_for_it() -> None:
 
 
 def test_no_path_the_square_holds_could_be_taken_back_out() -> None:
-    """Removing any one path leaves a site with one way out where its tenant bought two."""
+    """Removing any one path leaves a site with one way out where its tenant asked for two."""
     assert _needed(_SQUARE.paths, _SQUARE_SITES, 2) == _SQUARE.paths
 
 
@@ -198,7 +198,7 @@ def test_no_path_the_square_holds_could_be_taken_back_out() -> None:
 # miles a segment, and reaches ``q`` again through ``n`` at eleven. Drawing hub-to-q on its
 # own takes the twenty-mile way through ``m``, which leaves both of hub's paths riding one
 # city; the twenty-two-mile way through ``n`` is the one that gives hub a second way out. The
-# p-to-q segment closes the ring, so a whole-synthesis choice buys five segments and 52 miles.
+# p-to-q segment closes the ring, so a whole-synthesis choice takes five segments and 52 miles.
 _EGRESS_SITES = ("hub", "p", "q")
 _EGRESS_LINKS = physical({
     ("hub", "m"): 10.0, ("m", "p"): 10.0, ("m", "q"): 10.0,
@@ -220,7 +220,7 @@ def test_the_longer_way_round_a_shared_city_is_the_one_drawn() -> None:
     assert ("hub", "n", "q") in {use.path for use in _EGRESS.paths}
 
 
-def test_the_shorter_way_round_that_shared_city_is_not_bought_at_all() -> None:
+def test_the_shorter_way_round_that_shared_city_is_not_selected_at_all() -> None:
     """The m-to-q segment is fiber the finished synthesis never orders."""
     assert link_key("m", "q") not in {
         link_key(*pair) for use in _EGRESS.paths for pair in zip(use.path, use.path[1:])
@@ -233,7 +233,7 @@ def test_the_shared_egress_graph_joins_all_three_pairs_once() -> None:
 
 
 def test_the_shared_egress_synthesis_runs_the_miles_its_five_segments_cost() -> None:
-    """Fifty-two miles, which is the five segments the choice bought read back as paths."""
+    """Fifty-two miles, which is the five segments the choice selected read back as paths."""
     assert _mesh_miles(_EGRESS) == 52.0
 
 
@@ -242,12 +242,13 @@ def test_no_path_the_shared_egress_synthesis_holds_could_be_taken_back_out() -> 
     assert _needed(_EGRESS.paths, _EGRESS_SITES, 2) == _EGRESS.paths
 
 
-# Two lobes of one company's fiber, joined cheaply through the city ``mid`` and expensively
-# through ``w``. ``a`` and ``b`` sit on one side and ``c`` and ``d`` on the other, and every
-# way out any of the four holds runs through ``mid``: the way through ``w`` is forty miles
-# where ``b`` and ``c`` are ten apart, so it is past what the operator's backup path multiple
-# buys for that pair and no site reaches for it. The network the reading draws therefore falls
-# in two the day ``mid`` goes dark, which is the shape three of the five live tenants
+# Two lobes of one company's fiber, joined over a short way through the city ``mid`` and a
+# long way round through ``w``. ``a`` and ``b`` sit on one side and ``c`` and ``d`` on the
+# other, and every way out any of the four holds runs through ``mid``: the way through ``w``
+# is forty miles where ``b`` and ``c`` are ten apart, so it is past what the operator's
+# backup path multiple allows for that pair and no site reaches for it. The network the
+# reading draws therefore falls in two the day ``mid`` goes dark, which is the shape three
+# of the five live tenants
 # published (GitHub issue #112).
 #
 # The ring fixtures above cannot produce it. A ring site has two fiber directions, so its two
@@ -270,7 +271,7 @@ _TWO_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _bounded(_LOBE_LINKS, 3.0))
 # ``mid``.
 _BOWTIE_LINKS = fixtures.carrier_fiber_segments(_LOBE_LOBES)
 _BOWTIE = _drawn(_LOBE_SITES, _BOWTIE_LINKS, _bounded(_BOWTIE_LINKS, 3.0))
-# The two lobes again under an operator who buys no path running more than four fifths again
+# The two lobes again under an operator who orders no path running more than four fifths again
 # further than the straight distance between its two ends. The shortest way round ``mid`` is
 # the fifty miles from ``a`` to ``c`` through ``w``, against the twenty those two are apart,
 # so it is fiber this operator has already said they do not want.
@@ -282,10 +283,10 @@ _ONE_WAY_OUT_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _bounded(_LOBE_LINKS, 3.0,
 def test_a_city_every_drawn_path_crosses_is_given_a_way_round_it() -> None:
     """No one city's loss splits the fiber the four seats are published over.
 
-    The whole of what a tenant buying two ways out of every node is paying for, and the thing
-    reading each site's ways out on its own does not deliver. Each seat holds two ways out
-    either way; what the way round buys is the network staying in one piece when ``mid`` goes
-    dark.
+    The whole of what a tenant asking for two ways out of every node is paying for, and the
+    thing reading each site's ways out on its own does not deliver. Each seat holds two ways
+    out either way; what the way round gains is the network staying in one piece when ``mid``
+    goes dark.
     """
     assert _cut(_TWO_LOBES) == set()
 
@@ -318,22 +319,22 @@ def test_a_city_no_fiber_goes_round_still_leaves_every_seat_its_paths() -> None:
     } == set(_LOBE_SITES)
 
 
-def test_a_way_round_past_the_operators_backup_path_multiple_is_not_bought() -> None:
+def test_a_way_round_past_the_operators_backup_path_multiple_is_not_selected() -> None:
     """``mid`` stays a single point of failure where the only way round it runs too far.
 
     The bound is the operator's own ``backbone.max_backup_path_multiple``, and a path past
-    it is one they would not order. Buying it anyway would hand them fiber they have already
+    it is one they would not order. Selecting it anyway would hand them fiber they have already
     said they do not want, on the strength of a property they also want.
     """
     assert "mid" in _cut(_BOUNDED_LOBES)
 
 
-def test_a_tenant_that_bought_one_way_out_is_not_given_a_way_round_anything() -> None:
-    """The fiber through ``w`` goes unbought, which is the way round ``mid`` and nothing else.
+def test_a_tenant_that_asked_for_one_way_out_is_not_given_a_way_round_anything() -> None:
+    """The fiber through ``w`` goes unselected, which is the way round ``mid`` and nothing else.
 
     One way out is one way out, and a network built to it comes apart wherever its fiber
     does. Yurop asks for one diverse path, and four cities split the network it was handed;
-    that is what it bought. Buying it the way round anyway would order fiber against a
+    that is what it asked for. Selecting the way round anyway would order fiber against a
     requirement the tenant did not write down, which is the same defect read backwards.
     """
     assert [
@@ -346,7 +347,7 @@ def test_a_tenant_that_bought_one_way_out_is_not_given_a_way_round_anything() ->
 # The two graphs ``test_survivable.py`` uses to hold the choice to what one carrier sells and
 # to what the operator's bound allows, driven the whole way through the mesh. The choice is
 # only worth making if the network is drawn over what it chose, and until GitHub issue #113 it
-# was not: ``_ways_out_of`` proved each site over the bought fiber and over the carriers'
+# was not: ``_ways_out_of`` proved each site over the selected fiber and over the carriers'
 # whole map and drew whichever gave more, which was the whole map for 29 of the 37 backbone
 # seats ``etc/`` declares.
 _SELLABLE_TERMS = BackboneConstraints(number_of_diverse_paths=2, seat_cap=2)
@@ -365,13 +366,13 @@ def _run_over(mesh: BackboneMesh) -> set[tuple[str, str]]:
 
 
 def test_a_site_is_drawn_over_fiber_one_carrier_could_sell_it() -> None:
-    """Every segment the two sites are drawn over is one the choice bought for them.
+    """Every segment the two sites are drawn over is one the choice selected for them.
 
     Choosing the fiber is the expensive step of a build and the one the whole synthesizer is
     arranged around, so a network drawn over fiber the choice never picked is a choice made
     for nothing.
     """
-    assert _run_over(_SELLABLE_MESH) <= _bought(
+    assert _run_over(_SELLABLE_MESH) <= _selected(
         fixtures.SELLABLE_WAYS_LINKS, fixtures.SELLABLE_WAYS_SITES, _SELLABLE_TERMS
     )
 
@@ -381,9 +382,9 @@ def test_a_site_is_drawn_over_fiber_the_operators_bound_allows() -> None:
 
     The two halves of the defect were separate: one was who owns the fiber and the other was
     how far a path may run, and either on its own left the drawing reaching past what the
-    choice had bought.
+    choice had selected.
     """
-    assert _run_over(_NEAR_AND_FAR_MESH) <= _bought(
+    assert _run_over(_NEAR_AND_FAR_MESH) <= _selected(
         fixtures.NEAR_AND_FAR_LINKS, fixtures.NEAR_AND_FAR_SITES, _NEAR_AND_FAR_TERMS
     )
 
@@ -425,7 +426,7 @@ def test_a_pinned_path_says_the_operator_is_what_put_it_there() -> None:
 
 
 def test_a_pinned_path_is_never_taken_back_out_as_unneeded() -> None:
-    """The pin buys nobody a way out and stands anyway: it is the one path nobody justifies.
+    """The pin gains nobody a way out and stands anyway: it is the one path nobody justifies.
 
     Every site already holds its two ways out round the ring, so the pinned path would be
     dropped on the same test that drops any other path nobody needs. An operator instruction
@@ -434,7 +435,7 @@ def test_a_pinned_path_is_never_taken_back_out_as_unneeded() -> None:
     assert len(_PINNED_CHORD.paths) == 5
 
 
-def test_a_pin_over_fiber_the_synthesis_would_have_bought_anyway_is_still_a_pin() -> None:
+def test_a_pin_over_fiber_the_synthesis_would_have_selected_anyway_is_still_a_pin() -> None:
     """The pinned pair is one the ring joins too, and the pin is what the path is recorded as."""
     assert _joining(_PINNED_SEGMENT, "w", "x").reason == LINK_FOR_PIN
 
@@ -499,7 +500,7 @@ _CHAIN = [
 
 
 def test_a_path_nobody_needs_is_taken_back_out() -> None:
-    """The chord buys neither of its ends a way out the ring did not already give it."""
+    """The chord gains neither of its ends a way out the ring did not already give it."""
     assert _needed(_RING_PLUS_CHORD, _SQUARE_SITES, 2) == _RING_PLUS_CHORD[:4]
 
 
@@ -511,7 +512,7 @@ def test_a_path_a_site_would_lose_a_way_out_by_is_kept() -> None:
 def test_a_path_whose_loss_would_leave_a_city_carrying_the_network_is_kept() -> None:
     """Dropping one side of a triangle leaves the middle city carrying both other sites.
 
-    Each of the three sites is bought one way out and would still have one without the
+    Each of the three sites is given one way out and would still have one without the
     third path, so the ways out alone would let it go. What stops it is that the fiber left
     would fall to the loss of a single city, which the fiber with it does not.
     """
@@ -521,7 +522,7 @@ def test_a_path_whose_loss_would_leave_a_city_carrying_the_network_is_kept() -> 
 def test_a_path_whose_loss_would_break_the_backbone_in_two_is_kept() -> None:
     """Dropping the middle of a chain leaves two backbones rather than one.
 
-    Every site is bought one way out and every site still has one on either side of the
+    Every site is given one way out and every site still has one on either side of the
     break, so nothing about the ways out refuses this. Being one network is the separate
     thing a backbone owes, and it is what keeps the path.
     """
@@ -561,7 +562,7 @@ _PIN_WY = BackboneConstraints(
 
 
 def test_a_pin_no_carrier_can_join_draws_no_path() -> None:
-    """Both ways from w to y change hands halfway, so the pin has nobody to buy from."""
+    """Both ways from w to y change hands halfway, so the pin has nobody to order from."""
     mesh = _drawn(("w", "x", "y", "z"), _SPLIT_SQUARE, _PIN_WY)
     assert not [use for use in mesh.paths if use.reason == LINK_FOR_PIN]
 

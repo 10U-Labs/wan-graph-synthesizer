@@ -3,7 +3,7 @@
 Every backbone node owes its tenant a number of ways out that no one city's loss takes two
 of, and an operator pays for every path they hold. So the synthesis owes them the paths they
 asked for and nothing besides. This module produces that list of paths, and it does it in
-two steps: the fiber to buy is chosen for the whole synthesis at once by
+two steps: the fiber is selected for the whole synthesis at once by
 :mod:`synthesizer.survivable`, and the paths are then read off that fiber, one site at a
 time, as the ways out each site actually holds over it.
 
@@ -11,21 +11,21 @@ Splitting it that way is the point. The four passes that stood here until GitHub
 decided one pair of sites at a time -- which pairs to join, which fiber each pair's path
 took, where to put a second path back, how to relieve a city carrying the whole network --
 and no pass ever reconsidered what an earlier one had settled. Each decision was defensible
-when it was taken, and together they left 54 of the 192 published paths buying nobody a way
+when it was taken, and together they left 54 of the 192 published paths gaining nobody a way
 out: 23,917 of the 83,927 fiber miles six tenants were paying for then, 28 per cent of it,
 on paths that could all be taken out at once without costing a single site a way out
 or leaving one city carrying the network. The paths came from every pass, so no one pass was
 the defect; the sequence was.
 
 What is left after the choice is ordinary reading. A site's ways out over the fiber the
-synthesis bought are the fewest-mile set of paths out of it that no one city's loss takes two
+synthesis selected are the fewest-mile set of paths out of it that no one city's loss takes two
 of, which is what :func:`synthesizer.ceiling.independent_paths` already computes, and the
 tenant's number says how many of them are drawn. A path and its reverse are the same fiber
 and are drawn once. An operator's pin is honoured whatever the choice said. And a path no
 site needs is dropped, because the whole complaint in issue #60 is paths nobody needs.
 
-One thing the reading cannot give a tenant is the thing it is really buying. Two ways out of
-every site is bought so that the backbone stays in one piece when a city goes dark, and a
+One thing the reading cannot give a tenant is the thing those paths are really for. Two ways
+out of every site is asked for so the backbone stays in one piece when a city goes dark, and a
 site can hold both of its own ways out while the cities its peers depend on are the ones that
 fail: three of the five tenants asking for two published a network that some one city's loss
 broke in two (GitHub issue #112). So the paths are asked that question once they are read
@@ -79,7 +79,7 @@ def path_geometry_miles(
 class BackboneConstraints:
     """The operator's instructions to the mesh: their pins, their prunes, and the numbers.
 
-    ``number_of_diverse_paths`` is how many ways out each backbone node is bought, read
+    ``number_of_diverse_paths`` is how many ways out each backbone node is owed, read
     from the tenant's ``etc/*.yml``. ``forced_pairs`` are the backbone-backbone pairs the
     operator wrote in and ``removed_pairs`` the ones they struck out. ``limit`` is their
     backup path multiple, which says how far a path may run against the direct distance
@@ -113,28 +113,28 @@ class BackboneMesh:
 
 @dataclass(frozen=True)
 class _DrawnFiber:
-    """The fiber a synthesis bought, beside the whole fiber it was chosen out of.
+    """The fiber a synthesis selected, beside the whole fiber it was chosen out of.
 
-    Every site's ways out are read off ``bought`` and nothing else (see
-    :func:`_ways_out_of`). ``bought_by_carrier`` is it split into what each carrier could
+    Every site's ways out are read off ``selected`` and nothing else (see
+    :func:`_ways_out_of`). ``selected_by_carrier`` is it split into what each carrier could
     sell a path over (see :func:`synthesizer.graphs.adjacency_by_carrier`), computed once
     here rather than once per site, because a site's ways out are proved one carrier at a
     time and there are as many sites as the backbone holds.
 
     ``whole`` is the carriers' fiber the choice was made out of, and three things still ask
     it questions: what a path costs and who would sell it (:func:`_laid`), where an
-    operator's pin may run (:func:`_bought_fiber`), and what fiber goes round a city
+    operator's pin may run (:func:`_selected_fiber`), and what fiber goes round a city
     carrying the whole network (:func:`_path_around`). None of them is a site's ways out.
 
     ``distances`` is how far apart every two cities are over that whole fiber, which is what
-    says which two sites a path round a city is worth buying between (see
+    says which two sites a path round a city is worth drawing between (see
     :func:`_pairs_across`).
     """
 
     backbone_ids: tuple[str, ...]
     distances: dict[str, dict[str, float]]
-    bought: dict[tuple[str, str], FiberSegment]
-    bought_by_carrier: dict[str, dict[str, list[tuple[str, float]]]]
+    selected: dict[tuple[str, str], FiberSegment]
+    selected_by_carrier: dict[str, dict[str, list[tuple[str, float]]]]
     whole: dict[tuple[str, str], FiberSegment]
     constraints: BackboneConstraints
 
@@ -178,7 +178,7 @@ def _pinned_path(
     A pin is an instruction rather than a proposal, so it is drawn whatever the choice of
     fiber said and its own fiber is added to the synthesis. One thing a pin cannot ask for
     is a pair no carrier can join, and nothing is drawn for such a pair -- an operator who
-    pins two cities no one company reaches has asked for a path there is nobody to buy.
+    pins two cities no one company reaches has asked for a path there is nobody to sell.
 
     The shortest way each carrier has is drawn and the shortest of those is taken, so the
     pin is honoured over the fewest fiber miles anybody can sell it in. Fiber naming no
@@ -251,10 +251,10 @@ def _proved_over(
 
 
 def _ways_out_of(site: str, drawn: _DrawnFiber) -> list[tuple[str, ...]]:
-    """The paths ``site`` is drawn with: what it holds over the fiber the synthesis bought.
+    """The paths ``site`` is drawn with: what it holds over the fiber the synthesis selected.
 
-    The fiber the choice bought and nothing else. Choosing which of the carriers' segments
-    to buy is the expensive step of a build and the one the whole synthesizer is arranged
+    The fiber the choice selected and nothing else. Choosing which of the carriers' segments
+    to use is the expensive step of a build and the one the whole synthesizer is arranged
     around, so a site drawn over fiber the choice never picked is a site the choice was
     made for nothing -- and that is what used to happen to 29 of the 37 backbone seats
     ``etc/`` declares, because the two halves were asking different questions (GitHub issue
@@ -263,11 +263,11 @@ def _ways_out_of(site: str, drawn: _DrawnFiber) -> list[tuple[str, ...]]:
     They ask one question now. :func:`synthesizer.survivable.choose_fiber` writes every
     requirement over one carrier's own fiber, cut to the segments a path from that site to
     those peers could run on inside the operator's backup path multiple, which is what
-    :func:`_proved_over` measures a finished path against. So the ways out the choice bought
-    for a site are ways out the reading can find over what it bought, and there is nothing
+    :func:`_proved_over` measures a finished path against. So the ways out the choice made
+    for a site are ways out the reading can find over what it selected, and there is nothing
     left to fall back to.
     """
-    return _proved_over(site, drawn.bought, drawn.bought_by_carrier, drawn)
+    return _proved_over(site, drawn.selected, drawn.selected_by_carrier, drawn)
 
 
 def _laid(drawn: _DrawnFiber, pinned: list[SynthesisPath]) -> list[SynthesisPath]:
@@ -372,9 +372,9 @@ def _path_around(
 def _relieved(paths: list[SynthesisPath], drawn: _DrawnFiber) -> list[SynthesisPath]:
     """The paths as laid, with one more added for every city whose loss would split them.
 
-    A tenant buying two ways out of every backbone node is buying a backbone that stays in
-    one piece when a city goes dark, and reading each site's ways out on its own does not
-    deliver it: three of the five tenants asking for two published a network that some one
+    A tenant asking for two ways out of every backbone node is asking for a backbone that
+    stays in one piece when a city goes dark, and reading each site's ways out on its own
+    does not deliver it: three of the five tenants asking for two published a network some one
     city's loss broke in two, and the loss of Atlanta, GA left Ashburn, VA and New York, NY
     with no way to DAF's other nine backbone nodes (GitHub issue #112). So the finished list
     of paths is asked which cities its fiber cannot survive losing, and each of them in turn
@@ -385,7 +385,7 @@ def _relieved(paths: list[SynthesisPath], drawn: _DrawnFiber) -> list[SynthesisP
     next city is taken instead. That shortfall is
     ``backbone_mesh_survives_any_one_site_loss``'s to report, and what it reports then is
     true of the carriers' fiber rather than only of this synthesis -- which is worth more
-    than fiber on the map nobody would buy. Minuteman is the live case: Minot, ND can be
+    than fiber on the map nobody would order. Minuteman is the live case: Minot, ND can be
     sold one way out and no more, so its 606-mile path to Cheyenne, WY is the only way it is
     reached and Max, ND, Bismarck, ND, Dickinson, ND and Cheyenne, WY each split the network
     when they go dark. There is no second path to draw and nobody to order it from.
@@ -393,7 +393,7 @@ def _relieved(paths: list[SynthesisPath], drawn: _DrawnFiber) -> list[SynthesisP
     A tenant asking for one way out of each node is asked for nothing here. One way out is
     one way out, and a network built to it comes apart wherever its fiber does: Yurop asks
     for one, four cities split its published network, and that is the honest answer to what
-    it bought rather than a defect to spend its money on.
+    it asked for rather than a defect to spend its money on.
 
     This is a requirement of the whole network and not the pair-at-a-time repair GitHub
     issue #60 retired. It runs once, over the finished list of paths, and what it adds is
@@ -453,21 +453,21 @@ def _needed(
     return kept
 
 
-def _bought_fiber(
+def _selected_fiber(
     backbone_ids: tuple[str, ...],
     fiber_segments: dict[tuple[str, str], FiberSegment],
     all_distances: dict[str, dict[str, float]],
     constraints: BackboneConstraints,
     by_carrier: dict[str, dict[str, list[tuple[str, float]]]],
 ) -> tuple[frozenset[tuple[str, str]], float, list[SynthesisPath]]:
-    """The fiber the synthesis buys, the floor under it, and the paths the operator pinned.
+    """The fiber the synthesis selects, the floor under it, and the paths the operator pinned.
 
     The pins are drawn over the whole of the carriers' fiber rather than over what the choice
-    bought, and their own segments join what was bought. An operator who writes a pair into
+    selected, and their own segments join what was selected. An operator who writes a pair into
     ``etc/*.yml`` has decided that pair is joined, and a choice made to answer everybody
     else's requirements has no standing to overrule it.
 
-    ``by_carrier`` goes to the choice as well as to the pins. A path is bought from one
+    ``by_carrier`` goes to the choice as well as to the pins. A path is ordered from one
     carrier end to end, so what a site is owed is what one carrier can sell it, and the
     choice needs the split to know that (see :func:`synthesizer.survivable._capped`).
     """
@@ -513,12 +513,12 @@ def backbone_mesh(
     :func:`synthesizer.validation.backbone_mesh_independence_deficient`'s to report.
     """
     whole_by_carrier = adjacency_by_carrier(fiber_segments)
-    segments, floor, pinned = _bought_fiber(
+    segments, floor, pinned = _selected_fiber(
         backbone_ids, fiber_segments, all_distances, constraints, whole_by_carrier
     )
-    bought = {segment: fiber_segments[segment] for segment in sorted(segments)}
+    selected = {segment: fiber_segments[segment] for segment in sorted(segments)}
     drawn = _DrawnFiber(
-        backbone_ids, all_distances, bought, adjacency_by_carrier(bought),
+        backbone_ids, all_distances, selected, adjacency_by_carrier(selected),
         fiber_segments, constraints,
     )
     laid = _relieved(_laid(drawn, pinned), drawn)

@@ -25,7 +25,7 @@ what makes it the fixture that notices (GitHub issue #63).
 
 The floor published with the choice is asserted as a number only where the graph forces the
 number, and as an inequality over every fixture at the end. No synthesis meeting the same
-requirements can run fewer miles than the floor, and a floor above the fiber actually bought
+requirements can run fewer miles than the floor, and a floor above the fiber actually selected
 would be a claim the synthesis cannot be as short as it already is.
 """
 
@@ -75,7 +75,7 @@ def _asking(
 ) -> FiberInputs:
     """What a backbone of these sites asks of this fiber, with no bound on a path's length.
 
-    The carriers are split the way ``synthesizer.backbone._bought_fiber`` splits them, so a
+    The carriers are split the way ``synthesizer.backbone._selected_fiber`` splits them, so a
     fixture that says who owns a segment is answered on what one owner can sell and a
     fixture that says nothing about owners is answered on the whole map.
     """
@@ -115,10 +115,10 @@ def _owed(
     )
 
 
-def _bought_miles(
+def _selected_miles(
     choice: FiberChoice, links: dict[tuple[str, str], FiberSegment]
 ) -> float:
-    """How many fiber miles the segments a choice bought actually run."""
+    """How many fiber miles the segments a choice selected actually run."""
     return sum(links[segment].distance_miles for segment in choice.segments)
 
 
@@ -154,7 +154,7 @@ def test_fiber_no_admissible_path_could_run_over_is_left_out_of_the_choice() -> 
 
     Two thousand miles of ocean to cover the twenty ``sea`` sits from either peer is a
     hundred times the direct distance, so no path a tenant allows runs over it. Leaving it
-    in the choice is what would let the program buy an ocean crossing to protect a state
+    in the choice is what would let the program select an ocean crossing to protect a state
     line (GitHub issue #44).
     """
     assert _admissible(3.0) == _OVERLAND
@@ -170,7 +170,7 @@ def test_a_multiple_wide_enough_for_the_crossing_keeps_the_crossing() -> None:
 
 
 # A backbone the carrier's fiber says nothing about, and a backbone with no sites to serve.
-# Both end with nothing bought, and they arrive there differently: the first has no fiber to
+# Both end with nothing selected, and they arrive there differently: the first has no fiber to
 # choose from and never reaches the solver, the second has fiber and nothing asked of it.
 _NO_FIBER = _chosen(physical({}), ("a", "b"))
 _NO_SITES = _chosen(physical({("a", "b"): 1.0}), ())
@@ -185,8 +185,8 @@ def test_a_backbone_with_no_fiber_at_all_buys_nothing_and_is_floored_at_nothing(
     assert _NO_FIBER == FiberChoice(frozenset(), 0.0)
 
 
-def test_a_backbone_with_no_sites_buys_none_of_the_fiber_in_front_of_it() -> None:
-    """Fiber on offer and nobody to serve, so nothing is required and nothing is bought."""
+def test_a_backbone_with_no_sites_selects_none_of_the_fiber_in_front_of_it() -> None:
+    """Fiber on offer and nobody to serve, so nothing is required and nothing is selected."""
     assert not _NO_SITES.segments
 
 
@@ -202,7 +202,7 @@ def test_a_backbone_with_no_sites_is_floored_at_nothing_rather_than_at_what_is_o
 # A four-site ring, one mile a segment. Each site has two segments and is owed two ways out,
 # so every segment is on the only synthesis that meets the requirement and the answer is forced
 # whole. The same ring with a ten-mile chord across it is the fixture beside it: the chord
-# buys nobody a way out the ring has not already bought, so a choice that is a choice leaves
+# gains nobody a way out the ring has not already given, so a choice that is a choice leaves
 # it, and a choice that simply takes the fiber it was offered does not.
 _RING_PAIRS = {("a", "b"): 1.0, ("b", "c"): 1.0, ("c", "d"): 1.0, ("a", "d"): 1.0}
 _RING_SITES = ("a", "b", "c", "d")
@@ -213,8 +213,8 @@ _RING_CHOICE = _chosen(_RING, _RING_SITES)
 _CHORD_CHOICE = _chosen(_CHORD, _RING_SITES)
 
 
-def test_a_ring_is_bought_whole_because_nothing_short_of_it_gives_two_ways_out() -> None:
-    """Four sites owed two ways out each over four segments, so all four are bought.
+def test_a_ring_is_selected_whole_because_nothing_short_of_it_gives_two_ways_out() -> None:
+    """Four sites owed two ways out each over four segments, so all four are selected.
 
     Withdraw any one segment and the two sites it joined hold one way out apiece, which is
     less than the tenant asked for. The synthesis is the ring because there is no other.
@@ -232,9 +232,9 @@ def test_the_floor_under_the_ring_is_the_mileage_of_the_ring_itself() -> None:
 
 
 def test_fiber_no_requirement_turns_on_is_left_where_it_is() -> None:
-    """The ring is bought and the ten-mile chord across it is not, so the choice is a choice.
+    """The ring is selected and the ten-mile chord across it is not, so the choice is a choice.
 
-    Every site already holds its two ways out over the ring, so the chord buys nobody
+    Every site already holds its two ways out over the ring, so the chord gains nobody
     anything and an operator holding it would pay for it every month for nothing. This is
     the shape of the 54 published paths GitHub issue #60 counted, asked of the fiber rather
     than of the paths read off it.
@@ -243,14 +243,14 @@ def test_fiber_no_requirement_turns_on_is_left_where_it_is() -> None:
 
 
 # A chain of three sites: ``b`` in the middle with a way out either side, and ``a`` and ``c``
-# each behind it. No amount of buying gives ``a`` a second way out on this fiber, so the two
+# each behind it. No amount of fiber gives ``a`` a second way out on this fiber, so the two
 # it was asked for has to come down to the one the carrier can carry.
 _CHAIN = physical({("a", "b"): 1.0, ("b", "c"): 1.0})
 _CHAIN_CHOICE = _chosen(_CHAIN, ("a", "b", "c"))
 
 
 def test_a_site_behind_a_single_point_of_failure_is_asked_for_what_its_fiber_can_carry() -> None:
-    """The chain is bought whole, which is only possible because ``a`` was asked for one way out.
+    """The chain is selected whole, which is possible only because ``a`` was asked for one way out.
 
     Left at the two its tenant asked for, the row for ``a`` would ask for two units over the
     single segment it stands on, which holds one, and the program would have no answer at
@@ -272,7 +272,7 @@ _TWIN_CHOICE = _chosen(_TWIN_WAYS, ("a", "b"), seat_cap=2)
 
 
 def test_a_pair_allowed_two_ways_between_them_is_given_both_ways_round() -> None:
-    """One peer to reach and two ways out asked for, so both ways round the pair are bought.
+    """One peer to reach and two ways out asked for, so both ways round the pair are selected.
 
     With one way out per peer the fiber through ``p`` would answer the whole requirement and
     ``q`` would be left where it is, which is the synthesis Two-Node would have been given: a
@@ -313,7 +313,7 @@ def test_a_site_is_owed_only_the_ways_out_one_carrier_can_sell() -> None:
     the miles. Boston, MA under Yurop was the live case: it has fiber to seven cities and
     three real ways out, split between Zayo, Lumen and Cogent, and only Zayo's reaches any
     other city Yurop pins -- so it holds one way out and not two. Written down for two, the
-    floor is priced for a way out no operator can buy, and Yurop published 8,844.892 miles
+    floor is measured over a way out no operator can order, and Yurop published 8,844.892 miles
     against a floor of 9,141.641 it had already beaten.
     """
     assert _owed(_TWIN_SPLIT, ("a", "b"), "a", seat_cap=2) == 1
@@ -322,7 +322,7 @@ def test_a_site_is_owed_only_the_ways_out_one_carrier_can_sell() -> None:
 def test_a_site_is_owed_both_ways_out_where_one_carrier_has_each() -> None:
     """The same geometry with one owner per way round still writes ``a`` down for two.
 
-    A site's ways out may be bought from several carriers, one path each, which is what an
+    A site's ways out may be ordered from several carriers, one path each, which is what an
     operator does. This is the behaviour the lowering above must not break: it is the
     stitching of two owners into one path that nobody sells, not the holding of two paths
     from two owners.
@@ -351,7 +351,7 @@ def test_the_floor_is_measured_over_the_requirements_the_build_is_held_to() -> N
     is the two miles of the way round through ``p`` -- the same number the same fiber is
     floored at when the tenant asks for one outright.
 
-    Left uncapped the second way round would be priced in as well, and the floor would come
+    Left uncapped the second way round would be counted in as well, and the floor would come
     out at all four miles: above the two the synthesis beside it correctly runs, which is
     the arithmetic Yurop's build published.
     """
@@ -374,12 +374,12 @@ _TRIANGLE_SITES = ("a", "b", "c", "d", "e", "f")
 _TRIANGLES_CHOICE = _chosen(_TWO_TRIANGLES, _TRIANGLE_SITES)
 
 
-def test_the_segment_the_first_answer_missed_is_bought_once_it_is_written_down() -> None:
-    """The one segment joining the two triangles is bought, though no site's row asks for it.
+def test_the_segment_the_first_answer_missed_is_selected_once_it_is_written_down() -> None:
+    """The one segment joining the two triangles is selected, though no site's row asks for it.
 
     There is one requirement for every way of separating a site from its peers, far too many
     to write out, so they are written down as an answer violates them. Every site here holds
-    two ways out inside its own triangle, so the first answer buys the six triangle segments
+    two ways out inside its own triangle, so the first answer selects the six triangle segments
     and nothing joins ``a`` to ``d`` at all. A search that stopped there would publish two
     backbones and call them one.
     """
@@ -393,19 +393,19 @@ def test_the_segment_the_first_answer_missed_is_bought_once_it_is_written_down()
 _SELLABLE = frozenset({("a", "r"), ("b", "r")})
 
 
-def test_the_fiber_bought_is_fiber_one_carrier_can_sell_a_whole_path_over() -> None:
-    """The five-mile way round one company owns is bought and the two-mile ways round are not.
+def test_the_fiber_selected_is_fiber_one_carrier_can_sell_a_whole_path_over() -> None:
+    """The five-mile way round one company owns is selected and the two-mile ways round are not.
 
     A path is ordered from one carrier end to end, so a way round whose halves belong to two
-    owners buys nobody anything -- and until the program knew that, it wrote its requirements
+    owners gains nobody anything -- and until the program knew that, it wrote its requirements
     over a map with no owners on it and met them with exactly such a way round. What it
-    bought was then fiber the drawing could not use: ``synthesizer.backbone._ways_out_of``
-    proved a site's ways out one carrier at a time, found fewer over what had been bought
+    selected was then fiber the drawing could not use: ``synthesizer.backbone._ways_out_of``
+    proved a site's ways out one carrier at a time, found fewer over what had been selected
     than over the carriers' whole map, and drew the site over the whole map instead -- 29 of
     the 37 backbone seats ``etc/`` declares (GitHub issue #113).
 
     The two questions are one question now. This is the answer to it, in the one form that
-    cannot be argued with: the segments bought.
+    cannot be argued with: the segments selected.
     """
     assert _chosen(
         fixtures.SELLABLE_WAYS_LINKS, fixtures.SELLABLE_WAYS_SITES, seat_cap=2
@@ -420,18 +420,18 @@ _NEAR_AND_FAR_CHOICE = choose_fiber(FiberInputs(
 ))
 
 
-def test_a_way_round_past_the_bound_is_not_bought_for_the_pair_it_is_past_it_for() -> None:
-    """The four-mile way round ``a`` and ``b`` is not bought, though the map admits the fiber.
+def test_a_way_round_past_the_bound_is_not_selected_for_the_pair_it_is_past_it_for() -> None:
+    """The four-mile way round ``a`` and ``b`` is not selected, though the map admits the fiber.
 
     ``admissible_fiber`` asks whether any site could run any admissible path over a segment,
     which keeps this one on ``far``'s account. Each requirement is now written over the
     fiber its own budget allows as well, so the pair ``a``--``b`` is written down for the one
-    path its bound leaves it and the way round is fiber nobody buys.
+    path its bound leaves it and the way round is fiber nobody orders.
 
     Written over the whole admissible map instead, the pair reads as having two paths
-    available and the program buys the cheaper of them -- four miles of fiber that
+    available and the program selects the shorter of them -- four miles of fiber that
     ``synthesizer.ceiling.independent_paths`` then refuses to count, leaving the site short
-    over the very fiber that was bought for it (GitHub issue #113).
+    over the very fiber that was selected for it (GitHub issue #113).
     """
     assert ("a", "q") not in _NEAR_AND_FAR_CHOICE.segments
 
@@ -455,22 +455,22 @@ def test_a_search_that_runs_long_enough_buys_the_shortest_synthesis_there_is() -
     solving again.
 
     A limit of 24 passes stood in the module until GitHub issue #63 and stopped this search
-    short of that. What it bought instead was thirteen segments running 291 miles against
+    short of that. What it selected instead was thirteen segments running 291 miles against
     the same floor of 159 -- 132 miles of fiber the tenant pays for every month and gets
     nothing for. Every one of the six real tenants declared then needed hundreds of passes,
     645 for DAF and 1,382 for AFGSC, which ``etc/`` no longer declares, so all six were
-    bought this way.
+    selected this way.
     """
-    assert _bought_miles(_MANY_PASS_CHOICE, _MANY_PASS) == pytest.approx(
+    assert _selected_miles(_MANY_PASS_CHOICE, _MANY_PASS) == pytest.approx(
         _MANY_PASS_CHOICE.lower_bound_miles
     )
 
 
 def test_the_fiber_a_long_search_settles_on_meets_every_requirement_asked_of_it() -> None:
-    """Nothing is left short by the fiber this map's search bought, on the fiber alone.
+    """Nothing is left short by the fiber this map's search selected, on the fiber alone.
 
     The miles above say the choice is the shortest one there is; this says it is a choice at
-    all. Both are needed, because the cheapest way to run few miles is to buy fiber that
+    all. Both are needed, because the surest way to run few miles is to select fiber that
     leaves a site short, and a synthesis is measured for that only much later, by
     ``synthesizer.validation.backbone_mesh_independence_deficient``, on a report an operator
     reads rather than on the fiber the synthesis stands on.
@@ -494,17 +494,17 @@ _CASES: tuple[tuple[str, FiberChoice, dict[tuple[str, str], FiberSegment]], ...]
 )
 
 
-def test_no_choice_is_floored_above_the_fiber_it_actually_bought() -> None:
+def test_no_choice_is_floored_above_the_fiber_it_actually_selected() -> None:
     """Every synthesis here runs at least the miles its own floor says no synthesis can go below.
 
     The floor is the relaxation's answer over every requirement the search wrote down, and
     the synthesis is one answer to those same requirements, so the synthesis cannot be shorter than
-    the floor. A floor above the fiber bought would be arithmetic that has come apart, and it
+    the floor. A floor above the fiber selected would be arithmetic that has come apart, and it
     would be published on every synthesis as ``backbone_lower_bound_miles`` and read as a
     tenant's network being shorter than anything that could meet its own requirements.
     """
     assert [
         name
         for name, choice, links in _CASES
-        if choice.lower_bound_miles > _bought_miles(choice, links) + _SLACK
+        if choice.lower_bound_miles > _selected_miles(choice, links) + _SLACK
     ] == []

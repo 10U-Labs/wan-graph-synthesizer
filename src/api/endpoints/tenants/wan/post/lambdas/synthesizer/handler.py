@@ -100,7 +100,7 @@ def _delivered(
     How many independently failing links each site was asked for, and which sites did not
     get that many, travel with it. A count computed too high asks a site for a link the
     backup path multiple will not let the mesh lay, and the synthesis then reports a shortfall no
-    fiber an operator buys can close (GitHub issue #45). None of that reaches the published
+    fiber an operator orders can close (GitHub issue #45). None of that reaches the published
     collections -- they carry the links that were drawn, not the links that were asked for
     -- so a reader outside the build could see the network was thin and never see that the
     build had already said so.

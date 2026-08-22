@@ -76,8 +76,8 @@ _TWIN_PATHS = build_adjacency(physical({
 def test_two_paths_to_one_peer_count_once() -> None:
     """Disjoint paths to the same peer both fail with that peer, so the ceiling is one.
 
-    ``s`` has ``u`` to reach as well, so a second path to ``t`` buys it nothing a way out
-    to ``u`` would not buy better. A site with no other peer to reach is the case where the
+    ``s`` has ``u`` to reach as well, so a second path to ``t`` gains it nothing a way out
+    to ``u`` would not gain better. A site with no other peer to reach is the case where the
     answer changes, and it is the two tests below.
     """
     assert independent_path_ceiling("s", PathProofInputs(("s", "t", "u"), _TWIN_PATHS)) == 1
@@ -112,7 +112,7 @@ def test_a_site_with_one_peer_is_still_held_to_one_path_when_one_is_asked() -> N
 
 
 def test_a_site_seated_below_the_seats_its_config_allows_takes_one_path_to_a_peer() -> None:
-    """A tenant that allows six seats has bought a network of peers, not a pair joined twice.
+    """A tenant that allows six seats has asked for a network of peers, not a pair joined twice.
 
     The seats the config allows are what say whether a site has another peer to reach, and
     a run that seated two of six is a synthesis short of sites. Counting the sites it seated
@@ -294,7 +294,7 @@ def test_a_crossing_that_is_the_only_way_to_a_peer_is_kept() -> None:
 
 
 def test_a_site_whose_second_way_out_is_a_crossing_still_scores_two() -> None:
-    """Measuring the finished paths must not buy its accuracy by discarding them.
+    """Measuring the finished paths must not win its accuracy by discarding them.
 
     ``sea`` reaches ``syd`` across the ocean and reaches ``hil`` and ``eug`` overland, so
     both of its ways out are usable and the honest count is two. A repair that answered an

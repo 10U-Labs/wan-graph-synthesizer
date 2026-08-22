@@ -107,7 +107,7 @@ def _required_ratio(data: dict[str, Any], key: str) -> float:
 
     ``backbone_max_backup_path_multiple`` has no default, on the same terms as the two
     redundancy degrees and the coverage target: how much detour a protect path may take is
-    an engineering decision about the network being bought, and a tenant that has not made
+    an engineering decision about the network being asked for, and a tenant that has not made
     it must not have one made on its behalf.
 
     A ratio rather than a mileage, so a fraction is meaningful here where it is not on the

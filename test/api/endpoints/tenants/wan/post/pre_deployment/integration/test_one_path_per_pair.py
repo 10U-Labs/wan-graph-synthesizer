@@ -1,7 +1,7 @@
-"""Integration test: how many paths a whole synthesis buys between one pair of sites.
+"""Integration test: how many paths a whole synthesis draws between one pair of sites.
 
 Two sites that are joined are joined once. A second path between the same two sites is a
-second path somebody orders every month, and it buys nothing the first did not: what makes
+second path somebody orders every month, and it gains nothing the first did not: what makes
 a site's ways out independent is that they end at different peers. A pair is joined twice
 only where nothing else is left -- a tenant whose config seats two sites, which has its own
 file beside this one, or a site whose fiber offers no other way out at all.
@@ -16,9 +16,9 @@ a fourth site d joined to b and to c over fiber of its own.
 The fourth site is what the argument turns on. It is the reason b's second way out is a
 path to a site it did not reach at all rather than a second path to c (GitHub issue #59).
 GitHub issue #60 then took the argument one step further: choosing the fiber for the whole
-synthesis at once buys eight segments and sixteen hundred miles, and over that fiber b and c
+synthesis at once selects eight segments and sixteen hundred miles, and over that fiber b and c
 reach each other round the ring rather than over fiber of their own, so the pair is not
-joined at all. Nobody loses by it -- both still hold the two ways out they were bought --
+joined at all. Nobody loses by it -- both still hold the two ways out they were owed --
 and the pair that used to be joined twice is now joined none, which is the same argument
 run to the end.
 
@@ -43,7 +43,7 @@ def _paths_per_pair() -> dict[tuple[str, str], int]:
     Counted off the drawn paths rather than through
     ``synthesizer.validation.backbone_mesh_pairs``, which answers with a set: a pair drawn
     twice collapses into the one member it is, so the count of pairs reads the same whether
-    the synthesis bought one path between them or two.
+    the synthesis drew one path between them or two.
     """
     drawn: dict[tuple[str, str], int] = {}
     for use in _MESH:
@@ -58,7 +58,7 @@ def test_the_backbone_is_the_four_sites() -> None:
 
 
 def test_no_pair_of_sites_is_joined_more_than_once() -> None:
-    """b and c proved different fiber to each other, and neither path is bought twice over."""
+    """b and c proved different fiber to each other, and neither path is drawn twice over."""
     assert max(_paths_per_pair().values()) == 1
 
 

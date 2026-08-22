@@ -1,7 +1,7 @@
 """Unit tests for the cities whose loss would leave a published network in pieces.
 
 The helper reads the hops of every published path, drops one city at a time, and reports the
-ones the rest of the network cannot get past. That is the whole of what a tenant buying two
+ones the rest of the network cannot get past. That is the whole of what a tenant asking for two
 ways out of every backbone node is paying for, and it is a property no site can hold on its
 own: three of the five live tenants published a network some one city's loss broke in two,
 with DAF's falling apart on any of eleven cities (GitHub issue #112).

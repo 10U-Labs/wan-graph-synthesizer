@@ -452,7 +452,7 @@ def _fiber_choices(monkeypatch: pytest.MonkeyPatch, target_miles: int) -> int:
 def test_a_search_that_grows_past_the_floor_still_chooses_its_fiber_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A backbone grown from two seats to four buys fiber for the four and for nothing else.
+    """A backbone grown from two seats to four selects fiber for the four and nothing else.
 
     A synthesis used to be drawn for the strength-chosen base backbone and thrown away the
     moment coverage seated a node past it, which is half of what a build costs: 234 of
@@ -466,7 +466,7 @@ def test_a_search_that_grows_past_the_floor_still_chooses_its_fiber_once(
 def test_a_search_that_seats_nothing_past_the_floor_chooses_its_fiber_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A backbone that never grows buys fiber once, for the seats it started and ended with.
+    """A backbone that never grows selects fiber once, for the seats it started and ended with.
 
     Growth that seats nothing used to hand back the synthesis the base build had already
     drawn, and now draws the one synthesis itself over the same seats. Both are one choice of

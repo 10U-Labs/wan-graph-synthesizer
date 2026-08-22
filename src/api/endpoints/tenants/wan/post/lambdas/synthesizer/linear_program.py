@@ -1,4 +1,4 @@
-"""Buy the fewest miles of fiber that meet a list of "hold at least this much" rows.
+"""Find the fewest miles of fiber that meet a list of "hold at least this much" rows.
 
 This is the one place the synthesizer hands a problem to a solver, and it is deliberately
 the smallest problem it can hand over: a column for each fiber segment, held anywhere
@@ -8,7 +8,7 @@ miles that satisfies every row, and how much of each segment that answer holds.
 
 Nothing about backbones, tenants or maps crosses this line. What a row means -- that some
 set of cities and segments would cut a site off from its peers unless enough of that fiber
-is bought -- is :mod:`synthesizer.survivable`'s business, and what comes back is a number
+is held -- is :mod:`synthesizer.survivable`'s business, and what comes back is a number
 per column that module reads as fiber.
 
 The solver is HiGHS, through its Python package ``highspy``: MIT licensed, developed at
@@ -25,7 +25,7 @@ from typing import Any
 
 import highspy
 
-# What a column may hold at most: one whole fiber segment. Nothing is bought twice, so a
+# What a column may hold at most: one whole fiber segment. Nothing is held twice, so a
 # row asking for more than the segments crossing it can hold is a row no synthesis can meet.
 _WHOLE = 1.0
 
@@ -55,15 +55,15 @@ class SegmentRow:
 
 @dataclass(frozen=True)
 class SegmentProgram:
-    """The whole choice: what each column costs, what is already bought, what must hold.
+    """The whole choice: what each column costs, what is already selected, what must hold.
 
-    ``miles`` is one entry per fiber segment, in column order. ``bought`` are the columns
+    ``miles`` is one entry per fiber segment, in column order. ``selected`` are the columns
     an earlier round has already settled on, held at a whole segment each. ``rows`` are the
     requirements the answer has to meet.
     """
 
     miles: tuple[float, ...]
-    bought: frozenset[int]
+    selected: frozenset[int]
     rows: tuple[SegmentRow, ...]
 
 
@@ -82,7 +82,7 @@ def _model(program: SegmentProgram) -> Any:
     model.num_row_ = len(program.rows)
     model.col_cost_ = list(program.miles)
     model.col_lower_ = [
-        _WHOLE if column in program.bought else 0.0 for column in range(len(program.miles))
+        _WHOLE if column in program.selected else 0.0 for column in range(len(program.miles))
     ]
     model.col_upper_ = [_WHOLE] * len(program.miles)
     model.row_lower_ = [row.floor for row in program.rows]
@@ -117,7 +117,7 @@ def _answer(solver: Any) -> SegmentChoice:
     """What the solver reached: the fewest miles, and how much of each segment that holds.
 
     A program with no answer at all is a defect rather than a finding: every row records a
-    separation the fiber in hand could close by buying more of the segments that cross it,
+    separation the fiber in hand could close by holding more of the segments that cross it,
     so a row nothing can meet means the requirements were never capped against the fiber.
     It is raised by name rather than returned, because a synthesis built on a silent zero
     would be fiber nobody can order.
@@ -178,7 +178,7 @@ class GrowingSegmentProgram:
         )
 
     def hold_whole(self, columns: frozenset[int]) -> None:
-        """Hold these columns at a whole segment each, as a round that bought them asks."""
+        """Hold these columns at a whole segment each, as a round that selected them asks."""
         for column in sorted(columns - self._whole):
             self._solver.changeColBounds(column, _WHOLE, _WHOLE)
         self._whole |= columns
@@ -187,7 +187,7 @@ class GrowingSegmentProgram:
         """Let every column back down to none of it, which is what a floor is measured over.
 
         A floor under the whole problem may take nothing about this particular search for
-        granted, so the segments its rounds bought stop being held before it is computed.
+        granted, so the segments its rounds selected stop being held before it is computed.
         """
         for column in sorted(self._whole):
             self._solver.changeColBounds(column, 0.0, _WHOLE)

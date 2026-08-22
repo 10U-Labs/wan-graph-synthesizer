@@ -11,7 +11,7 @@ path on its own and a network can hold any number of unneeded paths with each of
 Every case below is a network drawn out of runs of cities, one run per path, at a hundred
 miles a hop. The square of four sites is the shape most of them are cut from: each of its
 sites holds exactly the two ways out its tenant asked for, so no path of the square can go,
-while a path laid across the middle of it can. The tenant buys two diverse paths
+while a path laid across the middle of it can. The tenant asks for two diverse paths
 throughout, and sites and cities are named alike here because a published path lists the
 cities it crosses by name and its two ends by id.
 
@@ -62,7 +62,7 @@ def _published_network(
 
 # Four sites in a loop, each holding the two ways out its tenant asked for and no more.
 # Nothing here can go: taking any of the four paths out leaves the two sites it joined with
-# one way out apiece where two were bought.
+# one way out apiece where two were asked for.
 _SQUARE: list[tuple[str, ...]] = [
     ("west", "a", "north"),
     ("north", "b", "east"),
@@ -78,7 +78,7 @@ _LONG_CROSSING: tuple[str, ...] = ("west", "p", "q", "east")
 
 # A site reached only through one city, twice over. Its tenant asked for two diverse paths
 # and its fiber can never deliver them, since losing that city takes both, so the second
-# path buys it nothing the first does not already give it.
+# path gains it nothing the first does not already give it.
 _HOMED_TWICE: list[tuple[str, ...]] = [("west", "n", "deep"), ("east", "n", "deep")]
 
 # Three sites in a loop, which is the fewest paths that give each of them two ways out.
@@ -126,7 +126,7 @@ def test_every_path_nobody_needs_is_reported_and_the_longest_of_them_first() -> 
 def test_a_path_the_operator_pinned_is_kept_though_the_three_demands_would_let_it_go() -> None:
     """The 200-mile crossing nobody needed is kept once its tenant pins the pair it joins.
 
-    A pinned pair is a path the operator wrote into ``backbone.forced`` in ``etc/`` and buys
+    A pinned pair is a path the operator wrote into ``backbone.forced`` in ``etc/`` and orders
     on purpose, so it is the one path nobody has to justify, and the synthesizer skips it
     when it prunes its own work (``synthesizer.backbone._needed``). Reporting it told an
     operator that their own requirement was fiber they had not ordered, and the only answer
@@ -182,15 +182,15 @@ def test_a_path_whose_removal_would_leave_a_city_splitting_the_fiber_is_kept() -
     """Without it the fiber is two loops meeting at c, so losing c would take half the network.
 
     The removal the first two demands pass and the third refuses: every site still holds
-    the two ways out it bought, the four sites are still one network over the paths that
+    the two ways out it was owed, the four sites are still one network over the paths that
     remain, and the only thing lost is the one way from the loop holding west and north
     to the loop holding east and south that does not cross c.
     """
     assert not removable_paths(_published_network(_TWO_LOOPS))
 
 
-def test_fiber_that_already_splits_at_a_city_keeps_no_path_that_buys_nothing() -> None:
-    """Deep is reached through n whichever path is taken, so its second path buys it nothing.
+def test_fiber_that_already_splits_at_a_city_keeps_no_path_that_gains_nothing() -> None:
+    """Deep is reached through n whichever path is taken, so its second path gains it nothing.
 
     The demand about single points of failure asks whether a removal makes one, not whether
     the synthesis has one, so it cannot refuse a removal from fiber that already fails a city's

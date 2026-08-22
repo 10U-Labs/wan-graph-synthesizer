@@ -75,7 +75,7 @@ def _rounding_slack(synthesis: dict[str, Any]) -> float:
     and published 3,884.264 miles against 3,884.265.
 
     Nothing real hides under this. A synthesis that genuinely falls short of its floor is short
-    by at least the fiber it failed to buy, and the shortest segment on any of the five maps
+    by at least the fiber it failed to select, and the shortest segment on any of the five maps
     runs miles rather than thousandths.
     """
     segments = sum(1 for link in synthesis["paths"] if link["link_kind"] == FIBER)
@@ -116,7 +116,7 @@ def _paths_clear_of_a_capped_seat(synthesis: dict[str, Any]) -> list[dict[str, A
     """The published paths, less the ones at a seat no carrier can sell two ways out of.
 
     A seat whose fiber offers it one way out hangs off a corridor, and every city on that
-    corridor splits the network when it is lost. Nothing can be bought about it: the second
+    corridor splits the network when it is lost. Nothing can be done about it: the second
     way out would have to be a path somebody quotes, and there is nobody to quote it. Minot,
     ND is the live case -- its ceiling is one, its single 606-mile path to Cheyenne, WY runs
     through Max, ND, Bismarck, ND and Dickinson, ND, and those four cities are what split
@@ -340,9 +340,9 @@ def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(
     assert {tenant: sites for tenant, sites in short.items() if sites} == {}
 
 
-def test_no_published_network_draws_a_pair_more_paths_than_its_tenant_bought(
+def test_no_published_network_draws_a_pair_more_paths_than_its_tenant_asked_for(
         delivered_syntheses: list[dict[str, Any]]) -> None:
-    """No two backbone sites are joined by a path that buys neither of them a path.
+    """No two backbone sites are joined by a path that gains neither of them a path.
 
     Two sites that are joined are joined once, and a second path between them earns its
     monthly cost only where a single city's loss would not take it along with the first. So
@@ -403,9 +403,9 @@ def test_no_published_network_holds_a_path_that_buys_nobody_a_diverse_path(
 
 def test_no_published_network_is_split_by_the_loss_of_one_city(
         delivered_syntheses: list[dict[str, Any]]) -> None:
-    """No tenant buying two ways out of every seat is handed a network one city's loss breaks.
+    """No tenant asking for two ways out of every seat is handed a network one city's loss breaks.
 
-    Two ways out of every backbone node is bought so that the backbone goes on carrying
+    Two ways out of every backbone node is asked for so that the backbone goes on carrying
     traffic when a city goes dark, and that is the thing the tenant is really paying for. It
     is not what a per-site count reports: a site keeps its own two ways out and still ends up
     cut off from most of its peers when the cities those peers depend on are the ones that
@@ -422,7 +422,7 @@ def test_no_published_network_is_split_by_the_loss_of_one_city(
     caught here too.
 
     A tenant asking for one diverse path is not asked this. Yurop asks for one, four cities
-    split its network, and that is the honest answer to what it bought rather than a defect.
+    split its network, and that is the honest answer to what it asked for rather than a defect.
     Neither is the corridor a seat no carrier can sell two ways out of hangs off (see
     ``_paths_clear_of_a_capped_seat``), which is Minot, ND on Minuteman.
     """
@@ -448,7 +448,7 @@ def test_no_published_network_runs_more_than_twice_the_fewest_miles_it_could_hav
     That is the half an approximation cannot report about itself. The factor of two is a
     property of the method rather than of the code that runs it, so an implementation that
     has lost the guarantee through a defect goes on publishing syntheses that look perfectly
-    well formed from every other angle -- which is how 54 paths buying nobody a diverse
+    well formed from every other angle -- which is how 54 paths gaining nobody a diverse
     path stayed invisible from out here. This is where it shows, and the finding names the
     tenant, the miles it ordered and the floor it ordered them against.
     """
@@ -463,17 +463,17 @@ def test_no_published_network_runs_more_than_a_tenth_further_than_the_floor_it_p
 
     The factor of two above is what the method guarantees whatever the requirements are. This
     is the tighter thing a floor is worth once it is a floor for the network actually
-    delivered: a synthesis built to the same requirements its floor was priced for comes
+    delivered: a synthesis built to the same requirements its floor was measured over comes
     close to that floor, and the distance between the two is a number an operator can act on.
 
     It could not be asked before. The requirements the program answered were written over a
     map with no owners on it and with no bound on how far a finished path may run, so they
     were met by ways out nobody sells and detours nobody would order, and
     ``synthesizer.backbone._ways_out_of`` drew 29 of the 37 backbone seats over the carriers'
-    whole fiber instead of over what had been bought. The two numbers were then measuring
+    whole fiber instead of over what had been selected. The two numbers were then measuring
     different networks -- DoW ran 9,294.692 miles against a floor of 7,361.252, DAF 8,616.035
     against 7,043.473 -- and a tenant reading 1.26 could not tell a build that did badly from
-    a floor priced for a network nobody could buy (GitHub issue #113).
+    a floor measured over a network nobody could order (GitHub issue #113).
 
     The finding names the tenant, the miles it ordered and the floor it ordered them against.
     """
@@ -619,7 +619,7 @@ def test_no_published_path_changes_carrier_partway_along_itself(
     A path is what an operator orders and pays for every month, and it is ordered from one
     carrier. Half of one company's fiber spliced to half of another's is not a product
     anybody sells, so a tenant handed such a path has been handed a network they cannot
-    buy -- and nothing else out here would say so, because every hop of it is real fiber
+    order -- and nothing else out here would say so, because every hop of it is real fiber
     between real cities. Measured against the carrier files git holds rather than against
     the build's own account of itself.
     """

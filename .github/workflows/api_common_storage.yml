@@ -279,7 +279,7 @@ jobs:
   # GitHub issue #56 redrew the edges around this job. The eleven static-analysis checks
   # are eleven jobs now and all start when the workflow does, and this job starts with them
   # rather than behind them: a check costs seconds and produces nothing anyone waits on, so
-  # holding the shared modules behind one bought nothing. The edges out of this job
+  # holding the shared modules behind one gained nothing. The edges out of this job
   # survived. unit-tests and pre-deployment-integration-tests still wait on it, because a
   # reader facing red consumers has to be told which shared module broke them, where one red
   # job and the rest skipped has already told them. reconciliation waits on it too, along

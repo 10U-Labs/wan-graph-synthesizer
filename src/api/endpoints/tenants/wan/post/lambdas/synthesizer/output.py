@@ -67,7 +67,7 @@ def synthesis_payload(sources: SourceFiles, artifacts: SynthesisArtifacts) -> di
             # The fewest fiber miles any backbone meeting this tenant's requirements could
             # have run (see :mod:`synthesizer.survivable`). It sits beside the miles the
             # synthesis actually ordered because the two are only meaningful together: a
-            # figure for what was bought says nothing about whether it was worth buying
+            # figure for what was ordered says nothing about whether it was worth ordering
             # until there is a figure for what the same requirements could have cost.
             "backbone_lower_bound_miles": round(
                 synthesis.metrics.backbone_lower_bound_miles, 3

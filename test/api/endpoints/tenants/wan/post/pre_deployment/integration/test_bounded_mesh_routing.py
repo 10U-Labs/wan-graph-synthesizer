@@ -9,7 +9,7 @@ through the whole synthesis here and the drawn links are asserted rather than th
 The first graph is ``fixtures.CROSSING_LINKS``: three sites twenty miles apart overland
 through ``pdx``, and a thousand miles apart through ``tok`` offshore. Every overland path
 shares ``pdx``, so the crossing is the only thing that makes a second link independent, and
-a synthesis that will buy diversity at any price takes it.
+a synthesis that will take diversity at any distance takes it.
 
 The second is ``fixtures.DISTANT_PEER_LINKS``, and it is here for the other half of the
 question: whether the count and the mesh agree. The count says how many links a site should
@@ -155,7 +155,7 @@ def test_no_site_is_asked_for_a_link_the_bound_will_not_let_the_mesh_lay() -> No
     ``sea`` can hold one: both its ways out to a peer it may use run through ``pdx``, and
     the way round through ``tok`` is two thousand miles of fiber to cover twenty. Asked for
     two it would be reported short for the rest of the build's life, because the link it
-    was short of is one the bound itself refuses and no fiber an operator buys can close it.
+    was short of is one the bound itself refuses and no fiber an operator orders can close it.
     """
     assert DISTANT_PEER.validation["backbone_mesh_independence_deficient"] == []
 
@@ -179,7 +179,7 @@ def test_the_finished_synthesis_orders_the_fewest_fiber_miles_it_can_be_wired_wi
     segments do.
 
     The unit tier pins what the proof hands over; this pins that the synthesis orders it. The
-    fiber is chosen first and the paths are read off it afterwards, and a synthesis that bought
+    fiber is chosen first and the paths are read off it afterwards, and a synthesis that took
     the ring and then drew an express segment anyway would cost the operator the whole saving
     while every other assertion here still passed.
     """
@@ -187,10 +187,10 @@ def test_the_finished_synthesis_orders_the_fewest_fiber_miles_it_can_be_wired_wi
 
 
 def test_the_ring_synthesis_holds_every_site_to_the_two_links_its_fiber_carries() -> None:
-    """Nobody comes up short, so the six miles bought the same protection fifteen would.
+    """Nobody comes up short, so the six miles gained the same protection fifteen would.
 
     Without this the assertion above would pass on a synthesis that saved its miles by wiring
-    fewer links, which is not a saving at all: a link not laid is protection not bought, and
+    fewer links, which is not a saving at all: a link not laid is protection not held, and
     the point of choosing the shorter set is that it costs the site none of its paths.
     """
     assert EXPRESS.validation["backbone_mesh_independence_deficient"] == []

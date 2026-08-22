@@ -122,7 +122,7 @@ class Tuning:
     resource rather than its own, since it describes the network an operator wants.
     ``backbone_max_backup_path_multiple`` is required on the same terms and lives in the
     same resource for the same reason: how far a protect path may run against the direct
-    distance between its two sites is a statement about the network being bought, not a
+    distance between its two sites is a statement about the network being asked for, not a
     dial on how the search finds it.
     The remaining fields (``compass_sector_count``, ``search_memory_budget``) describe how the
     search scores candidates and how much memory it may consume, which is nobody's

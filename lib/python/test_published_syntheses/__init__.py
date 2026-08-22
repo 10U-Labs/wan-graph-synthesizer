@@ -5,11 +5,11 @@ This module is both halves of that job: the reader that asks the service for a t
 network and for the state of its build, and the nine measurements that cannot be answered
 by reading a number back -- whether the fiber joins every backbone seat into one network,
 whether any one city's loss would leave that network in pieces, which is the whole of what a
-tenant buying two ways out of every seat is paying for, what the worst haul of a published
+tenant asking for two ways out of every seat is paying for, what the worst haul of a published
 network really is, whether any published link wanders further from the straight line than
 its tenant allows, whether any of them wanders further than the fiber it runs over made
 necessary, whether any pair of sites was drawn with more paths between them than the tenant
-bought, whether any path the operator did not pin could be taken out with no site losing a
+asked for, whether any path the operator did not pin could be taken out with no site losing a
 diverse path, no site cut off and no city's loss newly splitting the fiber, how many miles
 of carrier fiber the network ordered, which is the figure the floor a build publishes under
 itself is there to be held against, and how many ways out of a city its carriers could
@@ -243,7 +243,7 @@ def independent_ways_out(
     a backbone site holds. It is the same question ``synthesizer.validation`` asks of a
     synthesis being built, asked again out here of the network that was published, because a
     reader with no access to the build has to work out for themselves whether a second
-    path between two sites bought anything.
+    path between two sites gained anything.
     """
     ways = _ways_out(links, site, names)
     return max(
@@ -257,7 +257,7 @@ def independent_ways_out(
 
 
 def overbuilt_pairs(synthesis: dict[str, Any]) -> list[tuple[str, int]]:
-    """Every pair of backbone sites joined by a path that buys neither of them anything.
+    """Every pair of backbone sites joined by a path that gains neither of them anything.
 
     Two sites that are joined are joined once. A second path between the same two sites is
     one more somebody orders every month, and it is worth having only where it is a
@@ -272,12 +272,12 @@ def overbuilt_pairs(synthesis: dict[str, Any]) -> list[tuple[str, int]]:
     across DAF, F-35, Minuteman and AFGSC, which ``etc/`` no longer declares, were of that
     kind, 17,013 fiber miles of them (GitHub issue #59), while Two-Node's one pair is not:
     its sites have each other and nobody else, so the second path is the second path it
-    buys.
+    needs.
 
     Measuring rather than counting is what keeps this honest both ways. An allowance worked
     out from the config would have to guess which fiber leaves a site no other way out, and
     reading the reason the build wrote on the link would be taking the build's word for
-    whether its own path was worth buying.
+    whether its own path was worth ordering.
 
     Asking it from out here at all is the point. Every path can be inside the backup path
     multiple and be the shortest way over its own fiber -- which is what :func:`overrun_links`
@@ -356,11 +356,11 @@ def cut_cities(links: list[dict[str, Any]]) -> list[str]:
 
     A city that every way between two parts of a network crosses is a single point of
     failure, and an operator who loses it loses one part of their network to the other. That
-    is what a tenant buying two ways out of every backbone node is really buying, and it is a
-    property of the whole network rather than of any one site: a site can hold both of its
-    own ways out and still be cut off from its peers, because the cities those peers depend
-    on are the ones that went dark. Three of the five live tenants published a network in
-    that state, DAF's falling in two on the loss of any of nine cities (GitHub issue #112).
+    is what a tenant asking for two ways out of every backbone node is really asking for, and
+    it is a property of the whole network rather than of any one site: a site can hold both
+    of its own ways out and still be cut off from its peers, because the cities those peers
+    depend on are the ones that went dark. Three of the five live tenants published a network
+    in that state, DAF's falling in two on the loss of any of nine cities (GitHub issue #112).
 
     Read off the hops of each published path -- the fiber the operator actually ordered --
     rather than off the build's own account of itself, so a build that has stopped measuring
@@ -416,7 +416,7 @@ def _cities_the_paths_cross(links: list[dict[str, Any]]) -> dict[str, set[str]]:
 def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     """Every published path whose removal would cost nobody anything at all.
 
-    A path is fiber an operator holds and pays for every month, so one that buys no site a
+    A path is fiber an operator holds and pays for every month, so one that gains no site a
     diverse path, joins nobody who was not already joined and relieves no single point of
     failure is miles ordered for nothing. Each path is taken out in turn and what remains is
     put to the three demands the synthesis was built to meet: every backbone site still holds
@@ -438,7 +438,7 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     caused it (GitHub issue #78).
 
     54 of the 192 paths in the six networks published then were of that kind, 23,917 of
-    their 83,927 miles -- 28 per cent of the fiber those six tenants paid for bought no
+    their 83,927 miles -- 28 per cent of the fiber those six tenants paid for gained no
     backbone site a diverse path (GitHub issue #60). They came from every pass of the build
     rather than from one: of the 54, thirty-three carry the reason ``site_target``, eighteen
     ``network_connectivity`` and three ``city_detour``.
@@ -446,7 +446,7 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
     :func:`overbuilt_pairs` could not see a single one of them. It examines only pairs of
     sites holding more than one path between them, which is the question GitHub issue #59
     asked, and all 54 are the only path between their two sites. Whether a pair is joined
-    more often than it needs was answered; whether a path buys anybody anything was not
+    more often than it needs was answered; whether a path gains anybody anything was not
     asked until here.
 
     A floor rather than the whole of the surplus. Each path is judged against a network
@@ -715,7 +715,7 @@ def sellable_ways_out(
     An operator orders a path from one company and pays that company for it every month, so
     a way out assembled from two companies' fiber is not a product anybody sells (GitHub
     issue #106). Each carrier is therefore asked on its own over its own fiber, and the
-    answers are added: a site's ways out may be bought from several carriers, one path each,
+    answers are added: a site's ways out may be ordered from several carriers, one path each,
     which is what an operator really does.
 
     Adding them is deliberately generous. Two carriers' answers can cross the same city, and

@@ -3,10 +3,10 @@
 A backbone owes each of its nodes a number of ways out and each pair of them a number of
 ways between, and both are one question asked of a set of fiber segments: how many cities
 and how much fiber have to fail together before the two sides come apart. This module
-answers that question over segments held in whatever fraction they have been bought so
+answers that question over segments held in whatever fraction they have been selected so
 far, and where the answer falls short it hands back the separation itself -- the cities
 that fail and the segments that cross it. That separation is the requirement the fiber in
-hand does not meet, written in the one form a buyer can act on: buy more of these
+hand does not meet, written in the one form the search can act on: hold more of these
 segments.
 
 Cities fail and the two ends of a path do not. A path is taken down by every city it
@@ -47,8 +47,8 @@ class SeparationQuestion:
     places one of those ways may end. ``spared`` are the cities that cannot fail: always
     the site itself, and the peers as well wherever a peer is a destination rather than a
     city a path passes through. ``held`` is how much of each candidate segment has been
-    bought, from none of it to all of it; a segment held at none of it still appears,
-    because a separation it crosses is a separation buying it would close.
+    selected, from none of it to all of it; a segment held at none of it still appears,
+    because a separation it crosses is a separation holding it would close.
     """
 
     site: str
@@ -146,7 +146,7 @@ def _read_separation(question: SeparationQuestion, reached: dict[_Half, _Half]) 
     A city the walk enters and cannot leave is a city the flow is using to its limit, so it
     is one of the cities that fail. Everything the walk leaves is on this side of the
     separation, and a candidate segment with one end on each side is fiber that crosses it
-    -- whether or not any of that segment has been bought, since buying it is the repair.
+    -- whether or not any of that segment has been selected, since holding it is the repair.
     """
     spared = question.spared | {question.site}
     lost = frozenset(

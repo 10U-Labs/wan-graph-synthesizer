@@ -474,7 +474,7 @@ def backbone_names_by_group(sites: list[Site], synthesis: Synthesis) -> list[lis
     """The backbone sites in each group of a synthesis, named, one list per group.
 
     A synthesis is meant to be one network: every site reaching every other over the fiber the
-    synthesis bought. One that falls into two or more groups is two or more networks handed
+    synthesis selected. One that falls into two or more groups is two or more networks handed
     over as one, and the operator who receives it cannot carry traffic from a site in one
     group to a site in the other at all. This says which sites ended up on which side, which
     is what a refusal has to name for anybody to act on it.

@@ -1,6 +1,6 @@
 """Integration test: a whole synthesis stays in one piece when any one city goes dark.
 
-A tenant that buys two ways out of every backbone node is buying a backbone that carries
+A tenant that asks for two ways out of every backbone node is asking for a backbone that carries
 traffic through the loss of a city, and that is a property of the whole network rather than
 of any one site in it. A site can hold both of its own ways out and still end up cut off
 from most of its peers, because the cities its peers depend on are the ones that failed.
@@ -8,12 +8,13 @@ Three of the five live tenants published a network in exactly that state: the lo
 Atlanta, GA left Ashburn, VA and New York, NY with no way to DAF's other nine backbone
 nodes, and eight more cities each split it somewhere (GitHub issue #112).
 
-The graph here is the smallest thing that can go wrong that way. Two lobes of fiber are joined
-cheaply through the city ``mid`` and expensively through ``w``: ``a`` and ``b`` sit on one
-side, ``c`` and ``d`` on the other, and the way through ``w`` runs forty miles where ``b``
-and ``c`` are ten apart, which is past what the tenant's backup path multiple of three buys
-for that pair. So no site reaches for it, every path read off the fiber crosses ``mid``, and
-the fiber those paths were chosen out of goes round ``mid`` perfectly well.
+The graph here is the smallest thing that can go wrong that way. Two lobes of fiber are
+joined over a short way through the city ``mid`` and a long way round through ``w``: ``a``
+and ``b`` sit on one side, ``c`` and ``d`` on the other, and the way through ``w`` runs
+forty miles where ``b`` and ``c`` are ten apart, which is past what the tenant's backup path
+multiple of three allows for that pair. So no site reaches for it, every path read off the
+fiber crosses ``mid``, and the fiber those paths were chosen out of goes round ``mid``
+perfectly well.
 
 No fixture in this directory could produce that before. ``fixtures.ring_artifacts`` and the
 graphs beside it give each site two fiber directions and no more, so a site's two ways out

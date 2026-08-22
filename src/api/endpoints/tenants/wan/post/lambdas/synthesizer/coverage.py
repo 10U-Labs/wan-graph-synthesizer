@@ -154,7 +154,7 @@ def candidate_mesh_ceiling(
 
     ``limit`` bounds how far the paths counted may run (see
     :func:`synthesizer.ceiling.independent_paths`). A hub credited with a path it could
-    only take by crossing an ocean is chosen for protection the operator will not buy, so
+    only take by crossing an ocean is chosen for protection the operator will not order, so
     the bound belongs to the ranking as much as to the routing.
     """
     return independent_path_ceiling(
@@ -174,7 +174,7 @@ def best_coverage_candidate(
 
     The coverage target is a constraint on how far the backbone may leave demand, not a cost
     to be minimised. Once a candidate brings the worst haul inside the target it has fully
-    answered the question the round asked, and seating a nearer one instead buys nothing the
+    answered the question the round asked, and seating a nearer one instead gains nothing the
     operator asked for. So coverage narrows the field and does not order it.
 
     Among the candidates left, the one whose fiber can carry the most independently failing

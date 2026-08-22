@@ -13,7 +13,7 @@ real config assembly and the real ``finalize``, and what is asserted is what the
 afterwards.
 
 The carrier map is two triangles no fiber joins -- three cities in Virginia and three in
-Utah -- and the synthesis bought every segment of it. Each site therefore holds the two
+Utah -- and the synthesis selected every segment of it. Each site therefore holds the two
 independently failing links its tenant asks for, inside its own triangle, which is what
 makes the case worth driving: every other finding in the report passes and the synthesis is
 still two networks.
@@ -126,10 +126,10 @@ def _store() -> dict[str, bytes]:
 def _synthesis_over_every_segment(
     sites: list[Site], fiber_segments: dict[tuple[str, str], FiberSegment], *_rest: Any
 ) -> Synthesis:
-    """A synthesis seating every carrier point and buying every segment of fiber on offer.
+    """A synthesis seating every carrier point and selecting every segment of fiber on offer.
 
     This stands in for the fiber choice, which is the step a split comes out of: the map
-    holds no fiber between the two triangles, so the segments bought leave the six sites in
+    holds no fiber between the two triangles, so the segments selected leave the six sites in
     two groups however many of them are taken.
     """
     return Synthesis(
