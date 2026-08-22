@@ -2,7 +2,7 @@ import importlib.util
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable
+from typing import Callable
 
 
 def load_module_from_path(module_name: str, path: Path) -> ModuleType:

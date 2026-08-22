@@ -12,7 +12,8 @@ def _fabricate(
     *extra: Site,
     forced: frozenset[str] = frozenset(),
 ) -> FabricatedOnNetNodes:
-    return fabricate_missing_on_net_nodes([*fixtures.carrier_pops_in_a_column(), *extra], {}, forced)
+    sites = [*fixtures.carrier_pops_in_a_column(), *extra]
+    return fabricate_missing_on_net_nodes(sites, {}, forced)
 
 
 def test_fabricates_a_forced_twin() -> None:

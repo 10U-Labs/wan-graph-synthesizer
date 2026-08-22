@@ -4,7 +4,7 @@ import itertools
 import logging
 import math
 import os
-from dataclasses import dataclass, replace
+from dataclasses import replace
 
 from synthesizer.input_graph import FiberSegment, Site
 from synthesizer.model import (
