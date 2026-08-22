@@ -115,16 +115,19 @@ class BackboneMesh:
 class _DrawnFiber:
     """The fiber a synthesis bought, beside the whole fiber it was chosen out of.
 
-    Both are here because a site's ways out are read off the bought fiber and held against
-    what the whole of the carriers' fiber could have given it (see :func:`_ways_out_of`).
+    Every site's ways out are read off ``bought`` and nothing else (see
+    :func:`_ways_out_of`). ``bought_by_carrier`` is it split into what each carrier could
+    sell a path over (see :func:`synthesizer.graphs.adjacency_by_carrier`), computed once
+    here rather than once per site, because a site's ways out are proved one carrier at a
+    time and there are as many sites as the backbone holds.
 
-    Each comes with itself split into what each carrier could sell a path over (see
-    :func:`synthesizer.graphs.adjacency_by_carrier`), computed once here rather than once
-    per site, because a site's ways out are proved one carrier at a time and there are as
-    many sites as the backbone holds.
+    ``whole`` is the carriers' fiber the choice was made out of, and three things still ask
+    it questions: what a path costs and who would sell it (:func:`_laid`), where an
+    operator's pin may run (:func:`_bought_fiber`), and what fiber goes round a city
+    carrying the whole network (:func:`_path_around`). None of them is a site's ways out.
 
-    ``distances`` is how far apart every two cities are over the whole of that fiber, which
-    is what says which two sites a path round a city is worth buying between (see
+    ``distances`` is how far apart every two cities are over that whole fiber, which is what
+    says which two sites a path round a city is worth buying between (see
     :func:`_pairs_across`).
     """
 
@@ -133,7 +136,6 @@ class _DrawnFiber:
     bought: dict[tuple[str, str], FiberSegment]
     bought_by_carrier: dict[str, dict[str, list[tuple[str, float]]]]
     whole: dict[tuple[str, str], FiberSegment]
-    whole_by_carrier: dict[str, dict[str, list[tuple[str, float]]]]
     constraints: BackboneConstraints
 
 
@@ -251,23 +253,21 @@ def _proved_over(
 def _ways_out_of(site: str, drawn: _DrawnFiber) -> list[tuple[str, ...]]:
     """The paths ``site`` is drawn with: what it holds over the fiber the synthesis bought.
 
-    Unless the carrier's whole fiber would have given it more, in which case that is what
-    it is drawn with instead. The choice of fiber answers how many ways out a site needs
-    without measuring any one path against the operator's backup path multiple, and reading
-    the paths back does measure them, so a site can come out of the bought fiber holding
-    fewer ways out than the carrier's fiber proves it could hold. A site short of what its
-    own fiber supports is the one shortfall
-    :func:`synthesizer.stages.finalize` refuses a synthesis over, and it is a shortfall nobody
-    can close by buying anything -- so the site is drawn along the paths its fiber proves
-    and the synthesis orders the segments they run on.
+    The fiber the choice bought and nothing else. Choosing which of the carriers' segments
+    to buy is the expensive step of a build and the one the whole synthesizer is arranged
+    around, so a site drawn over fiber the choice never picked is a site the choice was
+    made for nothing -- and that is what used to happen to 29 of the 37 backbone seats
+    ``etc/`` declares, because the two halves were asking different questions (GitHub issue
+    #113).
 
-    Both sets are cut to the tenant's number before they are compared, or a site whose
-    fiber offers a third way out would be judged short every time and drawn with fiber
-    nobody asked for.
+    They ask one question now. :func:`synthesizer.survivable.choose_fiber` writes every
+    requirement over one carrier's own fiber, cut to the segments a path from that site to
+    those peers could run on inside the operator's backup path multiple, which is what
+    :func:`_proved_over` measures a finished path against. So the ways out the choice bought
+    for a site are ways out the reading can find over what it bought, and there is nothing
+    left to fall back to.
     """
-    bought = _proved_over(site, drawn.bought, drawn.bought_by_carrier, drawn)
-    whole = _proved_over(site, drawn.whole, drawn.whole_by_carrier, drawn)
-    return bought if len(bought) >= len(whole) else whole
+    return _proved_over(site, drawn.bought, drawn.bought_by_carrier, drawn)
 
 
 def _laid(drawn: _DrawnFiber, pinned: list[SynthesisPath]) -> list[SynthesisPath]:
@@ -519,7 +519,7 @@ def backbone_mesh(
     bought = {segment: fiber_segments[segment] for segment in sorted(segments)}
     drawn = _DrawnFiber(
         backbone_ids, all_distances, bought, adjacency_by_carrier(bought),
-        fiber_segments, whole_by_carrier, constraints,
+        fiber_segments, constraints,
     )
     laid = _relieved(_laid(drawn, pinned), drawn)
     return BackboneMesh(

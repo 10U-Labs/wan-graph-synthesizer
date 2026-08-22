@@ -18,7 +18,7 @@ exactly
 how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
 200-mile target.
 
-The measurement itself is not here. Ten of the eighteen questions below are answered by
+The measurement itself is not here. Ten of the nineteen questions below are answered by
 recomputing a number from the published collections, or from the carrier files git holds,
 rather than by reading one back, and that recomputation lives in
 lib/python/test_published_syntheses/, where a unit tier can hold it to literal inputs. A
@@ -454,6 +454,31 @@ def test_no_published_network_runs_more_than_twice_the_fewest_miles_it_could_hav
     """
     assert _tenants_outside(
         delivered_syntheses, lambda miles, floor, _slack: miles <= 2 * floor
+    ) == {}
+
+
+def test_no_published_network_runs_more_than_a_tenth_further_than_the_floor_it_publishes(
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    """Every published network ordered within a tenth of the fewest miles it could have.
+
+    The factor of two above is what the method guarantees whatever the requirements are. This
+    is the tighter thing a floor is worth once it is a floor for the network actually
+    delivered: a synthesis built to the same requirements its floor was priced for comes
+    close to that floor, and the distance between the two is a number an operator can act on.
+
+    It could not be asked before. The requirements the program answered were written over a
+    map with no owners on it and with no bound on how far a finished path may run, so they
+    were met by ways out nobody sells and detours nobody would order, and
+    ``synthesizer.backbone._ways_out_of`` drew 29 of the 37 backbone seats over the carriers'
+    whole fiber instead of over what had been bought. The two numbers were then measuring
+    different networks -- DoW ran 9,294.692 miles against a floor of 7,361.252, DAF 8,616.035
+    against 7,043.473 -- and a tenant reading 1.26 could not tell a build that did badly from
+    a floor priced for a network nobody could buy (GitHub issue #113).
+
+    The finding names the tenant, the miles it ordered and the floor it ordered them against.
+    """
+    assert _tenants_outside(
+        delivered_syntheses, lambda miles, floor, _slack: miles <= 1.1 * floor
     ) == {}
 
 

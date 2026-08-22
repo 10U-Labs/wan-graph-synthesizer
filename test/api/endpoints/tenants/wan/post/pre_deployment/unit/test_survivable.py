@@ -43,6 +43,8 @@ from synthesizer.survivable import (
     _held,
     _requirements,
     _shortfalls,
+    _ways_out_rows,
+    _writing,
     admissible_fiber,
     choose_fiber,
 )
@@ -101,14 +103,16 @@ def _owed(
 ) -> int:
     """How many ways out the search writes down for one site over this fiber.
 
-    ``_requirements`` writes one ways-out requirement per backbone node first, in the order
-    the sites are given, and the pairwise requirements after them, so the site's own row is
-    the one at its own position.
+    A site's ways out are written down one row per carrier that can carry part of them, so
+    what the site is owed altogether is those rows added up. Asked of ``_ways_out_rows``
+    rather than picked out of ``_requirements`` by position, because a site whose fiber
+    can sell it nothing writes no row at all.
     """
     inputs = _asking(links, backbone_ids, seat_cap)
-    return _requirements(inputs, admissible_fiber(inputs))[
-        backbone_ids.index(site)
-    ].required
+    fiber = admissible_fiber(inputs)
+    return sum(
+        row.required for row in _ways_out_rows(site, _writing(inputs, fiber))
+    )
 
 
 def _bought_miles(
@@ -380,6 +384,74 @@ def test_the_segment_the_first_answer_missed_is_bought_once_it_is_written_down()
     backbones and call them one.
     """
     assert ("c", "d") in _TRIANGLES_CHOICE.segments
+
+
+# Two sites with three ways round between them, and the owners written on the fiber. The two
+# short ways round change hands halfway -- ``a`` reaches ``p`` and ``q`` over Zayo's fiber and
+# ``b`` reaches both over Lumen's -- so neither is a path anybody quotes. The five-mile way
+# round through ``r`` is Lumen's end to end and is the only way out ``a`` can be sold, so it
+# is the fiber to buy however many more miles it runs.
+_SPLIT_WAYS = fixtures.carrier_fiber_segments({
+    ("a", "p"): (1.0, ("zayo",)),
+    ("b", "p"): (1.0, ("lumen",)),
+    ("a", "q"): (1.0, ("zayo",)),
+    ("b", "q"): (1.0, ("lumen",)),
+    ("a", "r"): (5.0, ("lumen",)),
+    ("b", "r"): (5.0, ("lumen",)),
+})
+_SELLABLE = frozenset({("a", "r"), ("b", "r")})
+
+
+def test_the_fiber_bought_is_fiber_one_carrier_can_sell_a_whole_path_over() -> None:
+    """The ten-mile way round one company owns is bought and the two-mile ways round are not.
+
+    A path is ordered from one carrier end to end, so a way round whose halves belong to two
+    owners buys nobody anything -- and until the program knew that, it wrote its requirements
+    over a map with no owners on it and met them with exactly such a way round. What it
+    bought was then fiber the drawing could not use: ``synthesizer.backbone._ways_out_of``
+    proved a site's ways out one carrier at a time, found fewer over what had been bought
+    than over the carriers' whole map, and drew the site over the whole map instead -- 29 of
+    the 37 backbone seats ``etc/`` declares (GitHub issue #113).
+
+    The two questions are one question now. This is the answer to it, in the one form that
+    cannot be argued with: the segments bought.
+    """
+    assert _chosen(_SPLIT_WAYS, ("a", "b"), seat_cap=2).segments == _SELLABLE
+
+
+# Three seats a long way apart in one direction and close together in the other. ``a`` and
+# ``b`` are a mile apart with a four-mile way round through ``q``; ``far`` is a hundred miles
+# from both. The way round through ``q`` is four times the mile ``a`` and ``b`` are apart, so
+# no path between them may run over it -- but it sits comfortably inside the three hundred
+# miles a path from ``a`` to ``far`` is allowed, so the fiber is admissible on that pair's
+# account and has to be refused on this one's.
+_NEAR_AND_FAR = physical({
+    ("a", "b"): 1.0,
+    ("a", "q"): 2.0, ("b", "q"): 2.0,
+    ("a", "far"): 100.0, ("b", "far"): 100.0,
+})
+_NEAR_AND_FAR_SITES = ("a", "b", "far")
+_NEAR_AND_FAR_CHOICE = choose_fiber(FiberInputs(
+    _NEAR_AND_FAR_SITES, _NEAR_AND_FAR, _all_distances(_NEAR_AND_FAR), _WAYS_OUT, None,
+    BackupPathLimit(3.0, _all_distances(_NEAR_AND_FAR)),
+    adjacency_by_carrier(_NEAR_AND_FAR),
+))
+
+
+def test_a_way_round_past_the_bound_is_not_bought_for_the_pair_it_is_past_it_for() -> None:
+    """The four-mile way round ``a`` and ``b`` is not bought, though the map admits the fiber.
+
+    ``admissible_fiber`` asks whether any site could run any admissible path over a segment,
+    which keeps this one on ``far``'s account. Each requirement is now written over the
+    fiber its own budget allows as well, so the pair ``a``--``b`` is written down for the one
+    path its bound leaves it and the way round is fiber nobody buys.
+
+    Written over the whole admissible map instead, the pair reads as having two paths
+    available and the program buys the cheaper of them -- four miles of fiber that
+    ``synthesizer.ceiling.independent_paths`` then refuses to count, leaving the site short
+    over the very fiber that was bought for it (GitHub issue #113).
+    """
+    assert ("a", "q") not in _NEAR_AND_FAR_CHOICE.segments
 
 
 # Twelve cities of carrier fiber with five backbone seats, the one graph here whose search

@@ -49,7 +49,10 @@ import pytest
 
 import fixtures
 from synthesizer import linear_program
-from synthesizer.model import SynthesisArtifacts
+from synthesizer.ceiling import BackupPathLimit
+from synthesizer.graphs import adjacency_by_carrier, build_adjacency, distances_from
+from synthesizer.model import SynthesisArtifacts, Tuning
+from synthesizer.survivable import FiberInputs, choose_fiber
 
 _SITES = ("w", "x", "y", "z")
 _ASKED_FOR = 2
@@ -224,3 +227,60 @@ def test_a_site_whose_ways_out_are_split_between_carriers_is_floored_at_what_it_
     assert SPLIT_ARTIFACTS.synthesis.metrics.backbone_lower_bound_miles == pytest.approx(
         SPLIT_ASKED_ONE_ARTIFACTS.synthesis.metrics.backbone_lower_bound_miles
     )
+
+
+# Two seats with three ways round between them, both halves of the defect at once. The two
+# one-mile ways round change hands halfway -- ``a`` reaches ``p`` and ``q`` over Zayo's fiber
+# and ``b`` reaches both over Lumen's -- so neither is a path anybody quotes, and the
+# five-mile way round through ``r`` that Lumen owns end to end is fifteen miles against the
+# ten ``a`` and ``b`` are apart over it, which the default backup path multiple of three
+# allows and a tighter one would not.
+_SELLABLE_SITES = ("a", "b")
+_SELLABLE_TRANSIT = ("p", "q", "r")
+_SELLABLE_SEGMENTS: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
+    ("a", "p"): (1.0, ("zayo",)),
+    ("b", "p"): (1.0, ("lumen",)),
+    ("a", "q"): (1.0, ("zayo",)),
+    ("b", "q"): (1.0, ("lumen",)),
+    ("a", "r"): (5.0, ("lumen",)),
+    ("b", "r"): (5.0, ("lumen",)),
+}
+_SELLABLE_LINKS = fixtures.carrier_fiber_segments(_SELLABLE_SEGMENTS)
+SELLABLE_ARTIFACTS = fixtures.synthesis_over_owned_fiber(
+    _SELLABLE_SITES, _SELLABLE_SEGMENTS, _ASKED_FOR, _SELLABLE_TRANSIT
+)
+
+
+def _fiber_the_choice_bought() -> frozenset[tuple[str, str]]:
+    """The segments ``choose_fiber`` picks for that graph, on the terms the pipeline gives it.
+
+    Asked again here because a finished synthesis does not carry the choice's answer, only
+    the network drawn on top of it. The tenant's own backup path multiple is the default
+    ``Tuning`` carries, which is what ``fixtures.synthesis_over_owned_fiber`` runs under.
+    """
+    distances = distances_from(
+        build_adjacency(_SELLABLE_LINKS),
+        sorted({city for pair in _SELLABLE_LINKS for city in pair}),
+    )
+    return choose_fiber(FiberInputs(
+        _SELLABLE_SITES, _SELLABLE_LINKS, distances, _ASKED_FOR, len(_SELLABLE_SITES),
+        BackupPathLimit(Tuning().backbone_max_backup_path_multiple, distances),
+        adjacency_by_carrier(_SELLABLE_LINKS),
+    )).segments
+
+
+def test_the_delivered_synthesis_orders_only_fiber_the_choice_bought_for_it() -> None:
+    """Every segment the finished synthesis holds is one ``choose_fiber`` picked.
+
+    The expensive step of a build is deciding which of the carriers' segments to buy, and
+    the whole synthesizer is arranged around making that decision once for the whole
+    backbone. A network drawn over fiber the choice never picked is that decision made for
+    nothing, and it is what the six live tenants were getting: 29 of the 37 backbone seats
+    ``etc/`` declares were drawn over the carriers' whole map instead, and 38 of the 68
+    fiber segments DoW's paths ran over had never been bought (GitHub issue #113).
+
+    Asserted at the tier that runs the whole pipeline, because the two halves that used to
+    disagree sit in different modules -- ``synthesizer.survivable`` chose the fiber and
+    ``synthesizer.backbone`` drew over it -- and no unit of either can see the disagreement.
+    """
+    assert set(SELLABLE_ARTIFACTS.synthesis.fiber_segment_keys) <= _fiber_the_choice_bought()

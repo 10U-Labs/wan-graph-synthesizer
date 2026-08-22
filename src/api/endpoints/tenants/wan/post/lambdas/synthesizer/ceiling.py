@@ -723,18 +723,94 @@ def independent_paths(node: str, inputs: PathProofInputs) -> list[tuple[str, ...
     or two of the carriers rather than all of them, so skipping is most of what keeps the
     proof affordable now that it runs several times over.
     """
-    per_peer = paths_per_peer(
+    return [path for _carrier, path in _ways_out_and_their_carriers(node, inputs)]
+
+
+def _paths_over_each_carrier(
+    node: str, inputs: PathProofInputs, per_peer: int
+) -> dict[str, list[tuple[str, ...]]]:
+    """The ways out of ``node`` each carrier could sell over its own fiber.
+
+    A carrier whose fiber does not reach the site at all is skipped rather than searched.
+    It can hold no path out of a city it does not serve, and most sites are served by one
+    or two of the carriers rather than all of them, so skipping is most of what keeps the
+    proof affordable now that it runs several times over.
+
+    Fiber naming no carrier is one answer under the empty name, proved over the whole of
+    the fiber as it always has been. That is every fixture and every caller with no merged
+    carriers behind it.
+    """
+    if not inputs.fiber_by_carrier:
+        return {"": _paths_over(node, inputs, inputs.adjacency, per_peer)}
+    return {
+        carrier: _paths_over(node, inputs, adjacency, per_peer)
+        for carrier, adjacency in sorted(inputs.fiber_by_carrier.items())
+        if node in adjacency
+    }
+
+
+def _per_peer(inputs: PathProofInputs) -> int:
+    """How many of a site's ways out one peer may take, under this tenant's config."""
+    return paths_per_peer(
         inputs.seat_cap, len(inputs.backbone_ids), inputs.paths_wanted
     )
+
+
+def _kept_with_their_carriers(
+    node: str,
+    inputs: PathProofInputs,
+    by_carrier: dict[str, list[tuple[str, ...]]],
+    per_peer: int,
+) -> list[tuple[str, tuple[str, ...]]]:
+    """The carriers' answers put together, each survivor beside the company selling it.
+
+    :func:`_no_city_twice` with the attribution kept. A path two carriers can both sell is
+    credited to the first by name, so the same fiber gives the same answer every time.
+    """
+    seller: dict[tuple[str, ...], str] = {}
+    for carrier, paths in sorted(by_carrier.items()):
+        for path in paths:
+            seller.setdefault(path, carrier)
     if not inputs.fiber_by_carrier:
-        return _paths_over(node, inputs, inputs.adjacency, per_peer)
-    found = [
-        path
-        for _carrier, adjacency in sorted(inputs.fiber_by_carrier.items())
-        if node in adjacency
-        for path in _paths_over(node, inputs, adjacency, per_peer)
+        return [("", path) for path in by_carrier[""]]
+    found = [path for _carrier, paths in sorted(by_carrier.items()) for path in paths]
+    return [
+        (seller[path], path)
+        for path in _no_city_twice(node, found, inputs, per_peer)
     ]
-    return _no_city_twice(node, found, inputs, per_peer)
+
+
+def _ways_out_and_their_carriers(
+    node: str, inputs: PathProofInputs
+) -> list[tuple[str, tuple[str, ...]]]:
+    """Every way out ``node`` holds, each beside the carrier that would sell it."""
+    per_peer = _per_peer(inputs)
+    return _kept_with_their_carriers(
+        node, inputs, _paths_over_each_carrier(node, inputs, per_peer), per_peer
+    )
+
+
+def ways_out_by_carrier(node: str, inputs: PathProofInputs) -> dict[str, int]:
+    """How many of ``node``'s ways out each carrier supplies.
+
+    :func:`independent_paths` counted by who would sell each path, which is what says how
+    much of a site's requirement to write against each company's fiber. A carrier that
+    reaches the site and contributes nothing keeps its entry at nothing, so a caller
+    spreading a tenant's number over the carriers sees every company there is and how far
+    each of them gets.
+
+    Adding these up gives the site's ceiling, which is what
+    :func:`diverse_path_ceilings` reports and what
+    :func:`synthesizer.stages.finalize` holds the finished synthesis to. One rule and one
+    answer, so the fiber bought for a site and the number that site is later held to cannot
+    drift apart (GitHub issue #113).
+    """
+    per_peer = _per_peer(inputs)
+    by_carrier = _paths_over_each_carrier(node, inputs, per_peer)
+    counted = {carrier: 0 for carrier in by_carrier}
+    for carrier, _path in _kept_with_their_carriers(node, inputs, by_carrier, per_peer):
+        counted[carrier] += 1
+    return counted
 
 
 def independent_path_ceiling(node: str, inputs: PathProofInputs) -> int:

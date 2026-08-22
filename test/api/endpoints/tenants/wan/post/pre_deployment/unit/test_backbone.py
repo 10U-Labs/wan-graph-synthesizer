@@ -29,8 +29,14 @@ from synthesizer.backbone import (
     backbone_mesh,
     path_geometry_miles,
 )
+from synthesizer.survivable import FiberInputs, choose_fiber
 from synthesizer.synthesize import all_pairs_shortest
-from synthesizer.graphs import articulation_points, build_adjacency, path_link_keys
+from synthesizer.graphs import (
+    adjacency_by_carrier,
+    articulation_points,
+    build_adjacency,
+    path_link_keys,
+)
 
 pop = fixtures.carrier_pop
 physical = fixtures.fiber_segments_from
@@ -54,6 +60,23 @@ def _drawn(
 ) -> BackboneMesh:
     """The mesh a whole fiber choice and assembly settles on over one graph."""
     return backbone_mesh(sites, _distances(links), links, constraints)
+
+
+def _bought(
+    links: dict[tuple[str, str], FiberSegment],
+    sites: tuple[str, ...],
+    constraints: BackboneConstraints,
+) -> frozenset[tuple[str, str]]:
+    """The fiber the choice buys for this backbone, asked on the same terms the mesh asks.
+
+    ``backbone_mesh`` does not hand the choice's answer back, so it is asked again here with
+    the inputs ``_bought_fiber`` builds. What the two have to agree about is which segments
+    come back, and that is what the assertion standing on this compares.
+    """
+    return choose_fiber(FiberInputs(
+        sites, links, _distances(links), constraints.number_of_diverse_paths,
+        constraints.seat_cap, constraints.limit, adjacency_by_carrier(links),
+    )).segments
 
 
 def _bounded(
@@ -318,6 +341,62 @@ def test_a_tenant_that_bought_one_way_out_is_not_given_a_way_round_anything() ->
         for use in _ONE_WAY_OUT_LOBES.paths
         if link_key("b", "w") in path_link_keys(use.path)
     ] == []
+
+
+# The two graphs ``test_survivable.py`` uses to hold the choice to what one carrier sells and
+# to what the operator's bound allows, driven the whole way through the mesh. The choice is
+# only worth making if the network is drawn over what it chose, and until GitHub issue #113 it
+# was not: ``_ways_out_of`` proved each site over the bought fiber and over the carriers'
+# whole map and drew whichever gave more, which was the whole map for 29 of the 37 backbone
+# seats ``etc/`` declares.
+_SELLABLE_WAYS = fixtures.carrier_fiber_segments({
+    ("a", "p"): (1.0, ("zayo",)),
+    ("b", "p"): (1.0, ("lumen",)),
+    ("a", "q"): (1.0, ("zayo",)),
+    ("b", "q"): (1.0, ("lumen",)),
+    ("a", "r"): (5.0, ("lumen",)),
+    ("b", "r"): (5.0, ("lumen",)),
+})
+_SELLABLE_SITES = ("a", "b")
+_SELLABLE_TERMS = BackboneConstraints(number_of_diverse_paths=2, seat_cap=2)
+_SELLABLE_MESH = _drawn(_SELLABLE_SITES, _SELLABLE_WAYS, _SELLABLE_TERMS)
+_NEAR_AND_FAR = physical({
+    ("a", "b"): 1.0,
+    ("a", "q"): 2.0, ("b", "q"): 2.0,
+    ("a", "far"): 100.0, ("b", "far"): 100.0,
+})
+_NEAR_AND_FAR_SITES = ("a", "b", "far")
+_NEAR_AND_FAR_TERMS = _bounded(_NEAR_AND_FAR, 3.0)
+_NEAR_AND_FAR_MESH = _drawn(_NEAR_AND_FAR_SITES, _NEAR_AND_FAR, _NEAR_AND_FAR_TERMS)
+
+
+def _run_over(mesh: BackboneMesh) -> set[tuple[str, str]]:
+    """Every fiber segment the paths a mesh publishes actually run on."""
+    return {key for use in mesh.paths for key in path_link_keys(use.path)}
+
+
+def test_a_site_is_drawn_over_fiber_one_carrier_could_sell_it() -> None:
+    """Every segment the two sites are drawn over is one the choice bought for them.
+
+    Choosing the fiber is the expensive step of a build and the one the whole synthesizer is
+    arranged around, so a network drawn over fiber the choice never picked is a choice made
+    for nothing.
+    """
+    assert _run_over(_SELLABLE_MESH) <= _bought(
+        _SELLABLE_WAYS, _SELLABLE_SITES, _SELLABLE_TERMS
+    )
+
+
+def test_a_site_is_drawn_over_fiber_the_operators_bound_allows() -> None:
+    """The same, over the graph where the backup path multiple is what settles the answer.
+
+    The two halves of the defect were separate: one was who owns the fiber and the other was
+    how far a path may run, and either on its own left the drawing reaching past what the
+    choice had bought.
+    """
+    assert _run_over(_NEAR_AND_FAR_MESH) <= _bought(
+        _NEAR_AND_FAR, _NEAR_AND_FAR_SITES, _NEAR_AND_FAR_TERMS
+    )
 
 
 # The square again with one pair struck out by the operator, and again with one pinned. A

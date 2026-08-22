@@ -27,15 +27,25 @@ program's own answer is a floor under the whole problem. It is published beside 
 as ``backbone_lower_bound_miles``, because a claim that a synthesis is close to the shortest
 one there is means nothing until the shortest one there is has a number.
 
-What a site can be given is what one carrier can sell it. A path is ordered from one
-company and paid for every month, so two ways out of a site whose halves belong to
-different companies are one way out and not two, and a requirement written down for two is
-a requirement no operator can buy. Every requirement below is therefore lowered to
-``synthesizer.ceiling.diverse_path_ceilings``, the same number
-:func:`synthesizer.stages.finalize` holds the finished synthesis to. Left uncapped, the
-floor is priced for ways out nobody sells and can come out above the fiber the synthesis
-beside it actually ordered: Yurop published 8,844.892 miles against a floor of 9,141.641
-(GitHub issue #111).
+What a site can be given is what one carrier can sell it, and no further than the operator
+would order. A path is bought from one company end to end and paid for every month, so two
+ways out of a site whose halves belong to different companies are one way out and not two;
+and a path running further from the straight line than the tenant's
+``backbone.max_backup_path_multiple`` allows is one nobody orders at all. Every requirement
+below is therefore written over one carrier's own fiber, cut to the segments a path from
+that site to those peers could run on inside that bound, and the tenant's number is spread
+over the carriers by :func:`synthesizer.ceiling.ways_out_by_carrier` -- the same proof
+:func:`synthesizer.stages.finalize` later holds the finished synthesis to.
+
+Writing them over the whole map instead is what made the fiber chosen here beside the
+point. The answer met requirements with ways out nobody sells and detours nobody would
+order, ``synthesizer.backbone._ways_out_of`` then drew 29 of the 37 backbone seats over the
+carriers' whole fiber rather than over what was bought, and the floor published beside the
+synthesis was a floor for a network no operator could have built: DoW ran 9,294.692 miles
+against 7,361.252 (GitHub issue #113). The narrower half of the same defect had already
+been answered for the floor alone by lowering each requirement to a ceiling, after Yurop
+published 8,844.892 miles against a floor of 9,141.641 it had already beaten (GitHub issue
+#111).
 
 Two requirements are written down rather than one, and they are not the same requirement.
 Element connectivity between every pair of backbone nodes is the one the bound above is
@@ -46,19 +56,25 @@ that both run through one peer are one way out rather than two. That requirement
 written down as well, once per site, and the fiber has to meet both. Writing only the
 first would let the program buy a synthesis where every way out of a site runs through one of
 its peers, which the tenant did not ask for and validation would refuse.
+
+Splitting the rows by carrier costs the bound nothing. A synthesis meeting rows that each
+name one company is a synthesis meeting the same rows written over everybody's fiber at
+once, so the relaxation's answer is still below anything buildable and
+``backbone_lower_bound_miles`` is still a floor. What changes is which network it is a
+floor for: the one the tenant is handed, rather than one nobody could have ordered.
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 
 from synthesizer.ceiling import (
     BackupPathLimit,
     PathProofInputs,
-    diverse_path_ceilings,
     paths_per_peer,
+    ways_out_by_carrier,
 )
 from synthesizer.flow_cuts import Separation, SeparationQuestion, weakest_separation
 from synthesizer.graphs import build_adjacency
@@ -91,9 +107,9 @@ class FiberInputs:
 
     ``fiber_by_carrier`` is the same fiber split into what each carrier could sell a path
     over (see :func:`synthesizer.graphs.adjacency_by_carrier`). An operator orders a path
-    from one carrier, so what a site can be given is what one carrier can sell it, and this
-    is what :func:`_capped` measures each requirement against. Empty is fiber that names no
-    carrier, which every carrier's path may run over.
+    from one carrier, so what a site can be given is what one carrier can sell it, and every
+    requirement is written over one of these shares (see :func:`_fiber_by_carrier`). Empty
+    is fiber that names no carrier, which every carrier's path may run over.
     """
 
     backbone_ids: tuple[str, ...]
@@ -126,12 +142,41 @@ class _Requirement:
     ``spared`` are the cities that cannot fail while the ways are counted -- the site
     itself always, and the peers as well where a peer is a destination rather than a city
     a way out is charged for.
+
+    ``over`` is the fiber this requirement may be met with, and it is what makes the row a
+    row somebody can buy. An operator orders a path from one company end to end and no
+    further than their backup path multiple allows, so a requirement is written over one
+    carrier's segments, cut to the ones a path from this site to these peers could run on
+    inside that bound. A requirement written over the whole map instead is answered by ways
+    out nobody sells and detours nobody would order, and the drawing then refuses to count
+    them (GitHub issue #113).
     """
 
     site: str
     peers: frozenset[str]
     spared: frozenset[str]
     required: int
+    over: frozenset[tuple[str, str]]
+
+
+@dataclass(frozen=True)
+class _Writing:
+    """What every requirement is written against, worked out once for the whole program.
+
+    ``fiber`` is the admissible fiber and ``by_carrier`` is it split into what each company
+    could sell a path over. ``whole`` is that fiber held outright, which is what a
+    requirement is lowered against: a row no amount of buying could answer is a search that
+    never ends rather than a synthesis with an honest shortfall in it. ``per_peer`` is how
+    many of a site's ways out one peer may take and ``proof`` is what
+    :func:`synthesizer.ceiling.ways_out_by_carrier` is asked with.
+    """
+
+    inputs: FiberInputs
+    fiber: Mapping[tuple[str, str], float]
+    by_carrier: Mapping[str, frozenset[tuple[str, str]]]
+    whole: Mapping[tuple[str, str], float]
+    per_peer: int
+    proof: PathProofInputs
 
 
 @dataclass(frozen=True)
@@ -166,13 +211,21 @@ class _Search:
     bought: frozenset[tuple[str, str]]
 
 
-def _slack_from(site: str, inputs: FiberInputs, limit: BackupPathLimit) -> _BudgetSlack:
-    """What every city costs a path out of ``site``, measured against its peers' budgets."""
+def _slack_from(
+    site: str, inputs: FiberInputs, limit: BackupPathLimit, peers: Iterable[str]
+) -> _BudgetSlack:
+    """What every city costs a path out of ``site``, measured against those peers' budgets.
+
+    ``peers`` is which of them the paths may end at. Asked of every backbone node it says
+    which fiber any admissible path could use, which is what :func:`admissible_fiber`
+    wants; asked of one peer it says which fiber a path to that peer could use, which is
+    the sharper question a single requirement is written over.
+    """
     rows = limit.distances
     from_site = rows.get(site, {})
     budgets = [
         (peer, limit.multiple * from_site[peer])
-        for peer in inputs.backbone_ids
+        for peer in peers
         if peer != site and math.isfinite(from_site.get(peer, math.inf))
     ]
     spare = {
@@ -211,7 +264,10 @@ def admissible_fiber(inputs: FiberInputs) -> dict[tuple[str, str], float]:
     }
     if inputs.limit is None:
         return miles
-    slacks = [_slack_from(site, inputs, inputs.limit) for site in inputs.backbone_ids]
+    slacks = [
+        _slack_from(site, inputs, inputs.limit, inputs.backbone_ids)
+        for site in inputs.backbone_ids
+    ]
     return {
         segment: length
         for segment, length in miles.items()
@@ -219,14 +275,134 @@ def admissible_fiber(inputs: FiberInputs) -> dict[tuple[str, str], float]:
     }
 
 
-def _ways_out_requirement(site: str, inputs: FiberInputs, per_peer: int) -> _Requirement:
-    """What one site is owed: as many ways out as the tenant asked, ending at its peers."""
+def _within_budget(
+    inputs: FiberInputs,
+    fiber: Mapping[tuple[str, str], float],
+    site: str,
+    peers: frozenset[str],
+) -> frozenset[tuple[str, str]]:
+    """The fiber a path from ``site`` to one of ``peers`` could run over inside the bound.
+
+    :func:`admissible_fiber` asks the same arithmetic of every site and every peer at once,
+    so it keeps a segment that suits any pair anywhere on the map. Here the pair is known,
+    and the sharper answer is what a single requirement is written over: without it the
+    program can meet a requirement with a way round that runs further than the tenant's
+    backup path multiple allows, which :func:`synthesizer.ceiling.independent_paths` then
+    refuses to count, and the site reads short over the fiber that was bought for it
+    (GitHub issue #113).
+
+    With no bound in hand every segment will do, which is every caller with no tenant to be
+    measured against.
+    """
+    if inputs.limit is None:
+        return frozenset(fiber)
+    slack = _slack_from(site, inputs, inputs.limit, peers)
+    return frozenset(
+        segment for segment, length in fiber.items() if _reaches(segment, length, slack)
+    )
+
+
+def _fiber_by_carrier(
+    inputs: FiberInputs, fiber: Mapping[tuple[str, str], float]
+) -> dict[str, frozenset[tuple[str, str]]]:
+    """Each carrier's own share of the fiber, with the fiber nobody owns in every share.
+
+    An operator orders a path from one company end to end, so what a requirement may be met
+    over is one carrier's segments plus the segments no carrier owns -- the local fiber the
+    operator lays themselves, which every company's path may run along.
+
+    Fiber naming no carrier at all is one share under the empty name, holding the whole of
+    it. That is every fixture and every caller with no merged carriers behind it, and it
+    leaves the program exactly the one it wrote before carriers were split out.
+    """
+    if not inputs.fiber_by_carrier:
+        return {"": frozenset(fiber)}
+    return {
+        carrier: frozenset(
+            segment
+            for segment in fiber
+            if not inputs.fiber_segments[segment].carriers
+            or carrier in inputs.fiber_segments[segment].carriers
+        )
+        for carrier in inputs.fiber_by_carrier
+    }
+
+
+def _carried(requirement: _Requirement, whole: Mapping[tuple[str, str], float]) -> int:
+    """The most of a requirement this fiber could ever meet, at most what it asks for.
+
+    A site behind a single point of failure on one carrier's fiber cannot be given two ways
+    out over it by any amount of buying, so asking for two would leave the program with no
+    answer at all rather than with the honest one. What comes back is the largest number
+    the fiber survives every separation of, found by asking for one fewer until it does,
+    and the shortfall is then reported by
+    ``synthesizer.validation.backbone_mesh_independence_deficient`` rather than hidden.
+    """
+    required = requirement.required
+    while required > 0 and weakest_separation(_question(requirement, whole), required):
+        required -= 1
+    return required
+
+
+def _shared_out(owed: int, capacity: Mapping[str, int]) -> dict[str, int]:
+    """How many ways each carrier is asked for, the company that can carry most asked first.
+
+    A path is bought from one company end to end, so a tenant's number is met a carrier at
+    a time and has to be spread over the carriers that can reach the site. The ablest is
+    asked first and the rest take what is left, so the fewest companies are involved: an
+    operator holding two paths from one carrier and none from a third has one contract
+    fewer for the same protection.
+
+    A carrier asked for nothing keeps its entry at nothing, and its caller drops the row --
+    a requirement of nothing is met by no fiber at all and would put a column in the
+    program for every segment that company owns.
+    """
+    shares: dict[str, int] = {}
+    left = owed
+    for carrier, able in sorted(capacity.items(), key=lambda entry: (-entry[1], entry[0])):
+        shares[carrier] = min(able, left)
+        left -= shares[carrier]
+    return shares
+
+
+def _rows_for(
+    site: str,
+    peers: frozenset[str],
+    spared: frozenset[str],
+    writing: _Writing,
+    capacity: Mapping[str, int],
+) -> list[_Requirement]:
+    """One requirement per carrier, each over the fiber that company could sell this site.
+
+    The number asked of each is its share of the tenant's own (see :func:`_shared_out`),
+    lowered again to what that company's fiber can actually carry (see :func:`_carried`),
+    and a carrier left asking for nothing writes no row.
+    """
+    budgeted = _within_budget(writing.inputs, writing.fiber, site, peers)
+    asked = [
+        _Requirement(site, peers, spared, share, writing.by_carrier[carrier] & budgeted)
+        for carrier, share in _shared_out(writing.inputs.ways_out, capacity).items()
+        if share
+    ]
+    lowered = [replace(row, required=_carried(row, writing.whole)) for row in asked]
+    return [row for row in lowered if row.required]
+
+
+def _ways_out_rows(site: str, writing: _Writing) -> list[_Requirement]:
+    """What one site is owed: as many ways out as the tenant asked, ending at its peers.
+
+    Spread over the carriers by how many of the site's ways out each of them supplies,
+    which :func:`synthesizer.ceiling.ways_out_by_carrier` reads off the same proof
+    :func:`synthesizer.stages.finalize` later holds the site to. One rule, so the fiber
+    bought for a site and the number it is then credited with cannot disagree.
+    """
+    inputs = writing.inputs
     peers = frozenset(inputs.backbone_ids) - {site}
-    spared = frozenset({site}) if per_peer == 1 else frozenset({site}) | peers
-    return _Requirement(site, peers, spared, inputs.ways_out)
+    spared = frozenset({site}) if writing.per_peer == 1 else frozenset({site}) | peers
+    return _rows_for(site, peers, spared, writing, ways_out_by_carrier(site, writing.proof))
 
 
-def _between_requirement(root: str, peer: str, inputs: FiberInputs) -> _Requirement:
+def _between_rows(root: str, peer: str, writing: _Writing) -> list[_Requirement]:
     """What one pair is owed: as many paths between them as share no city on the way.
 
     Every backbone node is spared here and not only the two ends, which is what makes this
@@ -234,102 +410,76 @@ def _between_requirement(root: str, peer: str, inputs: FiberInputs) -> _Requirem
     written from one site to each of the others rather than between every pair: what it
     takes to separate two sites is never less than the smaller of what it takes to separate
     each of them from a third, so holding one site to every peer holds every pair.
+
+    A ceiling counts a site's ways out to distinct peers, which is not what it takes to
+    separate one named pair, so the spread here is by what each carrier's own fiber can
+    carry between these two rather than by that count.
     """
-    return _Requirement(root, frozenset({peer}), frozenset(inputs.backbone_ids), inputs.ways_out)
+    peers = frozenset({peer})
+    spared = frozenset(writing.inputs.backbone_ids)
+    budgeted = _within_budget(writing.inputs, writing.fiber, root, peers)
+    capacity = {
+        carrier: _carried(
+            _Requirement(
+                root, peers, spared, writing.inputs.ways_out, segments & budgeted
+            ),
+            writing.whole,
+        )
+        for carrier, segments in writing.by_carrier.items()
+    }
+    return _rows_for(root, peers, spared, writing, capacity)
 
 
-def _question(
-    requirement: _Requirement, held: Mapping[tuple[str, str], float]
-) -> SeparationQuestion:
-    """The requirement asked of fiber held in the shares given."""
-    return SeparationQuestion(requirement.site, requirement.peers, requirement.spared, held)
+def _writing(
+    inputs: FiberInputs, fiber: Mapping[tuple[str, str], float]
+) -> _Writing:
+    """What every requirement over this fiber is written against, worked out once.
 
-
-def _ceilings(inputs: FiberInputs) -> dict[str, int]:
-    """The ways out each backbone node could hold once a path is bought from one carrier.
-
-    :func:`synthesizer.ceiling.diverse_path_ceilings` over the whole of the fiber and the
-    same carrier split, which is the identical call :func:`synthesizer.stages.finalize`
-    makes at ``stages.py:93`` to work out what each site is then held to. Both halves of
-    the build ask one function one question, so the fiber is never bought for a site that
-    can hold more ways out than the finished synthesis will be credited with (GitHub issue
-    #111).
-
-    A node the fiber says nothing about has no entry, and :func:`_capped` reads that as
-    nothing: there is no fiber to give it a way out over, which is the truth about it.
+    The carrier split, the fiber held outright that a requirement is lowered against, how
+    many of a site's ways out one peer may take, and the proof
+    :func:`synthesizer.ceiling.ways_out_by_carrier` is asked with. All of them are the same
+    for every row, and the proof in particular is one max flow per site per carrier.
     """
-    return diverse_path_ceilings(PathProofInputs(
-        inputs.backbone_ids,
-        build_adjacency(dict(inputs.fiber_segments)),
-        inputs.limit,
-        inputs.ways_out,
-        inputs.seat_cap,
-        inputs.fiber_by_carrier,
-    ))
-
-
-def _capped(
-    requirement: _Requirement, whole: Mapping[tuple[str, str], float], ceiling: int
-) -> _Requirement:
-    """The same requirement, lowered to what one carrier could actually sell this site.
-
-    A site behind a single point of failure on the carrier's fiber cannot be given two ways
-    out by any amount of buying, so asking for two would leave the program with no answer
-    at all rather than with the honest one. Lowering it here is what keeps every row the
-    program is given a row some synthesis can meet, and the shortfall is then reported by
-    ``synthesizer.validation.backbone_mesh_independence_deficient`` rather than hidden.
-
-    ``ceiling`` is the first of the two lowerings and the one GitHub issue #111 added. A
-    path is bought from one carrier end to end, so a site whose two ways out are only two
-    when the halves of one of them are stitched together from two owners holds one way out
-    and not two. Boston, MA under Yurop was such a site: its three ways out belong to Zayo,
-    Lumen and Cogent separately and only Zayo's reaches any other city Yurop pins, so the
-    floor was priced for two ways out nobody sells and published 9,141.641 miles over a
-    synthesis that correctly ran 8,844.892.
-
-    The separation search below it stays, and it is what the pairwise requirements written
-    by :func:`_between_requirement` are lowered by. A ceiling counts a site's ways out to
-    distinct peers, which is not what it takes to separate one named pair, so a pairwise
-    row lowered to the ceiling alone could still be a row the fiber cannot meet -- and a
-    requirement no amount of buying can answer is a search that never ends rather than a
-    synthesis with an honest shortfall in it.
-    """
-    required = min(requirement.required, ceiling)
-    while required > 0 and weakest_separation(_question(requirement, whole), required):
-        required -= 1
-    return replace(requirement, required=required)
+    return _Writing(
+        inputs,
+        fiber,
+        _fiber_by_carrier(inputs, fiber),
+        {segment: 1.0 for segment in fiber},
+        paths_per_peer(inputs.seat_cap, len(inputs.backbone_ids), inputs.ways_out),
+        PathProofInputs(
+            inputs.backbone_ids,
+            build_adjacency(dict(inputs.fiber_segments)),
+            inputs.limit,
+            inputs.ways_out,
+            inputs.seat_cap,
+            inputs.fiber_by_carrier,
+        ),
+    )
 
 
 def _requirements(
     inputs: FiberInputs, fiber: Mapping[tuple[str, str], float]
 ) -> list[_Requirement]:
-    """Everything the fiber has to do, each already lowered to what one carrier can sell.
+    """Everything the fiber has to do, each row one company's to answer.
 
-    One requirement per site for the ways out it is owed, and one per peer of the
-    best-served site for the paths between them. The site the pairwise requirements are
-    written from is the one the carrier's fiber serves best, since holding every pair to
-    what the weakest site can manage would spend the whole backbone's protection on one
-    node's shortfall.
+    One requirement per site for the ways out it is owed and one per peer of the
+    best-served site for the paths between them, and each of those written once per carrier
+    that can carry part of it. The site the pairwise requirements are written from is the
+    one the carrier's fiber serves best, since holding every pair to what the weakest site
+    can manage would spend the whole backbone's protection on one node's shortfall.
     """
-    whole = {segment: 1.0 for segment in fiber}
-    ceilings = _ceilings(inputs)
-    per_peer = paths_per_peer(
-        inputs.seat_cap, len(inputs.backbone_ids), inputs.ways_out
-    )
-    ways_out = [
-        _capped(
-            _ways_out_requirement(site, inputs, per_peer), whole, ceilings.get(site, 0)
-        )
-        for site in inputs.backbone_ids
-    ]
+    writing = _writing(inputs, fiber)
+    ways_out = {site: _ways_out_rows(site, writing) for site in inputs.backbone_ids}
     if not ways_out:
         return []
-    root = min(ways_out, key=lambda owed: (-owed.required, owed.site)).site
-    return ways_out + [
-        _capped(
-            _between_requirement(root, peer, inputs), whole, ceilings.get(root, 0)
-        )
+    root = min(
+        ways_out.items(),
+        key=lambda owed: (-sum(row.required for row in owed[1]), owed[0]),
+    )[0]
+    return [row for rows in ways_out.values() for row in rows] + [
+        row
         for peer in sorted(set(inputs.backbone_ids) - {root})
+        for row in _between_rows(root, peer, writing)
     ]
 
 
