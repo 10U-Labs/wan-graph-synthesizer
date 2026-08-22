@@ -164,11 +164,6 @@ _NAME_FIELDS: dict[str, str] = {
 }
 
 
-def get_supported_resource_types() -> list[str]:
-    """Return the resource types this module can check for drift."""
-    return list(RESOURCE_CHECKERS.keys())
-
-
 def check_resource_exists(
     resource_type: str,
     resource_name: str,
@@ -269,19 +264,6 @@ def get_state_resources(stack_dir: Path) -> list[str]:
     if result.returncode != 0:
         return []
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
-
-
-def is_resource_in_state(stack_dir: Path, tf_address: str) -> bool:
-    """Report whether a resource address is present in OpenTofu state.
-
-    Args:
-        stack_dir: Directory containing the OpenTofu stack.
-        tf_address: Resource address (e.g. ``aws_lambda_function.my_func``).
-
-    Returns:
-        ``True`` if the address is in state, ``False`` otherwise.
-    """
-    return tf_address in get_state_resources(stack_dir)
 
 
 def find_orphaned_resources(

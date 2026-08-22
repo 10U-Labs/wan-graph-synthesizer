@@ -9,15 +9,10 @@ from __future__ import annotations
 from test_fixtures.aws import (
     apigateway_client,
     config,
-    dynamodb_client,
-    ecr_client,
-    events_client,
     iam_client,
     lambda_client,
     logs_client,
     s3_client,
-    sns_client,
-    sqs_client,
     state_bucket_name,
     sts_client,
 )
@@ -25,15 +20,10 @@ from test_fixtures.aws import (
 __all__ = [
     "apigateway_client",
     "config",
-    "dynamodb_client",
-    "ecr_client",
-    "events_client",
     "iam_client",
     "lambda_client",
     "logs_client",
     "s3_client",
-    "sns_client",
-    "sqs_client",
     "state_bucket_name",
     "sts_client",
 ]

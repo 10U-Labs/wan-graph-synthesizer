@@ -69,7 +69,7 @@ def test_python_files_reads_every_python_file_under_the_trees(tmp_path: Path) ->
 
 def test_python_files_reads_nothing_from_a_tree_that_is_not_there(tmp_path: Path) -> None:
     """A tree the repository does not have contributes no files rather than failing."""
-    assert python_files(_repo(tmp_path), (Path("nowhere"),)) == {}
+    assert not python_files(_repo(tmp_path), (Path("nowhere"),))
 
 
 def test_public_definitions_finds_the_public_classes_and_functions(tmp_path: Path) -> None:

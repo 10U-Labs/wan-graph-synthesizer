@@ -71,53 +71,6 @@ def logs_client() -> Any:
     return _client("logs")
 
 
-@pytest.fixture(scope="session")
-def dynamodb_client() -> Any:
-    """Create a DynamoDB client."""
-    return _client("dynamodb")
-
-
-@pytest.fixture(scope="session")
-def sqs_client() -> Any:
-    """Create an SQS client."""
-    return _client("sqs")
-
-
-@pytest.fixture(scope="session")
-def sns_client() -> Any:
-    """Create an SNS client."""
-    return _client("sns")
-
-
-@pytest.fixture(scope="session")
-def events_client() -> Any:
-    """Create an EventBridge (CloudWatch Events) client."""
-    return _client("events")
-
-
-@pytest.fixture(scope="session")
-def ecr_client() -> Any:
-    """Create an ECR client."""
-    return _client("ecr")
-
-
-def iam_role_exists(client: Any, role_name: str) -> bool:
-    """Report whether an IAM role exists.
-
-    Args:
-        client: An IAM boto3 client.
-        role_name: Name of the IAM role to check.
-
-    Returns:
-        ``True`` if the role exists, ``False`` otherwise.
-    """
-    try:
-        client.get_role(RoleName=role_name)
-        return True
-    except client.exceptions.NoSuchEntityException:
-        return False
-
-
 def get_log_group_info(client: Any, log_group_name: str) -> dict[str, object]:
     """Return existence and retention info for a CloudWatch log group.
 
