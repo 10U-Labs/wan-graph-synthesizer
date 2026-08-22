@@ -19,28 +19,7 @@ backbone:
       - Salt Lake City, UT
       - San Jose, CA
       - Seattle, WA
-      - Toledo, OH
-    paths:
-      - source: Ashburn, VA
-        target: Cheyenne, WY
-      - source: Atlanta, GA
-        target: Toledo, OH
-      - source: Cheyenne, WY
-        target: Great Falls, MT
-      - source: Cheyenne, WY
-        target: Minot, ND
-      - source: Dallas, TX
-        target: Los Angeles, CA
-      - source: Dallas, TX
-        target: Toledo, OH
-      - source: Hillsboro, OR
-        target: Salt Lake City, UT
-      - source: Minot, ND
-        target: Toledo, OH
-      - source: New York, NY
-        target: Toledo, OH
-      - source: Salt Lake City, UT
-        target: San Jose, CA
+    paths: []
   max_backup_path_multiple: 3
   node_count:
     max: 99
