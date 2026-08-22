@@ -23,8 +23,11 @@ DEFAULT_SITES = {
     "Providers": "data/providers/providers.csv",
     "VisionNet": "data/pops/vision_net.csv",
 }
-DEFAULT_CARRIER_FIBER_SEGMENTS = "data/fiber_segments/lumen.csv"
-DEFAULT_REGIONAL_LINKS = ["data/fiber_segments/dcn.csv", "data/fiber_segments/vision_net.csv"]
+DEFAULT_CARRIER_FIBER_SEGMENTS = "data/fiber_segments/terrestrial/lumen.csv"
+DEFAULT_REGIONAL_LINKS = [
+    "data/fiber_segments/terrestrial/dcn.csv",
+    "data/fiber_segments/terrestrial/vision_net.csv",
+]
 
 
 @dataclass(frozen=True)

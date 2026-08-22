@@ -85,6 +85,7 @@ def load_merged_carriers(
         by_city[city] = site
     links: dict[tuple[str, str], FiberSegment] = {}
     owners_by_key: dict[tuple[str, str], set[str]] = {}
+    under_water: set[tuple[str, str]] = set()
     connected: set[str] = set()
     for row in link_rows:
         source = by_city.get((row["a_municipality"], row["a_state"]))
@@ -94,9 +95,12 @@ def load_merged_carriers(
         key = link_key(source.id, target.id)
         if row.get("carrier"):
             owners_by_key.setdefault(key, set()).add(str(row["carrier"]))
+        if row.get("submarine"):
+            under_water.add(key)
         links[key] = FiberSegment(
             source=key[0], target=key[1], distance_miles=haversine_miles(source, target),
             carriers=frozenset(owners_by_key.get(key, ())),
+            submarine=key in under_water,
         )
         connected.update(key)
     pops = [site for site in by_city.values() if site.id in connected]

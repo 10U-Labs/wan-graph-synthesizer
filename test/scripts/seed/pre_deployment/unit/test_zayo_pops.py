@@ -6,7 +6,10 @@ from repo_utils import REPO_ROOT
 
 _DATA = REPO_ROOT / "data"
 _ZAYO = _DATA / "pops" / "zayo.csv"
-_ZAYO_LINKS = _DATA / "fiber_segments" / "zayo.csv"
+_ZAYO_LINKS = [
+    _DATA / "fiber_segments" / "terrestrial" / "zayo.csv",
+    _DATA / "fiber_segments" / "submarine" / "zayo.csv",
+]
 
 _CONTINENT = {
     "United States": "North America",
@@ -43,8 +46,11 @@ def _pops() -> list[dict[str, str]]:
 
 
 def _link_rows() -> list[dict[str, str]]:
-    with _ZAYO_LINKS.open(newline="", encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
+    rows: list[dict[str, str]] = []
+    for path in _ZAYO_LINKS:
+        with path.open(newline="", encoding="utf-8") as handle:
+            rows.extend(csv.DictReader(handle))
+    return rows
 
 
 def _link_endpoints() -> set[tuple[str, str]]:

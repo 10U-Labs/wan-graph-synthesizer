@@ -17,6 +17,9 @@ DEFAULT_API = "https://api.10ulabs.com/wan-synthesizer"
 RETRY_PAUSE_SECONDS = 1.0
 DATA = REPO_ROOT / "data"
 ETC = REPO_ROOT / "etc"
+FIBER_SEGMENTS = DATA / "fiber_segments"
+TERRESTRIAL = "terrestrial"
+SUBMARINE = "submarine"
 
 
 def _rows(path: Path) -> list[dict[str, Any]]:
@@ -127,14 +130,24 @@ def _degree_doc(value: Any) -> dict[str, Any]:
 
 
 def _carrier_names() -> list[str]:
-    return sorted(p.stem for p in (DATA / "fiber_segments").glob("*.csv"))
+    return sorted({path.stem for path in FIBER_SEGMENTS.glob("*/*.csv")})
+
+
+def _fiber_segment_rows(carrier: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for water, directory in ((False, TERRESTRIAL), (True, SUBMARINE)):
+        path = FIBER_SEGMENTS / directory / f"{carrier}.csv"
+        if not path.exists():
+            continue
+        rows.extend({**row, "submarine": water} for row in _rows(path))
+    return rows
 
 
 def push_carriers(api: str) -> None:
     for carrier in _carrier_names():
         cid = _slug(carrier)
         pops = _rows(DATA / "pops" / f"{carrier}.csv")
-        fiber_segments = _rows(DATA / "fiber_segments" / f"{carrier}.csv")
+        fiber_segments = _fiber_segment_rows(carrier)
         print(f"carrier {cid}: {len(pops)} points, "
               f"{len(fiber_segments)} fiber segments", flush=True)
         _put(api, f"carriers/{cid}/pops", pops)

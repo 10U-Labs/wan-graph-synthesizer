@@ -52,8 +52,8 @@ def test_default_site_files() -> None:
 
 def test_default_regional_links() -> None:
     assert default_config().input_files.regional_link_paths == (
-        Path("data/fiber_segments/dcn.csv"),
-        Path("data/fiber_segments/vision_net.csv"),
+        Path("data/fiber_segments/terrestrial/dcn.csv"),
+        Path("data/fiber_segments/terrestrial/vision_net.csv"),
     )
 
 

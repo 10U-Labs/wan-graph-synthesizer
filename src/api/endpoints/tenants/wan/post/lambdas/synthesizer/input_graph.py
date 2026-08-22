@@ -39,6 +39,7 @@ class FiberSegment:
     source_page: str = ""
     note: str = ""
     carriers: frozenset[str] = frozenset()
+    submarine: bool = False
 
 def link_key(left: str, right: str) -> tuple[str, str]:
     if left == right:

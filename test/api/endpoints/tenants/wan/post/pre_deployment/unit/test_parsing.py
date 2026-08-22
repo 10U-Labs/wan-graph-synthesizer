@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from synthesizer.codec import _slug, load_merged_carriers, load_off_net, load_regions, load_sites
 from synthesizer.model import is_carrier_pop
 
@@ -55,6 +57,16 @@ def test_merged_carriers_skip_a_segment_to_an_unserved_city() -> None:
 def test_merged_carriers_compute_segment_distance() -> None:
     _pops, links = load_merged_carriers(_MERGED_CARRIER_SITES, _MERGED_CARRIER_LINKS)
     assert round(next(iter(links.values())).distance_miles) == 557
+
+
+_UNDER_WATER_LINKS: list[dict[str, Any]] = [
+    {**_MERGED_CARRIER_LINKS[0], "submarine": True}
+]
+
+
+def test_merged_carriers_mark_a_segment_the_row_says_runs_under_water() -> None:
+    _pops, links = load_merged_carriers(_MERGED_CARRIER_SITES, _UNDER_WATER_LINKS)
+    assert next(iter(links.values())).submarine
 
 
 _TWO_OWNERS = [

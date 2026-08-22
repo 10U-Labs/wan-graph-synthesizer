@@ -316,3 +316,55 @@ def test_a_way_out_standing_on_a_city_already_spent_is_not_drawn() -> None:
 
 def test_one_peer_takes_one_way_out_however_many_carriers_offer_one() -> None:
     assert independent_paths("s", _owned_proof(_ONE_COMPANY_EACH)) == [("s", "x", "t")]
+
+
+_UNDER_WATER = fixtures.fiber_segments_under_water(
+    {
+        ("sea", "pdx"): 10.0, ("pdx", "hil"): 10.0,
+        ("sea", "tok"): 1000.0, ("tok", "hil"): 1000.0,
+    },
+    {("sea", "tok"), ("tok", "hil")},
+)
+_UNDER_WATER_BACKBONE = ("hil", "sea")
+
+
+def _on_land(
+    fiber: dict[tuple[str, str], FiberSegment]
+) -> dict[str, list[tuple[str, float]]]:
+    return build_adjacency({
+        segment: link for segment, link in fiber.items() if not link.submarine
+    })
+
+
+def test_a_way_round_under_water_is_no_way_out_where_the_site_has_one_over_land() -> None:
+    assert independent_paths(
+        "sea",
+        PathProofInputs(
+            _UNDER_WATER_BACKBONE,
+            build_adjacency(_UNDER_WATER),
+            paths_wanted=2,
+            terrestrial=_on_land(_UNDER_WATER),
+        ),
+    ) == [("sea", "pdx", "hil")]
+
+
+_ISLAND = fixtures.fiber_segments_under_water(
+    {
+        ("sea", "pdx"): 10.0, ("pdx", "hil"): 10.0,
+        ("syd", "sea"): 8000.0, ("syd", "hil"): 8000.0,
+    },
+    {("syd", "sea"), ("syd", "hil")},
+)
+_ISLAND_BACKBONE = ("hil", "sea", "syd")
+
+
+def test_a_site_reachable_only_over_water_keeps_the_ways_out_it_has() -> None:
+    assert sorted(independent_paths(
+        "syd",
+        PathProofInputs(
+            _ISLAND_BACKBONE,
+            build_adjacency(_ISLAND),
+            paths_wanted=2,
+            terrestrial=_on_land(_ISLAND),
+        ),
+    )) == [("syd", "hil"), ("syd", "sea")]

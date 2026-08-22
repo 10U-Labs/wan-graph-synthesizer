@@ -158,6 +158,16 @@ def fiber_segments_from(
     return links
 
 
+def fiber_segments_under_water(
+    pairs: dict[tuple[str, str], float], under_water: set[tuple[str, str]]
+) -> dict[tuple[str, str], FiberSegment]:
+    keys = {link_key(left, right) for left, right in under_water}
+    return {
+        key: dataclasses.replace(link, submarine=key in keys)
+        for key, link in fiber_segments_from(pairs).items()
+    }
+
+
 def carrier_fiber_segments(
     pairs: dict[tuple[str, str], tuple[float, tuple[str, ...]]],
 ) -> dict[tuple[str, str], FiberSegment]:
@@ -474,6 +484,17 @@ CROSSING_LINKS = fiber_segments_from({
     ("tok", "hil"): 1000.0,
     ("tok", "eug"): 1000.0,
 })
+CROSSING_SUBMARINE_LINKS = fiber_segments_under_water(
+    {
+        ("sea", "pdx"): 10.0,
+        ("pdx", "hil"): 10.0,
+        ("pdx", "eug"): 10.0,
+        ("sea", "tok"): 1000.0,
+        ("tok", "hil"): 1000.0,
+        ("tok", "eug"): 1000.0,
+    },
+    {("sea", "tok"), ("tok", "hil"), ("tok", "eug")},
+)
 CROSSING_IDS = ["sea", "hil", "eug", "pdx", "tok"]
 CROSSING_ELIGIBLE = {"sea", "hil", "eug"}
 CROSSING_COORDS = {

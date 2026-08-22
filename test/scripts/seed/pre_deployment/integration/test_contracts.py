@@ -186,6 +186,29 @@ def test_every_carrier_has_both_a_points_file_and_a_fiber_file() -> None:
     assert points == _carrier_names()
 
 
+def _carrier_fiber_written(
+    recorder: UrlopenRecorder, carrier: str
+) -> list[dict[str, Any]]:
+    return next(
+        cast("list[dict[str, Any]]", json.loads(cast("bytes", request.data)))
+        for request in recorder.requests
+        if request.full_url.endswith(f"/carriers/{carrier}/fiber-segments")
+    )
+
+
+def test_push_carriers_marks_each_fiber_row_by_the_directory_it_came_out_of(
+        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
+    _seed(urlopen_recorder, monkeypatch)
+    written = _carrier_fiber_written(urlopen_recorder, "zayo")
+    assert {
+        water: sum(1 for row in written if row["submarine"] is water)
+        for water in (False, True)
+    } == {
+        False: len(_rows(seed.FIBER_SEGMENTS / seed.TERRESTRIAL / "zayo.csv")),
+        True: len(_rows(seed.FIBER_SEGMENTS / seed.SUBMARINE / "zayo.csv")),
+    }
+
+
 def _tenants_written(paths: list[str], resource: str) -> int:
     return sum(1 for path in paths if re.fullmatch(rf"tenants/[^/]+/{resource}", path))
 

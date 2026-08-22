@@ -5,6 +5,8 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from synthesizer.graphs import reachable_over
+
 _Node = tuple[str, str]
 _Residual = dict[_Node, dict[_Node, int]]
 _Costs = dict[_Node, dict[_Node, float]]
@@ -271,6 +273,7 @@ class PathProofInputs:
     fiber_by_carrier: dict[str, dict[str, list[tuple[str, float]]]] = field(
         default_factory=dict
     )
+    terrestrial: dict[str, list[tuple[str, float]]] = field(default_factory=dict)
 
 
 def paths_per_peer(seat_cap: int | None, seats: int, paths_wanted: int) -> int:
@@ -344,13 +347,42 @@ def independent_paths(node: str, inputs: PathProofInputs) -> list[tuple[str, ...
     return [path for _carrier, path in _ways_out_and_their_carriers(node, inputs)]
 
 
+def _peers_over_land(node: str, inputs: PathProofInputs) -> frozenset[str]:
+    joined = reachable_over(inputs.terrestrial).get(node, frozenset())
+    return joined & frozenset(peer for peer in inputs.backbone_ids if peer != node)
+
+
+def _over_land(
+    node: str, inputs: PathProofInputs, adjacency: dict[str, list[tuple[str, float]]]
+) -> dict[str, list[tuple[str, float]]]:
+    if not _peers_over_land(node, inputs):
+        return adjacency
+    on_land = {
+        city: {neighbor for neighbor, _weight in neighbors}
+        for city, neighbors in inputs.terrestrial.items()
+    }
+    kept = {
+        city: [
+            (neighbor, weight)
+            for neighbor, weight in neighbors
+            if neighbor in on_land.get(city, frozenset())
+        ]
+        for city, neighbors in adjacency.items()
+    }
+    return {city: neighbors for city, neighbors in kept.items() if neighbors}
+
+
 def _paths_over_each_carrier(
     node: str, inputs: PathProofInputs, per_peer: int
 ) -> dict[str, list[tuple[str, ...]]]:
     if not inputs.fiber_by_carrier:
-        return {"": _paths_over(node, inputs, inputs.adjacency, per_peer)}
+        return {
+            "": _paths_over(
+                node, inputs, _over_land(node, inputs, inputs.adjacency), per_peer
+            )
+        }
     return {
-        carrier: _paths_over(node, inputs, adjacency, per_peer)
+        carrier: _paths_over(node, inputs, _over_land(node, inputs, adjacency), per_peer)
         for carrier, adjacency in sorted(inputs.fiber_by_carrier.items())
         if node in adjacency
     }

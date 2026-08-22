@@ -85,6 +85,20 @@ def connected_components(site_ids: set[str], links: set[tuple[str, str]]) -> lis
         components.append(sorted(component))
     return components
 
+def reachable_over(
+    adjacency: dict[str, list[tuple[str, float]]],
+) -> dict[str, frozenset[str]]:
+    segments = {
+        link_key(city, neighbor)
+        for city, neighbors in adjacency.items()
+        for neighbor, _weight in neighbors
+    }
+    return {
+        city: frozenset(group)
+        for group in connected_components(set(adjacency), segments)
+        for city in group
+    }
+
 def bridges(site_ids: set[str], links: set[tuple[str, str]]) -> set[tuple[str, str]]:
     base = len(connected_components(site_ids, links))
     return {

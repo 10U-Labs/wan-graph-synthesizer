@@ -331,3 +331,45 @@ def _overstated_ceilings(syntheses: list[dict[str, Any]]) -> dict[str, list[str]
 def test_no_published_networks_ceiling_is_higher_than_the_paths_its_carriers_can_sell(
         delivered_syntheses: list[dict[str, Any]]) -> None:
     assert not _overstated_ceilings(delivered_syntheses)
+
+
+def _submarine_pairs(synthesis: dict[str, Any]) -> set[frozenset[str]]:
+    return {
+        frozenset({link["source_name"], link["target_name"]})
+        for link in synthesis["paths"]
+        if link["link_kind"] == FIBER and link["submarine"]
+    }
+
+
+def _runs_under_water(path: list[str], under_water: set[frozenset[str]]) -> bool:
+    return any(
+        frozenset({near, far}) in under_water for near, far in zip(path, path[1:])
+    )
+
+
+def _paths_each_site_holds(synthesis: dict[str, Any]) -> dict[str, list[list[str]]]:
+    held: dict[str, list[list[str]]] = {}
+    for link in synthesis["links"]:
+        for end in (link["path"][0], link["path"][-1]):
+            held.setdefault(end, []).append(link["path"])
+    return held
+
+
+def _sites_ashore_holding_a_crossing(synthesis: dict[str, Any]) -> list[tuple[str, ...]]:
+    under_water = _submarine_pairs(synthesis)
+    return [
+        (synthesis["tenant"], site, " -> ".join(path))
+        for site, paths in sorted(_paths_each_site_holds(synthesis).items())
+        for path in paths
+        if _runs_under_water(path, under_water)
+        and any(not _runs_under_water(other, under_water) for other in paths)
+    ]
+
+
+def test_no_published_site_with_a_path_over_land_is_drawn_one_under_water(
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    assert [
+        offender
+        for synthesis in delivered_syntheses
+        for offender in _sites_ashore_holding_a_crossing(synthesis)
+    ] == []

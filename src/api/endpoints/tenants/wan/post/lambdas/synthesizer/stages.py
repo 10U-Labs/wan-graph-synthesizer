@@ -43,6 +43,9 @@ def finalize(
     list[Site], dict[tuple[str, str], FiberSegment], Synthesis, ValidationReport
 ]:
     adjacency = build_adjacency(fiber_segments)
+    terrestrial = build_adjacency({
+        segment: link for segment, link in fiber_segments.items() if not link.submarine
+    })
     targets = MeshRequirements(
         number_of_diverse_paths=params.tuning.backbone_number_of_diverse_paths,
         degree_exempt=degree_exempt,
@@ -56,6 +59,7 @@ def finalize(
             params.tuning.backbone_number_of_diverse_paths,
             params.max_backbone_count,
             adjacency_by_carrier(fiber_segments),
+            terrestrial,
         )),
     )
     validation = validate_synthesis(

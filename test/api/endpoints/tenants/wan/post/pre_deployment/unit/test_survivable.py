@@ -100,6 +100,13 @@ def test_a_multiple_wide_enough_for_the_crossing_keeps_the_crossing() -> None:
     assert _admissible(1000.0) == _EVERY_CROSSING_SEGMENT
 
 
+_UNDER_WATER_CHOICE = _chosen(fixtures.CROSSING_SUBMARINE_LINKS, _CROSSING_SITES)
+
+
+def test_no_submarine_fiber_is_selected_where_a_way_round_over_land_exists() -> None:
+    assert _UNDER_WATER_CHOICE.segments == _OVERLAND
+
+
 _NO_FIBER = _chosen(physical({}), ("a", "b"))
 _NO_SITES = _chosen(physical({("a", "b"): 1.0}), ())
 

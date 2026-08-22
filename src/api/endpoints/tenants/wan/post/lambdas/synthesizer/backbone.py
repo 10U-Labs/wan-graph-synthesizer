@@ -19,6 +19,7 @@ from synthesizer.graphs import (
     connected_components,
     dijkstra,
     path_link_keys,
+    reachable_over,
     reconstruct_path,
     undirected_adjacency,
 )
@@ -190,6 +191,12 @@ def _pairs_across(
     )
 
 
+def _on_land(
+    fiber: dict[tuple[str, str], FiberSegment]
+) -> dict[tuple[str, str], FiberSegment]:
+    return {segment: link for segment, link in fiber.items() if not link.submarine}
+
+
 def _path_around(
     city: str, paths: list[SynthesisPath], drawn: _DrawnFiber
 ) -> SynthesisPath | None:
@@ -197,9 +204,17 @@ def _path_around(
         segment: link for segment, link in drawn.whole.items() if city not in segment
     }
     by_carrier = adjacency_by_carrier(fiber)
+    land = _on_land(fiber)
+    land_by_carrier = adjacency_by_carrier(land)
+    reach = reachable_over(build_adjacency(_on_land(drawn.whole)))
     limit = drawn.constraints.limit
     for near, far in _pairs_across(city, paths, drawn):
-        found = _pinned_path((near, far), by_carrier, fiber)
+        joined = far in reach.get(near, frozenset())
+        found = _pinned_path(
+            (near, far),
+            land_by_carrier if joined else by_carrier,
+            land if joined else fiber,
+        )
         if found is None:
             continue
         if limit is not None and (

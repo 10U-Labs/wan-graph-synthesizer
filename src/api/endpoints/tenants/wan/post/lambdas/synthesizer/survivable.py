@@ -12,7 +12,7 @@ from synthesizer.ceiling import (
     ways_out_by_carrier_and_peer,
 )
 from synthesizer.flow_cuts import Separation, SeparationQuestion, weakest_separation
-from synthesizer.graphs import build_adjacency
+from synthesizer.graphs import build_adjacency, reachable_over
 from synthesizer.input_graph import FiberSegment
 from synthesizer.linear_program import GrowingSegmentProgram, SegmentChoice, SegmentRow
 
@@ -59,6 +59,8 @@ class _Writing:
     whole: Mapping[tuple[str, str], float]
     per_peer: int
     proof: PathProofInputs
+    land: frozenset[tuple[str, str]]
+    land_reach: Mapping[str, frozenset[str]]
 
 
 @dataclass(frozen=True)
@@ -213,12 +215,28 @@ def _rows_for(asked: _Asked, writing: _Writing) -> list[_Requirement]:
     )
 
 
+def _over_land(
+    site: str,
+    peers: frozenset[str],
+    over: frozenset[tuple[str, str]],
+    writing: _Writing,
+) -> frozenset[tuple[str, str]]:
+    if peers & writing.land_reach.get(site, frozenset()):
+        return over & writing.land
+    return over
+
+
 def _peer_fiber(
     site: str, writing: _Writing, capacity: Mapping[tuple[str, str], int]
 ) -> dict[tuple[str, str], frozenset[tuple[str, str]]]:
     return {
-        (carrier, peer): writing.by_carrier[carrier]
-        & _within_budget(writing.inputs, writing.fiber, site, frozenset({peer}))
+        (carrier, peer): _over_land(
+            site,
+            frozenset({peer}),
+            writing.by_carrier[carrier]
+            & _within_budget(writing.inputs, writing.fiber, site, frozenset({peer})),
+            writing,
+        )
         for carrier, peer in capacity
     }
 
@@ -264,21 +282,29 @@ def _ways_out_rows(site: str, writing: _Writing) -> _WaysOut:
 def _between_rows(root: str, peer: str, writing: _Writing) -> list[_Requirement]:
     asking = frozenset({peer})
     spared = frozenset(writing.inputs.backbone_ids)
+    over = {
+        carrier: _over_land(root, asking, segments, writing)
+        for carrier, segments in writing.by_carrier.items()
+    }
     capacity = {
         carrier: _carried(
             _Requirement(root, asking, spared, writing.inputs.ways_out, segments),
             writing.whole,
         )
-        for carrier, segments in writing.by_carrier.items()
+        for carrier, segments in over.items()
     }
-    return _rows_for(
-        _Asked(root, asking, spared, writing.by_carrier, capacity), writing
-    )
+    return _rows_for(_Asked(root, asking, spared, over, capacity), writing)
 
 
 def _writing(
     inputs: FiberInputs, fiber: Mapping[tuple[str, str], float]
 ) -> _Writing:
+    on_land = {
+        segment: link
+        for segment, link in inputs.fiber_segments.items()
+        if not link.submarine
+    }
+    terrestrial = build_adjacency(on_land)
     return _Writing(
         inputs,
         fiber,
@@ -292,7 +318,10 @@ def _writing(
             inputs.ways_out,
             inputs.seat_cap,
             inputs.fiber_by_carrier,
+            terrestrial,
         ),
+        frozenset(segment for segment in fiber if segment in on_land),
+        reachable_over(terrestrial),
     )
 
 

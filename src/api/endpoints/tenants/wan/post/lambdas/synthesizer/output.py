@@ -90,6 +90,7 @@ def synthesis_payload(sources: SourceFiles, artifacts: SynthesisArtifacts) -> di
                 "distance_miles": round(fiber_segments[link_key(left, right)].distance_miles, 3),
                 "source_page": fiber_segments[link_key(left, right)].source_page,
                 "note": fiber_segments[link_key(left, right)].note,
+                "submarine": fiber_segments[link_key(left, right)].submarine,
             }
             for left, right in sorted_fiber_segments(synthesis)
         ],

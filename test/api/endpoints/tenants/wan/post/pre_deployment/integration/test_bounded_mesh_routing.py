@@ -54,6 +54,16 @@ def _unbounded() -> SynthesisArtifacts:
     return _crossing(1000.0)
 
 
+@pytest.fixture(name="under_water", scope="module")
+def _under_water() -> SynthesisArtifacts:
+    return _artifacts(
+        fixtures.crossing_sites(),
+        fixtures.CROSSING_SUBMARINE_LINKS,
+        fixtures.crossing_transit_names(),
+        1000.0,
+    )
+
+
 @pytest.fixture(name="distant_peer", scope="module")
 def _distant_peer() -> SynthesisArtifacts:
     return _artifacts(
@@ -103,10 +113,10 @@ def test_the_bounded_synthesis_paths_no_link_through_the_crossing(
     assert "tok" not in _cities_crossed(bounded)
 
 
-def test_a_bound_wide_enough_still_takes_the_crossing(
-    unbounded: SynthesisArtifacts,
+def test_no_mileage_allowance_takes_a_crossing_a_way_round_over_land_answers(
+    under_water: SynthesisArtifacts,
 ) -> None:
-    assert "tok" in _cities_crossed(unbounded)
+    assert "tok" not in _cities_crossed(under_water)
 
 
 def test_the_bounded_synthesis_still_wires_every_site_into_one_backbone(
