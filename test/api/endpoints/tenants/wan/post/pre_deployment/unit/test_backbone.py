@@ -195,31 +195,37 @@ def test_no_path_the_shared_egress_synthesis_holds_could_be_taken_back_out() -> 
     assert _needed(_EGRESS.paths, _EGRESS_SITES, 2) == _EGRESS.paths
 
 
-# Two triangles of one company's fiber sharing the city ``mid``, with a thirty-mile way from
-# ``b`` to ``c`` that touches ``mid`` nowhere. Each of the four seats holds its two ways out
-# inside its own triangle, so every path the reading draws crosses ``mid`` and the network
-# falls in two the day ``mid`` goes dark -- the shape three of the five live tenants published
-# (GitHub issue #112). The ring fixtures above cannot produce it: a ring site has two fiber
-# directions and its two ways out are the two ways round, whose union is the ring itself.
+# Two lobes of one company's fiber, joined cheaply through the city ``mid`` and expensively
+# through ``w``. ``a`` and ``b`` sit on one side and ``c`` and ``d`` on the other, and every
+# way out any of the four holds runs through ``mid``: the way through ``w`` is forty miles
+# where ``b`` and ``c`` are ten apart, so it is past what the operator's backup path multiple
+# buys for that pair and no site reaches for it. The network the reading draws therefore falls
+# in two the day ``mid`` goes dark, which is the shape three of the five live tenants
+# published (GitHub issue #112).
+#
+# The ring fixtures above cannot produce it. A ring site has two fiber directions, so its two
+# ways out are the two ways round and their union is the ring itself -- a network no city's
+# loss splits, whatever the code under test does.
 _LOBE_SITES = ("a", "b", "c", "d")
-_LOBE_TRIANGLES: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
+_LOBE_LOBES: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
     ("a", "b"): (10.0, ("lumen",)),
-    ("a", "mid"): (11.0, ("lumen",)),
-    ("b", "mid"): (12.0, ("lumen",)),
+    ("a", "mid"): (15.0, ("lumen",)),
+    ("b", "mid"): (5.0, ("lumen",)),
     ("c", "d"): (10.0, ("lumen",)),
-    ("c", "mid"): (13.0, ("lumen",)),
-    ("d", "mid"): (14.0, ("lumen",)),
+    ("c", "mid"): (5.0, ("lumen",)),
+    ("d", "mid"): (15.0, ("lumen",)),
 }
 _LOBE_LINKS = fixtures.carrier_fiber_segments({
-    **_LOBE_TRIANGLES, ("b", "c"): (30.0, ("lumen",)),
+    **_LOBE_LOBES, ("b", "w"): (20.0, ("lumen",)), ("w", "c"): (20.0, ("lumen",)),
 })
 _TWO_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _TWO_WAYS_OUT)
-# The same two triangles with the way round taken away, so no fiber at all goes past ``mid``.
-_BOWTIE = _drawn(_LOBE_SITES, fixtures.carrier_fiber_segments(_LOBE_TRIANGLES), _TWO_WAYS_OUT)
-# The two triangles again under an operator who buys no path running more than a tenth again
-# further than the straight distance between its two ends. The way round ``mid`` is forty
-# miles against the twenty-four ``a`` and ``c`` are apart, so it is fiber this operator would
-# not order and the shortfall is theirs to read rather than the tool's to spend around.
+# The same two lobes with the way through ``w`` taken away, so no fiber at all goes past
+# ``mid``.
+_BOWTIE = _drawn(_LOBE_SITES, fixtures.carrier_fiber_segments(_LOBE_LOBES), _TWO_WAYS_OUT)
+# The two lobes again under an operator who buys no path running more than four fifths again
+# further than the straight distance between its two ends. The shortest way round ``mid`` is
+# the fifty miles from ``a`` to ``c`` through ``w``, against the twenty those two are apart,
+# so it is fiber this operator has already said they do not want.
 _LOBE_ADJACENCY = build_adjacency(_LOBE_LINKS)
 _LOBE_DISTANCES, _LOBE_PREDECESSORS = all_pairs_shortest(
     [pop(city) for city in sorted({city for pair in _LOBE_LINKS for city in pair})],
@@ -227,22 +233,27 @@ _LOBE_DISTANCES, _LOBE_PREDECESSORS = all_pairs_shortest(
 )
 _BOUNDED_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, BackboneConstraints(
     number_of_diverse_paths=2, seat_cap=4,
-    limit=BackupPathLimit(1.1, _LOBE_DISTANCES),
+    limit=BackupPathLimit(1.8, _LOBE_DISTANCES),
+))
+# The same two lobes for a tenant that asked for one way out of each node rather than two.
+_ONE_WAY_OUT_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, BackboneConstraints(
+    number_of_diverse_paths=1, seat_cap=4,
 ))
 
 
 def test_a_city_every_drawn_path_crosses_is_given_a_way_round_it() -> None:
     """No one city's loss splits the fiber the four seats are published over.
 
-    The whole of what a tenant asking for two ways out is buying, and the thing the reading
-    alone does not deliver. Each seat holds two ways out inside its own triangle either way;
-    what the way round buys is the network staying in one piece when ``mid`` goes dark.
+    The whole of what a tenant buying two ways out of every node is paying for, and the thing
+    reading each site's ways out on its own does not deliver. Each seat holds two ways out
+    either way; what the way round buys is the network staying in one piece when ``mid`` goes
+    dark.
     """
     assert _cut(_TWO_LOBES) == set()
 
 
 def test_the_path_drawn_round_that_city_is_one_company_can_sell() -> None:
-    """The way round ``mid`` runs over the b-to-c fiber, and Lumen has all of it.
+    """The way round ``mid`` runs through ``w``, and Lumen has all of the fiber it crosses.
 
     An operator orders a path from one carrier end to end, so a way round assembled from two
     companies' fiber is not a thing anybody quotes. Exactly one path in the network crosses
@@ -252,7 +263,7 @@ def test_the_path_drawn_round_that_city_is_one_company_can_sell() -> None:
     assert [
         use.carrier
         for use in _TWO_LOBES.paths
-        if link_key("b", "c") in path_link_keys(use.path)
+        if link_key("b", "w") in path_link_keys(use.path)
     ] == ["lumen"]
 
 
@@ -277,6 +288,16 @@ def test_a_way_round_past_the_operators_backup_path_multiple_is_not_bought() -> 
     said they do not want, on the strength of a property they also want.
     """
     assert _cut(_BOUNDED_LOBES) == {"mid"}
+
+
+def test_a_tenant_that_bought_one_way_out_is_not_given_a_way_round_anything() -> None:
+    """One way out is one way out, and a network built to it comes apart where its fiber does.
+
+    Yurop asks for one diverse path, and four cities split the network it was handed. That is
+    what it bought. Relieving those cities would order fiber against a requirement the tenant
+    did not write down, which is the same defect read backwards.
+    """
+    assert "mid" in _cut(_ONE_WAY_OUT_LOBES)
 
 
 # The square again with one pair struck out by the operator, and again with one pinned. A

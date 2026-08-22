@@ -379,7 +379,7 @@ def test_no_published_network_is_split_by_the_loss_of_one_city(
     cut off from most of its peers when the cities those peers depend on are the ones that
     failed. Three of the five live tenants were in that state and nothing they were handed
     said so -- the loss of Atlanta, GA left Ashburn, VA and New York, NY with no way to DAF's
-    other nine backbone nodes, ten more cities split DAF somewhere else, four split
+    other nine backbone nodes, eight more cities split DAF somewhere else, four split
     Minuteman and Cheyenne, WY split DoW (GitHub issue #112).
 
     Asked of the cities each published path crosses (see

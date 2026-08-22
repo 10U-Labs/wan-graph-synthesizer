@@ -360,7 +360,7 @@ def cut_cities(links: list[dict[str, Any]]) -> list[str]:
     property of the whole network rather than of any one site: a site can hold both of its
     own ways out and still be cut off from its peers, because the cities those peers depend
     on are the ones that went dark. Three of the five live tenants published a network in
-    that state, DAF's falling in two on the loss of any of eleven cities (GitHub issue #112).
+    that state, DAF's falling in two on the loss of any of nine cities (GitHub issue #112).
 
     Read off the hops of each published path -- the fiber the operator actually ordered --
     rather than off the build's own account of itself, so a build that has stopped measuring
@@ -380,7 +380,7 @@ def cut_cities(links: list[dict[str, Any]]) -> list[str]:
         lost
         for lost in joined
         if not _all_one_network({
-            city: joined[city] - {lost} for city in joined if city != lost
+            city: reached - {lost} for city, reached in joined.items() if city != lost
         })
     )
 

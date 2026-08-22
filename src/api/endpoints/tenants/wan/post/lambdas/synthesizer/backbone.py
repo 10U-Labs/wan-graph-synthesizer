@@ -387,6 +387,11 @@ def _relieved(paths: list[SynthesisPath], drawn: _DrawnFiber) -> list[SynthesisP
     true of the carriers' fiber rather than only of this synthesis -- which is worth more
     than fiber on the map nobody would buy.
 
+    A tenant asking for one way out of each node is asked for nothing here. One way out is
+    one way out, and a network built to it comes apart wherever its fiber does: Yurop asks
+    for one, four cities split its published network, and that is the honest answer to what
+    it bought rather than a defect to spend its money on.
+
     This is a requirement of the whole network and not the pair-at-a-time repair GitHub
     issue #60 retired. It runs once, over the finished list of paths, and what it adds is
     ordinary fiber the prune may take back out again (see :func:`_needed`).
@@ -397,6 +402,8 @@ def _relieved(paths: list[SynthesisPath], drawn: _DrawnFiber) -> list[SynthesisP
     not one already, so each pass either takes one off the list or writes one off.
     """
     relieved = list(paths)
+    if drawn.constraints.number_of_diverse_paths < 2:
+        return relieved
     beyond_help: set[str] = set()
     while True:
         cut = sorted(_cut_cities(relieved, drawn.backbone_ids) - beyond_help)

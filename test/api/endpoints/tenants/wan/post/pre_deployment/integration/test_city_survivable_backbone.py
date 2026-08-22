@@ -8,10 +8,12 @@ Three of the five live tenants published a network in exactly that state: the lo
 Atlanta, GA left Ashburn, VA and New York, NY with no way to DAF's other nine backbone
 nodes, and eight more cities each split it somewhere (GitHub issue #112).
 
-The graph here is the smallest thing that can go wrong that way. Two triangles of fiber share
-the city ``mid``, and a thirty-mile way from ``b`` to ``c`` goes round it. Each of the four
-seats holds its two ways out inside its own triangle, so every path read off the fiber
-crosses ``mid``, while the fiber those paths were chosen out of goes round it perfectly well.
+The graph here is the smallest thing that can go wrong that way. Two lobes of fiber are joined
+cheaply through the city ``mid`` and expensively through ``w``: ``a`` and ``b`` sit on one
+side, ``c`` and ``d`` on the other, and the way through ``w`` runs forty miles where ``b``
+and ``c`` are ten apart, which is past what the tenant's backup path multiple of three buys
+for that pair. So no site reaches for it, every path read off the fiber crosses ``mid``, and
+the fiber those paths were chosen out of goes round ``mid`` perfectly well.
 
 No fixture in this directory could produce that before. ``fixtures.ring_artifacts`` and the
 graphs beside it give each site two fiber directions and no more, so a site's two ways out
@@ -26,15 +28,17 @@ import fixtures
 
 _SITES = ("a", "b", "c", "d")
 _ASKED_FOR = 2
-# Two triangles sharing ``mid``, and the one length of fiber that goes past it. The way round
-# runs forty miles against the twenty-four ``a`` and ``c`` are apart, well inside the default
-# backup path multiple of three, so nothing but the network's own shape decides this.
+# The two lobes, and the fiber through ``w`` that goes past ``mid``. The way round taken is
+# the fifty miles from ``a`` to ``c`` through ``w``, against the twenty those two are apart,
+# which is inside the default backup path multiple of three -- while the forty miles from
+# ``b`` to ``c`` the same fiber offers is not, against the ten they are apart, which is why
+# the reading leaves that fiber undrawn in the first place.
 _SEGMENTS = {
-    ("a", "b"): 10.0, ("a", "mid"): 11.0, ("b", "mid"): 12.0,
-    ("c", "d"): 10.0, ("c", "mid"): 13.0, ("d", "mid"): 14.0,
-    ("b", "c"): 30.0,
+    ("a", "b"): 10.0, ("a", "mid"): 15.0, ("b", "mid"): 5.0,
+    ("c", "d"): 10.0, ("c", "mid"): 5.0, ("d", "mid"): 15.0,
+    ("b", "w"): 20.0, ("w", "c"): 20.0,
 }
-_TRANSIT = ("mid",)
+_TRANSIT = ("mid", "w")
 ARTIFACTS = fixtures.synthesis_over_segments(_SITES, _SEGMENTS, _ASKED_FOR, _TRANSIT)
 
 
