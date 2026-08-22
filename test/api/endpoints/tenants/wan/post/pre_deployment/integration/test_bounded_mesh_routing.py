@@ -90,7 +90,7 @@ def _mesh_miles(artifacts: SynthesisArtifacts) -> float:
     )
 
 
-def _limited_ceilings(artifacts: SynthesisArtifacts) -> dict[str, int]:
+def _limited_ceilings(artifacts: SynthesisArtifacts) -> dict[str, object]:
     return {
         str(entry["id"]): entry["ceiling"]
         for entry in artifacts.validation["backbone_diverse_paths_ceiling_limited"]
