@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from pathlib import Path
 from urllib.parse import urlsplit
 from collections.abc import Callable
 from typing import Any, cast
@@ -186,6 +187,10 @@ def test_every_carrier_has_both_a_points_file_and_a_fiber_file() -> None:
     assert points == _carrier_names()
 
 
+def _fiber_file(directory: str) -> Path:
+    return seed.DATA / seed.FIBER_SEGMENTS / directory / "zayo.csv"
+
+
 def _carrier_fiber_written(
     recorder: UrlopenRecorder, carrier: str
 ) -> list[dict[str, Any]]:
@@ -204,8 +209,8 @@ def test_push_carriers_marks_each_fiber_row_by_the_directory_it_came_out_of(
         water: sum(1 for row in written if row["submarine"] is water)
         for water in (False, True)
     } == {
-        False: len(_rows(seed.FIBER_SEGMENTS / seed.TERRESTRIAL / "zayo.csv")),
-        True: len(_rows(seed.FIBER_SEGMENTS / seed.SUBMARINE / "zayo.csv")),
+        False: len(_rows(_fiber_file(seed.TERRESTRIAL))),
+        True: len(_rows(_fiber_file(seed.SUBMARINE))),
     }
 
 
@@ -229,7 +234,7 @@ def _merged_carriers() -> tuple[list[Site], dict[tuple[str, str], FiberSegment]]
     ]
     segments = [
         row
-        for path in sorted(seed.FIBER_SEGMENTS.glob("*/*.csv"))
+        for path in sorted((seed.DATA / seed.FIBER_SEGMENTS).glob("*/*.csv"))
         for row in _rows(path)
     ]
     return load_merged_carriers(points, segments)

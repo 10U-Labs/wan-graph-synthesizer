@@ -17,7 +17,7 @@ DEFAULT_API = "https://api.10ulabs.com/wan-synthesizer"
 RETRY_PAUSE_SECONDS = 1.0
 DATA = REPO_ROOT / "data"
 ETC = REPO_ROOT / "etc"
-FIBER_SEGMENTS = DATA / "fiber_segments"
+FIBER_SEGMENTS = "fiber_segments"
 TERRESTRIAL = "terrestrial"
 SUBMARINE = "submarine"
 
@@ -130,13 +130,13 @@ def _degree_doc(value: Any) -> dict[str, Any]:
 
 
 def _carrier_names() -> list[str]:
-    return sorted({path.stem for path in FIBER_SEGMENTS.glob("*/*.csv")})
+    return sorted({path.stem for path in (DATA / FIBER_SEGMENTS).glob("*/*.csv")})
 
 
 def _fiber_segment_rows(carrier: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for water, directory in ((False, TERRESTRIAL), (True, SUBMARINE)):
-        path = FIBER_SEGMENTS / directory / f"{carrier}.csv"
+        path = DATA / FIBER_SEGMENTS / directory / f"{carrier}.csv"
         if not path.exists():
             continue
         rows.extend({**row, "submarine": water} for row in _rows(path))
