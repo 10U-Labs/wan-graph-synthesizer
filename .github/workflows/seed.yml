@@ -233,6 +233,9 @@ jobs:
   # to build an order from. An expression `if` reading this job's result is not a substitute
   # for the needs: edges either, because a job that only reads another job's result can
   # start before that job has finished.
+  # .github/workflows/scripts.yml runs all nine modules' tests as well, under a --cov
+  # gate each, and does not replace this job for the same reason: it is a separate
+  # workflow, so nothing orders it ahead of the tiers here that import the modules.
   #
   # Every workflow runs every module's tests, not only the ones its own tests import.
   # Scoping the job to what a workflow imports would make its contents a function of an
@@ -381,7 +384,7 @@ on:
       - data/**
       - etc/**
       - lib/python/**
-      - scripts/**
+      - scripts/seed.py
       # What the prune calls stale is decided by
       # src/api/common/storage/lambdas/handler.py, and the seeding job is what runs the
       # prune, so test/scripts/seed/post_deployment/e2e/test_pruned_store.py is the only

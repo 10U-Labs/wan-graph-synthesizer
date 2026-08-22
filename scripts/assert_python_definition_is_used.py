@@ -1,0 +1,113 @@
+"""Report a public definition under lib/python/ that nothing outside it uses.
+
+A definition nobody calls is dead code, and the coverage gate cannot say so: the unit
+test that holds a module at 100% is itself a call, so a function whose only caller is
+its own test looks used. This asks the different question -- does anything else name it
+-- over every .py file under lib/python/, scripts/ and test/. With --outside-own-tests
+the module's own test directory is not consulted, so a definition kept alive only by
+the tests written for it is reported too. A use anywhere else under test/ still counts,
+because lib/python/test_fixtures exists to be called from there.
+
+src/ is deliberately not read. A job that reads a tree has to run on every push that
+changes it, and .github/workflows/scripts.yml runs on pushes to lib/python/, scripts/
+and test/.
+
+Usage: python scripts/assert_python_definition_is_used.py [--outside-own-tests]
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import re
+import sys
+from pathlib import Path
+
+from repo_utils import REPO_ROOT
+
+MODULES = Path("lib", "python")
+TREES = (Path("lib", "python"), Path("scripts"), Path("test"))
+DEFINITIONS = (ast.AsyncFunctionDef, ast.ClassDef, ast.FunctionDef)
+
+
+def python_files(root: Path, trees: tuple[Path, ...]) -> dict[Path, list[str]]:
+    """Every .py file under each tree, keyed by its path relative to root."""
+    read: dict[Path, list[str]] = {}
+    for tree in trees:
+        for path in sorted((root / tree).rglob("*.py")):
+            read[path.relative_to(root)] = path.read_text(encoding="utf-8").splitlines()
+    return read
+
+
+def public_definitions(lines: list[str]) -> list[tuple[int, str]]:
+    """The line and name of every top-level class or function whose name is public."""
+    return [
+        (node.lineno, node.name)
+        for node in ast.parse("\n".join(lines)).body
+        if isinstance(node, DEFINITIONS) and not node.name.startswith("_")
+    ]
+
+
+def named_elsewhere(
+    name: str,
+    source: dict[Path, list[str]],
+    written: tuple[Path, int],
+    skipped: Path | None,
+) -> bool:
+    """Whether any line but the definition's own, and outside skipped, writes name."""
+    word = re.compile(r"\b" + re.escape(name) + r"\b")
+    for other, lines in source.items():
+        if skipped is not None and skipped in other.parents:
+            continue
+        for number, line in enumerate(lines, 1):
+            if (other, number) == written:
+                continue
+            if word.search(line):
+                return True
+    return False
+
+
+def unused_definitions(root: Path, outside_own_tests: bool) -> list[tuple[Path, int, str]]:
+    """Every public definition under lib/python/ that no other line of the repository names."""
+    source = python_files(root, TREES)
+    unused: list[tuple[Path, int, str]] = []
+    for path, lines in source.items():
+        if MODULES not in path.parents:
+            continue
+        skipped = None
+        if outside_own_tests and len(path.parts) > len(MODULES.parts) + 1:
+            skipped = Path("test", *path.parts[: len(MODULES.parts) + 1])
+        for lineno, name in public_definitions(lines):
+            if not named_elsewhere(name, source, (path, lineno), skipped):
+                unused.append((path, lineno, name))
+    return sorted(unused)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Print an error annotation for each unused definition, and answer 1 if there are any."""
+    parser = argparse.ArgumentParser(
+        description="Assert every public definition under lib/python/ is used."
+    )
+    parser.add_argument(
+        "--outside-own-tests",
+        action="store_true",
+        help="Do not count a use in the module's own directory under test/lib/python/.",
+    )
+    parser.add_argument(
+        "--root",
+        default=REPO_ROOT,
+        type=Path,
+        help="The repository root to read (default: the one this file sits in).",
+    )
+    arguments = parser.parse_args(argv)
+    unused = unused_definitions(arguments.root, arguments.outside_own_tests)
+    for path, lineno, name in unused:
+        print(
+            f"::error file={path},line={lineno}::{path}:{lineno} defines {name}"
+            f" and nothing outside it uses it; delete it or use it"
+        )
+    return 1 if unused else 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(main())

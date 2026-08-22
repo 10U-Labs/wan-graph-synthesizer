@@ -1,0 +1,394 @@
+---
+concurrency:
+  cancel-in-progress: true
+  group: scripts
+jobs:
+  assert-no-inline-directives:
+    name: assert-no-inline-directives
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-inline-directives
+      - name: Assert no inline directives
+        run: >-
+          assert-no-inline-directives
+          --tools pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}/lib/python
+          ${{ github.workspace }}/scripts
+          ${{ github.workspace }}/test/lib/python
+          ${{ github.workspace }}/test/scripts
+  assert-no-linter-config-files:
+    name: assert-no-linter-config-files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-no-linter-config-files
+      - name: Assert no linter config files
+        run: >-
+          assert-no-linter-config-files
+          --linters pylint,mypy,yamllint
+          --verbose
+          ${{ github.workspace }}
+  assert-no-test-only-python-definition:
+    name: assert-no-test-only-python-definition
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assert every lib/python definition is used outside its own tests
+        run: >-
+          PYTHONPATH=lib/python
+          python3 scripts/assert_python_definition_is_used.py --outside-own-tests
+  assert-no-unused-python-definition:
+    name: assert-no-unused-python-definition
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assert every lib/python definition is used somewhere
+        run: >-
+          PYTHONPATH=lib/python
+          python3 scripts/assert_python_definition_is_used.py
+  assert-one-assert-per-pytest:
+    name: assert-one-assert-per-pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install assert-one-assert-per-pytest
+      - name: Assert one assert per pytest
+        run: >-
+          assert-one-assert-per-pytest
+          --verbose
+          ${{ github.workspace }}/test/lib/python
+          ${{ github.workspace }}/test/scripts
+  copy-paste-source:
+    name: copy-paste-source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: npm install -g jscpd
+      - name: Detect copy-paste in source
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console
+          scripts/ lib/python/
+  copy-paste-tests:
+    name: copy-paste-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: npm install -g jscpd
+      - name: Detect copy-paste in tests
+        run: >-
+          jscpd --pattern "**/*.py" --threshold 0 --reporters console
+          test/scripts/ test/lib/python/
+  mypy-source:
+    name: mypy-source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install mypy boto3 boto3-stubs botocore-stubs pytest pyyaml 'python-hcl2<8' types-PyYAML
+      - name: Run mypy on source
+        run: >-
+          MYPYPATH=lib/python:scripts
+          python3 -m mypy --strict --ignore-missing-imports
+          --explicit-package-bases scripts/ lib/python/
+  mypy-tests:
+    name: mypy-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install mypy boto3 boto3-stubs botocore-stubs pytest pyyaml 'python-hcl2<8' types-PyYAML
+      - name: Run mypy on tests
+        run: >-
+          MYPYPATH=lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m mypy --strict --ignore-missing-imports
+          --explicit-package-bases test/scripts/ test/lib/python/
+  pylint-source:
+    name: pylint-source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pylint boto3 boto3-stubs botocore-stubs pytest pyyaml 'python-hcl2<8' types-PyYAML
+      - name: Run pylint on source
+        run: >-
+          PYTHONPATH=lib/python:scripts:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pylint --recursive=y
+          scripts/ lib/python/
+          --fail-on=C,R,W --fail-under=10.0
+  pylint-tests:
+    name: pylint-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pylint boto3 boto3-stubs botocore-stubs pytest pyyaml 'python-hcl2<8' types-PyYAML
+      - name: Run pylint on tests
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pylint --recursive=y
+          test/scripts/ test/lib/python/
+          --fail-on=C,R,W --fail-under=10.0
+  test-assert-python-definition-is-used:
+    name: test-assert-python-definition-is-used
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pytest pytest-cov
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts
+          python3 -m pytest
+          test/scripts/assert_python_definition_is_used/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=assert_python_definition_is_used
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+  test-lib-repo-utils:
+    name: test-lib-repo-utils
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/repo_utils/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/repo_utils
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+  test-lib-test-fixtures:
+    name: test-lib-test-fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_fixtures/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/test_fixtures
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+  test-lib-test-handler-contracts:
+    name: test-lib-test-handler-contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_handler_contracts/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/test_handler_contracts
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+      - name: Run integration tests
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_handler_contracts/pre_deployment/integration/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+  test-lib-test-http-doubles:
+    name: test-lib-test-http-doubles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+      - name: Run both tiers with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_http_doubles/pre_deployment/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/test_http_doubles
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+  test-lib-test-module-utils:
+    name: test-lib-test-module-utils
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_module_utils/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/test_module_utils
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+  test-lib-test-published-syntheses:
+    name: test-lib-test-published-syntheses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_published_syntheses/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/test_published_syntheses
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+      - name: Run integration tests
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_published_syntheses/pre_deployment/integration/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+  test-lib-test-s3-store-mock:
+    name: test-lib-test-s3-store-mock
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_s3_store_mock/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/test_s3_store_mock
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+  test-lib-test-terraform-config:
+    name: test-lib-test-terraform-config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_terraform_config/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/test_terraform_config
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+      - name: Run the integration tests that read no AWS
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_terraform_config/pre_deployment/integration/
+          --ignore=test/lib/python/test_terraform_config/pre_deployment/integration/test_state_keys.py
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+  test-lib-test-terraform-drift:
+    name: test-lib-test-terraform-drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install --upgrade boto3 highspy==1.15.1 pytest pytest-cov 'python-hcl2<8' pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:src:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/lib/python/test_terraform_drift/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=lib/python/test_terraform_drift
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+  test-seed:
+    name: test-seed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install pytest pytest-cov pyyaml
+      - name: Run unit tests with a 100% coverage gate
+        run: >-
+          PYTHONPATH=.:lib/python:scripts
+          python3 -m pytest
+          test/scripts/seed/pre_deployment/unit/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+          --cov=seed
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=100
+      - name: Run integration tests against a mocked and a stubbed API
+        run: >-
+          PYTHONPATH=.:lib/python:scripts:test:src/api/endpoints/tenants/wan/post/lambdas
+          python3 -m pytest
+          test/scripts/seed/pre_deployment/integration/
+          --import-mode=importlib --confcutdir=test
+          --verbose --pythonwarnings=error
+  yamllint:
+    name: yamllint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: pip install yamllint
+      - name: Lint YAML
+        run: |
+          EMPTY='empty-lines: {max: 0, max-start: 0, max-end: 1}'
+          KEY='key-ordering: enable'
+          LL='line-length: disable'
+          NL='new-line-at-end-of-file: enable'
+          TR='truthy: {allowed-values: ["true", "false", "on"]}'
+          RULES="$EMPTY, $KEY, $LL, $NL, $TR"
+          yamllint --strict \
+            --config-data \
+            "{extends: default, rules: {$RULES}}" \
+            .github/workflows/scripts.yml
+name: scripts
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/scripts.yml
+      - lib/python/**
+      - scripts/**
+      - test/lib/python/**
+      - test/scripts/**
+  workflow_dispatch:
