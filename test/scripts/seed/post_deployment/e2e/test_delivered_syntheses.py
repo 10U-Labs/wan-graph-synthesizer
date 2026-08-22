@@ -112,6 +112,38 @@ def _tenants_outside(
     }
 
 
+def _paths_clear_of_a_capped_seat(synthesis: dict[str, Any]) -> list[dict[str, Any]]:
+    """The published paths, less the ones at a seat no carrier can sell two ways out of.
+
+    A seat whose fiber offers it one way out hangs off a corridor, and every city on that
+    corridor splits the network when it is lost. Nothing can be bought about it: the second
+    way out would have to be a path somebody quotes, and there is nobody to quote it. Minot,
+    ND is the live case -- its ceiling is one, its single 606-mile path to Cheyenne, WY runs
+    through Max, ND, Bismarck, ND and Dickinson, ND, and those four cities are what split
+    Minuteman.
+
+    So the corridor is set aside and the rest of the network is still held to standing up,
+    which is a sharper question than excusing the tenant outright: Minuteman's other four
+    seats sit on a ring through Denver, CO, Billings, MT and Boise, ID that no city's loss
+    touches, and a defect there would still be reported.
+
+    The ceiling is read from the build's own report because it is the one number here that
+    is not the build's own account of itself:
+    ``test_no_published_networks_ceiling_is_higher_than_the_paths_its_carriers_can_sell``
+    recomputes it from the carrier files git holds and holds this report against it.
+    """
+    capped = {
+        entry["id"]
+        for entry in synthesis["status"]["diverse_paths"]["ceilings"]
+        if entry["ceiling"] < 2
+    }
+    return [
+        link
+        for link in synthesis["links"]
+        if link["source_id"] not in capped and link["target_id"] not in capped
+    ]
+
+
 def _published_cities(synthesis: dict[str, Any]) -> set[str]:
     """The cities the published backbone seats, by the ``City, ST`` names a config pins by."""
     return {node["name"] for node in synthesis["backbone"]}
@@ -391,9 +423,11 @@ def test_no_published_network_is_split_by_the_loss_of_one_city(
 
     A tenant asking for one diverse path is not asked this. Yurop asks for one, four cities
     split its network, and that is the honest answer to what it bought rather than a defect.
+    Neither is the corridor a seat no carrier can sell two ways out of hangs off (see
+    ``_paths_clear_of_a_capped_seat``), which is Minot, ND on Minuteman.
     """
     split = {
-        synthesis["tenant"]: cut_cities(synthesis["links"])
+        synthesis["tenant"]: cut_cities(_paths_clear_of_a_capped_seat(synthesis))
         for synthesis in delivered_syntheses
         if synthesis["number_of_diverse_paths"] >= 2
     }

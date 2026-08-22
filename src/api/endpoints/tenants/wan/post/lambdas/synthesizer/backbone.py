@@ -385,7 +385,10 @@ def _relieved(paths: list[SynthesisPath], drawn: _DrawnFiber) -> list[SynthesisP
     next city is taken instead. That shortfall is
     ``backbone_mesh_survives_any_one_site_loss``'s to report, and what it reports then is
     true of the carriers' fiber rather than only of this synthesis -- which is worth more
-    than fiber on the map nobody would buy.
+    than fiber on the map nobody would buy. Minuteman is the live case: Minot, ND can be
+    sold one way out and no more, so its 606-mile path to Cheyenne, WY is the only way it is
+    reached and Max, ND, Bismarck, ND, Dickinson, ND and Cheyenne, WY each split the network
+    when they go dark. There is no second path to draw and nobody to order it from.
 
     A tenant asking for one way out of each node is asked for nothing here. One way out is
     one way out, and a network built to it comes apart wherever its fiber does: Yurop asks
