@@ -195,28 +195,23 @@ def search_best_synthesis(
     return synthesis
 
 
-@dataclass(frozen=True)
-class SearchGraph:
-    carrier_pops: list[Site]
-    all_access: list[Site]
-    adjacency: dict[str, list[tuple[str, float]]]
-    all_distances: dict[str, dict[str, float]]
-    all_predecessors: dict[str, dict[str, str]]
-    carrier_blocks: dict[str, frozenset[int]]
-
-
-def build_search_graph(
+def build_synthesis_inputs(
     sites: list[Site],
     fiber_segments: dict[tuple[str, str], FiberSegment],
-) -> SearchGraph:
+) -> SynthesisInputs:
     carrier_pops = [site for site in sites if is_carrier_pop(site)]
-    all_access = [site for site in sites if not is_carrier_pop(site)]
     adjacency = build_adjacency(fiber_segments)
     validate_pop_graph(carrier_pops, fiber_segments, adjacency)
     all_distances, all_predecessors = all_pairs_shortest(carrier_pops, adjacency)
-    return SearchGraph(
-        carrier_pops, all_access, adjacency, all_distances, all_predecessors,
-        biconnected_block_membership(adjacency),
+    return SynthesisInputs(
+        access_sites=[site for site in sites if not is_carrier_pop(site)],
+        carrier_pops=carrier_pops,
+        fiber_segments=fiber_segments,
+        eligible_backbone_ids=set(),
+        adjacency=adjacency,
+        all_distances=all_distances,
+        all_predecessors=all_predecessors,
+        carrier_blocks=biconnected_block_membership(adjacency),
     )
 
 
@@ -275,7 +270,7 @@ def synthesize_two_tier(
     ):
         raise ValueError("more backbone nodes are forced than max_backbone_count allows")
 
-    graph = build_search_graph(sites, fiber_segments)
+    graph = build_synthesis_inputs(sites, fiber_segments)
     eligible_ids = compute_eligible_backbone_ids(
         graph.carrier_pops, graph.adjacency
     )
@@ -284,16 +279,7 @@ def synthesize_two_tier(
     if len(backbone_eligible_ids) < max(2, params.min_backbone_count):
         raise ValueError("Not enough eligible Carrier backbone PoPs (degree >= 2)")
 
-    inputs = SynthesisInputs(
-        access_sites=graph.all_access,
-        carrier_pops=graph.carrier_pops,
-        fiber_segments=fiber_segments,
-        eligible_backbone_ids=backbone_eligible_ids,
-        adjacency=graph.adjacency,
-        all_distances=graph.all_distances,
-        all_predecessors=graph.all_predecessors,
-        carrier_blocks=graph.carrier_blocks,
-    )
+    inputs = replace(graph, eligible_backbone_ids=backbone_eligible_ids)
     forced_base = overrides.forced_backbone_ids & backbone_eligible_ids
     promoted: frozenset[str] = frozenset()
     while True:

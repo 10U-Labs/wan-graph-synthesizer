@@ -9,6 +9,16 @@ import pytest
 from test_handler_contracts import ReaderContract, load_handler, write_clients
 from test_s3_store_mock import fake_s3
 
+_LOCATIONS_ROW: dict[str, Any] = {
+    "name": "Site",
+    "municipality": "Denver",
+    "state": "CO",
+    "country": "United States",
+    "latitude": 1.0,
+    "longitude": 2.0,
+    "exemptfromdistanceconstraint": "No",
+}
+
 _READER: dict[str, Any] = {
     "endpoint": "tenants",
     "list_keys": ["tenants/f-35/label.json", "tenants/minuteman/label.json"],
@@ -102,15 +112,7 @@ def test_tenant_serves_the_backbone_links(monkeypatch: pytest.MonkeyPatch) -> No
 def test_tenant_accepts_a_well_formed_site_input(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _tenant(monkeypatch)
     objects: dict[str, bytes] = {}
-    row = {
-        "name": "Site",
-        "municipality": "Denver",
-        "state": "CO",
-        "country": "United States",
-        "latitude": 1.0,
-        "longitude": 2.0,
-        "exemptfromdistanceconstraint": "No",
-    }
+    row = dict(_LOCATIONS_ROW)
     with patch("boto3.client", side_effect=write_clients(objects, [])):
         module.lambda_handler(_tenant_put("locations", [row]), None)
     assert json.loads(objects["tenants/f-35/locations.json"]) == [row]
@@ -121,16 +123,7 @@ def test_tenant_accepts_a_locations_row_with_an_extra_field(
 ) -> None:
     module = _tenant(monkeypatch)
     objects: dict[str, bytes] = {}
-    row = {
-        "name": "Site",
-        "municipality": "Denver",
-        "state": "CO",
-        "country": "United States",
-        "latitude": 1.0,
-        "longitude": 2.0,
-        "exemptfromdistanceconstraint": "No",
-        "note": "extra",
-    }
+    row = dict(_LOCATIONS_ROW, note="extra")
     with patch("boto3.client", side_effect=write_clients(objects, [])):
         module.lambda_handler(_tenant_put("locations", [row]), None)
     assert json.loads(objects["tenants/f-35/locations.json"]) == [row]

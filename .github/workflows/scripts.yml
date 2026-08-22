@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Assert every lib/python definition is used outside its own tests
         run: >-
-          PYTHONPATH=lib/python
+          PYTHONPATH=lib/python:scripts
           python3 -c 'import sys, assert_python_definition_is_used as check; sys.exit(check.main(["--outside-own-tests"]))'
   assert-no-unused-python-definition:
     name: assert-no-unused-python-definition
@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Assert every lib/python definition is used somewhere
         run: >-
-          PYTHONPATH=lib/python
+          PYTHONPATH=lib/python:scripts
           python3 -c 'import sys, assert_python_definition_is_used as check; sys.exit(check.main([]))'
   assert-one-assert-per-pytest:
     name: assert-one-assert-per-pytest

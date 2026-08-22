@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import ast
 import bisect
 import io
@@ -10,7 +9,7 @@ from typing import Callable
 
 import yaml
 
-from repo_utils import REPO_ROOT
+from repo_utils import root_reading_parser
 
 TREES = (
     Path(".github", "workflows"),
@@ -168,14 +167,8 @@ def commented_files(root: Path) -> list[tuple[Path, int]]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Assert nothing this repository publishes carries a comment."
-    )
-    parser.add_argument(
-        "--root",
-        default=REPO_ROOT,
-        type=Path,
-        help="The repository root to read (default: the one this file sits in).",
+    parser = root_reading_parser(
+        "Assert nothing this repository publishes carries a comment."
     )
     arguments = parser.parse_args(argv)
     found = commented_files(arguments.root)

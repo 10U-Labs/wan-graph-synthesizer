@@ -7,19 +7,11 @@ from synthesizer.offnet import SeatedOffNetSites, realize_off_net_sites
 from synthesizer.model import is_carrier_pop
 from synthesizer.input_graph import Site
 
-def _pops() -> list[Site]:
-    return [
-        fixtures.carrier_pop("P0", 0.0, 0.0),
-        fixtures.carrier_pop("P1", 0.0, 1.0),
-        fixtures.carrier_pop("P2", 0.0, 2.0),
-    ]
-
-
 def _realize(
     *sites: Site,
     forced: frozenset[str] = frozenset(),
 ) -> SeatedOffNetSites:
-    return realize_off_net_sites(_pops(), {}, list(sites), forced)
+    return realize_off_net_sites(fixtures.carrier_pops_in_a_column(), {}, list(sites), forced)
 
 
 def test_realize_seats_a_forced_site() -> None:

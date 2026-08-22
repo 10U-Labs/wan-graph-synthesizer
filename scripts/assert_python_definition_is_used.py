@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import argparse
 import ast
 import re
 from pathlib import Path
 
-from repo_utils import REPO_ROOT
+from repo_utils import root_reading_parser
 
 MODULES = Path("lib", "python")
 TREES = (Path("lib", "python"), Path("scripts"), Path("test"))
@@ -62,19 +61,13 @@ def unused_definitions(root: Path, outside_own_tests: bool) -> list[tuple[Path, 
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Assert every public definition under lib/python/ is used."
+    parser = root_reading_parser(
+        "Assert every public definition under lib/python/ is used."
     )
     parser.add_argument(
         "--outside-own-tests",
         action="store_true",
         help="Do not count a use in the module's own directory under test/lib/python/.",
-    )
-    parser.add_argument(
-        "--root",
-        default=REPO_ROOT,
-        type=Path,
-        help="The repository root to read (default: the one this file sits in).",
     )
     arguments = parser.parse_args(argv)
     unused = unused_definitions(arguments.root, arguments.outside_own_tests)
@@ -84,4 +77,3 @@ def main(argv: list[str] | None = None) -> int:
             f" and nothing outside it uses it; delete it or use it"
         )
     return 1 if unused else 0
-

@@ -8,19 +8,11 @@ from synthesizer.on_net_fabrication import (
 from synthesizer.model import is_carrier_pop
 from synthesizer.input_graph import Site
 
-def _pops() -> list[Site]:
-    return [
-        fixtures.carrier_pop("P0", 0.0, 0.0),
-        fixtures.carrier_pop("P1", 0.0, 1.0),
-        fixtures.carrier_pop("P2", 0.0, 2.0),
-    ]
-
-
 def _fabricate(
     *extra: Site,
     forced: frozenset[str] = frozenset(),
 ) -> FabricatedOnNetNodes:
-    return fabricate_missing_on_net_nodes([*_pops(), *extra], {}, forced)
+    return fabricate_missing_on_net_nodes([*fixtures.carrier_pops_in_a_column(), *extra], {}, forced)
 
 
 def test_fabricates_a_forced_twin() -> None:

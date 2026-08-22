@@ -136,6 +136,14 @@ def split_backbone_synthesis() -> Synthesis:
     )
 
 
+def carrier_pops_in_a_column() -> list[Site]:
+    return [
+        carrier_pop("P0", 0.0, 0.0),
+        carrier_pop("P1", 0.0, 1.0),
+        carrier_pop("P2", 0.0, 2.0),
+    ]
+
+
 def carrier_pops_by_id(site_ids: str) -> dict[str, Site]:
     return {site_id: carrier_pop(site_id) for site_id in site_ids}
 

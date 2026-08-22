@@ -230,4 +230,3 @@ def main() -> None:
     prune_tenants(api, tenants)
     prune_store(api)
     build_tenants(api, tenants)
-

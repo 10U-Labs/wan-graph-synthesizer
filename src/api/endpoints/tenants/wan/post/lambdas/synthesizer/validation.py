@@ -170,20 +170,27 @@ def _ceilings_where(
     ]
 
 
+def _ceiling_rows(
+    backbone_ids: tuple[str, ...],
+    sites_by_id: dict[str, Site],
+    ceilings: Mapping[str, int] | None,
+    keep: Callable[[int], bool],
+) -> list[dict[str, object]]:
+    return [
+        {"id": node, "name": sites_by_id[node].name, "ceiling": ceiling}
+        for node, ceiling in _ceilings_where(backbone_ids, ceilings, keep)
+    ]
+
+
 def diverse_path_ceilings_reported(
     backbone_ids: tuple[str, ...],
     sites_by_id: dict[str, Site],
     targets: MeshRequirements,
 ) -> list[dict[str, object]]:
     return [
-        {
-            "id": node,
-            "name": sites_by_id[node].name,
-            "ceiling": ceiling,
-            "target": node_mesh_target(node, targets),
-        }
-        for node, ceiling in _ceilings_where(
-            backbone_ids, targets.ceilings, lambda _ceiling: True
+        dict(row, target=node_mesh_target(str(row["id"]), targets))
+        for row in _ceiling_rows(
+            backbone_ids, sites_by_id, targets.ceilings, lambda _ceiling: True
         )
     ]
 
@@ -193,12 +200,10 @@ def ceiling_limited_nodes(
     sites_by_id: dict[str, Site],
     targets: MeshRequirements,
 ) -> list[dict[str, object]]:
-    return [
-        {"id": node, "name": sites_by_id[node].name, "ceiling": ceiling}
-        for node, ceiling in _ceilings_where(
-            backbone_ids, targets.ceilings, lambda value: value < targets.number_of_diverse_paths
-        )
-    ]
+    return _ceiling_rows(
+        backbone_ids, sites_by_id, targets.ceilings,
+        lambda value: value < targets.number_of_diverse_paths,
+    )
 
 
 def node_mesh_links(synthesis: Synthesis, node: str) -> list[SynthesisPath]:
