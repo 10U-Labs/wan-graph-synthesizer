@@ -23,13 +23,31 @@ of, which is what :func:`synthesizer.ceiling.independent_paths` already computes
 tenant's number says how many of them are drawn. A path and its reverse are the same fiber
 and are drawn once. An operator's pin is honoured whatever the choice said. And a path no
 site needs is dropped, because the whole complaint in issue #60 is paths nobody needs.
+
+One thing the reading cannot give a tenant is the thing it is really buying. Two ways out of
+every site is bought so that the backbone stays in one piece when a city goes dark, and a
+site can hold both of its own ways out while the cities its peers depend on are the ones that
+fail: three of the five tenants asking for two published a network that some one city's loss
+broke in two (GitHub issue #112). So the paths are asked that question once they are read
+off the fiber, and every city whose loss would split them is given one more path round it
+(see :func:`_relieved`). That is a requirement over the whole network rather than a fifth
+pass over pairs -- it is asked once, of the finished list, and the paths it adds are prunable
+like any other.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, replace
+from itertools import combinations
 
-from synthesizer.ceiling import BackupPathLimit, PathProofInputs, independent_paths
+from synthesizer.ceiling import (
+    _TOLERANCE,
+    _budget,
+    BackupPathLimit,
+    PathProofInputs,
+    independent_paths,
+)
 from synthesizer.input_graph import FiberSegment, carriers_along, link_key
 from synthesizer.graphs import (
     adjacency_by_carrier,
@@ -39,6 +57,7 @@ from synthesizer.graphs import (
     dijkstra,
     path_link_keys,
     reconstruct_path,
+    undirected_adjacency,
 )
 from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, SynthesisPath
 from synthesizer.survivable import FiberInputs, choose_fiber
@@ -103,9 +122,14 @@ class _DrawnFiber:
     :func:`synthesizer.graphs.adjacency_by_carrier`), computed once here rather than once
     per site, because a site's ways out are proved one carrier at a time and there are as
     many sites as the backbone holds.
+
+    ``distances`` is how far apart every two cities are over the whole of that fiber, which
+    is what says which two sites a path round a city is worth buying between (see
+    :func:`_pairs_across`).
     """
 
     backbone_ids: tuple[str, ...]
+    distances: dict[str, dict[str, float]]
     bought: dict[tuple[str, str], FiberSegment]
     bought_by_carrier: dict[str, dict[str, list[tuple[str, float]]]]
     whole: dict[tuple[str, str], FiberSegment]
@@ -127,12 +151,19 @@ def _one_network(paths: list[SynthesisPath], backbone_ids: tuple[str, ...]) -> b
     return len(connected_components(cities | set(backbone_ids), segments)) == 1
 
 
+def _cut_cities(
+    paths: list[SynthesisPath], backbone_ids: tuple[str, ...]
+) -> set[str]:
+    """The cities whose loss would split the fiber these paths run over."""
+    cities, segments = _fiber_of(paths)
+    return articulation_points(cities | set(backbone_ids), segments)
+
+
 def _no_single_point_of_failure(
     paths: list[SynthesisPath], backbone_ids: tuple[str, ...]
 ) -> bool:
     """Whether no one city's loss would split the fiber these paths run over."""
-    cities, segments = _fiber_of(paths)
-    return not articulation_points(cities | set(backbone_ids), segments)
+    return not _cut_cities(paths, backbone_ids)
 
 
 def _pinned_path(
@@ -268,6 +299,116 @@ def _laid(drawn: _DrawnFiber, pinned: list[SynthesisPath]) -> list[SynthesisPath
     return [laid[key] for key in sorted(laid)]
 
 
+def _pairs_across(
+    city: str, paths: list[SynthesisPath], drawn: _DrawnFiber
+) -> list[tuple[str, str]]:
+    """The backbone pairs ``city``'s loss would separate, the nearest pair first.
+
+    Losing a city leaves the drawn paths in pieces, and a pair of backbone nodes with one
+    end in each of two of those pieces is a pair that could be joined round the city
+    instead. Only the pieces the city itself holds apart are offered: two nodes the paths
+    never joined at all are two nodes this city's loss costs nothing, and a path between
+    them would leave every city it crossed carrying a network that was already in two.
+
+    Nearest first by how far apart the two ends are over the carriers' whole fiber, so the
+    way round a city is looked for where it is shortest and the same fiber gives the same
+    answer every time.
+    """
+    cities, segments = _fiber_of(paths)
+    places = cities | set(drawn.backbone_ids)
+    apart = {
+        place: index
+        for index, piece in enumerate(connected_components(places - {city}, segments))
+        for place in piece
+    }
+    sides: dict[int, list[str]] = {}
+    for site in sorted(set(drawn.backbone_ids) - {city}):
+        sides.setdefault(apart[site], []).append(site)
+    split = sorted({apart[near] for near in undirected_adjacency(places, segments)[city]})
+    pairs = [
+        (near, far)
+        for left, right in combinations(split, 2)
+        for near in sides.get(left, [])
+        for far in sides.get(right, [])
+    ]
+    return sorted(
+        pairs,
+        key=lambda ends: (drawn.distances.get(ends[0], {}).get(ends[1], math.inf), ends),
+    )
+
+
+def _path_around(
+    city: str, paths: list[SynthesisPath], drawn: _DrawnFiber
+) -> SynthesisPath | None:
+    """One more path joining two backbone nodes ``city``'s loss would otherwise separate.
+
+    The shortest way one carrier has between the two, over the carriers' whole fiber with
+    the city taken out of it. It is drawn the way an operator's pin is drawn (see
+    :func:`_pinned_path`) because it is the same question -- the fewest fiber miles anybody
+    can sell between two named sites -- and the pairs are tried nearest first, so the first
+    one somebody can sell is the one taken.
+
+    A path running further than the operator's backup path multiple allows is refused
+    rather than drawn: a path past that bound is one nobody would order. ``None`` where no
+    pair can be joined at all, which says the carriers' fiber offers no way round this city.
+    """
+    fiber = {
+        segment: link for segment, link in drawn.whole.items() if city not in segment
+    }
+    by_carrier = adjacency_by_carrier(fiber)
+    limit = drawn.constraints.limit
+    for near, far in _pairs_across(city, paths, drawn):
+        found = _pinned_path((near, far), by_carrier, fiber)
+        if found is None:
+            continue
+        if limit is not None and (
+            found.distance_miles > _budget(near, far, limit) + _TOLERANCE
+        ):
+            continue
+        return replace(found, reason=LINK_FOR_TARGET)
+    return None
+
+
+def _relieved(paths: list[SynthesisPath], drawn: _DrawnFiber) -> list[SynthesisPath]:
+    """The paths as laid, with one more added for every city whose loss would split them.
+
+    A tenant buying two ways out of every backbone node is buying a backbone that stays in
+    one piece when a city goes dark, and reading each site's ways out on its own does not
+    deliver it: three of the five tenants asking for two published a network that some one
+    city's loss broke in two, and the loss of Atlanta, GA left Ashburn, VA and New York, NY
+    with no way to DAF's other nine backbone nodes (GitHub issue #112). So the finished list
+    of paths is asked which cities its fiber cannot survive losing, and each of them in turn
+    is given a path round it (see :func:`_path_around`). The city taken first is the first
+    in sorted order, so the same fiber gives the same answer every time.
+
+    A city the carriers' fiber offers no way round stays a single point of failure, and the
+    next city is taken instead. That shortfall is
+    ``backbone_mesh_survives_any_one_site_loss``'s to report, and what it reports then is
+    true of the carriers' fiber rather than only of this synthesis -- which is worth more
+    than fiber on the map nobody would buy.
+
+    This is a requirement of the whole network and not the pair-at-a-time repair GitHub
+    issue #60 retired. It runs once, over the finished list of paths, and what it adds is
+    ordinary fiber the prune may take back out again (see :func:`_needed`).
+
+    It ends because every path added joins two pieces one city held apart, so that city
+    separates one piece fewer than it did, and every city the new path crosses now lies on a
+    cycle with it -- a city whose loss splits nothing. No city becomes a cut city that was
+    not one already, so each pass either takes one off the list or writes one off.
+    """
+    relieved = list(paths)
+    beyond_help: set[str] = set()
+    while True:
+        cut = sorted(_cut_cities(relieved, drawn.backbone_ids) - beyond_help)
+        if not cut:
+            return relieved
+        added = _path_around(cut[0], relieved, drawn)
+        if added is None:
+            beyond_help.add(cut[0])
+            continue
+        relieved.append(added)
+
+
 def _needed(
     paths: list[SynthesisPath], backbone_ids: tuple[str, ...], target: int
 ) -> list[SynthesisPath]:
@@ -351,6 +492,7 @@ def backbone_mesh(
     spoil a decision taken earlier in it.
 
     The paths are then read off that fiber, one site at a time (see :func:`_ways_out_of`),
+    every city whose loss would split them is given a path round it (see :func:`_relieved`),
     and every path no site needs is taken back out (see :func:`_needed`). What is published
     is what is left, which is why a published network now holds no path an outside reader
     can remove without costing somebody something -- the property
@@ -366,10 +508,10 @@ def backbone_mesh(
     )
     bought = {segment: fiber_segments[segment] for segment in sorted(segments)}
     drawn = _DrawnFiber(
-        backbone_ids, bought, adjacency_by_carrier(bought),
+        backbone_ids, all_distances, bought, adjacency_by_carrier(bought),
         fiber_segments, whole_by_carrier, constraints,
     )
-    laid = _laid(drawn, pinned)
+    laid = _relieved(_laid(drawn, pinned), drawn)
     return BackboneMesh(
         _needed(laid, backbone_ids, constraints.number_of_diverse_paths), floor
     )

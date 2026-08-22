@@ -2,18 +2,19 @@
 
 The delivered-synthesis layer reads what the deployed synthesizer published and judges it.
 This module is both halves of that job: the reader that asks the service for a tenant's
-network and for the state of its build, and the eight measurements that cannot be answered
+network and for the state of its build, and the nine measurements that cannot be answered
 by reading a number back -- whether the fiber joins every backbone seat into one network,
-what the worst haul of a published network really is, whether any published link wanders
-further from the straight line than its tenant allows, whether any of them wanders further
-than the fiber it runs over made necessary, whether any pair of sites was drawn with more
-paths between them than the tenant bought, whether any path the operator did not pin could
-be taken out with no site losing a diverse path, no site cut off and no city's loss newly
-splitting the fiber, how many miles of carrier fiber the network ordered, which is the
-figure the floor a build publishes under itself is there to be held against, and how many
-ways out of a city its carriers could between them be asked to quote, which is what a
-published ceiling has to be held against if it is to be held against anything outside the
-build that produced it.
+whether any one city's loss would leave that network in pieces, which is the whole of what a
+tenant buying two ways out of every seat is paying for, what the worst haul of a published
+network really is, whether any published link wanders further from the straight line than
+its tenant allows, whether any of them wanders further than the fiber it runs over made
+necessary, whether any pair of sites was drawn with more paths between them than the tenant
+bought, whether any path the operator did not pin could be taken out with no site losing a
+diverse path, no site cut off and no city's loss newly splitting the fiber, how many miles
+of carrier fiber the network ordered, which is the figure the floor a build publishes under
+itself is there to be held against, and how many ways out of a city its carriers could
+between them be asked to quote, which is what a published ceiling has to be held against if
+it is to be held against anything outside the build that produced it.
 
 The reading goes through the API and not through the S3 bucket the synthesizer writes to.
 The bucket holds only what the synthesizer chose to publish, which is three of the eight
@@ -350,20 +351,37 @@ def _all_one_network(joined: dict[str, set[str]]) -> bool:
     return all(_reached(joined, start) == set(joined) for start in sorted(joined)[:1])
 
 
-def _holds_a_single_point_of_failure(joined: dict[str, set[str]]) -> bool:
-    """Whether losing some one city would leave the rest of these cities in pieces.
+def cut_cities(links: list[dict[str, Any]]) -> list[str]:
+    """The cities whose loss would leave a published network in pieces, in sorted order.
 
-    A city that every way between two parts of the network crosses is a single point of
-    failure, and an operator who loses it loses one part of their network to the other. Each
-    city is dropped in turn and the rest are asked whether they are still one network, which
-    over the tens of cities a published backbone crosses is both fast enough and the
-    plainest statement of the question.
+    A city that every way between two parts of a network crosses is a single point of
+    failure, and an operator who loses it loses one part of their network to the other. That
+    is what a tenant buying two ways out of every backbone node is really buying, and it is a
+    property of the whole network rather than of any one site: a site can hold both of its
+    own ways out and still be cut off from its peers, because the cities those peers depend
+    on are the ones that went dark. Three of the five live tenants published a network in
+    that state, DAF's falling in two on the loss of any of eleven cities (GitHub issue #112).
+
+    Read off the hops of each published path -- the fiber the operator actually ordered --
+    rather than off the build's own account of itself, so a build that has stopped measuring
+    the property is caught rather than believed. Each city is dropped in turn and the rest
+    are asked whether they are still one network, which over the tens of cities a published
+    backbone crosses is both fast enough and the plainest statement of the question.
+
+    A network already in pieces names no city at all. A city cannot split what is split
+    already, and reporting every city of a two-piece network as a single point of failure
+    would answer a question nobody asked with a list nobody can act on. That the network is
+    in pieces is its own finding, and ``backbone_groups`` is what makes it.
     """
-    return any(
-        not _all_one_network({
+    joined = _cities_the_paths_cross(links)
+    if not _all_one_network(joined):
+        return []
+    return sorted(
+        lost
+        for lost in joined
+        if not _all_one_network({
             city: joined[city] - {lost} for city in joined if city != lost
         })
-        for lost in joined
     )
 
 
@@ -446,9 +464,7 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
         site: min(asked, independent_ways_out(synthesis["links"], site, names))
         for site in sites
     }
-    survives_a_city_loss = not _holds_a_single_point_of_failure(
-        _cities_the_paths_cross(synthesis["links"])
-    )
+    survives_a_city_loss = not cut_cities(synthesis["links"])
     removable: list[tuple[str, float]] = []
     for spare in synthesis["links"]:
         if frozenset((names[spare["source_id"]], names[spare["target_id"]])) in pinned:
@@ -460,9 +476,7 @@ def removable_paths(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
             continue
         if not _all_one_network(_sites_the_paths_join(kept, sites)):
             continue
-        if survives_a_city_loss and _holds_a_single_point_of_failure(
-            _cities_the_paths_cross(kept)
-        ):
+        if survives_a_city_loss and cut_cities(kept):
             continue
         removable.append((" -> ".join(spare["path"]), spare["distance_miles"]))
     return sorted(removable, key=lambda found: (-found[1], found[0]))

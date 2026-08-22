@@ -19,6 +19,7 @@ at once takes the longer one.
 from __future__ import annotations
 
 import fixtures
+from synthesizer.ceiling import BackupPathLimit
 from synthesizer.input_graph import FiberSegment, link_key
 from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, SynthesisPath
 from synthesizer.backbone import (
@@ -29,7 +30,7 @@ from synthesizer.backbone import (
     path_geometry_miles,
 )
 from synthesizer.synthesize import all_pairs_shortest
-from synthesizer.graphs import build_adjacency
+from synthesizer.graphs import articulation_points, build_adjacency, path_link_keys
 
 pop = fixtures.carrier_pop
 physical = fixtures.fiber_segments_from
@@ -55,6 +56,16 @@ def _pairs(mesh: BackboneMesh) -> set[tuple[str, str]]:
 def _mesh_miles(mesh: BackboneMesh) -> float:
     """The fiber miles every path in the mesh runs on, added up."""
     return sum(use.distance_miles for use in mesh.paths)
+
+
+def _cut(mesh: BackboneMesh) -> set[str]:
+    """The cities whose loss would split the fiber the mesh's paths run over.
+
+    Asked of the paths the mesh publishes rather than of the fiber they were chosen out of,
+    because a network an operator holds is the paths they ordered and nothing else.
+    """
+    segments = {key for use in mesh.paths for key in path_link_keys(use.path)}
+    return articulation_points({city for pair in segments for city in pair}, segments)
 
 
 def _joining(mesh: BackboneMesh, left: str, right: str) -> SynthesisPath:
@@ -182,6 +193,90 @@ def test_the_shared_egress_synthesis_runs_the_miles_its_five_segments_cost() -> 
 def test_no_path_the_shared_egress_synthesis_holds_could_be_taken_back_out() -> None:
     """Every one of the three paths is the second way out of one of the three sites."""
     assert _needed(_EGRESS.paths, _EGRESS_SITES, 2) == _EGRESS.paths
+
+
+# Two triangles of one company's fiber sharing the city ``mid``, with a thirty-mile way from
+# ``b`` to ``c`` that touches ``mid`` nowhere. Each of the four seats holds its two ways out
+# inside its own triangle, so every path the reading draws crosses ``mid`` and the network
+# falls in two the day ``mid`` goes dark -- the shape three of the five live tenants published
+# (GitHub issue #112). The ring fixtures above cannot produce it: a ring site has two fiber
+# directions and its two ways out are the two ways round, whose union is the ring itself.
+_LOBE_SITES = ("a", "b", "c", "d")
+_LOBE_TRIANGLES: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
+    ("a", "b"): (10.0, ("lumen",)),
+    ("a", "mid"): (11.0, ("lumen",)),
+    ("b", "mid"): (12.0, ("lumen",)),
+    ("c", "d"): (10.0, ("lumen",)),
+    ("c", "mid"): (13.0, ("lumen",)),
+    ("d", "mid"): (14.0, ("lumen",)),
+}
+_LOBE_LINKS = fixtures.carrier_fiber_segments({
+    **_LOBE_TRIANGLES, ("b", "c"): (30.0, ("lumen",)),
+})
+_TWO_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _TWO_WAYS_OUT)
+# The same two triangles with the way round taken away, so no fiber at all goes past ``mid``.
+_BOWTIE = _drawn(_LOBE_SITES, fixtures.carrier_fiber_segments(_LOBE_TRIANGLES), _TWO_WAYS_OUT)
+# The two triangles again under an operator who buys no path running more than a tenth again
+# further than the straight distance between its two ends. The way round ``mid`` is forty
+# miles against the twenty-four ``a`` and ``c`` are apart, so it is fiber this operator would
+# not order and the shortfall is theirs to read rather than the tool's to spend around.
+_LOBE_ADJACENCY = build_adjacency(_LOBE_LINKS)
+_LOBE_DISTANCES, _LOBE_PREDECESSORS = all_pairs_shortest(
+    [pop(city) for city in sorted({city for pair in _LOBE_LINKS for city in pair})],
+    _LOBE_ADJACENCY,
+)
+_BOUNDED_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, BackboneConstraints(
+    number_of_diverse_paths=2, seat_cap=4,
+    limit=BackupPathLimit(1.1, _LOBE_DISTANCES),
+))
+
+
+def test_a_city_every_drawn_path_crosses_is_given_a_way_round_it() -> None:
+    """No one city's loss splits the fiber the four seats are published over.
+
+    The whole of what a tenant asking for two ways out is buying, and the thing the reading
+    alone does not deliver. Each seat holds two ways out inside its own triangle either way;
+    what the way round buys is the network staying in one piece when ``mid`` goes dark.
+    """
+    assert _cut(_TWO_LOBES) == set()
+
+
+def test_the_path_drawn_round_that_city_is_one_company_can_sell() -> None:
+    """The way round ``mid`` runs over the b-to-c fiber, and Lumen has all of it.
+
+    An operator orders a path from one carrier end to end, so a way round assembled from two
+    companies' fiber is not a thing anybody quotes. Exactly one path in the network crosses
+    that fiber, which is the second half of what this says: the relief is one path and not a
+    handful.
+    """
+    assert [
+        use.carrier
+        for use in _TWO_LOBES.paths
+        if link_key("b", "c") in path_link_keys(use.path)
+    ] == ["lumen"]
+
+
+def test_a_city_no_fiber_goes_round_still_leaves_every_seat_its_paths() -> None:
+    """A bowtie has no way round its waist, and every one of the four seats is still drawn.
+
+    A single point of failure on the carrier's own fiber is a shortfall to report rather
+    than a build to fail, so what comes back is the network the fiber allows.
+    ``backbone_mesh_survives_any_one_site_loss`` is what says the operator cannot have what
+    they asked for here.
+    """
+    assert {
+        end for use in _BOWTIE.paths for end in (use.source, use.target)
+    } == set(_LOBE_SITES)
+
+
+def test_a_way_round_past_the_operators_backup_path_multiple_is_not_bought() -> None:
+    """``mid`` stays a single point of failure where the only way round it runs too far.
+
+    The bound is the operator's own ``backbone.max_backup_path_multiple``, and a path past
+    it is one they would not order. Buying it anyway would hand them fiber they have already
+    said they do not want, on the strength of a property they also want.
+    """
+    assert _cut(_BOUNDED_LOBES) == {"mid"}
 
 
 # The square again with one pair struck out by the operator, and again with one pinned. A

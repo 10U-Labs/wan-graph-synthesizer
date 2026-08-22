@@ -18,7 +18,7 @@ exactly
 how GitHub issue #41 stayed invisible from outside while DAF sat at 518 miles against a
 200-mile target.
 
-The measurement itself is not here. Nine of the seventeen questions below are answered by
+The measurement itself is not here. Ten of the eighteen questions below are answered by
 recomputing a number from the published collections, or from the carrier files git holds,
 rather than by reading one back, and that recomputation lives in
 lib/python/test_published_syntheses/, where a unit tier can hold it to literal inputs. A
@@ -48,6 +48,7 @@ import seed
 from test_published_syntheses import (
     FIBER,
     backbone_groups,
+    cut_cities,
     detoured_links,
     ordered_fiber_miles,
     overbuilt_pairs,
@@ -366,6 +367,37 @@ def test_no_published_network_holds_a_path_that_buys_nobody_a_diverse_path(
     """
     spare = {synthesis["tenant"]: removable_paths(synthesis) for synthesis in delivered_syntheses}
     assert {tenant: paths for tenant, paths in spare.items() if paths} == {}
+
+
+def test_no_published_network_is_split_by_the_loss_of_one_city(
+        delivered_syntheses: list[dict[str, Any]]) -> None:
+    """No tenant buying two ways out of every seat is handed a network one city's loss breaks.
+
+    Two ways out of every backbone node is bought so that the backbone goes on carrying
+    traffic when a city goes dark, and that is the thing the tenant is really paying for. It
+    is not what a per-site count reports: a site keeps its own two ways out and still ends up
+    cut off from most of its peers when the cities those peers depend on are the ones that
+    failed. Three of the five live tenants were in that state and nothing they were handed
+    said so -- the loss of Atlanta, GA left Ashburn, VA and New York, NY with no way to DAF's
+    other nine backbone nodes, ten more cities split DAF somewhere else, four split
+    Minuteman and Cheyenne, WY split DoW (GitHub issue #112).
+
+    Asked of the cities each published path crosses (see
+    ``test_published_syntheses.cut_cities``) rather than of the build's own
+    ``backbone_mesh_survives_any_one_site_loss``, because that finding was already reporting
+    ``False`` for all three of them and no assertion anywhere read it. A build that stops
+    measuring the property is caught here; a build that measures it and publishes anyway is
+    caught here too.
+
+    A tenant asking for one diverse path is not asked this. Yurop asks for one, four cities
+    split its network, and that is the honest answer to what it bought rather than a defect.
+    """
+    split = {
+        synthesis["tenant"]: cut_cities(synthesis["links"])
+        for synthesis in delivered_syntheses
+        if synthesis["number_of_diverse_paths"] >= 2
+    }
+    assert {tenant: cities for tenant, cities in split.items() if cities} == {}
 
 
 def test_no_published_network_runs_more_than_twice_the_fewest_miles_it_could_have(
