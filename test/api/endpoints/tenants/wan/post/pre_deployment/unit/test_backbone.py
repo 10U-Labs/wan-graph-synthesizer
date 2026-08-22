@@ -164,7 +164,7 @@ _LOBE_LOBES: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
     ("d", "mid"): (15.0, ("lumen",)),
 }
 _LOBE_LINKS = fixtures.carrier_fiber_segments({
-    **_LOBE_LOBES, ("b", "w"): (20.0, ("lumen",)), ("w", "c"): (20.0, ("lumen",)),
+    **_LOBE_LOBES, ("b", "w"): (20.0, ("zayo",)), ("w", "c"): (20.0, ("zayo",)),
 })
 _TWO_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _asking())
 _BOWTIE_LINKS = fixtures.carrier_fiber_segments(_LOBE_LOBES)
@@ -181,7 +181,7 @@ def test_the_path_drawn_round_that_city_is_one_company_can_sell() -> None:
         use.carrier
         for use in _TWO_LOBES.paths
         if link_key("b", "w") in path_link_keys(use.path)
-    ] == ["lumen"]
+    ] == ["zayo"]
 
 
 def test_a_city_no_fiber_goes_round_still_leaves_every_seat_its_paths() -> None:
