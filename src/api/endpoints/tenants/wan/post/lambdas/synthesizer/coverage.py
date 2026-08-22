@@ -6,7 +6,7 @@ from typing import TypedDict
 from synthesizer.input_graph import Site, haversine_miles
 from synthesizer.model import Synthesis, SynthesisInputs, SynthesisParams
 from synthesizer.assemble import build_synthesis_for_backbone, evaluate_backbone
-from synthesizer.ceiling import BackupPathLimit, PathProofInputs, independent_path_ceiling
+from synthesizer.ceiling import PathProofInputs, independent_path_ceiling
 from synthesizer.search_plan import _SearchPlan
 
 logger = logging.getLogger(__name__)
@@ -80,11 +80,10 @@ def candidate_mesh_ceiling(
     candidate_id: str,
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
-    limit: BackupPathLimit | None = None,
 ) -> int:
     return independent_path_ceiling(
         candidate_id,
-        PathProofInputs(tuple(sorted((*backbone_ids, candidate_id))), adjacency, limit),
+        PathProofInputs(tuple(sorted((*backbone_ids, candidate_id))), adjacency),
     )
 
 
@@ -93,7 +92,6 @@ def best_coverage_candidate(
     backbone_ids: tuple[str, ...],
     adjacency: dict[str, list[tuple[str, float]]],
     target_miles: float,
-    limit: BackupPathLimit | None = None,
 ) -> str:
     satisfying = [
         pair for pair in improving if coverage_worst_haul(pair[0]) <= target_miles
@@ -103,7 +101,7 @@ def best_coverage_candidate(
     return min(
         satisfying,
         key=lambda pair: (
-            -candidate_mesh_ceiling(pair[1], backbone_ids, adjacency, limit),
+            -candidate_mesh_ceiling(pair[1], backbone_ids, adjacency),
             pair[0],
             pair[1],
         ),
@@ -146,9 +144,6 @@ def grow_backbone_for_coverage(
             backbone_ids,
             inputs.adjacency,
             target_miles,
-            BackupPathLimit(
-                params.tuning.backbone_max_backup_path_multiple, inputs.all_distances
-            ),
         )
         backbone_ids = tuple(sorted((*backbone_ids, best_id)))
         free.remove(best_id)

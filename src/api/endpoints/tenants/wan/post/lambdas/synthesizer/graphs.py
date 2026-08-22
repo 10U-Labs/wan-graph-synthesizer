@@ -8,13 +8,6 @@ from collections.abc import Callable, Iterable, Iterator
 from synthesizer.input_graph import FiberSegment, link_key
 
 
-def distances_from(
-    adjacency: dict[str, list[tuple[str, float]]],
-    sources: Iterable[str],
-) -> dict[str, dict[str, float]]:
-    return {source: dijkstra(adjacency, source)[0] for source in sources}
-
-
 def dijkstra(
     adjacency: dict[str, list[tuple[str, float]]],
     source: str,

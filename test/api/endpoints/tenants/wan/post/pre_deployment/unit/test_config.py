@@ -13,7 +13,6 @@ _REQUIRED_TUNING = {
     "backbone_number_of_diverse_paths": 3,
     "access_backbone_links": 2,
     "backbone_coverage_target_miles": 600,
-    "backbone_max_backup_path_multiple": 3,
 }
 
 
@@ -374,47 +373,17 @@ def test_non_number_coverage_target_is_rejected() -> None:
         _config({"tuning": {"backbone_coverage_target_miles": "far"}})
 
 
-def test_reads_tuning_max_backup_path_multiple() -> None:
-    assert _config(
-        {"tuning": {"backbone_max_backup_path_multiple": 4}}
-    ).params.tuning.backbone_max_backup_path_multiple == 4.0
-
-
-def test_missing_max_backup_path_multiple_is_rejected() -> None:
-    with pytest.raises(ValueError):
-        config_from_data(
-            {
-                "tuning": {
-                    "backbone_number_of_diverse_paths": 3,
-                    "access_backbone_links": 2,
-                    "backbone_coverage_target_miles": 600,
-                },
-                "synthesis": {
-                    "promote_high_degree_convergences_to_backbone_nodes": True
-                },
-            }
-        )
-
-
-def test_non_number_max_backup_path_multiple_is_rejected() -> None:
-    with pytest.raises(ValueError):
-        _config({"tuning": {"backbone_max_backup_path_multiple": "three times"}})
-
-
-def test_boolean_max_backup_path_multiple_is_rejected() -> None:
-    with pytest.raises(ValueError):
-        _config({"tuning": {"backbone_max_backup_path_multiple": True}})
-
-
-def test_max_backup_path_multiple_of_one_is_rejected() -> None:
-    with pytest.raises(ValueError):
-        _config({"tuning": {"backbone_max_backup_path_multiple": 1}})
-
-
-def test_fractional_max_backup_path_multiple_is_accepted() -> None:
-    assert _config(
-        {"tuning": {"backbone_max_backup_path_multiple": 2.5}}
-    ).params.tuning.backbone_max_backup_path_multiple == 2.5
+def test_a_config_naming_no_backup_path_multiple_loads() -> None:
+    assert config_from_data(
+        {
+            "tuning": {
+                "backbone_number_of_diverse_paths": 3,
+                "access_backbone_links": 2,
+                "backbone_coverage_target_miles": 600,
+            },
+            "synthesis": {"promote_high_degree_convergences_to_backbone_nodes": True},
+        }
+    ).params.tuning.backbone_number_of_diverse_paths == 3
 
 
 def test_fractional_coverage_target_is_rejected() -> None:
@@ -443,7 +412,7 @@ def _parts(**overrides: Any) -> dict[str, Any]:
         "backbone-number-of-diverse-paths": {"degree": 3},
         "access-homing-degree": {"degree": 2},
         "convergence-promotion": {"promote": True},
-        "knobs": {"backbone_coverage_target_miles": 600, "backbone_max_backup_path_multiple": 3},
+        "knobs": {"backbone_coverage_target_miles": 600},
         "label": {"label": "Minuteman"},
     }
     parts.update(overrides)
@@ -468,8 +437,7 @@ def test_app_config_from_parts_reads_every_dial_from_settings() -> None:
 def test_app_config_from_parts_ignores_a_dial_left_in_knobs() -> None:
     parts = _parts(knobs={
         "backbone_coverage_target_miles": 600,
-        "backbone_max_backup_path_multiple": 3,
-        "compass_octants": 4,
+            "compass_octants": 4,
     })
     assert app_config_from_parts(parts).params.tuning.compass_sector_count == 8
 
@@ -527,13 +495,7 @@ def test_app_config_from_parts_refuses_the_old_mesh_degree_resource() -> None:
 
 
 def test_app_config_from_parts_requires_coverage_target() -> None:
-    parts = _parts(knobs={"backbone_max_backup_path_multiple": 3})
-    with pytest.raises(ValueError):
-        app_config_from_parts(parts)
-
-
-def test_app_config_from_parts_requires_max_backup_path_multiple() -> None:
-    parts = _parts(knobs={"backbone_coverage_target_miles": 600})
+    parts = _parts(knobs={})
     with pytest.raises(ValueError):
         app_config_from_parts(parts)
 

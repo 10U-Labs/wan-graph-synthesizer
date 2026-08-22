@@ -199,7 +199,6 @@ def push_tenants(api: str) -> list[str]:
              {"promote": backbone["promote_high_degree_convergences"]})
         _put(api, f"tenants/{tid}/knobs", {
             "backbone_coverage_target_miles": backbone["coverage_target_miles"],
-            "backbone_max_backup_path_multiple": backbone["max_backup_path_multiple"],
         })
         _put(api, f"tenants/{tid}/settings", config.get("settings", {}))
         _put(api, f"tenants/{tid}/label", {"label": config.get("label", "")})

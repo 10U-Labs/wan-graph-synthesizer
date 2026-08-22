@@ -53,7 +53,6 @@ backbone:
     paths:
       - source: Luke, AZ
         target: Nellis, NV
-  max_backup_path_multiple: 2.5
   node_count:
     max: 3
     min: 3
@@ -526,13 +525,6 @@ def test_push_tenants_builds_the_knobs_document_from_the_coverage_target(
         put_recorder: CallRecorder) -> None:
     bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
     assert bodies["tenants/f-35/knobs"]["backbone_coverage_target_miles"] == 500
-
-
-def test_push_tenants_builds_the_knobs_document_from_the_backup_path_multiple(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-        put_recorder: CallRecorder) -> None:
-    bodies = _pushed_bodies(tmp_path, monkeypatch, put_recorder)
-    assert bodies["tenants/f-35/knobs"]["backbone_max_backup_path_multiple"] == 2.5
 
 
 def test_push_tenants_puts_the_settings_document(

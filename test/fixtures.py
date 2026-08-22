@@ -660,6 +660,23 @@ SELLABLE_WAYS_SEGMENTS: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
 }
 SELLABLE_WAYS_LINKS = carrier_fiber_segments(SELLABLE_WAYS_SEGMENTS)
 
+SHORT_AND_LONG_SITES = ("s", "t", "u")
+SHORT_AND_LONG_TRANSIT = ("far", "near")
+SHORT_AND_LONG_SEGMENTS = {
+    ("s", "t"): 10.0,
+    ("t", "u"): 10.0,
+    ("s", "near"): 100.0, ("near", "u"): 100.0,
+    ("s", "far"): 1000.0, ("far", "u"): 1000.0,
+}
+SHORT_AND_LONG_LINKS = fiber_segments_from(SHORT_AND_LONG_SEGMENTS)
+ONLY_LONG_SEGMENTS = {
+    ("s", "t"): 10.0,
+    ("t", "u"): 10.0,
+    ("s", "far"): 1000.0, ("far", "u"): 1000.0,
+}
+ONLY_LONG_LINKS = fiber_segments_from(ONLY_LONG_SEGMENTS)
+THE_LONG_WAY = frozenset({("far", "s"), ("far", "u")})
+
 NEAR_AND_FAR_SITES = ("a", "b", "far")
 NEAR_AND_FAR_LINKS = fiber_segments_from({
     ("a", "b"): 1.0,

@@ -13,7 +13,6 @@ backbone:
       - Minot, ND
       - Salt Lake City, UT
     paths: []
-  max_backup_path_multiple: 3
   node_count:
     max: 6
     min: 3

@@ -17,7 +17,6 @@ from test_published_syntheses import published_synthesis
 _CONFIG: dict[str, Any] = {
     "backbone": {
         "coverage_target_miles": 200,
-        "max_backup_path_multiple": 3.0,
         "node_count": {"max": 6},
         "number_of_diverse_paths": 2,
         "forced": {
@@ -65,7 +64,6 @@ def test_a_published_network_is_read_beside_the_demands_its_config_makes(
     assert published_synthesis(DEFAULT_API, "daf", _CONFIG) == {
         "tenant": "daf",
         "target_miles": 200,
-        "max_backup_path_multiple": 3.0,
         "number_of_diverse_paths": 2,
         "seat_cap": 6,
         "forced": ["Ashburn, VA"],

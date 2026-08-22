@@ -4,13 +4,7 @@ import math
 from dataclasses import dataclass, replace
 from itertools import combinations
 
-from synthesizer.ceiling import (
-    _TOLERANCE,
-    _budget,
-    BackupPathLimit,
-    PathProofInputs,
-    independent_paths,
-)
+from synthesizer.ceiling import PathProofInputs, independent_paths
 from synthesizer.input_graph import FiberSegment, carriers_along, link_key
 from synthesizer.graphs import (
     adjacency_by_carrier,
@@ -43,7 +37,6 @@ class BackboneConstraints:
     removed_pairs: frozenset[tuple[str, str]] = frozenset()
     number_of_diverse_paths: int = 3
     forced_pairs: frozenset[tuple[str, str]] = frozenset()
-    limit: BackupPathLimit | None = None
     seat_cap: int | None = None
 
 
@@ -131,7 +124,7 @@ def _proved_over(
         if node == site or link_key(site, node) not in constraints.removed_pairs
     )
     proof = PathProofInputs(
-        peers, build_adjacency(fiber), constraints.limit,
+        peers, build_adjacency(fiber),
         constraints.number_of_diverse_paths, constraints.seat_cap, by_carrier,
     )
     return sorted(
@@ -207,7 +200,6 @@ def _path_around(
     land = _on_land(fiber)
     land_by_carrier = adjacency_by_carrier(land)
     reach = reachable_over(build_adjacency(_on_land(drawn.whole)))
-    limit = drawn.constraints.limit
     for near, far in _pairs_across(city, paths, drawn):
         joined = far in reach.get(near, frozenset())
         found = _pinned_path(
@@ -216,10 +208,6 @@ def _path_around(
             land if joined else fiber,
         )
         if found is None:
-            continue
-        if limit is not None and (
-            found.distance_miles > _budget(near, far, limit) + _TOLERANCE
-        ):
             continue
         return replace(found, reason=LINK_FOR_TARGET)
     return None
@@ -266,13 +254,12 @@ def _needed(
 def _selected_fiber(
     backbone_ids: tuple[str, ...],
     fiber_segments: dict[tuple[str, str], FiberSegment],
-    all_distances: dict[str, dict[str, float]],
     constraints: BackboneConstraints,
     by_carrier: dict[str, dict[str, list[tuple[str, float]]]],
 ) -> tuple[frozenset[tuple[str, str]], float, list[SynthesisPath]]:
     choice = choose_fiber(FiberInputs(
-        backbone_ids, fiber_segments, all_distances,
-        constraints.number_of_diverse_paths, constraints.seat_cap, constraints.limit,
+        backbone_ids, fiber_segments,
+        constraints.number_of_diverse_paths, constraints.seat_cap,
         by_carrier,
     ))
     drawn = (
@@ -294,7 +281,7 @@ def backbone_mesh(
 ) -> BackboneMesh:
     whole_by_carrier = adjacency_by_carrier(fiber_segments)
     segments, floor, pinned = _selected_fiber(
-        backbone_ids, fiber_segments, all_distances, constraints, whole_by_carrier
+        backbone_ids, fiber_segments, constraints, whole_by_carrier
     )
     selected = {segment: fiber_segments[segment] for segment in sorted(segments)}
     drawn = _DrawnFiber(

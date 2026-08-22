@@ -18,7 +18,6 @@ backbone:
       - San Jose, CA
       - Seattle, WA
     paths: []
-  max_backup_path_multiple: 3
   node_count:
     max: 1000
     min: 3

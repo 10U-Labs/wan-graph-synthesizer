@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import heapq
 import json
-import math
 from collections import deque
 from itertools import combinations
 from typing import Any
@@ -11,9 +9,6 @@ from urllib.error import HTTPError
 from seed import _get
 from synthesizer.input_graph import Site, haversine_miles
 
-SINUOSITY = 2.0
-
-ROUNDING_SLACK = 0.1
 
 FIBER = "carrier_physical"
 
@@ -45,7 +40,6 @@ def published_synthesis(api: str, tenant: str, config: dict[str, Any]) -> dict[s
     return {
         "tenant": tenant,
         "target_miles": backbone["coverage_target_miles"],
-        "max_backup_path_multiple": backbone["max_backup_path_multiple"],
         "number_of_diverse_paths": backbone["number_of_diverse_paths"],
         "seat_cap": backbone["node_count"]["max"],
         "forced": backbone.get("forced", {}).get("nodes", []),
@@ -76,21 +70,6 @@ def worst_haul(synthesis: dict[str, Any]) -> float:
         if not site["exempt_from_distance_constraint"]
     ]
     return round(max(hauls, default=0.0), 1)
-
-
-def overrun_links(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
-    coords = {node["id"]: site_from_node(node) for node in synthesis["backbone"]}
-    allowed = SINUOSITY * synthesis["max_backup_path_multiple"]
-    overrun = []
-    for link in synthesis["links"]:
-        source = coords.get(link["source_id"])
-        target = coords.get(link["target_id"])
-        if source is None or target is None or source is target:
-            continue
-        direct = haversine_miles(source, target)
-        if direct > 0 and link["distance_miles"] > allowed * direct:
-            overrun.append((" -> ".join(link["path"]), link["distance_miles"] / direct))
-    return overrun
 
 
 def _ways_out(
@@ -237,35 +216,6 @@ def _published_fiber(synthesis: dict[str, Any]) -> dict[str, dict[str, float]]:
         fiber.setdefault(link["source_id"], {})[link["target_id"]] = link["distance_miles"]
         fiber.setdefault(link["target_id"], {})[link["source_id"]] = link["distance_miles"]
     return fiber
-
-
-def _shortest_fiber_miles(
-    fiber: dict[str, dict[str, float]], source: str, target: str
-) -> float:
-    known: set[str] = set()
-    queue: list[tuple[float, str]] = [(0.0, source)]
-    while queue:
-        run, city = heapq.heappop(queue)
-        if city == target:
-            return run
-        if city in known:
-            continue
-        known.add(city)
-        for neighbor, miles in fiber.get(city, {}).items():
-            if neighbor not in known:
-                heapq.heappush(queue, (run + miles, neighbor))
-    return math.inf
-
-
-def detoured_links(synthesis: dict[str, Any]) -> list[tuple[str, float]]:
-    fiber = _published_fiber(synthesis)
-    allowed = synthesis["max_backup_path_multiple"]
-    detoured = []
-    for link in synthesis["links"]:
-        shortest = _shortest_fiber_miles(fiber, link["source_id"], link["target_id"])
-        if shortest > 0 and link["distance_miles"] > allowed * shortest + ROUNDING_SLACK:
-            detoured.append((" -> ".join(link["path"]), link["distance_miles"] / shortest))
-    return detoured
 
 
 def backbone_groups(synthesis: dict[str, Any]) -> list[list[str]]:

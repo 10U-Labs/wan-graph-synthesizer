@@ -18,7 +18,6 @@ def _artifacts(
     sites: list[Site],
     fiber_segments: dict[tuple[str, str], FiberSegment],
     transit_names: tuple[str, ...],
-    multiple: float,
 ) -> SynthesisArtifacts:
     return fixtures.run_synthesis(
         sites,
@@ -28,30 +27,18 @@ def _artifacts(
             max_backbone_count=_SEATS,
             exclusions=RoleExclusions(prohibited_backbone_names=transit_names),
             promote_high_degree_convergences=False,
-            tuning=Tuning(
-                backbone_number_of_diverse_paths=2, backbone_max_backup_path_multiple=multiple
-            ),
+            tuning=Tuning(backbone_number_of_diverse_paths=2),
         ),
     )
 
 
-def _crossing(multiple: float) -> SynthesisArtifacts:
+@pytest.fixture(name="crossing", scope="module")
+def _crossing() -> SynthesisArtifacts:
     return _artifacts(
         fixtures.crossing_sites(),
         fixtures.CROSSING_LINKS,
         fixtures.crossing_transit_names(),
-        multiple,
     )
-
-
-@pytest.fixture(name="bounded", scope="module")
-def _bounded() -> SynthesisArtifacts:
-    return _crossing(3.0)
-
-
-@pytest.fixture(name="unbounded", scope="module")
-def _unbounded() -> SynthesisArtifacts:
-    return _crossing(1000.0)
 
 
 @pytest.fixture(name="under_water", scope="module")
@@ -60,7 +47,6 @@ def _under_water() -> SynthesisArtifacts:
         fixtures.crossing_sites(),
         fixtures.CROSSING_SUBMARINE_LINKS,
         fixtures.crossing_transit_names(),
-        1000.0,
     )
 
 
@@ -70,7 +56,6 @@ def _distant_peer() -> SynthesisArtifacts:
         fixtures.distant_peer_sites(),
         fixtures.DISTANT_PEER_LINKS,
         fixtures.distant_peer_transit_names(),
-        3.0,
     )
 
 
@@ -80,7 +65,6 @@ def _express() -> SynthesisArtifacts:
         fixtures.express_sites(),
         fixtures.EXPRESS_LINKS,
         fixtures.express_transit_names(),
-        3.0,
     )
 
 
@@ -100,51 +84,34 @@ def _mesh_miles(artifacts: SynthesisArtifacts) -> float:
     )
 
 
-def _limited_ceilings(artifacts: SynthesisArtifacts) -> dict[str, object]:
-    return {
-        str(entry["id"]): entry["ceiling"]
-        for entry in artifacts.validation["backbone_diverse_paths_ceiling_limited"]
-    }
-
-
-def test_the_bounded_synthesis_paths_no_link_through_the_crossing(
-    bounded: SynthesisArtifacts,
+def test_a_crossing_is_taken_where_it_is_a_site_second_way_out(
+    crossing: SynthesisArtifacts,
 ) -> None:
-    assert "tok" not in _cities_crossed(bounded)
+    assert "tok" in _cities_crossed(crossing)
 
 
-def test_no_mileage_allowance_takes_a_crossing_a_way_round_over_land_answers(
+def test_a_crossing_a_way_round_over_land_answers_is_not_taken(
     under_water: SynthesisArtifacts,
 ) -> None:
     assert "tok" not in _cities_crossed(under_water)
 
 
-def test_the_bounded_synthesis_still_wires_every_site_into_one_backbone(
-    bounded: SynthesisArtifacts,
+def test_the_synthesis_wires_every_site_into_one_backbone(
+    crossing: SynthesisArtifacts,
 ) -> None:
-    assert bounded.validation["connected"]
+    assert crossing.validation["connected"]
 
 
-def test_the_bounded_ceiling_is_the_honest_one(bounded: SynthesisArtifacts) -> None:
-    assert _limited_ceilings(bounded) == {"eug": 1, "hil": 1, "sea": 1}
-
-
-def test_the_unbounded_ceiling_counts_the_crossing(
-    unbounded: SynthesisArtifacts,
+def test_no_site_is_credited_with_a_way_out_its_fiber_does_not_carry(
+    crossing: SynthesisArtifacts,
 ) -> None:
-    assert unbounded.validation["backbone_diverse_paths_ceiling_limited"] == []
+    assert crossing.validation["backbone_diverse_paths_ceiling_limited"] == []
 
 
-def test_no_site_is_asked_for_a_link_the_bound_will_not_let_the_mesh_lay(
+def test_no_site_is_asked_for_a_link_its_fiber_cannot_lay(
     distant_peer: SynthesisArtifacts,
 ) -> None:
     assert distant_peer.validation["backbone_mesh_independence_deficient"] == []
-
-
-def test_the_distant_peer_ceiling_is_the_one_its_usable_fiber_carries(
-    distant_peer: SynthesisArtifacts,
-) -> None:
-    assert _limited_ceilings(distant_peer) == {"sea": 1}
 
 
 def test_the_finished_synthesis_orders_the_fewest_fiber_miles_it_can_be_wired_with(

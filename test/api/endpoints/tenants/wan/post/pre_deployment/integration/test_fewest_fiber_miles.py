@@ -4,9 +4,8 @@ import pytest
 
 import fixtures
 from synthesizer import linear_program
-from synthesizer.ceiling import BackupPathLimit
-from synthesizer.graphs import adjacency_by_carrier, build_adjacency, distances_from
-from synthesizer.model import SynthesisArtifacts, Tuning
+from synthesizer.graphs import adjacency_by_carrier
+from synthesizer.model import SynthesisArtifacts
 from synthesizer.survivable import FiberInputs, choose_fiber
 
 _SITES = ("w", "x", "y", "z")
@@ -114,17 +113,26 @@ SELLABLE_ARTIFACTS = fixtures.synthesis_over_owned_fiber(
 
 
 def _fiber_the_choice_selected() -> frozenset[tuple[str, str]]:
-    distances = distances_from(
-        build_adjacency(fixtures.SELLABLE_WAYS_LINKS),
-        sorted({city for pair in fixtures.SELLABLE_WAYS_LINKS for city in pair}),
-    )
     return choose_fiber(FiberInputs(
-        fixtures.SELLABLE_WAYS_SITES, fixtures.SELLABLE_WAYS_LINKS, distances,
+        fixtures.SELLABLE_WAYS_SITES, fixtures.SELLABLE_WAYS_LINKS,
         _ASKED_FOR, len(fixtures.SELLABLE_WAYS_SITES),
-        BackupPathLimit(Tuning().backbone_max_backup_path_multiple, distances),
         adjacency_by_carrier(fixtures.SELLABLE_WAYS_LINKS),
     )).segments
 
 
 def test_the_delivered_synthesis_orders_only_fiber_the_choice_selected_for_it() -> None:
     assert set(SELLABLE_ARTIFACTS.synthesis.fiber_segment_keys) <= _fiber_the_choice_selected()
+
+
+SHORT_AND_LONG_ARTIFACTS = fixtures.synthesis_over_segments(
+    fixtures.SHORT_AND_LONG_SITES,
+    fixtures.SHORT_AND_LONG_SEGMENTS,
+    _ASKED_FOR,
+    fixtures.SHORT_AND_LONG_TRANSIT,
+)
+
+
+def test_the_delivered_synthesis_holds_the_shorter_of_two_ways_round() -> None:
+    assert not set(
+        SHORT_AND_LONG_ARTIFACTS.synthesis.fiber_segment_keys
+    ) & fixtures.THE_LONG_WAY

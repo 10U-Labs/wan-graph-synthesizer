@@ -9,10 +9,8 @@ from test_published_syntheses import (
     FIBER,
     backbone_groups,
     cut_cities,
-    detoured_links,
     ordered_fiber_miles,
     overbuilt_pairs,
-    overrun_links,
     removable_paths,
     sellable_ways_out,
     worst_haul,
@@ -135,24 +133,13 @@ def test_no_synthesis_stopped_short_of_its_target_with_a_seat_left_to_spend(
     assert gave_up_early == []
 
 
-def test_no_published_link_runs_further_than_its_tenant_allows(
+def test_no_published_status_carries_a_backup_path_multiple(
         delivered_syntheses: list[dict[str, Any]]) -> None:
-    overrun = {
-        synthesis["tenant"]: overrun_links(synthesis)
+    assert [
+        synthesis["tenant"]
         for synthesis in delivered_syntheses
-        if overrun_links(synthesis)
-    }
-    assert overrun == {}
-
-
-def test_no_published_link_wanders_past_the_fiber_its_own_network_carries(
-        delivered_syntheses: list[dict[str, Any]]) -> None:
-    wandering = {
-        synthesis["tenant"]: detoured_links(synthesis)
-        for synthesis in delivered_syntheses
-        if detoured_links(synthesis)
-    }
-    assert wandering == {}
+        if "max_backup_path_multiple" in synthesis["status"]
+    ] == []
 
 
 def test_no_published_network_leaves_a_site_short_of_the_links_it_was_asked_for(

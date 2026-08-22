@@ -17,7 +17,6 @@ from synthesizer.forced import (
 )
 from synthesizer.graphs import path_link_keys
 from synthesizer.backbone import BackboneConstraints, BackboneMesh, backbone_mesh
-from synthesizer.ceiling import BackupPathLimit
 from synthesizer.search_plan import _SearchPlan
 
 
@@ -155,9 +154,6 @@ def synthesis_paths(
         removed_backbone_pairs(backbone_set, plan.forced_links),
         number_of_diverse_paths=plan.tuning.backbone_number_of_diverse_paths,
         forced_pairs=forced_backbone_pairs(backbone_set, plan.forced_links),
-        limit=BackupPathLimit(
-            plan.tuning.backbone_max_backup_path_multiple, inputs.all_distances
-        ),
         seat_cap=plan.seat_cap,
     )
     return backbone_mesh(backbone_ids, inputs.all_distances, fiber_segments, constraints)

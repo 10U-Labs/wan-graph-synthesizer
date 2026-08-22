@@ -57,7 +57,6 @@ class Tuning:
     backbone_number_of_diverse_paths: int = 3
     backbone_coverage_target_miles: int = 600
     access_backbone_links: int = 2
-    backbone_max_backup_path_multiple: float = 3.0
     search_memory_budget: SearchMemoryBudget = field(default_factory=SearchMemoryBudget)
 
 @dataclass(frozen=True)

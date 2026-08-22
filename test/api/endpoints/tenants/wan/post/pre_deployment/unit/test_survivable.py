@@ -3,12 +3,8 @@ from __future__ import annotations
 import pytest
 
 import fixtures
-from synthesizer.ceiling import (
-    BackupPathLimit,
-    PathProofInputs,
-    diverse_path_ceilings,
-)
-from synthesizer.graphs import adjacency_by_carrier, build_adjacency, distances_from
+from synthesizer.ceiling import PathProofInputs, diverse_path_ceilings
+from synthesizer.graphs import adjacency_by_carrier, build_adjacency
 from synthesizer.input_graph import FiberSegment
 from synthesizer.survivable import (
     FiberChoice,
@@ -18,7 +14,6 @@ from synthesizer.survivable import (
     _shortfalls,
     _ways_out_rows,
     _writing,
-    admissible_fiber,
     choose_fiber,
 )
 
@@ -28,13 +23,6 @@ _WAYS_OUT = 2
 _SLACK = 1e-6
 
 
-def _all_distances(
-    links: dict[tuple[str, str], FiberSegment]
-) -> dict[str, dict[str, float]]:
-    cities = sorted({city for pair in links for city in pair})
-    return distances_from(build_adjacency(links), cities)
-
-
 def _asking(
     links: dict[tuple[str, str], FiberSegment],
     backbone_ids: tuple[str, ...],
@@ -42,8 +30,7 @@ def _asking(
     ways_out: int = _WAYS_OUT,
 ) -> FiberInputs:
     return FiberInputs(
-        backbone_ids, links, _all_distances(links), ways_out, seat_cap, None,
-        adjacency_by_carrier(links),
+        backbone_ids, links, ways_out, seat_cap, adjacency_by_carrier(links),
     )
 
 
@@ -63,10 +50,16 @@ def _owed(
     seat_cap: int | None = None,
 ) -> int:
     inputs = _asking(links, backbone_ids, seat_cap)
-    fiber = admissible_fiber(inputs)
+    fiber = _whole(inputs)
     return sum(
         row.required for row in _ways_out_rows(site, _writing(inputs, fiber)).together
     )
+
+
+def _whole(inputs: FiberInputs) -> dict[tuple[str, str], float]:
+    return {
+        segment: link.distance_miles for segment, link in inputs.fiber_segments.items()
+    }
 
 
 def _selected_miles(
@@ -76,30 +69,7 @@ def _selected_miles(
 
 
 _CROSSING_SITES = ("eug", "hil", "sea")
-_CROSSING_DISTANCES = _all_distances(fixtures.CROSSING_LINKS)
 _OVERLAND = frozenset({("eug", "pdx"), ("hil", "pdx"), ("pdx", "sea")})
-_EVERY_CROSSING_SEGMENT = frozenset(fixtures.CROSSING_LINKS)
-
-
-def _admissible(multiple: float | None) -> frozenset[tuple[str, str]]:
-    limit = None if multiple is None else BackupPathLimit(multiple, _CROSSING_DISTANCES)
-    return frozenset(admissible_fiber(FiberInputs(
-        _CROSSING_SITES, fixtures.CROSSING_LINKS, _CROSSING_DISTANCES, _WAYS_OUT, None, limit
-    )))
-
-
-def test_with_no_bound_in_hand_every_segment_the_carrier_has_is_admissible() -> None:
-    assert _admissible(None) == _EVERY_CROSSING_SEGMENT
-
-
-def test_fiber_no_admissible_path_could_run_over_is_left_out_of_the_choice() -> None:
-    assert _admissible(3.0) == _OVERLAND
-
-
-def test_a_multiple_wide_enough_for_the_crossing_keeps_the_crossing() -> None:
-    assert _admissible(1000.0) == _EVERY_CROSSING_SEGMENT
-
-
 _UNDER_WATER_CHOICE = _chosen(fixtures.CROSSING_SUBMARINE_LINKS, _CROSSING_SITES)
 
 
@@ -218,56 +188,12 @@ def test_the_fiber_selected_is_fiber_one_carrier_can_sell_a_whole_path_over() ->
     ).segments == _SELLABLE
 
 
-_NEAR_AND_FAR_DISTANCES = _all_distances(fixtures.NEAR_AND_FAR_LINKS)
-
-
-def _fiber_the_row_toward(
-    links: dict[tuple[str, str], FiberSegment],
-    backbone_ids: tuple[str, ...],
-    limit: BackupPathLimit,
-    site: str,
-    peer: str,
-) -> frozenset[tuple[str, str]]:
-    inputs = FiberInputs(
-        backbone_ids, links, _all_distances(links), _WAYS_OUT, None, limit,
-        adjacency_by_carrier(links),
-    )
-    writing = _writing(inputs, admissible_fiber(inputs))
-    return frozenset(
-        segment
-        for row in _ways_out_rows(site, writing).toward_each
-        if row.peers == frozenset({peer})
-        for segment in row.over
-    )
-
-
-def test_a_way_round_past_the_bound_is_not_selected_for_the_pair_it_is_past_it_for() -> None:
-    assert _fiber_the_row_toward(
-        fixtures.NEAR_AND_FAR_LINKS,
-        fixtures.NEAR_AND_FAR_SITES,
-        BackupPathLimit(3.0, _NEAR_AND_FAR_DISTANCES),
-        "a",
-        "b",
-    ) == frozenset({("a", "b")})
-
-
-_DISTANT_PEER_SITES = ("hil", "sea", "syd")
-_DISTANT_PEER_DISTANCES = _all_distances(fixtures.DISTANT_PEER_LINKS)
-_DISTANT_PEER_LIMIT = BackupPathLimit(3.0, _DISTANT_PEER_DISTANCES)
-_DISTANT_PEER_CHOICE = choose_fiber(FiberInputs(
-    _DISTANT_PEER_SITES, fixtures.DISTANT_PEER_LINKS, _DISTANT_PEER_DISTANCES,
-    _WAYS_OUT, None, _DISTANT_PEER_LIMIT,
-    adjacency_by_carrier(fixtures.DISTANT_PEER_LINKS),
-))
-
-
 def _distant_peer_ceilings(segments: frozenset[tuple[str, str]]) -> dict[str, int]:
     return diverse_path_ceilings(PathProofInputs(
         _DISTANT_PEER_SITES,
         build_adjacency({
             segment: fixtures.DISTANT_PEER_LINKS[segment] for segment in segments
         }),
-        _DISTANT_PEER_LIMIT,
         _WAYS_OUT,
     ))
 
@@ -281,7 +207,7 @@ def test_the_fiber_selected_for_a_site_carries_every_way_out_its_fiber_carries()
 _MANY_PASS = physical(fixtures.MANY_PASS_SEGMENTS)
 _MANY_PASS_INPUTS = _asking(_MANY_PASS, fixtures.MANY_PASS_SITES)
 _MANY_PASS_CHOICE = _chosen(_MANY_PASS, fixtures.MANY_PASS_SITES)
-_MANY_PASS_FIBER = admissible_fiber(_MANY_PASS_INPUTS)
+_MANY_PASS_FIBER = _whole(_MANY_PASS_INPUTS)
 
 
 def test_a_search_that_runs_long_enough_buys_the_shortest_synthesis_there_is() -> None:
@@ -314,3 +240,17 @@ def test_no_choice_is_floored_above_the_fiber_it_actually_selected() -> None:
         for name, choice, links in _CASES
         if choice.lower_bound_miles > _selected_miles(choice, links) + _SLACK
     ] == []
+
+
+_SHORT_AND_LONG_CHOICE = _chosen(
+    fixtures.SHORT_AND_LONG_LINKS, fixtures.SHORT_AND_LONG_SITES
+)
+_ONLY_LONG_CHOICE = _chosen(fixtures.ONLY_LONG_LINKS, fixtures.SHORT_AND_LONG_SITES)
+
+
+def test_the_shorter_of_two_ways_round_is_the_one_selected() -> None:
+    assert not _SHORT_AND_LONG_CHOICE.segments & fixtures.THE_LONG_WAY
+
+
+def test_the_only_way_round_there_is_gets_selected_however_far_it_runs() -> None:
+    assert fixtures.THE_LONG_WAY <= _ONLY_LONG_CHOICE.segments

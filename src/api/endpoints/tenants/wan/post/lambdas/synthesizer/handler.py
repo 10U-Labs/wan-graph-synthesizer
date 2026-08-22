@@ -81,7 +81,6 @@ def _delivered(
     logger.info("Sites short of their diverse-path target for %s: %s", tenant, short)
     return {
         "coverage": coverage,
-        "max_backup_path_multiple": params.tuning.backbone_max_backup_path_multiple,
         "backbone_lower_bound_miles": round(synthesis.metrics.backbone_lower_bound_miles, 3),
         "diverse_paths": {
             "number_of_diverse_paths": params.tuning.backbone_number_of_diverse_paths,

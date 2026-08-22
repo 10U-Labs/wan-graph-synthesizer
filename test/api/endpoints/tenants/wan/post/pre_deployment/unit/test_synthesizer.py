@@ -131,12 +131,12 @@ def test_the_success_status_carries_the_target_the_synthesis_was_measured_agains
     assert status["coverage"]["target_miles"] == 600
 
 
-def test_the_success_status_carries_the_backup_path_multiple_the_build_ran_under(
+def test_the_success_status_carries_no_backup_path_multiple(
     synthesizer: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     objects = _run(synthesizer, monkeypatch)
     status = json.loads(objects["tenants/f-35/wan-status.json"])
-    assert status["max_backup_path_multiple"] == 3.0
+    assert "max_backup_path_multiple" not in status
 
 
 def test_the_success_status_carries_the_floor_the_synthesis_is_judged_against(

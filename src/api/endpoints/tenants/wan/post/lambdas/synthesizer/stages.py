@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from synthesizer.ceiling import BackupPathLimit, PathProofInputs, diverse_path_ceilings
-from synthesizer.graphs import adjacency_by_carrier, build_adjacency, distances_from
+from synthesizer.ceiling import PathProofInputs, diverse_path_ceilings
+from synthesizer.graphs import adjacency_by_carrier, build_adjacency
 from synthesizer.input_graph import FiberSegment, Site
 from synthesizer.model import Synthesis, SynthesisParams, MeshRequirements, ValidationReport
 from synthesizer.on_net_fabrication import fabricate_missing_on_net_nodes
@@ -52,10 +52,7 @@ def finalize(
         ceilings=diverse_path_ceilings(PathProofInputs(
             synthesis.backbone_ids,
             adjacency,
-            BackupPathLimit(
-                params.tuning.backbone_max_backup_path_multiple,
-                distances_from(adjacency, synthesis.backbone_ids),
-            ),
+            None,
             params.tuning.backbone_number_of_diverse_paths,
             params.max_backbone_count,
             adjacency_by_carrier(fiber_segments),

@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import pytest
-
 import fixtures
 from synthesizer.ceiling import (
-    BackupPathLimit,
     PathProofInputs,
     independent_path_ceiling,
     independent_paths,
     diverse_path_ceilings,
 )
-from synthesizer.graphs import adjacency_by_carrier, build_adjacency, distances_from
+from synthesizer.graphs import adjacency_by_carrier, build_adjacency
 from synthesizer.input_graph import FiberSegment
 
 physical = fixtures.fiber_segments_from
@@ -147,113 +144,10 @@ def test_taking_the_shortest_set_costs_the_site_none_of_its_paths() -> None:
     assert independent_path_ceiling("sea", inputs) == 2
 
 
-_PACIFIC = physical({
-    ("sea", "pdx"): 10.0, ("pdx", "hil"): 10.0, ("pdx", "eug"): 10.0,
-    ("sea", "tok"): 1000.0, ("tok", "hil"): 1000.0, ("tok", "eug"): 1000.0,
-})
-_PACIFIC_ADJACENCY = build_adjacency(_PACIFIC)
-_PACIFIC_BACKBONE = ("eug", "hil", "sea")
-_PACIFIC_LIMIT = BackupPathLimit(3.0, distances_from(_PACIFIC_ADJACENCY, _PACIFIC_BACKBONE))
-
-
-def test_a_path_far_longer_than_the_direct_one_is_not_proved() -> None:
-    paths = independent_paths(
-        "sea", PathProofInputs(_PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, _PACIFIC_LIMIT)
-    )
-    assert not [path for path in paths if "tok" in path]
-
-
-def test_the_ceiling_counts_usable_paths_rather_than_merely_disjoint_ones() -> None:
-    assert independent_path_ceiling(
-        "sea", PathProofInputs(_PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, _PACIFIC_LIMIT)
-    ) == 1
-
-
-def test_the_unbounded_ceiling_still_counts_the_crossing() -> None:
+def test_a_ceiling_counts_a_way_out_however_far_it_runs() -> None:
     assert independent_path_ceiling(
         "sea", PathProofInputs(_PACIFIC_BACKBONE, _PACIFIC_ADJACENCY)
     ) == 2
-
-
-_SOLE_CROSSING_ADJACENCY = build_adjacency(
-    {**_PACIFIC, **physical({("tok", "syd"): 500.0})}
-)
-_SOLE_CROSSING_BACKBONE = ("eug", "hil", "sea", "syd")
-_SOLE_CROSSING_LIMIT = BackupPathLimit(
-    3.0, distances_from(_SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_BACKBONE)
-)
-
-
-def test_a_crossing_that_is_the_only_way_to_a_peer_is_kept() -> None:
-    paths = independent_paths(
-        "sea",
-        PathProofInputs(_SOLE_CROSSING_BACKBONE, _SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_LIMIT),
-    )
-    assert [path for path in paths if "tok" in path] != []
-
-
-def test_a_site_whose_second_way_out_is_a_crossing_still_scores_two() -> None:
-    assert independent_path_ceiling(
-        "sea",
-        PathProofInputs(_SOLE_CROSSING_BACKBONE, _SOLE_CROSSING_ADJACENCY, _SOLE_CROSSING_LIMIT),
-    ) == 2
-
-
-def test_a_limit_missing_the_measured_site_is_refused() -> None:
-    limit = BackupPathLimit(3.0, distances_from(_PACIFIC_ADJACENCY, ("eug", "hil")))
-    with pytest.raises(ValueError, match="sea"):
-        independent_paths("sea", PathProofInputs(_PACIFIC_BACKBONE, _PACIFIC_ADJACENCY, limit))
-
-
-_LEAK_ADJACENCY = build_adjacency(physical({
-    ("sea", "pdx"): 10.0, ("pdx", "hil"): 10.0, ("pdx", "syd"): 7000.0,
-    ("sea", "tok"): 1000.0, ("tok", "hil"): 1000.0,
-}))
-_LEAK_BACKBONE = ("hil", "sea", "syd")
-_LEAK_LIMIT = BackupPathLimit(3.0, distances_from(_LEAK_ADJACENCY, _LEAK_BACKBONE))
-
-
-def _multiples(
-    node: str,
-    backbone_ids: tuple[str, ...],
-    adjacency: dict[str, list[tuple[str, float]]],
-    limit: BackupPathLimit,
-) -> dict[tuple[str, ...], float]:
-    return {
-        path: _path_miles(path, adjacency) / limit.distances[node][path[-1]]
-        for path in independent_paths(node, PathProofInputs(backbone_ids, adjacency, limit))
-    }
-
-
-def test_no_proved_path_runs_further_than_the_peer_it_ends_at_allows() -> None:
-    assert _multiples("sea", _LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT) == {
-        ("sea", "pdx", "syd"): 1.0
-    }
-
-
-def test_the_site_whose_path_leaked_is_scored_at_the_one_it_can_use() -> None:
-    ground = PathProofInputs(_LEAK_BACKBONE, _LEAK_ADJACENCY, _LEAK_LIMIT)
-    assert diverse_path_ceilings(ground)["sea"] == 1
-
-
-_UNWITHDRAWABLE_ADJACENCY = build_adjacency(physical({
-    ("sea", "pdx"): 25.0, ("pdx", "tac"): 25.0, ("pdx", "hil"): 80.0,
-    ("sea", "tac"): 200.0, ("tac", "hil"): 200.0,
-    ("pdx", "syd"): 7000.0, ("tac", "syd"): 13000.0,
-}))
-_UNWITHDRAWABLE_BACKBONE = ("hil", "sea", "syd")
-_UNWITHDRAWABLE_LIMIT = BackupPathLimit(
-    3.0, distances_from(_UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_BACKBONE)
-)
-
-
-def test_a_path_no_segment_of_which_can_be_refused_is_dropped_rather_than_counted() -> None:
-    assert independent_path_ceiling(
-        "sea",
-        PathProofInputs(
-            _UNWITHDRAWABLE_BACKBONE, _UNWITHDRAWABLE_ADJACENCY, _UNWITHDRAWABLE_LIMIT
-        ),
-    ) == 1
 
 
 _CHANGES_HANDS = fixtures.carrier_fiber_segments({

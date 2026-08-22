@@ -14,13 +14,9 @@ import yaml
 import seed
 from repo_utils import REPO_ROOT
 from seed import _carrier_cities, _carrier_names, _city_key, _mapping_rows, _rows, _slug
-from synthesizer.ceiling import (
-    BackupPathLimit,
-    PathProofInputs,
-    independent_path_ceiling,
-)
+from synthesizer.ceiling import PathProofInputs, independent_path_ceiling
 from synthesizer.codec import load_merged_carriers, load_regions, load_sites
-from synthesizer.graphs import build_adjacency, distances_from
+from synthesizer.graphs import build_adjacency
 from synthesizer.input_graph import FiberSegment, Site, haversine_miles
 from test_http_doubles import UrlopenRecorder
 
@@ -109,13 +105,6 @@ def _declared_coverage_targets() -> dict[str, int]:
     }
 
 
-def _declared_backup_path_multiples() -> dict[str, float]:
-    return {
-        tenant: backbone["max_backup_path_multiple"]
-        for tenant, backbone in _backbone_blocks().items()
-    }
-
-
 def _knob(urlopen_recorder: UrlopenRecorder, key: str) -> dict[str, Any]:
     return {
         tenant: document[key]
@@ -130,20 +119,13 @@ def test_pipeline_writes_each_tenant_the_coverage_target_its_config_declares(
         _declared_coverage_targets()
 
 
-def test_pipeline_writes_each_tenant_the_backup_path_multiple_its_config_declares(
-        urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
-    _seed(urlopen_recorder, monkeypatch)
-    assert _knob(urlopen_recorder, "backbone_max_backup_path_multiple") == \
-        _declared_backup_path_multiples()
-
-
 def test_pipeline_writes_no_knob_the_synthesizer_does_not_read(
         urlopen_recorder: UrlopenRecorder, monkeypatch: pytest.MonkeyPatch) -> None:
     _seed(urlopen_recorder, monkeypatch)
     assert {
         frozenset(document)
         for document in _written_by_tenant(urlopen_recorder, "knobs").values()
-    } == {frozenset({"backbone_coverage_target_miles", "backbone_max_backup_path_multiple"})}
+    } == {frozenset({"backbone_coverage_target_miles"})}
 
 
 def _configs_naming_a_providers_file() -> set[str]:
@@ -268,18 +250,13 @@ def _ceiling_bounds(
     bounds: list[tuple[str, str, int, int]] = []
     for tenant, backbone in sorted(_backbone_blocks().items()):
         pinned = _pinned_ids(backbone, by_name)
-        measured = [by_name[city] for city in cities(backbone) if city in by_name]
         asked = backbone["number_of_diverse_paths"]
-        limit = BackupPathLimit(
-            float(backbone["max_backup_path_multiple"]),
-            distances_from(adjacency, {*pinned, *measured}),
-        )
         for city in cities(backbone):
             city_id = by_name.get(city)
             if city_id is None or _path_endpoints(city_id, pinned) < 1:
                 continue
             ground = PathProofInputs(
-                pinned, adjacency, limit, asked, backbone["node_count"]["max"]
+                pinned, adjacency, asked, backbone["node_count"]["max"]
             )
             bound = independent_path_ceiling(city_id, ground)
             bounds.append((tenant, city, bound, asked))

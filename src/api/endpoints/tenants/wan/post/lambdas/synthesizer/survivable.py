@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import math
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from typing import TypeVar
 
 from synthesizer.ceiling import (
-    BackupPathLimit,
     PathProofInputs,
     paths_per_peer,
     ways_out_by_carrier_and_peer,
@@ -27,10 +25,8 @@ _Bucket = TypeVar("_Bucket", str, tuple[str, str])
 class FiberInputs:
     backbone_ids: tuple[str, ...]
     fiber_segments: Mapping[tuple[str, str], FiberSegment]
-    all_distances: Mapping[str, Mapping[str, float]]
     ways_out: int = 3
     seat_cap: int | None = None
-    limit: BackupPathLimit | None = None
     fiber_by_carrier: dict[str, dict[str, list[tuple[str, float]]]] = field(
         default_factory=dict
     )
@@ -78,12 +74,6 @@ class _WaysOut:
     together: list[_Requirement]
 
 
-@dataclass(frozen=True)
-class _BudgetSlack:
-    reach: Mapping[str, float]
-    spare: Mapping[str, float]
-
-
 @dataclass
 class _Search:
     order: list[tuple[str, str]]
@@ -91,65 +81,6 @@ class _Search:
     program: GrowingSegmentProgram
     written: set[tuple[tuple[int, ...], float]]
     selected: frozenset[tuple[str, str]]
-
-
-def _slack_from(
-    site: str, inputs: FiberInputs, limit: BackupPathLimit, peers: Iterable[str]
-) -> _BudgetSlack:
-    rows = limit.distances
-    from_site = rows.get(site, {})
-    budgets = [
-        (peer, limit.multiple * from_site[peer])
-        for peer in peers
-        if peer != site and math.isfinite(from_site.get(peer, math.inf))
-    ]
-    spare = {
-        city: min(
-            (rows.get(peer, {}).get(city, math.inf) - budget for peer, budget in budgets),
-            default=math.inf,
-        )
-        for city in inputs.all_distances
-    }
-    return _BudgetSlack(from_site, spare)
-
-
-def _reaches(segment: tuple[str, str], length: float, slack: _BudgetSlack) -> bool:
-    left, right = segment
-    return any(
-        slack.reach.get(near, math.inf) + length + slack.spare.get(far, math.inf) <= _TOLERANCE
-        for near, far in ((left, right), (right, left))
-    )
-
-
-def admissible_fiber(inputs: FiberInputs) -> dict[tuple[str, str], float]:
-    miles = {
-        segment: link.distance_miles for segment, link in inputs.fiber_segments.items()
-    }
-    if inputs.limit is None:
-        return miles
-    slacks = [
-        _slack_from(site, inputs, inputs.limit, inputs.backbone_ids)
-        for site in inputs.backbone_ids
-    ]
-    return {
-        segment: length
-        for segment, length in miles.items()
-        if any(_reaches(segment, length, slack) for slack in slacks)
-    }
-
-
-def _within_budget(
-    inputs: FiberInputs,
-    fiber: Mapping[tuple[str, str], float],
-    site: str,
-    peers: frozenset[str],
-) -> frozenset[tuple[str, str]]:
-    if inputs.limit is None:
-        return frozenset(fiber)
-    slack = _slack_from(site, inputs, inputs.limit, peers)
-    return frozenset(
-        segment for segment, length in fiber.items() if _reaches(segment, length, slack)
-    )
 
 
 def _fiber_by_carrier(
@@ -231,11 +162,7 @@ def _peer_fiber(
 ) -> dict[tuple[str, str], frozenset[tuple[str, str]]]:
     return {
         (carrier, peer): _over_land(
-            site,
-            frozenset({peer}),
-            writing.by_carrier[carrier]
-            & _within_budget(writing.inputs, writing.fiber, site, frozenset({peer})),
-            writing,
+            site, frozenset({peer}), writing.by_carrier[carrier], writing
         )
         for carrier, peer in capacity
     }
@@ -314,7 +241,6 @@ def _writing(
         PathProofInputs(
             inputs.backbone_ids,
             build_adjacency(dict(inputs.fiber_segments)),
-            inputs.limit,
             inputs.ways_out,
             inputs.seat_cap,
             inputs.fiber_by_carrier,
@@ -422,7 +348,9 @@ def _round_up(search: _Search, choice: SegmentChoice) -> frozenset[tuple[str, st
 
 
 def choose_fiber(inputs: FiberInputs) -> FiberChoice:
-    fiber = admissible_fiber(inputs)
+    fiber = {
+        segment: link.distance_miles for segment, link in inputs.fiber_segments.items()
+    }
     if not fiber:
         return FiberChoice(frozenset(), 0.0)
     requirements = _requirements(inputs, fiber)

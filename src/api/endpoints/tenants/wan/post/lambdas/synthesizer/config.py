@@ -70,17 +70,6 @@ def _required_int(data: dict[str, Any], key: str) -> int:
     return value
 
 
-def _required_ratio(data: dict[str, Any], key: str) -> float:
-    if key not in data:
-        raise ValueError(f"config key '{key}' is required and has no default")
-    value = data[key]
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError(f"config key '{key}' must be a number")
-    if value <= 1:
-        raise ValueError(f"config key '{key}' must be above 1")
-    return float(value)
-
-
 def _named_link_list(synthesis: dict[str, Any], key: str) -> tuple[NamedLink, ...]:
     value = synthesis.get(key, [])
     if not isinstance(value, list):
@@ -176,9 +165,6 @@ def _tuning(tuning: dict[str, Any], settings: dict[str, Any]) -> Tuning:
             tuning, "backbone_coverage_target_miles"
         ),
         access_backbone_links=_required_int(tuning, "access_backbone_links"),
-        backbone_max_backup_path_multiple=_required_ratio(
-            tuning, "backbone_max_backup_path_multiple"
-        ),
         search_memory_budget=SearchMemoryBudget(
             memory_share=_memory_share(settings, base.search_memory_budget.memory_share),
             bytes_per_combination=settings.get(

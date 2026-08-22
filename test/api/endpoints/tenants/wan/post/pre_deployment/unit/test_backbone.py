@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import fixtures
-from synthesizer.ceiling import BackupPathLimit
 from synthesizer.input_graph import FiberSegment, link_key
 from synthesizer.model import LINK_FOR_PIN, LINK_FOR_TARGET, SynthesisPath
 from synthesizer.backbone import (
@@ -48,18 +47,13 @@ def _selected(
     constraints: BackboneConstraints,
 ) -> frozenset[tuple[str, str]]:
     return choose_fiber(FiberInputs(
-        sites, links, _distances(links), constraints.number_of_diverse_paths,
-        constraints.seat_cap, constraints.limit, adjacency_by_carrier(links),
+        sites, links, constraints.number_of_diverse_paths,
+        constraints.seat_cap, adjacency_by_carrier(links),
     )).segments
 
 
-def _bounded(
-    links: dict[tuple[str, str], FiberSegment], multiple: float, asked_for: int = 2
-) -> BackboneConstraints:
-    return BackboneConstraints(
-        number_of_diverse_paths=asked_for, seat_cap=4,
-        limit=BackupPathLimit(multiple, _distances(links)),
-    )
+def _asking(asked_for: int = 2) -> BackboneConstraints:
+    return BackboneConstraints(number_of_diverse_paths=asked_for, seat_cap=4)
 
 
 def _pairs(mesh: BackboneMesh) -> set[tuple[str, str]]:
@@ -172,11 +166,10 @@ _LOBE_LOBES: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
 _LOBE_LINKS = fixtures.carrier_fiber_segments({
     **_LOBE_LOBES, ("b", "w"): (20.0, ("lumen",)), ("w", "c"): (20.0, ("lumen",)),
 })
-_TWO_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _bounded(_LOBE_LINKS, 3.0))
+_TWO_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _asking())
 _BOWTIE_LINKS = fixtures.carrier_fiber_segments(_LOBE_LOBES)
-_BOWTIE = _drawn(_LOBE_SITES, _BOWTIE_LINKS, _bounded(_BOWTIE_LINKS, 3.0))
-_BOUNDED_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _bounded(_LOBE_LINKS, 1.8))
-_ONE_WAY_OUT_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _bounded(_LOBE_LINKS, 3.0, 1))
+_BOWTIE = _drawn(_LOBE_SITES, _BOWTIE_LINKS, _asking())
+_ONE_WAY_OUT_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _asking(1))
 
 
 def test_a_city_every_drawn_path_crosses_is_given_a_way_round_it() -> None:
@@ -197,10 +190,6 @@ def test_a_city_no_fiber_goes_round_still_leaves_every_seat_its_paths() -> None:
     } == set(_LOBE_SITES)
 
 
-def test_a_way_round_past_the_operators_backup_path_multiple_is_not_selected() -> None:
-    assert "mid" in _cut(_BOUNDED_LOBES)
-
-
 def test_a_tenant_that_asked_for_one_way_out_is_not_given_a_way_round_anything() -> None:
     assert [
         use.path
@@ -213,10 +202,6 @@ _SELLABLE_TERMS = BackboneConstraints(number_of_diverse_paths=2, seat_cap=2)
 _SELLABLE_MESH = _drawn(
     fixtures.SELLABLE_WAYS_SITES, fixtures.SELLABLE_WAYS_LINKS, _SELLABLE_TERMS
 )
-_NEAR_AND_FAR_TERMS = _bounded(fixtures.NEAR_AND_FAR_LINKS, 3.0)
-_NEAR_AND_FAR_MESH = _drawn(
-    fixtures.NEAR_AND_FAR_SITES, fixtures.NEAR_AND_FAR_LINKS, _NEAR_AND_FAR_TERMS
-)
 
 
 def _run_over(mesh: BackboneMesh) -> set[tuple[str, str]]:
@@ -226,12 +211,6 @@ def _run_over(mesh: BackboneMesh) -> set[tuple[str, str]]:
 def test_a_site_is_drawn_over_fiber_one_carrier_could_sell_it() -> None:
     assert _run_over(_SELLABLE_MESH) <= _selected(
         fixtures.SELLABLE_WAYS_LINKS, fixtures.SELLABLE_WAYS_SITES, _SELLABLE_TERMS
-    )
-
-
-def test_a_site_is_drawn_over_fiber_the_operators_bound_allows() -> None:
-    assert _run_over(_NEAR_AND_FAR_MESH) <= _selected(
-        fixtures.NEAR_AND_FAR_LINKS, fixtures.NEAR_AND_FAR_SITES, _NEAR_AND_FAR_TERMS
     )
 
 

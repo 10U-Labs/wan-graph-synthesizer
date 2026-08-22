@@ -69,7 +69,6 @@ def _config_documents() -> dict[str, Any]:
         "convergence-promotion": {"promote": False},
         "knobs": {
             "backbone_coverage_target_miles": 500,
-            "backbone_max_backup_path_multiple": 3,
         },
         "settings": {},
         "label": {"label": "Split"},

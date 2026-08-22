@@ -15,56 +15,6 @@ _NewArc = tuple[_Node, _Node, float, int]
 
 _SINK: _Node = ("sink", "")
 
-_TOLERANCE = 1e-6
-
-
-@dataclass(frozen=True)
-class BackupPathLimit:
-    multiple: float
-    distances: Mapping[str, Mapping[str, float]]
-
-
-def _admissible_adjacency(
-    node: str,
-    backbone_ids: tuple[str, ...],
-    adjacency: dict[str, list[tuple[str, float]]],
-    limit: BackupPathLimit,
-) -> dict[str, list[tuple[str, float]]]:
-    if node not in limit.distances:
-        raise ValueError(
-            f"backup path limit carries no distances from '{node}', so no path out of it "
-            "can be measured; pass a row for every site the bound is applied to"
-        )
-    from_node = limit.distances[node]
-    budgets = [
-        (peer, limit.multiple * from_node[peer])
-        for peer in backbone_ids
-        if peer != node and math.isfinite(from_node.get(peer, math.inf))
-    ]
-    slack = {
-        city: min(
-            (
-                limit.distances.get(peer, {}).get(city, math.inf) - budget
-                for peer, budget in budgets
-            ),
-            default=math.inf,
-        )
-        for city in adjacency
-    }
-    admissible: dict[str, list[tuple[str, float]]] = {}
-    for city, neighbors in adjacency.items():
-        reach = from_node.get(city, math.inf)
-        kept = [
-            (neighbor, weight)
-            for neighbor, weight in neighbors
-            if reach + weight + slack.get(neighbor, math.inf) <= _TOLERANCE
-            or from_node.get(neighbor, math.inf) + weight
-            + slack.get(city, math.inf) <= _TOLERANCE
-        ]
-        if kept:
-            admissible[city] = kept
-    return admissible
-
 
 def _add_capacity(residual: _Residual, costs: _Costs, arc: _NewArc) -> None:
     tail, head, miles, units = arc
@@ -186,65 +136,6 @@ def _path_miles(
     )
 
 
-def _budget(node: str, peer: str, limit: BackupPathLimit) -> float:
-    return limit.multiple * limit.distances[node].get(peer, math.inf)
-
-
-def _withdrawable_fiber_segment(
-    node: str,
-    path: tuple[str, ...],
-    adjacency: dict[str, list[tuple[str, float]]],
-    limit: BackupPathLimit,
-) -> tuple[str, str] | None:
-    peer = path[-1]
-    budget = _budget(node, peer, limit)
-    from_node = limit.distances[node]
-    to_peer = limit.distances.get(peer, {})
-    worst: tuple[str, str] | None = None
-    excess = _TOLERANCE
-    for left, right in reversed(list(zip(path, path[1:]))):
-        outside = (
-            from_node.get(left, math.inf)
-            + _fiber_segment_miles(adjacency, left, right)
-            + to_peer.get(right, math.inf)
-            - budget
-        )
-        if outside > excess:
-            worst, excess = (left, right), outside
-    return worst
-
-
-def _without_fiber_segment(
-    adjacency: dict[str, list[tuple[str, float]]], left: str, right: str
-) -> dict[str, list[tuple[str, float]]]:
-    withdrawn = {(left, right), (right, left)}
-    remaining = {
-        city: [
-            (neighbor, weight)
-            for neighbor, weight in neighbors
-            if (city, neighbor) not in withdrawn
-        ]
-        for city, neighbors in adjacency.items()
-    }
-    return {city: neighbors for city, neighbors in remaining.items() if neighbors}
-
-
-def _first_withdrawable(
-    node: str,
-    paths: list[tuple[str, ...]],
-    within: list[tuple[str, ...]],
-    adjacency: dict[str, list[tuple[str, float]]],
-    limit: BackupPathLimit,
-) -> tuple[str, str] | None:
-    for path in paths:
-        if path in within:
-            continue
-        withdrawn = _withdrawable_fiber_segment(node, path, adjacency, limit)
-        if withdrawn is not None:
-            return withdrawn
-    return None
-
-
 def _proved_paths(
     node: str,
     backbone_ids: tuple[str, ...],
@@ -267,7 +158,6 @@ def _proved_paths(
 class PathProofInputs:
     backbone_ids: tuple[str, ...]
     adjacency: dict[str, list[tuple[str, float]]]
-    limit: BackupPathLimit | None = None
     paths_wanted: int = 1
     seat_cap: int | None = None
     fiber_by_carrier: dict[str, dict[str, list[tuple[str, float]]]] = field(
@@ -279,36 +169,6 @@ class PathProofInputs:
 def paths_per_peer(seat_cap: int | None, seats: int, paths_wanted: int) -> int:
     peers = (seat_cap if seat_cap is not None else seats) - 1
     return max(1, -(-paths_wanted // peers)) if peers > 0 else 1
-
-
-def _paths_over(
-    node: str,
-    inputs: PathProofInputs,
-    adjacency: dict[str, list[tuple[str, float]]],
-    per_peer: int,
-) -> list[tuple[str, ...]]:
-    limit = inputs.limit
-    backbone_ids = inputs.backbone_ids
-    if limit is None:
-        return _proved_paths(node, backbone_ids, adjacency, per_peer)
-    admissible = _admissible_adjacency(node, backbone_ids, adjacency, limit)
-    best: list[tuple[str, ...]] = []
-    while True:
-        paths = _proved_paths(node, backbone_ids, admissible, per_peer)
-        within = [
-            path
-            for path in paths
-            if _path_miles(path, admissible)
-            <= _budget(node, path[-1], limit) + _TOLERANCE
-        ]
-        if len(within) > len(best):
-            best = within
-        if len(within) == len(paths):
-            return best
-        withdrawn = _first_withdrawable(node, paths, within, admissible, limit)
-        if withdrawn is None:
-            return best
-        admissible = _without_fiber_segment(admissible, *withdrawn)
 
 
 def _no_city_twice(
@@ -377,12 +237,17 @@ def _paths_over_each_carrier(
 ) -> dict[str, list[tuple[str, ...]]]:
     if not inputs.fiber_by_carrier:
         return {
-            "": _paths_over(
-                node, inputs, _over_land(node, inputs, inputs.adjacency), per_peer
+            "": _proved_paths(
+                node,
+                inputs.backbone_ids,
+                _over_land(node, inputs, inputs.adjacency),
+                per_peer,
             )
         }
     return {
-        carrier: _paths_over(node, inputs, _over_land(node, inputs, adjacency), per_peer)
+        carrier: _proved_paths(
+            node, inputs.backbone_ids, _over_land(node, inputs, adjacency), per_peer
+        )
         for carrier, adjacency in sorted(inputs.fiber_by_carrier.items())
         if node in adjacency
     }
