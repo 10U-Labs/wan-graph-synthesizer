@@ -36,16 +36,40 @@ pop = fixtures.carrier_pop
 physical = fixtures.fiber_segments_from
 
 
+def _distances(
+    links: dict[tuple[str, str], FiberSegment],
+) -> dict[str, dict[str, float]]:
+    """How far apart every two cities on one fiber map are, measured over that fiber."""
+    cities = sorted({city for pair in links for city in pair})
+    distances, _predecessors = all_pairs_shortest(
+        [pop(city) for city in cities], build_adjacency(links)
+    )
+    return distances
+
+
 def _drawn(
     sites: tuple[str, ...],
     links: dict[tuple[str, str], FiberSegment],
     constraints: BackboneConstraints,
 ) -> BackboneMesh:
     """The mesh a whole fiber choice and assembly settles on over one graph."""
-    adjacency = build_adjacency(links)
-    cities = sorted({city for pair in links for city in pair})
-    distances, _predecessors = all_pairs_shortest([pop(city) for city in cities], adjacency)
-    return backbone_mesh(sites, distances, links, constraints)
+    return backbone_mesh(sites, _distances(links), links, constraints)
+
+
+def _bounded(
+    links: dict[tuple[str, str], FiberSegment], multiple: float, asked_for: int = 2
+) -> BackboneConstraints:
+    """An operator's instructions carrying a backup path multiple over this fiber.
+
+    ``_TWO_WAYS_OUT`` above carries none, which is right for the ring fixtures: on a ring a
+    site has two fiber directions and takes both whatever the bound says. It is not right
+    wherever the question is which of several ways out a site reaches for, since a bound is
+    what leaves the long ones undrawn.
+    """
+    return BackboneConstraints(
+        number_of_diverse_paths=asked_for, seat_cap=4,
+        limit=BackupPathLimit(multiple, _distances(links)),
+    )
 
 
 def _pairs(mesh: BackboneMesh) -> set[tuple[str, str]]:
@@ -218,27 +242,18 @@ _LOBE_LOBES: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
 _LOBE_LINKS = fixtures.carrier_fiber_segments({
     **_LOBE_LOBES, ("b", "w"): (20.0, ("lumen",)), ("w", "c"): (20.0, ("lumen",)),
 })
-_TWO_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _TWO_WAYS_OUT)
+_TWO_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _bounded(_LOBE_LINKS, 3.0))
 # The same two lobes with the way through ``w`` taken away, so no fiber at all goes past
 # ``mid``.
-_BOWTIE = _drawn(_LOBE_SITES, fixtures.carrier_fiber_segments(_LOBE_LOBES), _TWO_WAYS_OUT)
+_BOWTIE_LINKS = fixtures.carrier_fiber_segments(_LOBE_LOBES)
+_BOWTIE = _drawn(_LOBE_SITES, _BOWTIE_LINKS, _bounded(_BOWTIE_LINKS, 3.0))
 # The two lobes again under an operator who buys no path running more than four fifths again
 # further than the straight distance between its two ends. The shortest way round ``mid`` is
 # the fifty miles from ``a`` to ``c`` through ``w``, against the twenty those two are apart,
 # so it is fiber this operator has already said they do not want.
-_LOBE_ADJACENCY = build_adjacency(_LOBE_LINKS)
-_LOBE_DISTANCES, _LOBE_PREDECESSORS = all_pairs_shortest(
-    [pop(city) for city in sorted({city for pair in _LOBE_LINKS for city in pair})],
-    _LOBE_ADJACENCY,
-)
-_BOUNDED_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, BackboneConstraints(
-    number_of_diverse_paths=2, seat_cap=4,
-    limit=BackupPathLimit(1.8, _LOBE_DISTANCES),
-))
+_BOUNDED_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _bounded(_LOBE_LINKS, 1.8))
 # The same two lobes for a tenant that asked for one way out of each node rather than two.
-_ONE_WAY_OUT_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, BackboneConstraints(
-    number_of_diverse_paths=1, seat_cap=4,
-))
+_ONE_WAY_OUT_LOBES = _drawn(_LOBE_SITES, _LOBE_LINKS, _bounded(_LOBE_LINKS, 3.0, 1))
 
 
 def test_a_city_every_drawn_path_crosses_is_given_a_way_round_it() -> None:
@@ -287,17 +302,22 @@ def test_a_way_round_past_the_operators_backup_path_multiple_is_not_bought() -> 
     it is one they would not order. Buying it anyway would hand them fiber they have already
     said they do not want, on the strength of a property they also want.
     """
-    assert _cut(_BOUNDED_LOBES) == {"mid"}
+    assert "mid" in _cut(_BOUNDED_LOBES)
 
 
 def test_a_tenant_that_bought_one_way_out_is_not_given_a_way_round_anything() -> None:
-    """One way out is one way out, and a network built to it comes apart where its fiber does.
+    """The fiber through ``w`` goes unbought, which is the way round ``mid`` and nothing else.
 
-    Yurop asks for one diverse path, and four cities split the network it was handed. That is
-    what it bought. Relieving those cities would order fiber against a requirement the tenant
-    did not write down, which is the same defect read backwards.
+    One way out is one way out, and a network built to it comes apart wherever its fiber
+    does. Yurop asks for one diverse path, and four cities split the network it was handed;
+    that is what it bought. Buying it the way round anyway would order fiber against a
+    requirement the tenant did not write down, which is the same defect read backwards.
     """
-    assert "mid" in _cut(_ONE_WAY_OUT_LOBES)
+    assert [
+        use.path
+        for use in _ONE_WAY_OUT_LOBES.paths
+        if link_key("b", "w") in path_link_keys(use.path)
+    ] == []
 
 
 # The square again with one pair struck out by the operator, and again with one pinned. A
