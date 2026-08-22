@@ -15,8 +15,6 @@ from synthesizer.model import (
 )
 
 DEFAULT_SITES = {
-    "AFLCMC": "data/tenants/aflcmc.csv",
-    "AFNWC/NI": "data/tenants/afnwc_ni.csv",
     "DCN": "data/pops/dcn.csv",
     "F-35": "data/tenants/f_35.csv",
     "Lumen": "data/pops/lumen.csv",
