@@ -313,6 +313,7 @@ on:
       - lib/python/**
       - scripts/seed.py
       - src/api/common/storage/**
+      - src/api/endpoints/tenants/wan/post/lambdas/**
       - src/www/api/openapi.json
       - test/lib/python/**
       - test/scripts/seed/**
