@@ -180,6 +180,21 @@ class _Writing:
 
 
 @dataclass(frozen=True)
+class _Asked:
+    """One requirement's terms before the number is settled: for whom, and over what fiber.
+
+    The same four things a :class:`_Requirement` carries beside its number, which is what
+    the carriers then divide between them -- each company's row is these terms over that
+    company's share of ``over``.
+    """
+
+    site: str
+    peers: frozenset[str]
+    spared: frozenset[str]
+    over: frozenset[tuple[str, str]]
+
+
+@dataclass(frozen=True)
 class _BudgetSlack:
     """How far a path from one site reaches each city, and what budget it has left there.
 
@@ -284,9 +299,9 @@ def _within_budget(
     """The fiber a path from ``site`` to one of ``peers`` could run over inside the bound.
 
     :func:`admissible_fiber` asks the same arithmetic of every site and every peer at once,
-    so it keeps a segment that suits any pair anywhere on the map. Here the pair is known,
-    and the sharper answer is what a single requirement is written over: without it the
-    program can meet a requirement with a way round that runs further than the tenant's
+    so it keeps a segment that suits any pair anywhere on the map. Here the site is known,
+    and the sharper answer is what its own ways-out requirement is written over: without it
+    the program can meet a requirement with a way round that runs further than the tenant's
     backup path multiple allows, which :func:`synthesizer.ceiling.independent_paths` then
     refuses to count, and the site reads short over the fiber that was bought for it
     (GitHub issue #113).
@@ -383,30 +398,32 @@ def _shared_out(owed: int, capacity: Mapping[str, int]) -> dict[str, int]:
 
 
 def _rows_for(
-    site: str,
-    peers: frozenset[str],
-    spared: frozenset[str],
-    writing: _Writing,
-    capacity: Mapping[str, int],
+    asked: _Asked, writing: _Writing, capacity: Mapping[str, int]
 ) -> list[_Requirement]:
-    """One requirement per carrier, each over the fiber that company could sell this site.
+    """One requirement per carrier, each over that company's share of the fiber asked over.
 
     The number asked of each is its share of the tenant's own (see :func:`_shared_out`),
     lowered again to what that company's fiber can actually carry (see :func:`_carried`),
     and a carrier left asking for nothing writes no row.
     """
-    budgeted = _within_budget(writing.inputs, writing.fiber, site, peers)
-    asked = [
-        _Requirement(site, peers, spared, share, writing.by_carrier[carrier] & budgeted)
+    rows = [
+        _Requirement(
+            asked.site, asked.peers, asked.spared, share,
+            asked.over & writing.by_carrier[carrier],
+        )
         for carrier, share in _shared_out(writing.inputs.ways_out, capacity).items()
         if share
     ]
-    lowered = [replace(row, required=_carried(row, writing.whole)) for row in asked]
+    lowered = [replace(row, required=_carried(row, writing.whole)) for row in rows]
     return [row for row in lowered if row.required]
 
 
 def _ways_out_rows(site: str, writing: _Writing) -> list[_Requirement]:
     """What one site is owed: as many ways out as the tenant asked, ending at its peers.
+
+    Over the fiber a path from this site to those peers may run on, which is the same
+    arithmetic :func:`synthesizer.ceiling._admissible_adjacency` puts the site's paths
+    through when they are read back, so what is bought here is what can be found there.
 
     Spread over the carriers by how many of the site's ways out each of them supplies,
     which :func:`synthesizer.ceiling.ways_out_by_carrier` reads off the same proof
@@ -416,7 +433,11 @@ def _ways_out_rows(site: str, writing: _Writing) -> list[_Requirement]:
     inputs = writing.inputs
     peers = frozenset(inputs.backbone_ids) - {site}
     spared = frozenset({site}) if writing.per_peer == 1 else frozenset({site}) | peers
-    return _rows_for(site, peers, spared, writing, ways_out_by_carrier(site, writing.proof))
+    return _rows_for(
+        _Asked(site, peers, spared, _within_budget(inputs, writing.fiber, site, peers)),
+        writing,
+        ways_out_by_carrier(site, writing.proof),
+    )
 
 
 def _between_rows(root: str, peer: str, writing: _Writing) -> list[_Requirement]:
@@ -428,23 +449,35 @@ def _between_rows(root: str, peer: str, writing: _Writing) -> list[_Requirement]
     takes to separate two sites is never less than the smaller of what it takes to separate
     each of them from a third, so holding one site to every peer holds every pair.
 
+    That is why it is written over the whole of the admissible fiber and not over what
+    ``root``'s own budget for ``peer`` allows. The row stands for every pair rather than for
+    this one, and fiber outside this pair's budget is fiber some other pair's paths may
+    legitimately run on -- so cutting it to this pair's budget asks for more than any
+    network has to give, and the floor stops being a floor. The twelve-city fixture in
+    ``fixtures.MANY_PASS_SEGMENTS`` said so outright: cut that way it published 184 miles
+    under a synthesis that runs 159.
+
     A ceiling counts a site's ways out to distinct peers, which is not what it takes to
     separate one named pair, so the spread here is by what each carrier's own fiber can
     carry between these two rather than by that count.
     """
-    peers = frozenset({peer})
-    spared = frozenset(writing.inputs.backbone_ids)
-    budgeted = _within_budget(writing.inputs, writing.fiber, root, peers)
+    asked = _Asked(
+        root,
+        frozenset({peer}),
+        frozenset(writing.inputs.backbone_ids),
+        frozenset(writing.fiber),
+    )
     capacity = {
         carrier: _carried(
             _Requirement(
-                root, peers, spared, writing.inputs.ways_out, segments & budgeted
+                asked.site, asked.peers, asked.spared, writing.inputs.ways_out,
+                asked.over & segments,
             ),
             writing.whole,
         )
         for carrier, segments in writing.by_carrier.items()
     }
-    return _rows_for(root, peers, spared, writing, capacity)
+    return _rows_for(asked, writing, capacity)
 
 
 def _writing(
