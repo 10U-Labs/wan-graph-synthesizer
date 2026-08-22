@@ -386,24 +386,15 @@ def test_the_segment_the_first_answer_missed_is_bought_once_it_is_written_down()
     assert ("c", "d") in _TRIANGLES_CHOICE.segments
 
 
-# Two sites with three ways round between them, and the owners written on the fiber. The two
-# short ways round change hands halfway -- ``a`` reaches ``p`` and ``q`` over Zayo's fiber and
-# ``b`` reaches both over Lumen's -- so neither is a path anybody quotes. The five-mile way
-# round through ``r`` is Lumen's end to end and is the only way out ``a`` can be sold, so it
-# is the fiber to buy however many more miles it runs.
-_SPLIT_WAYS = fixtures.carrier_fiber_segments({
-    ("a", "p"): (1.0, ("zayo",)),
-    ("b", "p"): (1.0, ("lumen",)),
-    ("a", "q"): (1.0, ("zayo",)),
-    ("b", "q"): (1.0, ("lumen",)),
-    ("a", "r"): (5.0, ("lumen",)),
-    ("b", "r"): (5.0, ("lumen",)),
-})
+# The two graphs GitHub issue #113 turns on, both in ``fixtures``: three ways round between
+# two seats of which only the long one is any company's to sell, and three seats close
+# together one way and far apart the other. Shared because the mesh and the whole pipeline
+# are driven over them too.
 _SELLABLE = frozenset({("a", "r"), ("b", "r")})
 
 
 def test_the_fiber_bought_is_fiber_one_carrier_can_sell_a_whole_path_over() -> None:
-    """The ten-mile way round one company owns is bought and the two-mile ways round are not.
+    """The five-mile way round one company owns is bought and the two-mile ways round are not.
 
     A path is ordered from one carrier end to end, so a way round whose halves belong to two
     owners buys nobody anything -- and until the program knew that, it wrote its requirements
@@ -416,25 +407,16 @@ def test_the_fiber_bought_is_fiber_one_carrier_can_sell_a_whole_path_over() -> N
     The two questions are one question now. This is the answer to it, in the one form that
     cannot be argued with: the segments bought.
     """
-    assert _chosen(_SPLIT_WAYS, ("a", "b"), seat_cap=2).segments == _SELLABLE
+    assert _chosen(
+        fixtures.SELLABLE_WAYS_LINKS, fixtures.SELLABLE_WAYS_SITES, seat_cap=2
+    ).segments == _SELLABLE
 
 
-# Three seats a long way apart in one direction and close together in the other. ``a`` and
-# ``b`` are a mile apart with a four-mile way round through ``q``; ``far`` is a hundred miles
-# from both. The way round through ``q`` is four times the mile ``a`` and ``b`` are apart, so
-# no path between them may run over it -- but it sits comfortably inside the three hundred
-# miles a path from ``a`` to ``far`` is allowed, so the fiber is admissible on that pair's
-# account and has to be refused on this one's.
-_NEAR_AND_FAR = physical({
-    ("a", "b"): 1.0,
-    ("a", "q"): 2.0, ("b", "q"): 2.0,
-    ("a", "far"): 100.0, ("b", "far"): 100.0,
-})
-_NEAR_AND_FAR_SITES = ("a", "b", "far")
+_NEAR_AND_FAR_DISTANCES = _all_distances(fixtures.NEAR_AND_FAR_LINKS)
 _NEAR_AND_FAR_CHOICE = choose_fiber(FiberInputs(
-    _NEAR_AND_FAR_SITES, _NEAR_AND_FAR, _all_distances(_NEAR_AND_FAR), _WAYS_OUT, None,
-    BackupPathLimit(3.0, _all_distances(_NEAR_AND_FAR)),
-    adjacency_by_carrier(_NEAR_AND_FAR),
+    fixtures.NEAR_AND_FAR_SITES, fixtures.NEAR_AND_FAR_LINKS, _NEAR_AND_FAR_DISTANCES,
+    _WAYS_OUT, None, BackupPathLimit(3.0, _NEAR_AND_FAR_DISTANCES),
+    adjacency_by_carrier(fixtures.NEAR_AND_FAR_LINKS),
 ))
 
 

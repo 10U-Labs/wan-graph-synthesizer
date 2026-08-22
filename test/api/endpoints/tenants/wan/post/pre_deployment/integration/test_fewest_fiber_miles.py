@@ -229,25 +229,14 @@ def test_a_site_whose_ways_out_are_split_between_carriers_is_floored_at_what_it_
     )
 
 
-# Two seats with three ways round between them, both halves of the defect at once. The two
-# one-mile ways round change hands halfway -- ``a`` reaches ``p`` and ``q`` over Zayo's fiber
-# and ``b`` reaches both over Lumen's -- so neither is a path anybody quotes, and the
-# five-mile way round through ``r`` that Lumen owns end to end is fifteen miles against the
-# ten ``a`` and ``b`` are apart over it, which the default backup path multiple of three
-# allows and a tighter one would not.
-_SELLABLE_SITES = ("a", "b")
-_SELLABLE_TRANSIT = ("p", "q", "r")
-_SELLABLE_SEGMENTS: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
-    ("a", "p"): (1.0, ("zayo",)),
-    ("b", "p"): (1.0, ("lumen",)),
-    ("a", "q"): (1.0, ("zayo",)),
-    ("b", "q"): (1.0, ("lumen",)),
-    ("a", "r"): (5.0, ("lumen",)),
-    ("b", "r"): (5.0, ("lumen",)),
-}
-_SELLABLE_LINKS = fixtures.carrier_fiber_segments(_SELLABLE_SEGMENTS)
+# The two-seat graph whose only sellable way round is the long one (see
+# ``fixtures.SELLABLE_WAYS_SEGMENTS``), driven the whole way through the pipeline under the
+# default backup path multiple of three.
 SELLABLE_ARTIFACTS = fixtures.synthesis_over_owned_fiber(
-    _SELLABLE_SITES, _SELLABLE_SEGMENTS, _ASKED_FOR, _SELLABLE_TRANSIT
+    fixtures.SELLABLE_WAYS_SITES,
+    fixtures.SELLABLE_WAYS_SEGMENTS,
+    _ASKED_FOR,
+    fixtures.SELLABLE_WAYS_TRANSIT,
 )
 
 
@@ -259,13 +248,14 @@ def _fiber_the_choice_bought() -> frozenset[tuple[str, str]]:
     ``Tuning`` carries, which is what ``fixtures.synthesis_over_owned_fiber`` runs under.
     """
     distances = distances_from(
-        build_adjacency(_SELLABLE_LINKS),
-        sorted({city for pair in _SELLABLE_LINKS for city in pair}),
+        build_adjacency(fixtures.SELLABLE_WAYS_LINKS),
+        sorted({city for pair in fixtures.SELLABLE_WAYS_LINKS for city in pair}),
     )
     return choose_fiber(FiberInputs(
-        _SELLABLE_SITES, _SELLABLE_LINKS, distances, _ASKED_FOR, len(_SELLABLE_SITES),
+        fixtures.SELLABLE_WAYS_SITES, fixtures.SELLABLE_WAYS_LINKS, distances,
+        _ASKED_FOR, len(fixtures.SELLABLE_WAYS_SITES),
         BackupPathLimit(Tuning().backbone_max_backup_path_multiple, distances),
-        adjacency_by_carrier(_SELLABLE_LINKS),
+        adjacency_by_carrier(fixtures.SELLABLE_WAYS_LINKS),
     )).segments
 
 

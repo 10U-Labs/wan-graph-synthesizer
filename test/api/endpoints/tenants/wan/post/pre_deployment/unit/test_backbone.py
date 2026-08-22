@@ -349,25 +349,14 @@ def test_a_tenant_that_bought_one_way_out_is_not_given_a_way_round_anything() ->
 # was not: ``_ways_out_of`` proved each site over the bought fiber and over the carriers'
 # whole map and drew whichever gave more, which was the whole map for 29 of the 37 backbone
 # seats ``etc/`` declares.
-_SELLABLE_WAYS = fixtures.carrier_fiber_segments({
-    ("a", "p"): (1.0, ("zayo",)),
-    ("b", "p"): (1.0, ("lumen",)),
-    ("a", "q"): (1.0, ("zayo",)),
-    ("b", "q"): (1.0, ("lumen",)),
-    ("a", "r"): (5.0, ("lumen",)),
-    ("b", "r"): (5.0, ("lumen",)),
-})
-_SELLABLE_SITES = ("a", "b")
 _SELLABLE_TERMS = BackboneConstraints(number_of_diverse_paths=2, seat_cap=2)
-_SELLABLE_MESH = _drawn(_SELLABLE_SITES, _SELLABLE_WAYS, _SELLABLE_TERMS)
-_NEAR_AND_FAR = physical({
-    ("a", "b"): 1.0,
-    ("a", "q"): 2.0, ("b", "q"): 2.0,
-    ("a", "far"): 100.0, ("b", "far"): 100.0,
-})
-_NEAR_AND_FAR_SITES = ("a", "b", "far")
-_NEAR_AND_FAR_TERMS = _bounded(_NEAR_AND_FAR, 3.0)
-_NEAR_AND_FAR_MESH = _drawn(_NEAR_AND_FAR_SITES, _NEAR_AND_FAR, _NEAR_AND_FAR_TERMS)
+_SELLABLE_MESH = _drawn(
+    fixtures.SELLABLE_WAYS_SITES, fixtures.SELLABLE_WAYS_LINKS, _SELLABLE_TERMS
+)
+_NEAR_AND_FAR_TERMS = _bounded(fixtures.NEAR_AND_FAR_LINKS, 3.0)
+_NEAR_AND_FAR_MESH = _drawn(
+    fixtures.NEAR_AND_FAR_SITES, fixtures.NEAR_AND_FAR_LINKS, _NEAR_AND_FAR_TERMS
+)
 
 
 def _run_over(mesh: BackboneMesh) -> set[tuple[str, str]]:
@@ -383,7 +372,7 @@ def test_a_site_is_drawn_over_fiber_one_carrier_could_sell_it() -> None:
     for nothing.
     """
     assert _run_over(_SELLABLE_MESH) <= _bought(
-        _SELLABLE_WAYS, _SELLABLE_SITES, _SELLABLE_TERMS
+        fixtures.SELLABLE_WAYS_LINKS, fixtures.SELLABLE_WAYS_SITES, _SELLABLE_TERMS
     )
 
 
@@ -395,7 +384,7 @@ def test_a_site_is_drawn_over_fiber_the_operators_bound_allows() -> None:
     choice had bought.
     """
     assert _run_over(_NEAR_AND_FAR_MESH) <= _bought(
-        _NEAR_AND_FAR, _NEAR_AND_FAR_SITES, _NEAR_AND_FAR_TERMS
+        fixtures.NEAR_AND_FAR_LINKS, fixtures.NEAR_AND_FAR_SITES, _NEAR_AND_FAR_TERMS
     )
 
 

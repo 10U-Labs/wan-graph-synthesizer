@@ -873,3 +873,42 @@ MANY_PASS_SITES = ("c", "d", "j", "k", "l")
 MANY_PASS_TRANSIT = ("a", "b", "e", "f", "g", "h", "i")
 # What the search buys once it is allowed to finish, and the miles those segments run.
 MANY_PASS_MILES = 159.0
+
+
+# --- the fiber a network is drawn over is the fiber the choice bought --------------------
+#
+# Two graphs for the two halves of GitHub issue #113, shared because three files drive them:
+# the unit tier over ``synthesizer.survivable.choose_fiber`` alone, the unit tier over
+# ``synthesizer.backbone.backbone_mesh``, and the pre-deployment integration tier over a whole
+# synthesis.
+#
+# The first is about who owns the fiber. Two seats with three ways round between them: the two
+# one-mile ways round change hands halfway -- ``a`` reaches ``p`` and ``q`` over Zayo's fiber
+# and ``b`` reaches both over Lumen's -- so neither is a path anybody quotes, and the way round
+# through ``r`` is Lumen's end to end and is the only one that can be sold. It runs five miles
+# against the two ``a`` and ``b`` are apart, which a backup path multiple of three allows, so
+# what the choice does here turns on the owners and not on the length.
+SELLABLE_WAYS_SITES = ("a", "b")
+SELLABLE_WAYS_TRANSIT = ("p", "q", "r")
+SELLABLE_WAYS_SEGMENTS: dict[tuple[str, str], tuple[float, tuple[str, ...]]] = {
+    ("a", "p"): (1.0, ("zayo",)),
+    ("b", "p"): (1.0, ("lumen",)),
+    ("a", "q"): (1.0, ("zayo",)),
+    ("b", "q"): (1.0, ("lumen",)),
+    ("a", "r"): (2.5, ("lumen",)),
+    ("b", "r"): (2.5, ("lumen",)),
+}
+SELLABLE_WAYS_LINKS = carrier_fiber_segments(SELLABLE_WAYS_SEGMENTS)
+
+# The second is about how far a path may run. Three seats, close together one way and far
+# apart the other: ``a`` and ``b`` are a mile apart with a four-mile way round through ``q``,
+# and ``far`` is a hundred miles from both. Four miles is four times the mile ``a`` and ``b``
+# are apart, so no path between them may run over that way round -- and it sits comfortably
+# inside the three hundred miles a path from ``a`` to ``far`` is allowed, so the fiber is
+# admissible on that pair's account and has to be refused on this one's.
+NEAR_AND_FAR_SITES = ("a", "b", "far")
+NEAR_AND_FAR_LINKS = fiber_segments_from({
+    ("a", "b"): 1.0,
+    ("a", "q"): 2.0, ("b", "q"): 2.0,
+    ("a", "far"): 100.0, ("b", "far"): 100.0,
+})

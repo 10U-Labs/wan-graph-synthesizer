@@ -328,6 +328,23 @@ def _fiber_by_carrier(
     }
 
 
+def _question(
+    requirement: _Requirement, held: Mapping[tuple[str, str], float]
+) -> SeparationQuestion:
+    """The requirement asked of the fiber it may be met over, held in the shares given.
+
+    Only that fiber is put to the question, so the separation that comes back names only
+    segments this requirement could be answered by -- which is what makes the row the
+    program writes a row an operator can act on.
+    """
+    return SeparationQuestion(
+        requirement.site,
+        requirement.peers,
+        requirement.spared,
+        {segment: share for segment, share in held.items() if segment in requirement.over},
+    )
+
+
 def _carried(requirement: _Requirement, whole: Mapping[tuple[str, str], float]) -> int:
     """The most of a requirement this fiber could ever meet, at most what it asks for.
 
