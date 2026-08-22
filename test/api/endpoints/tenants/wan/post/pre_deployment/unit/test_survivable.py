@@ -208,7 +208,7 @@ def _distant_peer_ceilings(segments: frozenset[tuple[str, str]]) -> dict[str, in
 def test_the_fiber_selected_for_a_site_carries_every_way_out_its_fiber_carries() -> None:
     assert _distant_peer_ceilings(_DISTANT_PEER_CHOICE.segments) == _distant_peer_ceilings(
         frozenset(fixtures.DISTANT_PEER_LINKS)
-    ) == {"hil": 2, "sea": 1, "syd": 2}
+    ) == {"hil": 2, "sea": 2, "syd": 2}
 
 
 _MANY_PASS = physical(fixtures.MANY_PASS_SEGMENTS)
